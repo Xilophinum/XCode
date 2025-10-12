@@ -1,0 +1,521 @@
+/**
+ * POST /api/projects/execute
+ * Dispatches a project execution to an available agent
+ */
+
+import { v4 as uuidv4 } from 'uuid'
+import { jobManager } from '../../utils/jobManager.js'
+import { getAgentManager } from '../../utils/agentManager.js'
+import { getDataService } from '../../utils/dataService.js'
+
+export default defineEventHandler(async (event) => {
+  try {
+    const body = await readBody(event)
+    const { projectId, nodes, edges, startTime } = body
+
+    if (!projectId || !nodes || !edges) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Missing required fields: projectId, nodes, edges'
+      })
+    }
+
+    // Check project status before execution
+    const dataService = await getDataService()
+    const project = await dataService.getItemById(projectId)
+    
+    if (!project) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'Project not found'
+      })
+    }
+    
+    if (project.status === 'disabled') {
+      throw createError({
+        statusCode: 403,
+        statusMessage: 'Project is disabled - execution blocked'
+      })
+    }
+
+    // Get agent manager instance
+    const agentManager = await getAgentManager()
+
+    console.log(`🔍 Execute API: Looking for available agent...`)
+    console.log(`🔍 Connected agents: ${agentManager.connectedAgents.size}`)
+    console.log(`🔍 Agent data entries: ${agentManager.agentData.size}`)
+    
+    // Find an available agent for this job
+    const availableAgent = await agentManager.findAvailableAgent()
+    
+    console.log(`🔍 Available agent found:`, availableAgent)
+    
+    if (!availableAgent) {
+      console.log(`❌ No agents available - connectedAgents size: ${agentManager.connectedAgents.size}, agentData size: ${agentManager.agentData.size}`)
+      throw createError({
+        statusCode: 503,
+        statusMessage: 'No agents available for job execution'
+      })
+    }
+
+    // Generate unique job ID
+    const jobId = `job_${uuidv4()}`
+
+    // Create job record
+    const job = {
+      jobId,
+      projectId,
+      agentId: availableAgent.agentId,
+      agentName: availableAgent.name || availableAgent.hostname,
+      status: 'queued',
+      nodes,
+      edges,
+      startTime: startTime || new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      output: [],
+      currentNodeId: null,
+      currentNodeLabel: null
+    }
+
+    // Store job in job manager
+    await jobManager.createJob(job)
+
+    // Convert graph to execution commands for the agent
+    const executionCommands = convertGraphToCommands(nodes, edges)
+
+    console.log(`🔧 Generated ${executionCommands.length} commands:`, executionCommands)
+
+    // Filter to get only executable commands
+    const executableCommands = executionCommands.filter(cmd => 
+      ['bash', 'powershell', 'cmd', 'python', 'node'].includes(cmd.type)
+    )
+
+    if (executableCommands.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'No executable commands found in graph'
+      })
+    }
+
+    // Validate that all executable commands have agent selection
+    const missingAgentCommands = executableCommands.filter(cmd => 
+      !cmd.requiredAgentId || cmd.requiredAgentId === ''
+    )
+
+    if (missingAgentCommands.length > 0) {
+      const errorMsg = `Execution blocked: The following nodes require agent selection: ${missingAgentCommands.map(cmd => `"${cmd.nodeLabel}"`).join(', ')}. Agent selection is mandatory for all executable nodes.`
+      console.error(`🚨 ${errorMsg}`)
+      throw createError({
+        statusCode: 400,
+        statusMessage: errorMsg
+      })
+    }
+
+    console.log(`🎯 Executing ${executableCommands.length} commands sequentially:`, executableCommands.map(cmd => ({
+      type: cmd.type,
+      label: cmd.nodeLabel,
+      requiredAgent: cmd.requiredAgentId || 'any',
+      scriptLength: cmd.script?.length || 0
+    })))
+
+    // Store all commands in the job for sequential execution
+    job.executionCommands = executableCommands
+    job.currentCommandIndex = 0
+
+    // Start with the first command - find appropriate agent
+    const firstCommand = executableCommands[0]
+    console.log(`🚀 Starting sequential execution with command 1/${executableCommands.length}: ${firstCommand.nodeLabel}`)
+    
+    // Find agent for the first command
+    // Handle "any" as explicit choice for any available agent
+    const requiresSpecificAgent = firstCommand.requiredAgentId && firstCommand.requiredAgentId !== 'any' && firstCommand.requiredAgentId !== 'local'
+    const agentRequirements = requiresSpecificAgent ? { agentId: firstCommand.requiredAgentId } : {}
+    const selectedAgent = await agentManager.findAvailableAgent(agentRequirements)
+    
+    if (!selectedAgent) {
+      const errorMsg = requiresSpecificAgent
+        ? `🚨 CRITICAL: Required agent "${firstCommand.requiredAgentId}" not available for command: ${firstCommand.nodeLabel}. Execution BLOCKED to prevent running on wrong environment.`
+        : 'No agents available for job execution'
+      
+      console.error(errorMsg)
+      throw createError({
+        statusCode: 503,
+        statusMessage: errorMsg
+      })
+    }
+    
+    if (requiresSpecificAgent) {
+      console.log(`🔒 ENFORCING agent selection: ${selectedAgent.agentId} for command: ${firstCommand.nodeLabel}`)
+    } else {
+      console.log(`🎯 Selected agent ${selectedAgent.agentId} for first command: ${firstCommand.nodeLabel} (user chose "any available")`)
+    }
+
+    const dispatchSuccess = await agentManager.dispatchJobToAgent(selectedAgent.agentId, {
+      jobId,
+      projectId,
+      commands: firstCommand.script,
+      environment: {},
+      workingDirectory: firstCommand.workingDirectory || '.',
+      timeout: firstCommand.timeout,
+      jobType: firstCommand.type,
+      isSequential: true,
+      commandIndex: 0,
+      totalCommands: executableCommands.length
+    })
+
+    if (!dispatchSuccess) {
+      // Failed to dispatch, clean up job
+      await jobManager.deleteJob(jobId)
+      throw createError({
+        statusCode: 503,
+        statusMessage: 'Failed to dispatch job to agent'
+      })
+    }
+
+    // Update job status to dispatched and store execution commands
+    await jobManager.updateJob(jobId, { 
+      status: 'dispatched',
+      agentId: selectedAgent.agentId,
+      agentName: selectedAgent.name || selectedAgent.hostname,
+      executionCommands: executableCommands,
+      currentCommandIndex: 0
+    })
+
+    console.log(`✅ Job ${jobId} dispatched to agent ${selectedAgent.agentId}`)
+
+    return {
+      success: true,
+      jobId,
+      agentId: selectedAgent.agentId,
+      agentName: selectedAgent.name || selectedAgent.hostname,
+      startTime: job.startTime,
+      message: `Job dispatched to agent ${selectedAgent.name || selectedAgent.hostname}`
+    }
+
+  } catch (error) {
+    console.error('❌ Error dispatching job:', error)
+    
+    throw createError({
+      statusCode: error.statusCode || 500,
+      statusMessage: error.statusMessage || 'Failed to execute project'
+    })
+  }
+})
+
+/**
+ * Determine platform requirements for a command
+ */
+function getCommandPlatformRequirements(command) {
+  const platform = {
+    windows: false,
+    linux: false,
+    macos: false
+  }
+
+  switch (command.type) {
+    case 'powershell':
+      // PowerShell is primarily Windows, but can run on Linux/macOS with PowerShell Core
+      platform.windows = true
+      platform.linux = true  // PowerShell Core support
+      platform.macos = true  // PowerShell Core support
+      break
+    
+    case 'cmd':
+      // CMD is Windows-only
+      platform.windows = true
+      break
+    
+    case 'bash':
+      // Bash is primarily Linux/macOS, but available on Windows via WSL/Git Bash
+      platform.linux = true
+      platform.macos = true
+      platform.windows = true  // WSL/Git Bash support
+      break
+    
+    case 'python':
+    case 'node':
+      // Python and Node.js are cross-platform
+      platform.windows = true
+      platform.linux = true
+      platform.macos = true
+      break
+    
+    default:
+      // Unknown command type - assume cross-platform
+      platform.windows = true
+      platform.linux = true
+      platform.macos = true
+  }
+
+  return platform
+}
+
+/**
+ * Convert Vue Flow graph to executable commands for the agent
+ * This function analyzes the graph and compiles it into a sequence of executable commands,
+ * resolving parameter values and skipping non-executable nodes.
+ */
+export function convertGraphToCommands(nodes, edges) {
+  console.log(`🔧 Converting graph to commands...`)
+  console.log(`📊 Graph has ${nodes.length} nodes and ${edges.length} edges`)
+
+  // Step 1: Build parameter value map from parameter nodes
+  const parameterValues = buildParameterValueMap(nodes, edges)
+  console.log(`📋 Built parameter value map:`, parameterValues)
+
+  // Step 2: Find executable starting points (trigger nodes or nodes without execution inputs)
+  const startingNodes = findExecutionStartingNodes(nodes, edges)
+  console.log(`🎯 Found ${startingNodes.length} starting nodes:`, startingNodes.map(n => n.data.label))
+
+  if (startingNodes.length === 0) {
+    throw new Error('No starting nodes found in graph')
+  }
+
+  // Step 3: Build execution flow from starting nodes
+  const commands = []
+  const visited = new Set()
+
+  for (const startNode of startingNodes) {
+    const nodeCommands = buildExecutionFlow(startNode, nodes, edges, parameterValues, visited)
+    commands.push(...nodeCommands)
+  }
+
+  console.log(`✅ Generated ${commands.length} executable commands`)
+  return commands
+}
+
+/**
+ * Build a map of parameter values from parameter nodes
+ */
+function buildParameterValueMap(nodes, edges) {
+  const parameterValues = new Map()
+
+  // Find all parameter nodes and extract their values
+  const parameterNodes = nodes.filter(node => 
+    node.data.nodeType?.includes('-param')
+  )
+
+  for (const paramNode of parameterNodes) {
+    const value = getParameterNodeValue(paramNode)
+    parameterValues.set(paramNode.id, {
+      label: paramNode.data.label,
+      value: value,
+      nodeType: paramNode.data.nodeType
+    })
+  }
+
+  return parameterValues
+}
+
+/**
+ * Get the configured value from a parameter node
+ */
+function getParameterNodeValue(paramNode) {
+  const nodeType = paramNode.data.nodeType
+  const data = paramNode.data
+
+  switch (nodeType) {
+    case 'string-param':
+    case 'text-param':
+      return data.defaultValue || ''
+    case 'choice-param':
+      return data.defaultValue || (data.choices?.[0] || '')
+    case 'boolean-param':
+      return data.defaultValue || false
+    case 'file-param':
+      return data.defaultValue || ''
+    default:
+      return ''
+  }
+}
+
+/**
+ * Find nodes that can start execution (trigger nodes or nodes without execution inputs)
+ */
+function findExecutionStartingNodes(nodes, edges) {
+  return nodes.filter(node => {
+    // Skip parameter nodes - they don't execute, they provide values
+    if (node.data.nodeType?.includes('-param')) {
+      return false
+    }
+
+    // Check if this node has incoming execution connections
+    const hasIncomingExecutionConnections = edges.some(edge => 
+      edge.target === node.id && (edge.targetHandle === 'execution' || !edge.targetHandle)
+    )
+
+    // Trigger nodes and nodes without execution inputs can start execution
+    return !hasIncomingExecutionConnections && 
+           (node.data.hasExecutionInput === false || !node.data.hasExecutionInput)
+  })
+}
+
+/**
+ * Build the execution flow starting from a given node
+ */
+function buildExecutionFlow(startNode, allNodes, allEdges, parameterValues, visited) {
+  if (visited.has(startNode.id)) {
+    return []
+  }
+  visited.add(startNode.id)
+
+  const commands = []
+
+  // Convert current node to commands (only if it's executable)
+  const nodeCommands = convertNodeToExecutableCommands(startNode, allNodes, allEdges, parameterValues)
+  if (nodeCommands.length > 0) {
+    commands.push(...nodeCommands)
+  }
+
+  // Find nodes connected via execution flow
+  const connectedNodes = getExecutionConnectedNodes(startNode.id, allNodes, allEdges)
+  
+  for (const connectedNode of connectedNodes) {
+    const connectedCommands = buildExecutionFlow(connectedNode, allNodes, allEdges, parameterValues, visited)
+    commands.push(...connectedCommands)
+  }
+
+  return commands
+}
+
+/**
+ * Convert a single node to executable commands, resolving parameter placeholders
+ */
+function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValues) {
+  const commands = []
+  const nodeType = node.data.nodeType
+
+  switch (nodeType) {
+    case 'bash':
+    case 'powershell':
+    case 'cmd':
+    case 'python':
+    case 'node-js':
+      // These are executable script nodes
+      if (node.data.script) {
+        // Resolve parameter placeholders in the script
+        const resolvedScript = resolveScriptPlaceholders(node, allEdges, parameterValues)
+        
+        commands.push({
+          type: nodeType === 'node-js' ? 'node' : nodeType, // Normalize node-js to node
+          script: resolvedScript,
+          workingDirectory: node.data.workingDirectory || '.',
+          timeout: node.data.timeout ? node.data.timeout * 1000 : 300000, // Default 5 minutes
+          nodeId: node.id,
+          nodeLabel: node.data.label,
+          requiredAgentId: node.data.agentId // Agent ID specified in node properties
+        })
+      }
+      break
+
+    case 'cron':
+    case 'webhook':
+    case 'git-trigger':
+    case 'pipeline-trigger':
+    case 'api-trigger':
+      // Trigger nodes don't generate executable commands during manual execution
+      // They are only relevant for scheduling/triggering jobs
+      console.log(`⏭️ Skipping trigger node during execution: ${node.data.label}`)
+      break
+
+    // Parameter nodes are handled separately in parameter resolution
+    case 'string-param':
+    case 'text-param':
+    case 'choice-param':
+    case 'boolean-param':
+    case 'file-param':
+      console.log(`⏭️ Skipping parameter node during execution: ${node.data.label}`)
+      break
+
+    case 'parallel':
+    case 'conditional':
+    case 'retry':
+    case 'notification':
+      // Control nodes - for now just log them
+      // TODO: Implement proper control flow logic
+      commands.push({
+        type: 'log',
+        message: `Control node: ${node.data.label} (${nodeType})`,
+        nodeId: node.id,
+        nodeLabel: node.data.label
+      })
+      break
+
+    default:
+      console.log(`⚠️ Unknown node type during execution: ${nodeType} (${node.data.label})`)
+  }
+
+  return commands
+}
+
+/**
+ * Resolve parameter placeholders in script text
+ */
+function resolveScriptPlaceholders(node, allEdges, parameterValues) {
+  let script = node.data.script || ''
+
+  console.log(`🔧 Original script: "${script}"`)
+  console.log(`🔧 Input sockets:`, node.data.inputSockets)
+  console.log(`🔧 Parameter values:`, Array.from(parameterValues.entries()))
+
+  // Find all input connections to this node
+  const inputConnections = allEdges.filter(edge => edge.target === node.id)
+  console.log(`🔧 Input connections:`, inputConnections)
+
+  // Process each input socket placeholder
+  if (node.data.inputSockets && node.data.inputSockets.length > 0) {
+    node.data.inputSockets.forEach((socket, index) => {
+      // Find the edge connected to this socket
+      const connection = inputConnections.find(edge => edge.targetHandle === socket.id)
+      
+      if (connection) {
+        // Check if the source is a parameter node
+        const parameterData = parameterValues.get(connection.source)
+        if (parameterData) {
+          // Handle socket label that may or may not start with $
+          const cleanLabel = socket.label.startsWith('$') ? socket.label.substring(1) : socket.label
+          
+          // Escape special regex characters in the socket label
+          const escapedLabel = cleanLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          
+          // Primary format: ${socketLabel} - this is the main format users should use
+          // Also handle ${$socketLabel} in case there's an extra $ inside the braces
+          const socketLabelPlaceholder = `\\$\\{\\$?${escapedLabel}\\}`
+          script = script.replace(new RegExp(socketLabelPlaceholder, 'g'), String(parameterData.value))
+          
+          // Fallback format: $socketLabel (without {}) - for error recovery
+          // This helps when users forget to wrap the socket label in {}
+          // Only apply if the label doesn't contain spaces (to avoid false matches)
+          if (!cleanLabel.includes(' ')) {
+            const fallbackPlaceholder = `\\$${escapedLabel}\\b` // \b ensures word boundary
+            script = script.replace(new RegExp(fallbackPlaceholder, 'g'), String(parameterData.value))
+          }
+          
+          console.log(`🔗 Resolved parameter "${parameterData.label}" = "${parameterData.value}" for socket "${socket.label}" (clean: "${cleanLabel}", escaped: "${escapedLabel}")`)
+        }
+      } else {
+        console.log(`⚠️ No connection found for socket "${socket.label}"`)
+      }
+    })
+  }
+
+  console.log(`🔧 Final script: "${script}"`)
+  return script
+}
+
+/**
+ * Get nodes connected via execution flow from a given node
+ */
+function getExecutionConnectedNodes(nodeId, allNodes, allEdges) {
+  // Find edges that represent execution flow from this node
+  const executionEdges = allEdges.filter(edge => 
+    edge.source === nodeId && (edge.sourceHandle === 'execution' || !edge.sourceHandle)
+  )
+
+  // Get the target nodes
+  const connectedNodes = executionEdges
+    .map(edge => allNodes.find(node => node.id === edge.target))
+    .filter(node => node !== undefined)
+
+  return connectedNodes
+}

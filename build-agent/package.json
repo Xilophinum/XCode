@@ -1,0 +1,35 @@
+{
+  "name": "xcode-build-agent",
+  "version": "1.0.0",
+  "description": "Universal build agent for XCode CI/CD platform",
+  "main": "agent.js",
+  "bin": {
+    "xcode-agent": "./agent.js"
+  },
+  "scripts": {
+    "start": "node agent.js",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [
+    "ci",
+    "cd",
+    "build",
+    "agent",
+    "xcode",
+    "jenkins",
+    "automation"
+  ],
+  "dependencies": {
+    "ws": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "os": [
+    "win32",
+    "darwin",
+    "linux"
+  ],
+  "author": "XCode CI/CD Platform",
+  "license": "MIT"
+}

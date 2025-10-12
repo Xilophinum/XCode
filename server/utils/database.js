@@ -1,0 +1,327 @@
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import * as schema from './schema.js'
+import { resolve } from 'path'
+import { existsSync, mkdirSync } from 'fs'
+
+export class DatabaseManager {
+  constructor() {
+    this.db = null
+    this.sqlite = null // Store raw SQLite instance
+    this.type = process.env.DATABASE_TYPE || 'sqlite'
+    // Use absolute path to ensure database is created in the correct location
+    this.url = process.env.DATABASE_URL || resolve(process.cwd(), 'data', 'projects.db')
+  }
+
+  async initialize() {
+    switch (this.type) {
+      case 'sqlite':
+        await this.initializeSQLite()
+        break
+      case 'postgres':
+        await this.initializePostgres()
+        break
+      case 'mssql':
+        await this.initializeMSSQL()
+        break
+      default:
+        throw new Error(`Unsupported database type: ${this.type}`)
+    }
+
+    // Run migrations
+    await this.runMigrations()
+    
+    return this.db
+  }
+
+  async initializeSQLite() {
+    // Ensure data directory exists
+    const dbPath = this.url
+    const dbDir = resolve(dbPath, '..')
+    
+    if (!existsSync(dbDir)) {
+      mkdirSync(dbDir, { recursive: true })
+    }
+
+    this.sqlite = new Database(dbPath)
+    this.sqlite.pragma('journal_mode = WAL')
+    this.db = drizzle(this.sqlite, { schema })
+  }
+
+  async initializePostgres() {
+    // This would be implemented when adding postgres support
+    throw new Error('PostgreSQL support not yet implemented - install postgres dependencies first')
+  }
+
+  async initializeMSSQL() {
+    // This would be implemented when adding MSSQL support
+    throw new Error('MSSQL support not yet implemented')
+  }
+
+  async runMigrations() {
+    if (this.type === 'sqlite') {
+      // For now, we'll create tables manually
+      // Later we can implement proper migrations
+      await this.createTables()
+      
+      // Add status column migration for existing items table
+      try {
+        // Check if status column exists
+        const result = this.sqlite.prepare("PRAGMA table_info(items)").all()
+        const hasStatusColumn = result.some(column => column.name === 'status')
+        
+        if (!hasStatusColumn) {
+          console.log('🔄 Adding status column to items table...')
+          this.sqlite.exec(`ALTER TABLE items ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`)
+          console.log('✅ Status column added to items table')
+        }
+      } catch (error) {
+        console.warn('⚠️ Migration warning (status column):', error.message)
+      }
+
+      // Migrate builds table to use git_branch and git_commit columns
+      try {
+        // Check if builds table exists with old column names
+        const buildTableInfo = this.sqlite.prepare("PRAGMA table_info(builds)").all()
+        const hasBranchColumn = buildTableInfo.some(column => column.name === 'branch')
+        const hasCommitColumn = buildTableInfo.some(column => column.name === 'commit')
+        
+        if (hasBranchColumn || hasCommitColumn) {
+          console.log('🔄 Migrating builds table to use git_branch and git_commit columns...')
+          
+          // Drop and recreate the builds table with correct column names
+          this.sqlite.exec(`DROP TABLE IF EXISTS builds`)
+          this.sqlite.exec(`DROP TABLE IF EXISTS build_logs`)
+          this.sqlite.exec(`DROP TABLE IF EXISTS build_stats`)
+          
+          console.log('✅ Old build tables dropped, will recreate with new schema')
+        }
+      } catch (error) {
+        console.warn('⚠️ Migration warning (builds table):', error.message)
+      }
+    }
+  }
+
+  async createTables() {
+    // Create tables if they don't exist using the raw sqlite instance
+    try {
+      // Users table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+
+      // Items table (folders and projects)
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS items (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          type TEXT NOT NULL CHECK (type IN ('folder', 'project')),
+          path TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          diagram_data TEXT,
+          status TEXT NOT NULL DEFAULT 'active',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+      `)
+
+      // Environment Variables table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS envVariables (
+          id TEXT PRIMARY KEY,
+          key TEXT NOT NULL UNIQUE,
+          value TEXT NOT NULL,
+          description TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+
+      // Credential Vault table (replaces passwordVault)
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS credential_vault (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          type TEXT NOT NULL,
+          description TEXT,
+          username TEXT,
+          password TEXT,
+          token TEXT,
+          private_key TEXT,
+          certificate TEXT,
+          file_data TEXT,
+          file_name TEXT,
+          file_mime_type TEXT,
+          url TEXT,
+          environment TEXT,
+          tags TEXT,
+          custom_fields TEXT,
+          expires_at TEXT,
+          last_used TEXT,
+          is_active TEXT NOT NULL DEFAULT 'true',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+
+      // Legacy Password Vault table (for backward compatibility)
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS passwordVault (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          username TEXT,
+          password TEXT NOT NULL,
+          url TEXT,
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+
+      // Agents table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS agents (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          token TEXT NOT NULL UNIQUE,
+          max_concurrent_jobs INTEGER NOT NULL DEFAULT 1,
+          hostname TEXT,
+          platform TEXT,
+          architecture TEXT,
+          capabilities TEXT,
+          version TEXT,
+          system_info TEXT,
+          status TEXT NOT NULL DEFAULT 'offline',
+          current_jobs INTEGER NOT NULL DEFAULT 0,
+          last_heartbeat TEXT,
+          ip_address TEXT,
+          first_connected_at TEXT,
+          total_builds INTEGER NOT NULL DEFAULT 0,
+          tags TEXT,
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+
+      // System Settings table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS system_settings (
+          id TEXT PRIMARY KEY,
+          category TEXT NOT NULL,
+          key TEXT NOT NULL UNIQUE,
+          value TEXT,
+          default_value TEXT,
+          type TEXT NOT NULL,
+          options TEXT,
+          label TEXT NOT NULL,
+          description TEXT,
+          required TEXT NOT NULL DEFAULT 'false',
+          readonly TEXT NOT NULL DEFAULT 'false',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+
+      // Build execution tracking tables
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS builds (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          agent_id TEXT,
+          job_id TEXT,
+          trigger TEXT NOT NULL,
+          status TEXT NOT NULL,
+          message TEXT,
+          started_at TEXT NOT NULL,
+          finished_at TEXT,
+          duration INTEGER,
+          node_count INTEGER,
+          nodes_executed INTEGER,
+          git_branch TEXT,
+          git_commit TEXT,
+          metadata TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS build_logs (
+          id TEXT PRIMARY KEY,
+          build_id TEXT NOT NULL,
+          node_id TEXT,
+          level TEXT NOT NULL,
+          message TEXT NOT NULL,
+          command TEXT,
+          output TEXT,
+          timestamp TEXT NOT NULL,
+          sequence INTEGER NOT NULL,
+          source TEXT NOT NULL DEFAULT 'system',
+          metadata TEXT,
+          created_at TEXT NOT NULL
+        )
+      `)
+
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS build_stats (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL UNIQUE,
+          total_builds INTEGER NOT NULL DEFAULT 0,
+          successful_builds INTEGER NOT NULL DEFAULT 0,
+          failed_builds INTEGER NOT NULL DEFAULT 0,
+          cancelled_builds INTEGER NOT NULL DEFAULT 0,
+          last_build_id TEXT,
+          last_build_status TEXT,
+          last_build_at TEXT,
+          average_duration INTEGER,
+          fastest_build INTEGER,
+          slowest_build INTEGER,
+          max_builds_to_keep INTEGER NOT NULL DEFAULT 50,
+          max_log_days INTEGER NOT NULL DEFAULT 30,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+
+      // Create indexes for better performance
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_project_id ON builds(project_id)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_status ON builds(status)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_started_at ON builds(started_at)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_build_logs_build_id ON build_logs(build_id)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_build_logs_timestamp ON build_logs(timestamp)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_build_stats_project_id ON build_stats(project_id)`)
+    } catch (error) {
+      console.error('Error creating tables:', error)
+    }
+  }
+
+  getDatabase() {
+    if (!this.db) {
+      throw new Error('Database not initialized. Call initialize() first.')
+    }
+    return this.db
+  }
+}
+
+// Singleton instance
+let dbManager = null
+
+export async function getDB() {
+  if (!dbManager) {
+    dbManager = new DatabaseManager()
+    await dbManager.initialize()
+  }
+  return dbManager.getDatabase()
+}
