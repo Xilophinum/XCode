@@ -164,7 +164,19 @@ pnpm run db:seed      # Seed test data
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0) - see the LICENSE file for details.
+
+**Key License Benefits:**
+- ✅ **Free to use** - Personal, educational, and commercial use welcome
+- ✅ **Modify and improve** - Create enhanced versions and contribute back
+- ✅ **Share freely** - Distribute and redistribute with proper attribution
+- ✅ **Commercial use** - Companies can use this in their business operations
+
+**Protection Against Misuse:**
+- 🔒 **Copyleft protection** - Derivative works must remain open source
+- 🔒 **No proprietary theft** - Cannot sell your code as closed-source software
+- 🔒 **Attribution required** - Must credit original authors
+- 🔒 **Same license** - Modifications must use the same GPL-3.0 license
 
 ---
 
