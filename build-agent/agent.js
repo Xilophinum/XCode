@@ -452,6 +452,7 @@ class XCodeBuildAgent {
             exitCode: result.exitCode,
             duration: Date.now() - (job?.startTime || Date.now()),
             currentJobs: this.currentJobs.size,
+            message: `Job completed successfully (exit code: ${result.exitCode}, duration: ${Math.round((Date.now() - (job?.startTime || Date.now())) / 1000)}s)`,
             timestamp: new Date().toISOString()
         });
         

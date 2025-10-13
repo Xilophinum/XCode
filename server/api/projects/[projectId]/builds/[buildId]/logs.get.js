@@ -1,4 +1,4 @@
-import { getBuildStatsManager } from '~/server/utils/buildStatsManager.js'
+import { getBuildStatsManager } from '../../../../../../server/utils/buildStatsManager.js'
 
 export default defineEventHandler(async (event) => {
   const { projectId, buildId } = getRouterParams(event)

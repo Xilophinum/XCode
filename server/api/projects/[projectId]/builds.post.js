@@ -1,4 +1,4 @@
-import { getBuildStatsManager } from '~/server/utils/buildStatsManager.js'
+import { getBuildStatsManager } from '../../../../server/utils/buildStatsManager.js'
 
 export default defineEventHandler(async (event) => {
   const { projectId } = getRouterParams(event)
@@ -17,6 +17,7 @@ export default defineEventHandler(async (event) => {
     const buildData = {
       projectId,
       agentId: body.agentId,
+      agentName: body.agentName,
       jobId: body.jobId,
       trigger: body.trigger || 'manual',
       message: body.message,

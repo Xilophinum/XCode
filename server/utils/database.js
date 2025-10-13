@@ -60,13 +60,11 @@ export class DatabaseManager {
 
   async runMigrations() {
     if (this.type === 'sqlite') {
-      // For now, we'll create tables manually
-      // Later we can implement proper migrations
+      // Create tables if they don't exist
       await this.createTables()
       
-      // Add status column migration for existing items table
+      // Add status column migration for existing items table (if needed)
       try {
-        // Check if status column exists
         const result = this.sqlite.prepare("PRAGMA table_info(items)").all()
         const hasStatusColumn = result.some(column => column.name === 'status')
         
@@ -79,25 +77,19 @@ export class DatabaseManager {
         console.warn('⚠️ Migration warning (status column):', error.message)
       }
 
-      // Migrate builds table to use git_branch and git_commit columns
+      // Add retention settings columns for build management
       try {
-        // Check if builds table exists with old column names
-        const buildTableInfo = this.sqlite.prepare("PRAGMA table_info(builds)").all()
-        const hasBranchColumn = buildTableInfo.some(column => column.name === 'branch')
-        const hasCommitColumn = buildTableInfo.some(column => column.name === 'commit')
+        const result = this.sqlite.prepare("PRAGMA table_info(items)").all()
+        const hasRetentionColumns = result.some(column => column.name === 'max_builds_to_keep')
         
-        if (hasBranchColumn || hasCommitColumn) {
-          console.log('🔄 Migrating builds table to use git_branch and git_commit columns...')
-          
-          // Drop and recreate the builds table with correct column names
-          this.sqlite.exec(`DROP TABLE IF EXISTS builds`)
-          this.sqlite.exec(`DROP TABLE IF EXISTS build_logs`)
-          this.sqlite.exec(`DROP TABLE IF EXISTS build_stats`)
-          
-          console.log('✅ Old build tables dropped, will recreate with new schema')
+        if (!hasRetentionColumns) {
+          console.log('🔄 Adding retention settings columns to items table...')
+          this.sqlite.exec(`ALTER TABLE items ADD COLUMN max_builds_to_keep INTEGER DEFAULT 50`)
+          this.sqlite.exec(`ALTER TABLE items ADD COLUMN max_log_days INTEGER DEFAULT 30`)
+          console.log('✅ Retention settings columns added to items table')
         }
       } catch (error) {
-        console.warn('⚠️ Migration warning (builds table):', error.message)
+        console.warn('⚠️ Migration warning (retention columns):', error.message)
       }
     }
   }
@@ -129,6 +121,8 @@ export class DatabaseManager {
           user_id TEXT NOT NULL,
           diagram_data TEXT,
           status TEXT NOT NULL DEFAULT 'active',
+          max_builds_to_keep INTEGER DEFAULT 50,
+          max_log_days INTEGER DEFAULT 30,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           FOREIGN KEY (user_id) REFERENCES users (id)
@@ -239,7 +233,9 @@ export class DatabaseManager {
         CREATE TABLE IF NOT EXISTS builds (
           id TEXT PRIMARY KEY,
           project_id TEXT NOT NULL,
+          build_number INTEGER NOT NULL DEFAULT 0,
           agent_id TEXT,
+          agent_name TEXT,
           job_id TEXT,
           trigger TEXT NOT NULL,
           status TEXT NOT NULL,
@@ -274,34 +270,13 @@ export class DatabaseManager {
         )
       `)
 
-      this.sqlite.exec(`
-        CREATE TABLE IF NOT EXISTS build_stats (
-          id TEXT PRIMARY KEY,
-          project_id TEXT NOT NULL UNIQUE,
-          total_builds INTEGER NOT NULL DEFAULT 0,
-          successful_builds INTEGER NOT NULL DEFAULT 0,
-          failed_builds INTEGER NOT NULL DEFAULT 0,
-          cancelled_builds INTEGER NOT NULL DEFAULT 0,
-          last_build_id TEXT,
-          last_build_status TEXT,
-          last_build_at TEXT,
-          average_duration INTEGER,
-          fastest_build INTEGER,
-          slowest_build INTEGER,
-          max_builds_to_keep INTEGER NOT NULL DEFAULT 50,
-          max_log_days INTEGER NOT NULL DEFAULT 30,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )
-      `)
-
       // Create indexes for better performance
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_project_id ON builds(project_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_status ON builds(status)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_started_at ON builds(started_at)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_build_number ON builds(project_id, build_number)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_build_logs_build_id ON build_logs(build_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_build_logs_timestamp ON build_logs(timestamp)`)
-      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_build_stats_project_id ON build_stats(project_id)`)
     } catch (error) {
       console.error('Error creating tables:', error)
     }

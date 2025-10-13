@@ -88,6 +88,18 @@
           </svg>
           Build History
         </NuxtLink>
+
+        <!-- Retention Settings Button -->
+        <button
+          @click="showRetentionModal = true"
+          class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          title="Configure build retention policies"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" class="mr-2">
+            <path fill="currentColor" d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97c0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1c0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64"/>
+          </svg>
+          Settings
+        </button>
       </template>
     </AppNavigation>
 
@@ -721,22 +733,24 @@
                 
                 <!-- Webhook Documentation -->
                 <div class="mt-4 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
-                  <div class="font-medium text-green-800 dark:text-green-200 mb-2">📖 How Webhooks Work:</div>
+                  <div class="font-medium text-green-800 dark:text-green-200 mb-2">📖 Authentication Methods:</div>
                   <div class="text-green-700 dark:text-green-300 space-y-2">
-                    <div>
-                      <strong>1. Setup:</strong> Configure your webhook endpoint above and connect execution nodes to this trigger.
+                    <div class="space-y-1">
+                      <div class="font-medium">Custom APIs & Services:</div>
+                      <div class="pl-2 text-xs opacity-90">Header: <span class="font-mono">X-Webhook-Token: your-secret-token</span></div>
+                      <div class="pl-2 text-xs opacity-90">Body: <span class="font-mono">&#123;"token": "your-secret-token"&#125;</span></div>
+                      <div class="pl-2 text-xs opacity-90">Query: <span class="font-mono">?token=your-secret-token</span></div>
                     </div>
-                    <div>
-                      <strong>2. Save:</strong> Save the project to activate the webhook endpoint.
-                    </div>
-                    <div>
-                      <strong>3. Trigger:</strong> External systems can call your webhook URL to start the workflow.
-                    </div>
-                    <div>
-                      <strong>4. Authentication:</strong> Use the secret token to secure your webhook (recommended).
+                    <div class="space-y-1">
+                      <div class="font-medium">Git Platforms (Automatic):</div>
+                      <div class="pl-2 text-xs opacity-90">✅ GitHub: X-Hub-Signature-256 (SHA256 HMAC)</div>
+                      <div class="pl-2 text-xs opacity-90">✅ GitLab: X-Gitlab-Token header</div>
+                      <div class="pl-2 text-xs opacity-90">✅ Bitbucket: X-Hub-Signature (SHA1 HMAC)</div>
+                      <div class="pl-2 text-xs opacity-90">✅ Azure DevOps: Authorization header</div>
                     </div>
                     <div class="pt-1 border-t border-green-200 dark:border-green-800">
-                      <strong>Payload Access:</strong> The webhook request body will be available as context data in connected execution nodes.
+                      <div class="font-medium">Security Note:</div>
+                      <div class="text-xs opacity-90">Always configure a secret token for production webhooks. Git platforms will automatically sign requests using your secret.</div>
                     </div>
                   </div>
                 </div>
@@ -749,6 +763,131 @@
                     <div>• <strong>Notifications:</strong> Respond to events from Slack, Discord, or monitoring tools</div>
                     <div>• <strong>API Integration:</strong> Process data from external APIs or services</div>
                     <div>• <strong>Automation:</strong> Execute workflows when specific events occur</div>
+                  </div>
+                </div>
+
+                <!-- Git Integration Examples -->
+                <div class="mt-3 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
+                  <div class="font-medium text-green-800 dark:text-green-200 mb-2">🔧 Git Platform Setup:</div>
+                  <div class="text-green-700 dark:text-green-300 space-y-2">
+                    <div class="space-y-1">
+                      <div class="font-medium">GitHub:</div>
+                      <div class="pl-2 text-xs opacity-90">1. Settings → Webhooks → Add webhook</div>
+                      <div class="pl-2 text-xs opacity-90">2. Payload URL: <span class="font-mono">{{ webhookUrl }}</span></div>
+                      <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
+                      <div class="pl-2 text-xs opacity-90">4. Content type: application/json</div>
+                    </div>
+                    <div class="space-y-1">
+                      <div class="font-medium">GitLab:</div>
+                      <div class="pl-2 text-xs opacity-90">1. Settings → Webhooks</div>
+                      <div class="pl-2 text-xs opacity-90">2. URL: <span class="font-mono">{{ webhookUrl }}</span></div>
+                      <div class="pl-2 text-xs opacity-90">3. Secret token: <span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
+                    </div>
+                    <div class="space-y-1">
+                      <div class="font-medium">Bitbucket:</div>
+                      <div class="pl-2 text-xs opacity-90">1. Repository Settings → Webhooks → Add webhook</div>
+                      <div class="pl-2 text-xs opacity-90">2. URL: <span class="font-mono">{{ webhookUrl }}</span></div>
+                      <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
+                    </div>
+                    <div class="space-y-1">
+                      <div class="font-medium">Azure DevOps:</div>
+                      <div class="pl-2 text-xs opacity-90">1. Project Settings → Service hooks</div>
+                      <div class="pl-2 text-xs opacity-90">2. Service: Web Hooks → URL: <span class="font-mono">{{ webhookUrl }}</span></div>
+                      <div class="pl-2 text-xs opacity-90">3. Basic auth: username=token, password=<span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Git Payload Examples -->
+                <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded text-xs">
+                  <div class="font-medium text-blue-800 dark:text-blue-200 mb-2">� Complete Webhook Examples:</div>
+                  <div class="text-blue-700 dark:text-blue-300 space-y-3">
+                    <div>
+                      <div class="font-medium mb-1">GitHub Push Event:</div>
+                      <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
+Headers:<br/>
+X-Hub-Signature-256: sha256=abc123...<br/>
+X-GitHub-Event: push<br/><br/>
+Body:<br/>
+{<br/>
+&nbsp;&nbsp;"ref": "refs/heads/main",<br/>
+&nbsp;&nbsp;"repository": {"name": "my-repo"},<br/>
+&nbsp;&nbsp;"head_commit": {<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;"message": "Fix critical bug",<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "John Doe"}<br/>
+&nbsp;&nbsp;}<br/>
+}
+                      </div>
+                    </div>
+                    <div>
+                      <div class="font-medium mb-1">GitLab Push Event:</div>
+                      <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
+Headers:<br/>
+X-Gitlab-Token: {{ selectedNode.data.secretToken || 'your-secret-token' }}<br/>
+X-Gitlab-Event: Push Hook<br/><br/>
+Body:<br/>
+{<br/>
+&nbsp;&nbsp;"ref": "refs/heads/main",<br/>
+&nbsp;&nbsp;"project": {"name": "my-repo"},<br/>
+&nbsp;&nbsp;"commits": [{<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;"message": "Deploy to production",<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "Jane Smith"}<br/>
+&nbsp;&nbsp;}]<br/>
+}
+                      </div>
+                    </div>
+                    <div>
+                      <div class="font-medium mb-1">Custom API Webhook:</div>
+                      <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
+Headers:<br/>
+X-Webhook-Token: {{ selectedNode.data.secretToken || 'your-secret-token' }}<br/>
+Content-Type: application/json<br/><br/>
+Body:<br/>
+{<br/>
+&nbsp;&nbsp;"event": "deployment",<br/>
+&nbsp;&nbsp;"environment": "production",<br/>
+&nbsp;&nbsp;"status": "success",<br/>
+&nbsp;&nbsp;"timestamp": "2024-01-15T10:30:00Z"<br/>
+}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Payload Parsing Guide -->
+                <div class="mt-3 p-3 bg-purple-50 dark:bg-purple-950 rounded text-xs">
+                  <div class="font-medium text-purple-800 dark:text-purple-200 mb-2">📊 Webhook Data Access:</div>
+                  <div class="text-purple-700 dark:text-purple-300 space-y-2">
+                    <div class="space-y-1">
+                      <div class="font-medium">Output Socket:</div>
+                      <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded">
+                        This webhook node provides <strong>1 output socket</strong> containing raw webhook data.
+                      </div>
+                    </div>
+                    <div class="space-y-1">
+                      <div class="font-medium">Available Data:</div>
+                      <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded space-y-1">
+                        <div>• <strong>body</strong> - Complete request payload</div>
+                        <div>• <strong>headers</strong> - HTTP headers object</div>
+                        <div>• <strong>query</strong> - URL query parameters</div>
+                        <div>• <strong>endpoint</strong> - Webhook endpoint path</div>
+                        <div>• <strong>timestamp</strong> - Request timestamp</div>
+                      </div>
+                    </div>
+                    <div class="space-y-1">
+                      <div class="font-medium">Usage Examples:</div>
+                      <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded font-mono space-y-1">
+                        <div># Access Git data from body</div>
+                        <div>echo "Branch: $INPUT_1.body.ref"</div>
+                        <div>echo "Commit: $INPUT_1.body.head_commit.id"</div>
+                        <div>echo "Author: $INPUT_1.body.head_commit.author.name"</div>
+                        <div>echo "Message: $INPUT_1.body.head_commit.message"</div>
+                        <div># Access headers</div>
+                        <div>echo "Event: $INPUT_1.headers.x-github-event"</div>
+                        <div># Access full payload as JSON</div>
+                        <div>echo '$INPUT_1.body' | jq .</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -850,6 +989,79 @@
         </div>
       </div>
     </div>
+
+    <!-- Retention Settings Modal -->
+    <div v-if="showRetentionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="mt-3">
+          <div class="flex items-center justify-center mx-auto w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900">
+            <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15c1.66 0 3-1.34 3-3V9c0-1.66-1.34-3-3-3s-3 1.34-3 3v3c0 1.66 1.34 3 3 3z M9 9a3 3 0 1 1 6 0v3a3 3 0 1 1-6 0V9z M7 21h10"></path>
+            </svg>
+          </div>
+          <div class="mt-4 text-center">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Build Retention Settings</h3>
+            <div class="mt-2 px-7 py-3">
+              <p class="text-sm text-gray-500 dark:text-gray-300 mb-4">
+                Configure how long builds and logs are kept for this project.
+              </p>
+              
+              <div class="space-y-4 text-left">
+                <div>
+                  <label for="maxBuildsToKeep" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Maximum Builds to Keep
+                  </label>
+                  <input
+                    id="maxBuildsToKeep"
+                    v-model.number="retentionSettings.maxBuildsToKeep"
+                    type="number"
+                    min="1"
+                    max="1000"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Older builds will be automatically deleted
+                  </p>
+                </div>
+                
+                <div>
+                  <label for="maxLogDays" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Log Retention (Days)
+                  </label>
+                  <input
+                    id="maxLogDays"
+                    v-model.number="retentionSettings.maxLogDays"
+                    type="number"
+                    min="1"
+                    max="365"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Build logs older than this will be deleted
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-center space-x-3 px-4 py-3">
+          <button
+            @click="cancelRetentionSettings"
+            class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-base font-medium rounded-md shadow-sm hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
+          >
+            Cancel
+          </button>
+          <button
+            @click="saveRetentionSettings"
+            :disabled="isSavingRetention"
+            class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            <span v-if="isSavingRetention">Saving...</span>
+            <span v-else>Save Settings</span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -857,7 +1069,7 @@
 import { VueFlow, useVueFlow, Handle, Position, ConnectionMode } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
-import { ref, computed, onMounted, onUnmounted, nextTick, defineComponent, h, markRaw } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, defineComponent, h, markRaw, watch } from 'vue'
 
 // Import Vue Flow styles
 import '@vue-flow/core/dist/style.css'
@@ -884,6 +1096,14 @@ const isTogglingStatus = ref(false)
 // Delete confirmation modal state
 const showDeleteModal = ref(false)
 const itemsToDelete = ref([])
+
+// Retention settings modal state
+const showRetentionModal = ref(false)
+const isSavingRetention = ref(false)
+const retentionSettings = ref({
+  maxBuildsToKeep: 50,
+  maxLogDays: 30
+})
 
 // Execution state - computed from WebSocket store to stay in sync
 const isExecuting = computed(() => {
@@ -1114,7 +1334,6 @@ const hierarchicalProject = computed(() => {
 const triggerNodes = [
   { type: 'cron', name: 'Cron Trigger', description: 'Schedule job execution with cron expressions' },
   { type: 'webhook', name: 'Webhook Trigger', description: 'Trigger via HTTP webhook' },
-  { type: 'git-trigger', name: 'Git Trigger', description: 'Trigger on git push, PR, or branch changes' },
   { type: 'pipeline-trigger', name: 'Pipeline Trigger', description: 'Trigger from another pipeline completion' },
   { type: 'api-trigger', name: 'API Trigger', description: 'Trigger via REST API call' }
 ]
@@ -1271,7 +1490,8 @@ const CustomNode = defineComponent({
       const outputHandles = []
       const hasExecutionOutput = nodeData.hasExecutionOutput
       const hasDataOutput = nodeData.hasDataOutput
-      const totalOutputs = (hasExecutionOutput ? 1 : 0) + (hasDataOutput ? 1 : 0)
+      const outputSockets = nodeData.outputSockets || []
+      const totalOutputs = (hasExecutionOutput ? 1 : 0) + (hasDataOutput ? 1 : 0) + outputSockets.length
       let currentOutputIndex = 0
       
       // Add execution output handle
@@ -1294,8 +1514,8 @@ const CustomNode = defineComponent({
         currentOutputIndex++
       }
       
-      // Add data output handle for parameter nodes
-      if (hasDataOutput) {
+      // Add data output handle for parameter nodes (generic data output)
+      if (hasDataOutput && outputSockets.length === 0) {
         const dataTop = totalOutputs === 1 ? '50%' : `${20 + (currentOutputIndex * 25)}px`
         outputHandles.push(
           h(Handle, {
@@ -1314,7 +1534,31 @@ const CustomNode = defineComponent({
             }
           })
         )
+        currentOutputIndex++
       }
+      
+      // Add specific output socket handles (for webhook and other nodes with output sockets)
+      outputSockets.forEach((socket, index) => {
+        const socketTop = totalOutputs === 1 ? '50%' : `${20 + (currentOutputIndex * 25)}px`
+        outputHandles.push(
+          h(Handle, {
+            key: `output-${socket.id}`,
+            type: 'source',
+            position: Position.Right,
+            id: socket.id,
+            style: { 
+              background: '#8b5cf6', // Purple for webhook data
+              right: '-6px',
+              top: socketTop,
+              transform: totalOutputs === 1 ? 'translateY(-50%)' : 'none',
+              borderRadius: '3px',
+              width: '10px',
+              height: '10px'
+            }
+          })
+        )
+        currentOutputIndex++
+      })
       
       // Calculate node height based on content and sockets
       const baseHeight = 60
@@ -1390,6 +1634,56 @@ const cancelDelete = () => {
     window.deleteResolve = null
   }
 }
+
+// Retention settings modal methods
+const loadRetentionSettings = async () => {
+  if (!project.value?.id) return
+  
+  try {
+    const response = await $fetch(`/api/projects/${project.value.id}/retention`)
+    if (response.success) {
+      retentionSettings.value = response.retention
+    }
+  } catch (error) {
+    console.error('Failed to load retention settings:', error)
+  }
+}
+
+const saveRetentionSettings = async () => {
+  if (!project.value?.id) return
+  
+  isSavingRetention.value = true
+  try {
+    const response = await $fetch(`/api/projects/${project.value.id}/retention`, {
+      method: 'POST',
+      body: retentionSettings.value
+    })
+    
+    if (response.success) {
+      showRetentionModal.value = false
+      // Show success message
+      console.log('✅ Retention settings updated successfully')
+    }
+  } catch (error) {
+    console.error('Failed to save retention settings:', error)
+    alert('Failed to save retention settings. Please try again.')
+  } finally {
+    isSavingRetention.value = false
+  }
+}
+
+const cancelRetentionSettings = () => {
+  showRetentionModal.value = false
+  // Reset to original values
+  loadRetentionSettings()
+}
+
+// Watch for retention modal opening to load current settings
+watch(showRetentionModal, (newValue) => {
+  if (newValue) {
+    loadRetentionSettings()
+  }
+})
 
 const addInputSocketToSelectedNode = () => {
   if (!selectedNode.value) return
@@ -1496,22 +1790,16 @@ const getDefaultNodeData = (type) => {
       return { 
         ...baseData,
         hasExecutionInput: false,
+        hasDataOutput: true, // Webhook provides data output
+        outputSockets: [
+          { id: 'webhook_data', label: 'Webhook Data', connected: false }
+        ],
         endpoint: '/webhook',
         method: 'POST',
         secretToken: '',
         customEndpoint: '',
         description: '',
         active: true
-      }
-    case 'git-trigger':
-      return { 
-        ...baseData,
-        hasExecutionInput: false,
-        repository: '',
-        branches: ['main', 'develop'],
-        events: ['push', 'pull_request'],
-        includeFiles: '*',
-        excludeFiles: ''
       }
     case 'pipeline-trigger':
       return { 
@@ -1654,7 +1942,6 @@ const getNodeColor = (type) => {
     // Trigger nodes - Green shades
     'cron': '#10b981',
     'webhook': '#047857',
-    'git-trigger': '#065f46',
     'pipeline-trigger': '#064e3b',
     'api-trigger': '#022c22',
     

@@ -244,6 +244,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
     
     switch (type) {
+      case 'webhook_trigger_fired':
+        addJobMessage(projectId, 'System', 'info', `🎣 Webhook triggered: ${message.webhookNodeLabel || message.endpoint}`)
+        break
+        
+      case 'webhook_trigger_error':
+        addJobMessage(projectId, 'System', 'error', `❌ Webhook trigger error: ${message.error}`)
+        break
+        
       case 'cron_trigger_fired':
         addJobMessage(projectId, 'System', 'info', `⏰ Cron trigger fired: ${message.cronExpression || message.cronNodeLabel}`)
         break
@@ -285,10 +293,22 @@ export const useWebSocketStore = defineStore('websocket', () => {
           currentJob.status = message.status
           currentJob.nodeId = message.currentNodeId
           
-          if (message.status === 'completed' || message.status === 'failed' || message.status === 'cancelled') {
-            addJobMessage(projectId, 'System', message.status === 'completed' ? 'success' : 'warning', 
+          // Only show status messages for failures and cancellations
+          // Success completions are handled by 'job_complete' message type
+          if (message.status === 'failed' || message.status === 'cancelled') {
+            addJobMessage(projectId, 'System', 'warning', 
               `Job ${message.status}: ${message.message || 'No details provided'}`)
             // Keep job in map for a while so UI can show final status
+            setTimeout(() => {
+              currentJobs.value.delete(projectId)
+            }, 5000)
+          } else if (message.status === 'completed' && !message.suppressMessage) {
+            // Only show completion message if there wasn't already a job_complete message
+            // and the message contains useful details
+            if (message.message && message.message !== 'No details provided') {
+              addJobMessage(projectId, 'System', 'success', 
+                `Job completed: ${message.message}`)
+            }
             setTimeout(() => {
               currentJobs.value.delete(projectId)
             }, 5000)
@@ -311,7 +331,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
         
       case 'job_complete':
-        addJobMessage(projectId, 'System', 'success', `✅ Job completed successfully`)
+        const completionMessage = message.result?.message || message.message || 'Job completed successfully'
+        addJobMessage(projectId, 'System', 'success', `✅ ${completionMessage}`)
         const completedJob = currentJobs.value.get(projectId)
         if (completedJob) {
           completedJob.status = 'completed'

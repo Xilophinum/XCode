@@ -329,7 +329,7 @@ class CronManager {
 
       // Execute the connected workflow
       const { executeProjectFromTrigger } = await import('./triggerExecutor.js')
-      await executeProjectFromTrigger(projectId, nodes, edges, cronTriggerNode.id)
+      await executeProjectFromTrigger(projectId, nodes, edges, cronTriggerNode.id, null) // No trigger context for cron jobs
       
     } catch (error) {
       console.error(`❌ Error executing cron job for ${cronTriggerNode.data.label}:`, error)

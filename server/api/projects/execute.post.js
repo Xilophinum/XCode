@@ -255,12 +255,12 @@ function getCommandPlatformRequirements(command) {
  * This function analyzes the graph and compiles it into a sequence of executable commands,
  * resolving parameter values and skipping non-executable nodes.
  */
-export function convertGraphToCommands(nodes, edges) {
+export function convertGraphToCommands(nodes, edges, triggerContext = null) {
   console.log(`🔧 Converting graph to commands...`)
   console.log(`📊 Graph has ${nodes.length} nodes and ${edges.length} edges`)
 
-  // Step 1: Build parameter value map from parameter nodes
-  const parameterValues = buildParameterValueMap(nodes, edges)
+  // Step 1: Build parameter value map from parameter nodes + trigger context
+  const parameterValues = buildParameterValueMap(nodes, edges, triggerContext)
   console.log(`📋 Built parameter value map:`, parameterValues)
 
   // Step 2: Find executable starting points (trigger nodes or nodes without execution inputs)
@@ -285,9 +285,9 @@ export function convertGraphToCommands(nodes, edges) {
 }
 
 /**
- * Build a map of parameter values from parameter nodes
+ * Build a map of parameter values from parameter nodes + webhook/trigger context
  */
-function buildParameterValueMap(nodes, edges) {
+function buildParameterValueMap(nodes, edges, triggerContext = null) {
   const parameterValues = new Map()
 
   // Find all parameter nodes and extract their values
@@ -302,6 +302,34 @@ function buildParameterValueMap(nodes, edges) {
       value: value,
       nodeType: paramNode.data.nodeType
     })
+  }
+
+  // Add webhook trigger node data if available
+  if (triggerContext) {
+    const webhookNodes = nodes.filter(node => node.data.nodeType === 'webhook')
+    
+    for (const webhookNode of webhookNodes) {
+      if (webhookNode.data.outputSockets && webhookNode.data.outputSockets.length > 0) {
+        // Create a simple webhook data object with just the raw data
+        const webhookData = {
+          body: triggerContext.body || {},
+          headers: triggerContext.headers || {},
+          query: triggerContext.query || {},
+          endpoint: triggerContext.endpoint || '',
+          timestamp: triggerContext.timestamp || ''
+        }
+        
+        // Add the webhook data for the single output socket
+        const socket = webhookNode.data.outputSockets[0] // Should only be one socket
+        parameterValues.set(`${webhookNode.id}_${socket.id}`, {
+          label: socket.label,
+          value: webhookData,
+          nodeType: 'webhook-output',
+          socketId: socket.id,
+          parentNodeId: webhookNode.id
+        })
+      }
+    }
   }
 
   return parameterValues
@@ -410,7 +438,6 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
 
     case 'cron':
     case 'webhook':
-    case 'git-trigger':
     case 'pipeline-trigger':
     case 'api-trigger':
       // Trigger nodes don't generate executable commands during manual execution
@@ -449,6 +476,20 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
 }
 
 /**
+ * Safely access nested properties in an object using dot notation
+ * Supports array access like "commits[0].id"
+ */
+function getNestedProperty(obj, path) {
+  // Handle array notation like "commits[0].id" 
+  const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1')
+  
+  return normalizedPath.split('.').reduce((current, key) => {
+    if (current === null || current === undefined) return undefined
+    return current[key]
+  }, obj)
+}
+
+/**
  * Resolve parameter placeholders in script text
  */
 function resolveScriptPlaceholders(node, allEdges, parameterValues) {
@@ -457,6 +498,7 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
   console.log(`🔧 Original script: "${script}"`)
   console.log(`🔧 Input sockets:`, node.data.inputSockets)
   console.log(`🔧 Parameter values:`, Array.from(parameterValues.entries()))
+  console.log(`🔧 Parameter values keys:`, Array.from(parameterValues.keys()))
 
   // Find all input connections to this node
   const inputConnections = allEdges.filter(edge => edge.target === node.id)
@@ -465,12 +507,25 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
   // Process each input socket placeholder
   if (node.data.inputSockets && node.data.inputSockets.length > 0) {
     node.data.inputSockets.forEach((socket, index) => {
+      console.log(`🔧 Processing socket: ${socket.label} (id: ${socket.id})`)
+      
       // Find the edge connected to this socket
       const connection = inputConnections.find(edge => edge.targetHandle === socket.id)
+      console.log(`🔧 Connection found for socket ${socket.label}:`, connection)
       
       if (connection) {
         // Check if the source is a parameter node
-        const parameterData = parameterValues.get(connection.source)
+        let parameterData = parameterValues.get(connection.source)
+        console.log(`🔧 Parameter data from source ${connection.source}:`, parameterData)
+        
+        // If not found, check if it's a webhook output socket connection
+        if (!parameterData && connection.sourceHandle) {
+          const webhookSocketKey = `${connection.source}_${connection.sourceHandle}`
+          console.log(`🔧 Trying webhook socket key: ${webhookSocketKey}`)
+          parameterData = parameterValues.get(webhookSocketKey)
+          console.log(`🔧 Webhook parameter data:`, parameterData)
+        }
+        
         if (parameterData) {
           // Handle socket label that may or may not start with $
           const cleanLabel = socket.label.startsWith('$') ? socket.label.substring(1) : socket.label
@@ -478,20 +533,60 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
           // Escape special regex characters in the socket label
           const escapedLabel = cleanLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
           
-          // Primary format: ${socketLabel} - this is the main format users should use
-          // Also handle ${$socketLabel} in case there's an extra $ inside the braces
-          const socketLabelPlaceholder = `\\$\\{\\$?${escapedLabel}\\}`
-          script = script.replace(new RegExp(socketLabelPlaceholder, 'g'), String(parameterData.value))
+          // Check if the parameter value is an object (webhook data)
+          const isObjectValue = typeof parameterData.value === 'object' && parameterData.value !== null
           
-          // Fallback format: $socketLabel (without {}) - for error recovery
-          // This helps when users forget to wrap the socket label in {}
-          // Only apply if the label doesn't contain spaces (to avoid false matches)
-          if (!cleanLabel.includes(' ')) {
-            const fallbackPlaceholder = `\\$${escapedLabel}\\b` // \b ensures word boundary
-            script = script.replace(new RegExp(fallbackPlaceholder, 'g'), String(parameterData.value))
+          if (isObjectValue) {
+            console.log(`🔧 Processing object value for ${cleanLabel}:`, parameterData.value)
+            
+            // Handle property access patterns FIRST, including patterns outside ${} like $INPUT_1.property
+            // Pattern 1: ${INPUT_1.property.path} (preferred format)
+            const propertyAccessRegex1 = new RegExp(`\\$\\{\\$?${escapedLabel}\\.(.*?)\\}`, 'g')
+            script = script.replace(propertyAccessRegex1, (match, propertyPath) => {
+              try {
+                const value = getNestedProperty(parameterData.value, propertyPath)
+                console.log(`🔗 Resolved ${match} -> ${value}`)
+                return value !== undefined ? String(value) : match
+              } catch (error) {
+                console.warn(`⚠️ Failed to access property ${propertyPath} on ${cleanLabel}:`, error)
+                return match
+              }
+            })
+            
+            // Pattern 2: $INPUT_1.property.path (without braces - fallback)
+            const propertyAccessRegex2 = new RegExp(`\\$${escapedLabel}\\.(\\S+?)(?=\\s|"|'|$)`, 'g')
+            script = script.replace(propertyAccessRegex2, (match, propertyPath) => {
+              try {
+                const value = getNestedProperty(parameterData.value, propertyPath)
+                console.log(`🔗 Resolved ${match} -> ${value} (propertyPath: ${propertyPath})`)
+                return value !== undefined ? String(value) : match
+              } catch (error) {
+                console.warn(`⚠️ Failed to access property ${propertyPath} on ${cleanLabel}:`, error)
+                return match
+              }
+            })
+            
+            // Then handle simple references like ${INPUT_1} with the whole object as JSON
+            const simpleSocketPlaceholder = `\\$\\{\\$?${escapedLabel}\\}`
+            script = script.replace(new RegExp(simpleSocketPlaceholder, 'g'), JSON.stringify(parameterData.value))
+            
+          } else {
+            // For simple values, use the existing logic
+            // Primary format: ${socketLabel} - this is the main format users should use
+            // Also handle ${$socketLabel} in case there's an extra $ inside the braces
+            const socketLabelPlaceholder = `\\$\\{\\$?${escapedLabel}\\}`
+            script = script.replace(new RegExp(socketLabelPlaceholder, 'g'), String(parameterData.value))
+            
+            // Fallback format: $socketLabel (without {}) - for error recovery
+            // This helps when users forget to wrap the socket label in {}
+            // Only apply if the label doesn't contain spaces (to avoid false matches)
+            if (!cleanLabel.includes(' ')) {
+              const fallbackPlaceholder = `\\$${escapedLabel}\\b` // \b ensures word boundary
+              script = script.replace(new RegExp(fallbackPlaceholder, 'g'), String(parameterData.value))
+            }
           }
           
-          console.log(`🔗 Resolved parameter "${parameterData.label}" = "${parameterData.value}" for socket "${socket.label}" (clean: "${cleanLabel}", escaped: "${escapedLabel}")`)
+          console.log(`🔗 Resolved parameter "${parameterData.label}" for socket "${socket.label}" (object: ${isObjectValue})`)
         }
       } else {
         console.log(`⚠️ No connection found for socket "${socket.label}"`)

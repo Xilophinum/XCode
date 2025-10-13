@@ -79,6 +79,12 @@ class JobManager {
         jobId: jobId,
         projectId: job.projectId,
         status: job.status,
+        message: job.message || updates.message || job.error || updates.error, // Include completion/error details
+        currentNodeId: job.currentNodeId,
+        currentNodeLabel: job.currentNodeLabel,
+        agentId: job.agentId,
+        agentName: job.agentName,
+        buildId: job.buildId,
         updates: updates,
         timestamp: new Date().toISOString()
       })

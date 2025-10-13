@@ -1,5 +1,6 @@
 import { getDataService } from './dataService.js'
 import { jobManager } from './jobManager.js'
+import { getBuildStatsManager } from './buildStatsManager.js'
 
 class AgentManager {
   constructor() {
@@ -104,6 +105,21 @@ class AgentManager {
               error: errorMsg,
               failedAt: new Date()
             })
+
+            // Update build status if this job is associated with a build
+            if (job.buildId) {
+              try {
+                const buildStatsManager = await getBuildStatsManager()
+                await buildStatsManager.finishBuild(job.buildId, {
+                  status: 'failure',
+                  message: errorMsg,
+                  nodesExecuted: currentIndex + 1
+                })
+                console.log(`📊 BUILD STATS: Build ${job.buildId} marked as failed (no agent available)`)
+              } catch (buildError) {
+                console.warn('Failed to update build record on agent unavailable:', buildError)
+              }
+            }
             return
           }
           
@@ -142,6 +158,21 @@ class AgentManager {
               error: 'Failed to dispatch next command in sequence',
               failedAt: new Date()
             })
+
+            // Update build status if this job is associated with a build
+            if (job.buildId) {
+              try {
+                const buildStatsManager = await getBuildStatsManager()
+                await buildStatsManager.finishBuild(job.buildId, {
+                  status: 'failure',
+                  message: 'Failed to dispatch next command in sequence',
+                  nodesExecuted: nextIndex
+                })
+                console.log(`📊 BUILD STATS: Build ${job.buildId} marked as failed (dispatch failed)`)
+              } catch (buildError) {
+                console.warn('Failed to update build record on dispatch failure:', buildError)
+              }
+            }
           }
           
           return // Don't mark job as completed yet
@@ -154,8 +185,24 @@ class AgentManager {
         status: 'completed',
         exitCode: exitCode || 0,
         completedAt: new Date(),
-        finalOutput: output
+        finalOutput: output,
+        message: `Job completed successfully (exit code: ${exitCode || 0})`
       })
+
+      // Update build status if this job is associated with a build
+      if (job.buildId) {
+        try {
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(job.buildId, {
+            status: 'success',
+            message: `Job completed successfully (exit code: ${exitCode || 0})`,
+            nodesExecuted: job.executionCommands ? job.executionCommands.length : 1
+          })
+          console.log(`📊 BUILD STATS: Build ${job.buildId} marked as successful`)
+        } catch (buildError) {
+          console.warn('Failed to update build record on job completion:', buildError)
+        }
+      }
     }
   }
 
@@ -184,6 +231,21 @@ class AgentManager {
         exitCode: exitCode || 1,
         failedAt: new Date()
       })
+
+      // Update build status if this job is associated with a build
+      if (job && job.buildId) {
+        try {
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(job.buildId, {
+            status: 'failure',
+            message: errorMessage,
+            nodesExecuted: job.executionCommands ? (job.currentCommandIndex || 0) + 1 : 0
+          })
+          console.log(`📊 BUILD STATS: Build ${job.buildId} marked as failed`)
+        } catch (buildError) {
+          console.warn('Failed to update build record on job error:', buildError)
+        }
+      }
     }
   }
 

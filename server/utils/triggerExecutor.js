@@ -6,11 +6,12 @@
 import { v4 as uuidv4 } from 'uuid'
 import { jobManager } from './jobManager.js'
 import { getAgentManager } from './agentManager.js'
+import { getBuildStatsManager } from './buildStatsManager.js'
 
 /**
  * Execute project from trigger (for cron or other triggers)
  */
-export async function executeProjectFromTrigger(projectId, nodes, edges, triggerNodeId) {
+export async function executeProjectFromTrigger(projectId, nodes, edges, triggerNodeId, triggerContext = null) {
   console.log(`🎯 Executing project ${projectId} from trigger ${triggerNodeId}`)
   
   try {
@@ -41,7 +42,7 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
     const { convertGraphToCommands } = executeModule
 
     // Convert graph to execution commands for the agent
-    const executionCommands = convertGraphToCommands(nodes, edges)
+    const executionCommands = convertGraphToCommands(nodes, edges, triggerContext)
 
     console.log(`🔧 Generated ${executionCommands.length} commands:`, executionCommands)
 
@@ -66,6 +67,40 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
     // Generate unique job ID
     const jobId = `cron_job_${uuidv4()}`
 
+    // Start build recording for triggered execution
+    let currentBuildId = null
+    try {
+      const buildStatsManager = await getBuildStatsManager()
+      
+      const triggerType = triggerContext ? 'webhook' : 'cron'
+      const triggerMessage = triggerContext 
+        ? `Webhook trigger: ${triggerContext.endpoint}` 
+        : `Cron trigger: ${triggerNodeId}`
+      
+      currentBuildId = await buildStatsManager.startBuild({
+        projectId,
+        agentId: null, // Will be updated when agent is assigned
+        jobId,
+        trigger: triggerType,
+        message: triggerMessage,
+        nodeCount: nodes.length,
+        branch: null,
+        commit: null,
+        metadata: {
+          triggerNodeId,
+          triggerContext: triggerContext ? {
+            endpoint: triggerContext.endpoint,
+            method: 'POST',
+            timestamp: triggerContext.timestamp
+          } : null
+        }
+      })
+      
+      console.log('✅ Build recording started for triggered execution:', currentBuildId)
+    } catch (error) {
+      console.warn('Failed to start build recording for triggered execution:', error)
+    }
+
     // Create job record
     const job = {
       jobId,
@@ -78,7 +113,9 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
       output: [],
       currentNodeId: null,
       currentNodeLabel: null,
-      triggeredBy: triggerNodeId
+      triggeredBy: triggerNodeId,
+      triggerContext: triggerContext, // Store webhook/trigger context data
+      buildId: currentBuildId // Link job to build record
     }
 
     // Store job in job manager
@@ -104,6 +141,33 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
       
       console.error(errorMsg)
       await jobManager.updateJob(jobId, { status: 'failed', error: errorMsg })
+      
+      // Broadcast failure to UI
+      if (globalThis.broadcastToProject) {
+        globalThis.broadcastToProject(projectId, {
+          type: 'job_error',
+          projectId: projectId,
+          jobId: jobId,
+          error: errorMsg,
+          timestamp: new Date().toISOString(),
+          source: 'trigger_executor'
+        })
+      }
+      
+      // Update build record with failure
+      if (currentBuildId) {
+        try {
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(currentBuildId, {
+            status: 'failure',
+            message: errorMsg,
+            nodesExecuted: 0
+          })
+        } catch (buildError) {
+          console.warn('Failed to update build record on agent selection failure:', buildError)
+        }
+      }
+      
       return { success: false, message: errorMsg }
     }
     
@@ -111,6 +175,21 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
       console.log(`🔒 ENFORCING agent selection for triggered job: ${selectedAgent.agentId} for command: ${firstCommand.nodeLabel}`)
     } else {
       console.log(`🎯 Selected agent ${selectedAgent.agentId} for triggered command: ${firstCommand.nodeLabel}`)
+    }
+
+    // Update build record with agent selection
+    if (currentBuildId) {
+      try {
+        const buildStatsManager = await getBuildStatsManager()
+        await buildStatsManager.updateBuild(currentBuildId, {
+          agentId: selectedAgent.agentId,
+          agentName: selectedAgent.nickname || selectedAgent.name || selectedAgent.agentId,
+          status: 'running'
+        })
+        console.log(`📊 BUILD STATS: Agent ${selectedAgent.nickname} assigned to build ${currentBuildId}`)
+      } catch (buildError) {
+        console.warn('Failed to update build record with agent selection:', buildError)
+      }
     }
 
     const dispatchSuccess = await agentManager.dispatchJobToAgent(selectedAgent.agentId, {
@@ -131,6 +210,33 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
       await jobManager.deleteJob(jobId)
       const errorMsg = 'Failed to dispatch triggered job to agent'
       console.error(`❌ ${errorMsg}`)
+      
+      // Broadcast failure to UI
+      if (globalThis.broadcastToProject) {
+        globalThis.broadcastToProject(projectId, {
+          type: 'job_error',
+          projectId: projectId,
+          jobId: jobId,
+          error: errorMsg,
+          timestamp: new Date().toISOString(),
+          source: 'trigger_executor'
+        })
+      }
+      
+      // Update build record with dispatch failure
+      if (currentBuildId) {
+        try {
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(currentBuildId, {
+            status: 'failure',
+            message: errorMsg,
+            nodesExecuted: 0
+          })
+        } catch (buildError) {
+          console.warn('Failed to update build record on dispatch failure:', buildError)
+        }
+      }
+      
       return { success: false, message: errorMsg }
     }
 
@@ -140,22 +246,51 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
       agentId: selectedAgent.agentId,
       agentName: selectedAgent.name || selectedAgent.hostname,
       executionCommands: executableCommands,
-      currentCommandIndex: 0
+      currentCommandIndex: 0,
+      buildId: currentBuildId
     })
 
-    console.log(`✅ Triggered job ${jobId} dispatched to agent ${selectedAgent.agentId}`)
+    console.log(`✅ Triggered job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildId ? ` (build: ${currentBuildId})` : ''}`)
 
     return {
       success: true,
       jobId,
+      buildId: currentBuildId,
       agentId: selectedAgent.agentId,
       agentName: selectedAgent.name || selectedAgent.hostname,
       startTime: job.startTime,
-      message: `Triggered job dispatched to agent ${selectedAgent.name || selectedAgent.hostname}`
+      message: `Triggered job dispatched to agent ${selectedAgent.name || selectedAgent.hostname}${currentBuildId ? ` (build: ${currentBuildId})` : ''}`
     }
     
   } catch (error) {
     console.error(`❌ Error executing triggered project ${projectId}:`, error)
+    
+    // Broadcast error to UI
+    if (globalThis.broadcastToProject) {
+      globalThis.broadcastToProject(projectId, {
+        type: 'job_error',
+        projectId: projectId,
+        error: `Execution error: ${error.message}`,
+        timestamp: new Date().toISOString(),
+        source: 'trigger_executor'
+      })
+    }
+    
+    // Update build record with error if build was started
+    if (currentBuildId) {
+      try {
+        const buildStatsManager = await getBuildStatsManager()
+        await buildStatsManager.finishBuild(currentBuildId, {
+          status: 'failure',
+          message: `Execution error: ${error.message}`,
+          nodesExecuted: 0
+        })
+        console.log(`📊 BUILD STATS: Build ${currentBuildId} marked as failed due to execution error`)
+      } catch (buildError) {
+        console.warn('Failed to update build record on execution error:', buildError)
+      }
+    }
+    
     throw error
   }
 }

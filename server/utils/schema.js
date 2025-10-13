@@ -19,6 +19,11 @@ export const items = sqliteTable('items', {
   userId: text('user_id').notNull(),
   diagramData: text('diagram_data'), // JSON as string for project data
   status: text('status').notNull().default('active'), // 'active' or 'disabled' for projects
+  
+  // Build retention settings (for projects only)
+  maxBuildsToKeep: integer('max_builds_to_keep').default(50), // How many builds to retain per project
+  maxLogDays: integer('max_log_days').default(30), // How many days of logs to keep
+  
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
@@ -127,7 +132,9 @@ export const agents = sqliteTable('agents', {
 export const builds = sqliteTable('builds', {
   id: text('id').primaryKey(), // Unique build ID
   projectId: text('project_id').notNull(), // Reference to project
+  buildNumber: integer('build_number').notNull(), // Sequential build number per project
   agentId: text('agent_id'), // Agent that executed the build (null for local execution)
+  agentName: text('agent_name'), // Human-readable agent name
   jobId: text('job_id'), // Job ID from the job manager system
   
   // Build metadata
@@ -142,7 +149,7 @@ export const builds = sqliteTable('builds', {
   
   // Build context
   nodeCount: integer('node_count'), // Number of nodes in the workflow
-  nodeExecuted: integer('nodes_executed'), // Number of nodes successfully executed
+  nodesExecuted: integer('nodes_executed'), // Number of nodes successfully executed
   gitBranch: text('git_branch'), // Git branch if applicable
   gitCommit: text('git_commit'), // Git commit hash if applicable
   
@@ -173,32 +180,4 @@ export const buildLogs = sqliteTable('build_logs', {
   metadata: text('metadata'), // JSON object for additional context
   
   createdAt: text('created_at').notNull(),
-})
-
-export const buildStats = sqliteTable('build_stats', {
-  id: text('id').primaryKey(),
-  projectId: text('project_id').notNull().unique(), // One stats record per project
-  
-  // Aggregate statistics
-  totalBuilds: integer('total_builds').notNull().default(0),
-  successfulBuilds: integer('successful_builds').notNull().default(0),
-  failedBuilds: integer('failed_builds').notNull().default(0),
-  cancelledBuilds: integer('cancelled_builds').notNull().default(0),
-  
-  // Recent activity
-  lastBuildId: text('last_build_id'), // Reference to most recent build
-  lastBuildStatus: text('last_build_status'), // Status of most recent build
-  lastBuildAt: text('last_build_at'), // Timestamp of most recent build
-  
-  // Performance metrics
-  averageDuration: integer('average_duration'), // Average build duration in milliseconds
-  fastestBuild: integer('fastest_build'), // Fastest build duration in milliseconds
-  slowestBuild: integer('slowest_build'), // Slowest build duration in milliseconds
-  
-  // Retention settings (project-specific)
-  maxBuildsToKeep: integer('max_builds_to_keep').notNull().default(50), // How many builds to retain
-  maxLogDays: integer('max_log_days').notNull().default(30), // How many days of logs to keep
-  
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
 })

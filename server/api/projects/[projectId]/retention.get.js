@@ -1,8 +1,11 @@
 import { getBuildStatsManager } from '../../../../server/utils/buildStatsManager.js'
 
+/**
+ * GET /api/projects/[projectId]/retention
+ * Get project retention settings
+ */
 export default defineEventHandler(async (event) => {
   const { projectId } = getRouterParams(event)
-  const query = getQuery(event)
   
   if (!projectId) {
     throw createError({
@@ -13,26 +16,20 @@ export default defineEventHandler(async (event) => {
 
   try {
     const buildStatsManager = await getBuildStatsManager()
-    
-    const options = {
-      page: parseInt(query.page) || 1,
-      pageSize: parseInt(query.pageSize) || 20,
-      status: query.status || null,
-      startDate: query.startDate || null,
-      endDate: query.endDate || null
-    }
-
-    const result = await buildStatsManager.getProjectBuilds(projectId, options)
+    const stats = await buildStatsManager.getProjectStats(projectId)
     
     return {
       success: true,
-      ...result
+      retention: {
+        maxBuildsToKeep: stats.maxBuildsToKeep,
+        maxLogDays: stats.maxLogDays
+      }
     }
   } catch (error) {
-    console.error('Error getting project builds:', error)
+    console.error('Error getting project retention settings:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: 'Failed to get builds'
+      statusMessage: 'Failed to get retention settings'
     })
   }
 })

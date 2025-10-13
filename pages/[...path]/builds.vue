@@ -239,7 +239,7 @@
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div class="text-sm font-medium text-gray-900 dark:text-white">
-                        {{ build.id.substring(0, 12) }}...
+                        Build #{{ build.buildNumber }}
                       </div>
                       <div class="text-sm text-gray-500 dark:text-gray-400">
                         {{ build.message || 'No message' }}
@@ -256,7 +256,7 @@
                     <span class="capitalize">{{ build.trigger }}</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {{ build.agentId || 'Local' }}
+                    {{ build.agentName || 'Local' }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {{ build.duration ? formatDuration(build.duration) : 'N/A' }}
@@ -367,6 +367,7 @@ definePageMeta({
 
 const route = useRoute()
 const authStore = useAuthStore()
+const projectsStore = useProjectsStore()
 
 // Parse the path from route params
 const pathSegments = computed(() => {
@@ -390,10 +391,22 @@ const projectName = computed(() => {
   return 'Unknown Project'
 })
 
-// The project path for API calls
+// The project path for finding the project
 const projectPath = computed(() => {
   const segments = pathSegments.value.slice(0, -1) // Remove 'builds'
-  return segments.join('/')
+  return segments
+})
+
+// Find the project using the path-based approach (same as editor)
+const project = computed(() => {
+  if (!projectName.value) return null
+  const fullPath = [...projectPath.value.slice(0, -1), projectName.value] // Remove 'builds' and use project name
+  return projectsStore.getItemByFullPath(fullPath)
+})
+
+// Use the actual project ID for API calls
+const projectId = computed(() => {
+  return project.value?.id || null
 })
 
 // Data
@@ -421,6 +434,13 @@ const loadBuilds = async (page = 1) => {
   try {
     loading.value = true
     
+    if (!projectId.value) {
+      console.error('No project ID available for builds API call')
+      builds.value = []
+      pagination.value = null
+      return
+    }
+    
     const params = new URLSearchParams({
       page: page.toString(),
       pageSize: pageSize.toString()
@@ -430,7 +450,8 @@ const loadBuilds = async (page = 1) => {
     if (filters.value.startDate) params.append('startDate', filters.value.startDate + 'T00:00:00.000Z')
     if (filters.value.endDate) params.append('endDate', filters.value.endDate + 'T23:59:59.999Z')
     
-    const response = await $fetch(`/api/projects/${projectPath.value}/builds?${params}`)
+    console.log(`🔍 Loading builds for project ID: ${projectId.value}`)
+    const response = await $fetch(`/api/projects/${projectId.value}/builds?${params}`)
     
     builds.value = response.builds
     pagination.value = response.pagination
@@ -446,7 +467,23 @@ const loadBuilds = async (page = 1) => {
 
 const loadBuildStats = async () => {
   try {
-    const response = await $fetch(`/api/projects/${projectPath.value}/build-stats`)
+    if (!projectId.value) {
+      console.error('No project ID available for build stats API call')
+      buildStats.value = {
+        totalBuilds: 0,
+        successfulBuilds: 0,
+        failedBuilds: 0,
+        cancelledBuilds: 0,
+        successRate: 1,
+        lastBuildStatus: null,
+        lastBuildAt: null,
+        averageDuration: null,
+        fastestBuild: null,
+        slowestBuild: null
+      }
+      return
+    }
+    const response = await $fetch(`/api/projects/${projectId.value}/build-stats`)
     buildStats.value = response.stats || response
   } catch (error) {
     console.error('Error loading build stats:', error)
@@ -592,6 +629,17 @@ onMounted(async () => {
   }
   
   if (authStore.isAuthenticated) {
+    // Load projects store data first to resolve project by path
+    await projectsStore.loadData()
+    
+    // Check if project exists
+    if (!project.value) {
+      console.error('Project not found for path:', pathSegments.value)
+      await navigateTo('/')
+      return
+    }
+    
+    console.log(`📊 Loading builds for project: ${project.value.name} (ID: ${project.value.id})`)
     await refreshBuilds()
   }
 })

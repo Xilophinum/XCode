@@ -1,5 +1,5 @@
 import { getDB } from './database.js'
-import { builds, buildLogs, buildStats } from './schema.js'
+import { builds, buildLogs, items } from './schema.js'
 import { eq, desc, and, gte, lte, count, avg, min, max } from 'drizzle-orm'
 
 export class BuildStatsManager {
@@ -22,10 +22,20 @@ export class BuildStatsManager {
     const buildId = `build_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const now = new Date().toISOString()
 
+    // Get the next build number for this project
+    const [lastBuild] = await this.db
+      .select({ maxBuildNumber: max(builds.buildNumber) })
+      .from(builds)
+      .where(eq(builds.projectId, buildData.projectId))
+    
+    const buildNumber = (lastBuild?.maxBuildNumber || 0) + 1
+
     const build = {
       id: buildId,
       projectId: buildData.projectId,
+      buildNumber: buildNumber,
       agentId: buildData.agentId || null,
+      agentName: buildData.agentName || buildData.agentId || 'Local',
       jobId: buildData.jobId || null,
       trigger: buildData.trigger || 'manual',
       status: 'running',
@@ -50,8 +60,30 @@ export class BuildStatsManager {
       sequence: 1
     })
 
-    console.log(`📊 Started build ${buildId} for project ${buildData.projectId}`)
+    console.log(`📊 Started build #${buildNumber} (${buildId}) for project ${buildData.projectId}`)
     return buildId
+  }
+
+  /**
+   * Update a build record with new information
+   * @param {string} buildId - Build ID
+   * @param {Object} updates - Fields to update
+   */
+  async updateBuild(buildId, updates) {
+    if (!this.db) await this.initialize()
+
+    const now = new Date().toISOString()
+    
+    // Prepare update object with timestamp
+    const updateData = {
+      ...updates,
+      updatedAt: now
+    }
+
+    // Update the build record
+    await this.db.update(builds)
+      .set(updateData)
+      .where(eq(builds.id, buildId))
   }
 
   /**
@@ -140,9 +172,31 @@ export class BuildStatsManager {
    * @param {string} projectId - Project ID
    */
   async updateProjectStats(projectId) {
+    // This method is now deprecated since we calculate stats in real-time
+    // Keeping it for backwards compatibility but it's essentially a no-op
+    console.log(`📊 updateProjectStats called for project ${projectId} (now using real-time calculation)`)
+    return true
+  }
+
+  /**
+   * Get project build statistics
+   * @param {string} projectId - Project ID
+   * @returns {Promise<Object>} - Build statistics
+   */
+  async getProjectStats(projectId) {
     if (!this.db) await this.initialize()
 
-    // Get build counts by status
+    // Get project retention settings
+    const [project] = await this.db
+      .select({
+        maxBuildsToKeep: items.maxBuildsToKeep,
+        maxLogDays: items.maxLogDays
+      })
+      .from(items)
+      .where(eq(items.id, projectId))
+      .limit(1)
+
+    // Calculate stats directly from builds table for real-time accuracy
     const buildCounts = await this.db
       .select({
         status: builds.status,
@@ -188,75 +242,24 @@ export class BuildStatsManager {
       else if (status === 'cancelled') stats.cancelledBuilds = statusCount
     }
 
-    const now = new Date().toISOString()
-    const statsData = {
-      projectId: projectId,
-      totalBuilds: stats.totalBuilds,
-      successfulBuilds: stats.successfulBuilds,
-      failedBuilds: stats.failedBuilds,
-      cancelledBuilds: stats.cancelledBuilds,
-      lastBuildId: lastBuild?.id || null,
-      lastBuildStatus: lastBuild?.status || null,
-      lastBuildAt: lastBuild?.startedAt || null,
-      averageDuration: Math.round(performanceMetrics?.avgDuration || 0),
-      fastestBuild: performanceMetrics?.fastestBuild || null,
-      slowestBuild: performanceMetrics?.slowestBuild || null,
-      updatedAt: now
-    }
-
-    // Upsert the stats
-    try {
-      await this.db.insert(buildStats).values({
-        id: `stats_${projectId}`,
-        createdAt: now,
-        ...statsData
-      })
-    } catch (error) {
-      // If it exists, update it
-      await this.db.update(buildStats)
-        .set(statsData)
-        .where(eq(buildStats.projectId, projectId))
-    }
-  }
-
-  /**
-   * Get project build statistics
-   * @param {string} projectId - Project ID
-   * @returns {Promise<Object>} - Build statistics
-   */
-  async getProjectStats(projectId) {
-    if (!this.db) await this.initialize()
-
-    const [stats] = await this.db
-      .select()
-      .from(buildStats)
-      .where(eq(buildStats.projectId, projectId))
-
-    if (!stats) {
-      // Return default stats if none exist
-      return {
-        totalBuilds: 0,
-        successfulBuilds: 0,
-        failedBuilds: 0,
-        cancelledBuilds: 0,
-        successRate: 1, // Default to 100% for new projects
-        lastBuildStatus: null,
-        lastBuildAt: null,
-        averageDuration: null,
-        fastestBuild: null,
-        slowestBuild: null
-      }
-    }
-
     const successRate = stats.totalBuilds > 0 
       ? stats.successfulBuilds / stats.totalBuilds 
       : 1
 
     return {
-      ...stats,
+      totalBuilds: stats.totalBuilds,
+      successfulBuilds: stats.successfulBuilds,
+      failedBuilds: stats.failedBuilds,
+      cancelledBuilds: stats.cancelledBuilds,
       successRate,
-      maxBuildsToKeep: stats.maxBuildsToKeep,
-      maxLogDays: stats.maxLogDays
+      lastBuildStatus: lastBuild?.status || null,
+      lastBuildAt: lastBuild?.startedAt || null,
+      averageDuration: Math.round(performanceMetrics?.avgDuration || 0),
+      fastestBuild: performanceMetrics?.fastestBuild || null,
+      slowestBuild: performanceMetrics?.slowestBuild || null,
+      // Include retention settings with fallback defaults
+      maxBuildsToKeep: project?.maxBuildsToKeep || 50,
+      maxLogDays: project?.maxLogDays || 30
     }
   }
 
@@ -399,13 +402,29 @@ export class BuildStatsManager {
   async updateRetentionSettings(projectId, settings) {
     if (!this.db) await this.initialize()
 
-    await this.db.update(buildStats)
-      .set({
-        maxBuildsToKeep: settings.maxBuildsToKeep || 50,
-        maxLogDays: settings.maxLogDays || 30,
-        updatedAt: new Date().toISOString()
-      })
-      .where(eq(buildStats.projectId, projectId))
+    const updateData = {}
+    if (settings.maxBuildsToKeep !== undefined) {
+      updateData.maxBuildsToKeep = Math.max(1, parseInt(settings.maxBuildsToKeep)) // Minimum 1 build
+    }
+    if (settings.maxLogDays !== undefined) {
+      updateData.maxLogDays = Math.max(1, parseInt(settings.maxLogDays)) // Minimum 1 day
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      updateData.updatedAt = new Date().toISOString()
+      
+      await this.db
+        .update(items)
+        .set(updateData)
+        .where(eq(items.id, projectId))
+
+      console.log(`📊 Updated retention settings for project ${projectId}:`, updateData)
+      
+      // Trigger cleanup with new settings
+      await this.cleanupOldBuilds(projectId)
+    }
+
+    return true
   }
 }
 

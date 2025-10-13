@@ -625,6 +625,8 @@ async function handleJobComplete(socket, msg, agentManager) {
         projectId: msg.projectId,
         status: 'completed',
         result: msg.result,
+        message: msg.result?.message || msg.message || `Job completed (exit code: ${msg.result?.exitCode || 0})`,
+        exitCode: msg.result?.exitCode || 0,
         timestamp: msg.timestamp || new Date().toISOString()
       })
     }
