@@ -5,6 +5,7 @@
 .nitro
 .cache
 .github
+.claude
 dist
 
 # Database
