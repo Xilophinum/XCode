@@ -4,7 +4,7 @@
     <AppNavigation />
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <main class="max-w-8xl mx-auto py-6 sm:px-6 lg:px-8">
       <div class="px-4 py-6 sm:px-0">
         <div class="mb-8">
           <h2 class="text-2xl font-bold text-gray-950 dark:text-white">Dashboard</h2>
@@ -207,7 +207,7 @@
               <p class="text-gray-600 dark:text-gray-300 mb-4">No folders yet. Create your first folder!</p>
             </div>
 
-            <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div
                 v-for="folder in rootFolders"
                 :key="folder.id"

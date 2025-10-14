@@ -134,7 +134,7 @@ export default defineEventHandler(async (event) => {
     
     if (!selectedAgent) {
       const errorMsg = requiresSpecificAgent
-        ? `🚨 CRITICAL: Required agent "${firstCommand.requiredAgentId}" not available for command: ${firstCommand.nodeLabel}. Execution BLOCKED to prevent running on wrong environment.`
+        ? `🚨 CRITICAL: Required agent "${selectedAgent.name}" not available for command: ${firstCommand.nodeLabel}. Execution BLOCKED to prevent running on wrong environment.`
         : 'No agents available for job execution'
       
       console.error(errorMsg)
@@ -149,6 +149,33 @@ export default defineEventHandler(async (event) => {
     } else {
       console.log(`🎯 Selected agent ${selectedAgent.agentId} for first command: ${firstCommand.nodeLabel} (user chose "any available")`)
     }
+
+    // Start build recording for manual execution
+    let currentBuildId = null
+    try {
+      const { getBuildStatsManager } = await import('../../utils/buildStatsManager.js')
+      const buildStatsManager = await getBuildStatsManager()
+
+      currentBuildId = await buildStatsManager.startBuild({
+        projectId,
+        agentId: selectedAgent.agentId,
+        agentName: selectedAgent.name || selectedAgent.hostname,
+        jobId,
+        trigger: 'manual',
+        message: 'Manual execution',
+        nodeCount: nodes.length,
+        branch: null,
+        commit: null,
+        metadata: null
+      })
+
+      console.log('✅ Build recording started for manual execution:', currentBuildId)
+    } catch (error) {
+      console.warn('Failed to start build recording for manual execution:', error)
+    }
+
+    // Store buildId in job for later reference
+    job.buildId = currentBuildId
 
     const dispatchSuccess = await agentManager.dispatchJobToAgent(selectedAgent.agentId, {
       jobId,
@@ -166,30 +193,48 @@ export default defineEventHandler(async (event) => {
     if (!dispatchSuccess) {
       // Failed to dispatch, clean up job
       await jobManager.deleteJob(jobId)
+
+      // Update build record with failure if build was started
+      if (currentBuildId) {
+        try {
+          const { getBuildStatsManager } = await import('../../utils/buildStatsManager.js')
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(currentBuildId, {
+            status: 'failure',
+            message: 'Failed to dispatch job to agent',
+            nodesExecuted: 0
+          })
+        } catch (buildError) {
+          console.warn('Failed to update build record on dispatch failure:', buildError)
+        }
+      }
+
       throw createError({
         statusCode: 503,
         statusMessage: 'Failed to dispatch job to agent'
       })
     }
 
-    // Update job status to dispatched and store execution commands
-    await jobManager.updateJob(jobId, { 
+    // Update job status to dispatched and store execution commands with buildId
+    await jobManager.updateJob(jobId, {
       status: 'dispatched',
       agentId: selectedAgent.agentId,
       agentName: selectedAgent.name || selectedAgent.hostname,
       executionCommands: executableCommands,
-      currentCommandIndex: 0
+      currentCommandIndex: 0,
+      buildId: currentBuildId
     })
 
-    console.log(`✅ Job ${jobId} dispatched to agent ${selectedAgent.agentId}`)
+    console.log(`✅ Job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildId ? ` (build: ${currentBuildId})` : ''}`)
 
     return {
       success: true,
       jobId,
+      buildId: currentBuildId,
       agentId: selectedAgent.agentId,
       agentName: selectedAgent.name || selectedAgent.hostname,
       startTime: job.startTime,
-      message: `Job dispatched to agent ${selectedAgent.name || selectedAgent.hostname}`
+      message: `Job dispatched to agent ${selectedAgent.name || selectedAgent.hostname}${currentBuildId ? ` (build: ${currentBuildId})` : ''}`
     }
 
   } catch (error) {
@@ -438,7 +483,7 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
 
     case 'cron':
     case 'webhook':
-    case 'pipeline-trigger':
+    case 'job-trigger':
     case 'api-trigger':
       // Trigger nodes don't generate executable commands during manual execution
       // They are only relevant for scheduling/triggering jobs

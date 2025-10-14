@@ -495,7 +495,7 @@ onUnmounted(() => {
     <AppNavigation :breadcrumbs="pathSegments" />
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <main class="max-w-8xl mx-auto py-6 sm:px-6 lg:px-8">
       <div class="px-4 py-6 sm:px-0">
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">
@@ -576,7 +576,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Content Grid -->
-        <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <!-- Folders -->
           <div
             v-for="folder in foldersAtCurrentPath"
@@ -646,7 +646,7 @@ onUnmounted(() => {
             ]"
           >
             <!-- Project Actions Menu -->
-            <div class="absolute top-0 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <div class="relative">
                 <button
                   @click.stop="toggleProjectMenu(project.id)"

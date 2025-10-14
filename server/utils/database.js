@@ -270,6 +270,23 @@ export class DatabaseManager {
         )
       `)
 
+      // Cron Jobs table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS cron_jobs (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          cron_node_id TEXT NOT NULL,
+          cron_node_label TEXT NOT NULL,
+          cron_expression TEXT NOT NULL,
+          enabled TEXT NOT NULL DEFAULT 'true',
+          nodes TEXT NOT NULL,
+          edges TEXT NOT NULL,
+          last_run TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+
       // Create indexes for better performance
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_project_id ON builds(project_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_status ON builds(status)`)
@@ -277,6 +294,8 @@ export class DatabaseManager {
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_build_number ON builds(project_id, build_number)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_build_logs_build_id ON build_logs(build_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_build_logs_timestamp ON build_logs(timestamp)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_cron_jobs_project_id ON cron_jobs(project_id)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_cron_jobs_enabled ON cron_jobs(enabled)`)
     } catch (error) {
       console.error('Error creating tables:', error)
     }

@@ -765,7 +765,7 @@ export class DataService {
 
   async updateAgentHeartbeat(id, status = 'online') {
     await this.ensureInitialized()
-    
+
     await this.db
       .update(agents)
       .set({
@@ -776,6 +776,37 @@ export class DataService {
       .where(eq(agents.id, id))
 
     return await this.getAgentById(id)
+  }
+
+  async updateAgentStatus(id, status) {
+    await this.ensureInitialized()
+
+    await this.db
+      .update(agents)
+      .set({
+        status: status,
+        currentJobs: status === 'offline' || status === 'disconnected' ? 0 : undefined,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(agents.id, id))
+
+    console.log(`📊 Agent ${id} status updated to: ${status}`)
+    return await this.getAgentById(id)
+  }
+
+  async markAllAgentsOffline() {
+    await this.ensureInitialized()
+
+    const result = await this.db
+      .update(agents)
+      .set({
+        status: 'offline',
+        currentJobs: 0,
+        updatedAt: new Date().toISOString(),
+      })
+
+    console.log(`📊 Marked all agents as offline on server startup`)
+    return result
   }
 
   async deleteAgent(id) {

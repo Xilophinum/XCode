@@ -27,7 +27,7 @@
     </AppNavigation>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <main class="max-w-8xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <!-- Header with Stats -->
       <div class="mb-8">
         <div class="mb-6">

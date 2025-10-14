@@ -1,167 +1,211 @@
 /**
  * Cron Database Service - Handles persistence of cron job configurations
+ * Now uses the main database with Drizzle ORM
  */
 
-import Database from 'better-sqlite3'
-import { resolve } from 'path'
+import { getDB } from './database.js'
+import { cronJobs } from './schema.js'
+import { eq, and } from 'drizzle-orm'
 
 class CronDatabaseService {
   constructor() {
-    const dbPath = resolve(process.cwd(), 'data', 'cron.db')
-    this.db = new Database(dbPath)
-    this.initTables()
+    this.db = null
   }
 
-  initTables() {
-    // Create cron_jobs table to store scheduled cron configurations
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS cron_jobs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        job_id TEXT UNIQUE NOT NULL,
-        project_id TEXT NOT NULL,
-        cron_node_id TEXT NOT NULL,
-        cron_node_label TEXT NOT NULL,
-        cron_expression TEXT NOT NULL,
-        enabled BOOLEAN DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        last_run DATETIME,
-        nodes_json TEXT NOT NULL,
-        edges_json TEXT NOT NULL
-      )
-    `)
-
-    // Create index for faster lookups
-    this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_cron_jobs_project_id ON cron_jobs(project_id);
-      CREATE INDEX IF NOT EXISTS idx_cron_jobs_enabled ON cron_jobs(enabled);
-    `)
-
-    console.log('📊 Cron database tables initialized')
+  async ensureInitialized() {
+    if (!this.db) {
+      this.db = await getDB()
+      console.log('📊 Cron database service initialized (using main database)')
+    }
   }
 
   /**
    * Save a cron job configuration to database
    */
-  saveCronJob(jobConfig) {
-    const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO cron_jobs 
-      (job_id, project_id, cron_node_id, cron_node_label, cron_expression, enabled, nodes_json, edges_json, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `)
+  async saveCronJob(jobConfig) {
+    await this.ensureInitialized()
 
-    return stmt.run(
-      jobConfig.jobId,
-      jobConfig.projectId,
-      jobConfig.cronNodeId,
-      jobConfig.cronNodeLabel,
-      jobConfig.cronExpression,
-      jobConfig.enabled ? 1 : 0,
-      JSON.stringify(jobConfig.nodes),
-      JSON.stringify(jobConfig.edges)
-    )
+    const now = new Date().toISOString()
+
+    const cronJob = {
+      id: jobConfig.jobId,
+      projectId: jobConfig.projectId,
+      cronNodeId: jobConfig.cronNodeId,
+      cronNodeLabel: jobConfig.cronNodeLabel,
+      cronExpression: jobConfig.cronExpression,
+      enabled: jobConfig.enabled ? 'true' : 'false',
+      nodes: JSON.stringify(jobConfig.nodes),
+      edges: JSON.stringify(jobConfig.edges),
+      lastRun: null,
+      createdAt: now,
+      updatedAt: now
+    }
+
+    // Use upsert pattern: try to update first, if no rows affected then insert
+    const existing = await this.db
+      .select()
+      .from(cronJobs)
+      .where(eq(cronJobs.id, jobConfig.jobId))
+      .limit(1)
+
+    if (existing.length > 0) {
+      // Update existing
+      await this.db
+        .update(cronJobs)
+        .set({
+          cronNodeLabel: jobConfig.cronNodeLabel,
+          cronExpression: jobConfig.cronExpression,
+          enabled: jobConfig.enabled ? 'true' : 'false',
+          nodes: JSON.stringify(jobConfig.nodes),
+          edges: JSON.stringify(jobConfig.edges),
+          updatedAt: now
+        })
+        .where(eq(cronJobs.id, jobConfig.jobId))
+    } else {
+      // Insert new
+      await this.db.insert(cronJobs).values(cronJob)
+    }
+
+    console.log(`💾 Cron job saved to database: ${jobConfig.jobId}`)
+    return cronJob
   }
 
   /**
    * Get all enabled cron jobs from database
    */
-  getEnabledCronJobs() {
-    const stmt = this.db.prepare(`
-      SELECT * FROM cron_jobs WHERE enabled = 1 ORDER BY created_at
-    `)
+  async getEnabledCronJobs() {
+    await this.ensureInitialized()
 
-    const rows = stmt.all()
-    return rows.map(row => ({
-      jobId: row.job_id,
-      projectId: row.project_id,
-      cronNodeId: row.cron_node_id,
-      cronNodeLabel: row.cron_node_label,
-      cronExpression: row.cron_expression,
-      enabled: Boolean(row.enabled),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      lastRun: row.last_run,
-      nodes: JSON.parse(row.nodes_json),
-      edges: JSON.parse(row.edges_json)
-    }))
+    try {
+      const results = await this.db
+        .select()
+        .from(cronJobs)
+        .where(eq(cronJobs.enabled, 'true'))
+
+      console.log(`📋 Found ${results.length} enabled cron jobs in database`)
+
+      return results.map(row => ({
+        jobId: row.id,
+        projectId: row.projectId,
+        cronNodeId: row.cronNodeId,
+        cronNodeLabel: row.cronNodeLabel,
+        cronExpression: row.cronExpression,
+        enabled: row.enabled === 'true',
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        lastRun: row.lastRun,
+        nodes: JSON.parse(row.nodes),
+        edges: JSON.parse(row.edges)
+      }))
+    } catch (error) {
+      console.error('❌ Error getting enabled cron jobs:', error)
+      return [] // Return empty array on error
+    }
   }
 
   /**
    * Get cron jobs for a specific project
    */
-  getCronJobsForProject(projectId) {
-    const stmt = this.db.prepare(`
-      SELECT * FROM cron_jobs WHERE project_id = ? ORDER BY created_at
-    `)
+  async getCronJobsForProject(projectId) {
+    await this.ensureInitialized()
 
-    const rows = stmt.all(projectId)
-    return rows.map(row => ({
-      jobId: row.job_id,
-      projectId: row.project_id,
-      cronNodeId: row.cron_node_id,
-      cronNodeLabel: row.cron_node_label,
-      cronExpression: row.cron_expression,
-      enabled: Boolean(row.enabled),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      lastRun: row.last_run,
-      nodes: JSON.parse(row.nodes_json),
-      edges: JSON.parse(row.edges_json)
+    const results = await this.db
+      .select()
+      .from(cronJobs)
+      .where(eq(cronJobs.projectId, projectId))
+
+    return results.map(row => ({
+      jobId: row.id,
+      projectId: row.projectId,
+      cronNodeId: row.cronNodeId,
+      cronNodeLabel: row.cronNodeLabel,
+      cronExpression: row.cronExpression,
+      enabled: row.enabled === 'true',
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      lastRun: row.lastRun,
+      nodes: JSON.parse(row.nodes),
+      edges: JSON.parse(row.edges)
     }))
   }
 
   /**
    * Delete cron jobs for a project
    */
-  deleteCronJobsForProject(projectId) {
-    const stmt = this.db.prepare(`
-      DELETE FROM cron_jobs WHERE project_id = ?
-    `)
-    return stmt.run(projectId)
+  async deleteCronJobsForProject(projectId) {
+    await this.ensureInitialized()
+
+    const result = await this.db
+      .delete(cronJobs)
+      .where(eq(cronJobs.projectId, projectId))
+
+    return result
   }
 
   /**
    * Update last run time for a cron job
    */
-  updateLastRun(jobId, lastRun = new Date()) {
-    const stmt = this.db.prepare(`
-      UPDATE cron_jobs SET last_run = ? WHERE job_id = ?
-    `)
-    return stmt.run(lastRun.toISOString(), jobId)
+  async updateLastRun(jobId, lastRun = new Date()) {
+    await this.ensureInitialized()
+
+    await this.db
+      .update(cronJobs)
+      .set({
+        lastRun: lastRun.toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(cronJobs.id, jobId))
+
+    return true
   }
 
   /**
    * Disable a cron job
    */
-  disableCronJob(jobId) {
-    const stmt = this.db.prepare(`
-      UPDATE cron_jobs SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE job_id = ?
-    `)
-    return stmt.run(jobId)
+  async disableCronJob(jobId) {
+    await this.ensureInitialized()
+
+    await this.db
+      .update(cronJobs)
+      .set({
+        enabled: 'false',
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(cronJobs.id, jobId))
+
+    return true
   }
 
   /**
    * Enable a cron job
    */
-  enableCronJob(jobId) {
-    const stmt = this.db.prepare(`
-      UPDATE cron_jobs SET enabled = 1, updated_at = CURRENT_TIMESTAMP WHERE job_id = ?
-    `)
-    return stmt.run(jobId)
+  async enableCronJob(jobId) {
+    await this.ensureInitialized()
+
+    await this.db
+      .update(cronJobs)
+      .set({
+        enabled: 'true',
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(cronJobs.id, jobId))
+
+    return true
   }
 
   /**
    * Delete all cron jobs for a specific project
    */
-  deleteProjectCronJobs(projectId) {
+  async deleteProjectCronJobs(projectId) {
     try {
-      const stmt = this.db.prepare(`
-        DELETE FROM cron_jobs 
-        WHERE project_id = ?
-      `)
-      const result = stmt.run(projectId)
-      console.log(`🗑️ Deleted ${result.changes} cron jobs for project ${projectId}`)
-      return result.changes
+      await this.ensureInitialized()
+
+      const result = await this.db
+        .delete(cronJobs)
+        .where(eq(cronJobs.projectId, projectId))
+
+      console.log(`🗑️ Deleted cron jobs for project ${projectId}`)
+      return result
     } catch (error) {
       console.error('❌ Error deleting project cron jobs:', error)
       throw error
@@ -171,26 +215,19 @@ class CronDatabaseService {
   /**
    * Get database statistics
    */
-  getStats() {
+  async getStats() {
     try {
-      const totalStmt = this.db.prepare(`SELECT COUNT(*) as total FROM cron_jobs`)
-      const enabledStmt = this.db.prepare(`SELECT COUNT(*) as enabled FROM cron_jobs WHERE enabled = 1`)
-      
-      const total = totalStmt.get().total
-      const enabled = enabledStmt.get().enabled
-      
+      await this.ensureInitialized()
+
+      const allJobs = await this.db.select().from(cronJobs)
+      const total = allJobs.length
+      const enabled = allJobs.filter(job => job.enabled === 'true').length
+
       return { total, enabled, disabled: total - enabled }
     } catch (error) {
       console.error('❌ Error getting database stats:', error)
       return { total: 0, enabled: 0, disabled: 0 }
     }
-  }
-
-  /**
-   * Close database connection
-   */
-  close() {
-    this.db.close()
   }
 }
 

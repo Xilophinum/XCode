@@ -152,11 +152,6 @@ export const useProjectsStore = defineStore('projects', {
       }
     },
 
-    async saveData() {
-      // No longer needed as we save directly to database
-      // Kept for compatibility
-    },
-
     // Create a folder at a specific path
     async createFolder(name, description, pathArray = []) {
       const authStore = useAuthStore()

@@ -163,8 +163,10 @@
                   <div
                     v-for="nodeType in triggerNodes"
                     :key="nodeType.type"
-                    class="p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-                    @click="addNode(nodeType)"
+                    class="p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                    :class="[isDragging ? 'cursor-grabbing' : 'cursor-grab']"
+                    :draggable="true" 
+                    @dragstart="onDragStart($event, nodeType)"
                   >
                     <div class="font-medium text-sm text-neutral-900 dark:text-white">{{ nodeType.name }}</div>
                     <div class="text-xs text-neutral-500 dark:text-neutral-400">{{ nodeType.description }}</div>
@@ -178,8 +180,10 @@
                   <div
                     v-for="nodeType in parameterNodes"
                     :key="nodeType.type"
-                    class="p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-                    @click="addNode(nodeType)"
+                    class="p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                    :class="[isDragging ? 'cursor-grabbing' : 'cursor-grab']"
+                    :draggable="true" 
+                    @dragstart="onDragStart($event, nodeType)"
                   >
                     <div class="font-medium text-sm text-neutral-900 dark:text-white">{{ nodeType.name }}</div>
                     <div class="text-xs text-neutral-500 dark:text-neutral-400">{{ nodeType.description }}</div>
@@ -193,8 +197,10 @@
                   <div
                     v-for="nodeType in executionNodes"
                     :key="nodeType.type"
-                    class="p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-                    @click="addNode(nodeType)"
+                    class="p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                    :class="[isDragging ? 'cursor-grabbing' : 'cursor-grab']"
+                    :draggable="true" 
+                    @dragstart="onDragStart($event, nodeType)"
                   >
                     <div class="font-medium text-sm text-neutral-900 dark:text-white">{{ nodeType.name }}</div>
                     <div class="text-xs text-neutral-500 dark:text-neutral-400">{{ nodeType.description }}</div>
@@ -208,8 +214,10 @@
                   <div
                     v-for="nodeType in controlNodes"
                     :key="nodeType.type"
-                    class="p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-                    @click="addNode(nodeType)"
+                    class="p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                    :class="[isDragging ? 'cursor-grabbing' : 'cursor-grab']"
+                    :draggable="true" 
+                    @dragstart="onDragStart($event, nodeType)"
                   >
                     <div class="font-medium text-sm text-neutral-900 dark:text-white">{{ nodeType.name }}</div>
                     <div class="text-xs text-neutral-500 dark:text-neutral-400">{{ nodeType.description }}</div>
@@ -255,7 +263,7 @@
               </button>
             </div>
             
-            <div class="w-full h-full" @keydown="handleKeyDown" tabindex="0">
+            <div class="w-full h-full" @keydown="handleKeyDown" tabindex="0" @drop="addNode">
               <VueFlow
                 v-model:nodes="nodes"
                 v-model:edges="edges"
@@ -268,6 +276,7 @@
                 :snap-grid="[5, 5]"
                 :connection-mode="ConnectionMode.Loose"
                 :delete-key-code="[]"
+                @dragover="onDragOver" 
               >
                 <Background 
                   variant="lines" 
@@ -429,6 +438,26 @@
                   class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
                   @input="updateNodeLabel"
                 >
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Color</label>
+                <div class="flex items-center space-x-2">
+                  <input
+                    v-model="selectedNode.data.color"
+                    type="color"
+                    class="w-12 h-10 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                  >
+                  <input
+                    v-model="selectedNode.data.color"
+                    type="text"
+                    class="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+                    placeholder="#6b7280"
+                  >
+                </div>
+                <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  Choose a custom color for this node. The color picker shows a preview, or enter a hex color code.
+                </p>
               </div>
               
               <div v-if="selectedNode.data?.nodeType === 'number'">
@@ -805,50 +834,50 @@
                     <div>
                       <div class="font-medium mb-1">GitHub Push Event:</div>
                       <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
-Headers:<br/>
-X-Hub-Signature-256: sha256=abc123...<br/>
-X-GitHub-Event: push<br/><br/>
-Body:<br/>
-{<br/>
-&nbsp;&nbsp;"ref": "refs/heads/main",<br/>
-&nbsp;&nbsp;"repository": {"name": "my-repo"},<br/>
-&nbsp;&nbsp;"head_commit": {<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;"message": "Fix critical bug",<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "John Doe"}<br/>
-&nbsp;&nbsp;}<br/>
-}
+                        Headers:<br/>
+                        X-Hub-Signature-256: sha256=abc123...<br/>
+                        X-GitHub-Event: push<br/><br/>
+                        Body:<br/>
+                        {<br/>
+                        &nbsp;&nbsp;"ref": "refs/heads/main",<br/>
+                        &nbsp;&nbsp;"repository": {"name": "my-repo"},<br/>
+                        &nbsp;&nbsp;"head_commit": {<br/>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"message": "Fix critical bug",<br/>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "John Doe"}<br/>
+                        &nbsp;&nbsp;}<br/>
+                        }
                       </div>
                     </div>
                     <div>
                       <div class="font-medium mb-1">GitLab Push Event:</div>
                       <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
-Headers:<br/>
-X-Gitlab-Token: {{ selectedNode.data.secretToken || 'your-secret-token' }}<br/>
-X-Gitlab-Event: Push Hook<br/><br/>
-Body:<br/>
-{<br/>
-&nbsp;&nbsp;"ref": "refs/heads/main",<br/>
-&nbsp;&nbsp;"project": {"name": "my-repo"},<br/>
-&nbsp;&nbsp;"commits": [{<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;"message": "Deploy to production",<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "Jane Smith"}<br/>
-&nbsp;&nbsp;}]<br/>
-}
+                        Headers:<br/>
+                        X-Gitlab-Token: {{ selectedNode.data.secretToken || 'your-secret-token' }}<br/>
+                        X-Gitlab-Event: Push Hook<br/><br/>
+                        Body:<br/>
+                        {<br/>
+                        &nbsp;&nbsp;"ref": "refs/heads/main",<br/>
+                        &nbsp;&nbsp;"project": {"name": "my-repo"},<br/>
+                        &nbsp;&nbsp;"commits": [{<br/>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"message": "Deploy to production",<br/>
+                        &nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "Jane Smith"}<br/>
+                        &nbsp;&nbsp;}]<br/>
+                        }
                       </div>
                     </div>
                     <div>
                       <div class="font-medium mb-1">Custom API Webhook:</div>
                       <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
-Headers:<br/>
-X-Webhook-Token: {{ selectedNode.data.secretToken || 'your-secret-token' }}<br/>
-Content-Type: application/json<br/><br/>
-Body:<br/>
-{<br/>
-&nbsp;&nbsp;"event": "deployment",<br/>
-&nbsp;&nbsp;"environment": "production",<br/>
-&nbsp;&nbsp;"status": "success",<br/>
-&nbsp;&nbsp;"timestamp": "2024-01-15T10:30:00Z"<br/>
-}
+                        Headers:<br/>
+                        X-Webhook-Token: {{ selectedNode.data.secretToken || 'your-secret-token' }}<br/>
+                        Content-Type: application/json<br/><br/>
+                        Body:<br/>
+                        {<br/>
+                        &nbsp;&nbsp;"event": "deployment",<br/>
+                        &nbsp;&nbsp;"environment": "production",<br/>
+                        &nbsp;&nbsp;"status": "success",<br/>
+                        &nbsp;&nbsp;"timestamp": "2024-01-15T10:30:00Z"<br/>
+                        }
                       </div>
                     </div>
                   </div>
@@ -1070,7 +1099,6 @@ import { VueFlow, useVueFlow, Handle, Position, ConnectionMode } from '@vue-flow
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { ref, computed, onMounted, onUnmounted, nextTick, defineComponent, h, markRaw, watch } from 'vue'
-
 // Import Vue Flow styles
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -1085,7 +1113,6 @@ const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const webSocketStore = useWebSocketStore()
 const { isDark } = useDarkMode()
-
 const isEditorReady = ref(false)
 const isSaving = ref(false)
 const selectedNode = ref(null)
@@ -1226,7 +1253,7 @@ const nodes = ref([])
 const edges = ref([])
 
 // Use Vue Flow composables
-const { onConnect, addEdges, getSelectedNodes, getSelectedEdges } = useVueFlow()
+const { onConnect, getSelectedNodes, getSelectedEdges, screenToFlowCoordinate, onNodesInitialized, updateNode } = useVueFlow()
 
 // Handle keyboard delete events
 const handleKeyDown = async (event) => {
@@ -1334,7 +1361,7 @@ const hierarchicalProject = computed(() => {
 const triggerNodes = [
   { type: 'cron', name: 'Cron Trigger', description: 'Schedule job execution with cron expressions' },
   { type: 'webhook', name: 'Webhook Trigger', description: 'Trigger via HTTP webhook' },
-  { type: 'pipeline-trigger', name: 'Pipeline Trigger', description: 'Trigger from another pipeline completion' },
+  { type: 'job-trigger', name: 'Job Trigger', description: 'Trigger from another project completion' },
   { type: 'api-trigger', name: 'API Trigger', description: 'Trigger via REST API call' }
 ]
 
@@ -1624,6 +1651,10 @@ const confirmDelete = () => {
     window.deleteResolve(true)
     window.deleteResolve = null
   }
+  if (showPropertiesPanel.value && selectedNode.value) {
+    showPropertiesPanel.value = false
+    selectedNode.value = null // Deselect node if properties panel is open
+  }
 }
 
 const cancelDelete = () => {
@@ -1746,29 +1777,6 @@ const stopResize = () => {
   document.body.style.userSelect = ''
 }
 
-const addNode = async (nodeType) => {
-  const newNode = {
-    id: `${nodeType.type}-${Date.now()}`,
-    type: 'custom',
-    position: {
-      x: Math.random() * 400 + 200,
-      y: Math.random() * 200 + 100
-    },
-    data: {
-      label: nodeType.name,
-      nodeType: nodeType.type,
-      description: nodeType.description,
-      color: getNodeColor(nodeType.type),
-      textColor: 'white',
-      
-      // Set default values based on node type
-      ...getDefaultNodeData(nodeType.type)
-    }
-  }
-  
-  nodes.value.push(newNode)
-}
-
 const getDefaultNodeData = (type) => {
   const baseData = {
     // Socket configuration - every node has this
@@ -1801,11 +1809,11 @@ const getDefaultNodeData = (type) => {
         description: '',
         active: true
       }
-    case 'pipeline-trigger':
+    case 'job-trigger':
       return { 
         ...baseData,
         hasExecutionInput: false,
-        pipelineName: '',
+        jobName: '',
         triggerOn: 'success', // success, failure, always
         waitForCompletion: true
       }
@@ -1937,36 +1945,68 @@ const getDefaultNodeData = (type) => {
   }
 }
 
-const getNodeColor = (type) => {
-  const colors = {
-    // Trigger nodes - Green shades
-    'cron': '#10b981',
-    'webhook': '#047857',
-    'pipeline-trigger': '#064e3b',
-    'api-trigger': '#022c22',
-    
-    // Parameter nodes - Blue shades
-    'string-param': '#3b82f6',
-    'text-param': '#2563eb',
-    'choice-param': '#1d4ed8',
-    'boolean-param': '#1e40af',
-    'file-param': '#1e3a8a',
-    
-    // Execution nodes - Orange/Red shades
-    'bash': '#f59e0b',
-    'powershell': '#d97706',
-    'cmd': '#b45309',
-    'python': '#92400e',
-    'node-js': '#78350f',
-    
-    // Control nodes - Purple shades
-    'parallel': '#8b5cf6',
-    'conditional': '#7c3aed',
-    'retry': '#6d28d9',
-    'notification': '#5b21b6'
+const isDragging = ref(false)
+const draggedRef = ref(null)
+
+watch(isDragging, (dragging) => {
+  document.body.style.userSelect = dragging ? 'none' : ''
+})
+
+const onDragStart = (event, type) => {
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
   }
-  return colors[type] || '#6b7280'
+  draggedRef.value = type
+  isDragging.value = true
+  document.addEventListener('drop', onDragEnd)
 }
+
+const onDragEnd = () => {
+  isDragging.value = false
+  draggedRef.value = null
+  document.removeEventListener('drop', onDragEnd)
+}
+
+const onDragOver = (event) => {
+  event.preventDefault()
+  if (draggedRef.value && event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+}
+
+const addNode = async (event) => {
+
+  const nodeType = draggedRef.value
+  if (!nodeType) return
+  const position = screenToFlowCoordinate({
+    x: event.clientX,
+    y: event.clientY,
+  })
+
+  const newNode = {
+    id: `${nodeType.type}-${Date.now()}`,
+    type: 'custom',
+    position,
+    data: {
+      label: nodeType.name,
+      nodeType: nodeType.type,
+      description: nodeType.description,
+      color: '#6b7280',
+      textColor: 'white',
+      ...getDefaultNodeData(nodeType.type)
+    }
+  }
+  const { off } = onNodesInitialized(() => {
+    updateNode(newNode.id, (node) => ({
+      position: { x: node.position.x - node.dimensions.width / 2, y: node.position.y - node.dimensions.height / 2 },
+    }))
+    off()
+  })
+  nodes.value.push(newNode)
+  draggedRef.value = null
+  isDragging.value = false
+}
+
 
 const saveProject = async () => {
   if (!project.value) return
@@ -2020,9 +2060,6 @@ const saveProject = async () => {
   }
 }
 
-const updateNodeLabel = () => {
-  // Node label updated
-}
 
 // Webhook endpoint validation
 const validateEndpoint = (event) => {
@@ -2260,82 +2297,6 @@ const cancelExecution = async () => {
       addExecutionResult(null, 'System', 'error', `Cancellation error: ${error.message}`)
     }
   }
-}
-
-// Remove all the fake local execution functions - we don't need them anymore
-// The terminal only shows real agent output
-
-// Parameter substitution system (kept for graph analysis)
-const getSocketInputValue = (nodeId, socketId, context) => {
-  // Find the edge connected to this socket
-  const edge = edges.value.find(e => e.target === nodeId && e.targetHandle === socketId)
-  if (!edge) return undefined
-  
-  // Get the value from the source node
-  const sourceNode = nodes.value.find(n => n.id === edge.source)
-  if (!sourceNode) return undefined
-  
-  // For parameter nodes, return their configured value
-  if (sourceNode.data.nodeType?.includes('-param')) {
-    return getParameterValue(sourceNode)
-  }
-  
-  // For other nodes, get their computed value from context
-  return context.get(edge.source)
-}
-
-const getParameterValue = (paramNode) => {
-  const nodeType = paramNode.data.nodeType
-  const data = paramNode.data
-  
-  switch (nodeType) {
-    case 'string-param':
-    case 'text-param':
-      return data.defaultValue || ''
-    case 'choice-param':
-      return data.defaultValue || (data.choices?.[0] || '')
-    case 'boolean-param':
-      return data.defaultValue || false
-    case 'file-param':
-      return data.defaultValue || ''
-    default:
-      return ''
-  }
-}
-
-const substituteSocketPlaceholders = (text, nodeId, context) => {
-  if (!text || typeof text !== 'string') return text
-  
-  // Find all socket placeholders in the format ${SOCKET_X_INPUT} or ${socketLabel}
-  const socketPlaceholderRegex = /\$\{([^}]+)\}/g
-  
-  return text.replace(socketPlaceholderRegex, (match, placeholder) => {
-    // Check if it's a socket reference
-    if (placeholder.startsWith('SOCKET_') && placeholder.endsWith('_INPUT')) {
-      // Extract socket index (SOCKET_1_INPUT -> 1)
-      const socketIndex = parseInt(placeholder.match(/SOCKET_(\d+)_INPUT/)?.[1]) - 1
-      if (socketIndex >= 0) {
-        const node = nodes.value.find(n => n.id === nodeId)
-        if (node && node.data.inputSockets && node.data.inputSockets[socketIndex]) {
-          const socket = node.data.inputSockets[socketIndex]
-          const value = getSocketInputValue(nodeId, socket.id, context)
-          return value !== undefined ? String(value) : match
-        }
-      }
-    } else {
-      // Check if it's a socket label reference
-      const node = nodes.value.find(n => n.id === nodeId)
-      if (node && node.data.inputSockets) {
-        const socket = node.data.inputSockets.find(s => s.label === placeholder)
-        if (socket) {
-          const value = getSocketInputValue(nodeId, socket.id, context)
-          return value !== undefined ? String(value) : match
-        }
-      }
-    }
-    
-    return match // Return original if no match found
-  })
 }
 
 const onNodeClick = (event) => {
@@ -2692,6 +2653,7 @@ const toggleProjectStatus = async () => {
       console.error('Failed to toggle project status:', result.error)
       addExecutionResult(null, 'System', 'error', `Failed to ${project.value.status === 'disabled' ? 'enable' : 'disable'} project: ${result.error}`)
     }
+    saveProject()
   } catch (error) {
     console.error('Error toggling project status:', error)
     addExecutionResult(null, 'System', 'error', `Error changing project status: ${error.message}`)

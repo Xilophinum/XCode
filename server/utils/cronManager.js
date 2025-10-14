@@ -184,10 +184,10 @@ class CronManager {
    */
   async restoreCronJobsFromDatabase() {
     console.log(`📤 Restoring cron jobs from database...`)
-    
+
     try {
-      const savedCronJobs = cronDbService.getEnabledCronJobs()
-      
+      const savedCronJobs = await cronDbService.getEnabledCronJobs()
+
       if (savedCronJobs.length === 0) {
         console.log(`📅 No saved cron jobs found`)
         return
@@ -201,7 +201,7 @@ class CronManager {
         } catch (error) {
           console.error(`❌ Failed to restore cron job ${savedJob.jobId}:`, error)
           // Disable the problematic job in database
-          cronDbService.disableCronJob(savedJob.jobId)
+          await cronDbService.disableCronJob(savedJob.jobId)
         }
       }
 

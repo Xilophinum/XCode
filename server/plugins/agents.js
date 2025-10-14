@@ -18,6 +18,62 @@ export default defineNitroPlugin(async (nitroApp) => {
   const agentManager = await getAgentManager()
   console.log(`🔧 WebSocket plugin initialized - existing agents: ${agentManager.agentData.size}, connections: ${agentManager.connectedAgents.size}`)
 
+  // Mark all agents as offline on server startup
+  const dataService = await getDataService()
+  await dataService.markAllAgentsOffline()
+  console.log(`🔧 All agents marked as offline on server startup - agents must reconnect`)
+
+  // Start heartbeat timeout checker (runs every 30 seconds)
+  const HEARTBEAT_TIMEOUT = 60000 // 60 seconds
+  const HEARTBEAT_CHECK_INTERVAL = 30000 // 30 seconds
+
+  setInterval(async () => {
+    try {
+      const allAgents = await dataService.getAgents()
+      const now = Date.now()
+
+      for (const agent of allAgents) {
+        // Skip if already offline
+        if (agent.status === 'offline' || agent.status === 'disconnected') continue
+
+        // Check if agent has a lastHeartbeat and if it's stale
+        if (agent.lastHeartbeat) {
+          const lastHeartbeatTime = new Date(agent.lastHeartbeat).getTime()
+          const timeSinceHeartbeat = now - lastHeartbeatTime
+
+          if (timeSinceHeartbeat > HEARTBEAT_TIMEOUT) {
+            console.log(`⚠️ Agent ${agent.id} (${agent.name}) missed heartbeat (${Math.round(timeSinceHeartbeat / 1000)}s) - marking as offline`)
+
+            // Update database status
+            await dataService.updateAgentStatus(agent.id, 'offline')
+
+            // Remove from connected agents if present
+            if (agentManager.connectedAgents.has(agent.id)) {
+              agentManager.connectedAgents.delete(agent.id)
+            }
+
+            // Remove from agent data
+            if (agentManager.agentData.has(agent.id)) {
+              agentManager.agentData.delete(agent.id)
+            }
+
+            // Broadcast status update to clients
+            broadcastToClients({
+              type: 'agent_status_update',
+              agentId: agent.id,
+              status: 'offline',
+              currentJobs: 0,
+              lastHeartbeat: agent.lastHeartbeat,
+              timestamp: new Date().toISOString()
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error checking agent heartbeat timeouts:', error)
+    }
+  }, HEARTBEAT_CHECK_INTERVAL)
+
   // Store io instance globally for broadcasting from other modules
   globalThis.socketIO = io
   globalThis.broadcastToClients = broadcastToClients
@@ -312,6 +368,7 @@ async function handleAgentRegistration(socket, msg, agentManager) {
     // Store agent info in memory for quick access
     const agentInfo = {
       agentId: socket.agentId,
+      name: updatedAgent.name, // Agent's name from database
       hostname: msg.hostname,
       platform: msg.platform,
       architecture: msg.architecture,
@@ -321,7 +378,7 @@ async function handleAgentRegistration(socket, msg, agentManager) {
       registeredAt: new Date(),
       status: 'online'
     }
-    
+
     // Store in agent manager
     agentManager.agentData.set(socket.agentId, agentInfo)
     
@@ -594,7 +651,27 @@ async function handleJobOutput(socket, msg, agentManager) {
   try {
     // Handle the agent job output (existing functionality)
     agentManager.handleJobOutput(socket.agentId, msg)
-    
+
+    // Add output to build logs if job has associated build
+    const { jobManager } = await import('../utils/jobManager.js')
+    const job = await jobManager.getJob(msg.jobId)
+
+    if (job && job.buildId) {
+      const { getBuildStatsManager } = await import('../utils/buildStatsManager.js')
+      const buildStatsManager = await getBuildStatsManager()
+
+      // Add log entry to build logs
+      await buildStatsManager.addBuildLog(job.buildId, {
+        nodeId: msg.nodeId || null,
+        level: msg.output?.type || 'info',
+        message: msg.output?.message || String(msg.output || ''),
+        command: msg.output?.command || null,
+        output: msg.output?.output || null,
+        source: 'agent',
+        timestamp: msg.timestamp || new Date().toISOString()
+      })
+    }
+
     // Broadcast job output to subscribed clients
     if (msg.projectId) {
       broadcastToProject(msg.projectId, {
@@ -606,7 +683,7 @@ async function handleJobOutput(socket, msg, agentManager) {
         timestamp: msg.timestamp || new Date().toISOString()
       })
     }
-    
+
   } catch (error) {
     console.error('Job output handling error:', error)
   }
@@ -668,7 +745,6 @@ function broadcastToClients(message) {
         successCount++
       }
     })
-    console.log(`📡 Broadcasted to ${successCount} clients:`, message.type)
   } catch (error) {
     console.error('Error broadcasting to clients:', error)
   }
@@ -690,8 +766,6 @@ function broadcastToProject(projectId, message) {
         successCount++
       }
     })
-    
-    console.log(`📡 Broadcasted to ${successCount}/${subscribedClients.size} clients for project ${projectId}:`, message.type)
   } catch (error) {
     console.error('Error broadcasting to project:', error)
   }

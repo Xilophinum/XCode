@@ -164,20 +164,40 @@ export const buildLogs = sqliteTable('build_logs', {
   id: text('id').primaryKey(),
   buildId: text('build_id').notNull(), // Reference to builds.id
   nodeId: text('node_id'), // Specific node that generated this log (null for system logs)
-  
+
   // Log content
   level: text('level').notNull(), // 'info', 'warn', 'error', 'success', 'debug'
   message: text('message').notNull(), // Log message
   command: text('command'), // Command that was executed (if applicable)
   output: text('output'), // Command output (if applicable)
-  
+
   // Timing
   timestamp: text('timestamp').notNull(), // ISO timestamp when log was created
   sequence: integer('sequence').notNull(), // Sequential order within the build
-  
+
   // Context
   source: text('source').notNull().default('system'), // 'system', 'agent', 'node', 'user'
   metadata: text('metadata'), // JSON object for additional context
-  
+
   createdAt: text('created_at').notNull(),
+})
+
+// Cron job scheduling table
+export const cronJobs = sqliteTable('cron_jobs', {
+  id: text('id').primaryKey(), // Unique cron job ID (jobId)
+  projectId: text('project_id').notNull(), // Reference to project
+  cronNodeId: text('cron_node_id').notNull(), // Node ID of the cron trigger
+  cronNodeLabel: text('cron_node_label').notNull(), // User-friendly label
+  cronExpression: text('cron_expression').notNull(), // Cron expression (e.g., "0 * * * *")
+  enabled: text('enabled').notNull().default('true'), // 'true' or 'false'
+
+  // Workflow data
+  nodes: text('nodes').notNull(), // JSON array of workflow nodes
+  edges: text('edges').notNull(), // JSON array of workflow edges
+
+  // Tracking
+  lastRun: text('last_run'), // ISO timestamp of last execution
+
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
 })

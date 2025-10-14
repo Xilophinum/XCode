@@ -4,7 +4,7 @@
     <AppNavigation :breadcrumbs="['agents']" />
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <main class="max-w-8xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div class="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Build Agents</h1>
@@ -185,7 +185,7 @@
                       <!-- Always visible capabilities -->
                       <div class="flex flex-wrap gap-1">
                         <span
-                          v-for="capability in agent.capabilities.slice(0, 3)"
+                          v-for="capability in agent.capabilities.slice(0, 9)"
                           :key="capability"
                           class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                         >
