@@ -117,7 +117,7 @@
               ⚠️ This project is disabled
             </p>
             <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
-              Cron jobs will not run, manual execution is blocked, and webhooks will be ignored. Click "Enable" to reactivate.
+              Cron jobs will not run, manual execution is blocked, job triggers will not fire, and webhooks will be ignored. Click "Enable" to reactivate.
             </p>
           </div>
           <div class="ml-auto">
@@ -276,14 +276,15 @@
                 :snap-grid="[5, 5]"
                 :connection-mode="ConnectionMode.Loose"
                 :delete-key-code="[]"
-                @dragover="onDragOver" 
+                @dragover="onDragOver"
+                :class="{ dark }"
               >
                 <Background 
                   variant="lines" 
                   :gap="[20, 20]"
                   :size="1"
-                  :color="isDark ? '#525252' : '#d1d5db'"
-                  :backgroundColor="isDark ? '#171717' : '#f9fafb'"
+                  :color="dark ? '#525252' : '#d1d5db'"
+                  :backgroundColor="dark ? '#171717' : '#f9fafb'"
                 />
                 <Controls class="vue-flow-controls" />
                 
@@ -580,347 +581,17 @@
               </div>
               
               <!-- Cron Configuration for cron trigger nodes -->
-              <div v-if="selectedNode.data?.nodeType === 'cron'">
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                  Cron Expression <span class="text-red-500">*</span>
-                </label>
-                <input
-                  v-model="selectedNode.data.cronExpression"
-                  type="text"
-                  class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono"
-                  placeholder="0 0 * * * (every hour at minute 0)"
-                />
-                <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  Enter a cron expression. Format: minute hour day month dayOfWeek
-                </p>
-                
-                <!-- Cron presets -->
-                <div class="mt-2">
-                  <label class="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Quick Presets:</label>
-                  <div class="grid grid-cols-2 gap-1">
-                    <button
-                      @click="selectedNode.data.cronExpression = '0 * * * *'"
-                      class="px-2 py-1 text-xs bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded"
-                    >
-                      Every hour
-                    </button>
-                    <button
-                      @click="selectedNode.data.cronExpression = '0 0 * * *'"
-                      class="px-2 py-1 text-xs bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded"
-                    >
-                      Daily at midnight
-                    </button>
-                    <button
-                      @click="selectedNode.data.cronExpression = '0 0 * * 1'"
-                      class="px-2 py-1 text-xs bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded"
-                    >
-                      Weekly (Monday)
-                    </button>
-                    <button
-                      @click="selectedNode.data.cronExpression = '0 0 1 * *'"
-                      class="px-2 py-1 text-xs bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded"
-                    >
-                      Monthly (1st)
-                    </button>
-                  </div>
-                </div>
-                
-                <!-- Cron status -->
-                <div class="mt-3 p-2 bg-amber-50 dark:bg-amber-950 rounded text-xs">
-                  <div class="font-medium text-amber-800 dark:text-amber-200 mb-1">⏰ Scheduling Status:</div>
-                  <div class="text-amber-700 dark:text-amber-300">
-                    <div v-if="selectedNode.data.cronExpression && cronInfo.isValid" class="space-y-1">
-                      <div class="font-medium">{{ cronInfo.description }}</div>
-                      <div v-if="cronInfo.nextRun" class="text-xs">
-                        Next run: {{ new Date(cronInfo.nextRun).toLocaleString() }}
-                      </div>
-                      <div class="text-xs opacity-75">
-                        Expression: {{ selectedNode.data.cronExpression }}
-                      </div>
-                    </div>
-                    <div v-else-if="selectedNode.data.cronExpression && !cronInfo.isValid" class="text-red-600 dark:text-red-400">
-                      {{ cronInfo.description }}
-                    </div>
-                    <span v-else class="text-red-600 dark:text-red-400">
-                      No cron expression configured
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
+              <CronProperties 
+                v-if="selectedNode.data?.nodeType === 'cron'" 
+                :nodeData="selectedNode"
+              />
+
               <!-- Webhook Configuration for webhook trigger nodes -->
-              <div v-if="selectedNode.data?.nodeType === 'webhook'">
-                <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                  <div class="flex items-center mb-2">
-                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                    </svg>
-                    <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200">Webhook Trigger Configuration</h4>
-                  </div>
-                  <p class="text-xs text-blue-700 dark:text-blue-300">
-                    Configure this webhook to allow external systems to trigger this workflow via HTTP requests.
-                  </p>
-                </div>
-                
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                  Custom Endpoint <span class="text-red-500">*</span>
-                </label>
-                <div class="flex items-center mb-2">
-                  <span class="text-sm text-neutral-500 dark:text-neutral-400 mr-2">/api/webhook/</span>
-                  <input
-                    v-model="selectedNode.data.customEndpoint"
-                    type="text"
-                    class="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono"
-                    placeholder="deploy-prod"
-                    pattern="[a-zA-Z0-9-_]+"
-                    @input="validateEndpoint"
-                  />
-                </div>
-                <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  Choose a unique endpoint name (letters, numbers, dashes, and underscores only). Examples: <code>deploy-prod</code>, <code>backup_db</code>, <code>notify-slack</code>
-                </p>
-                
-                <div class="mt-3">
-                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    Secret Token <span class="text-red-500">*</span>
-                  </label>
-                  <div class="flex items-center space-x-2">
-                    <input
-                      v-model="selectedNode.data.secretToken"
-                      type="text"
-                      required
-                      class="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono"
-                      placeholder="Enter a secure secret token (required)"
-                      :class="{ 'border-red-500 dark:border-red-400': !selectedNode.data.secretToken }"
-                    />
-                    <button
-                      @click="generateSecretToken"
-                      type="button"
-                      class="px-3 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center space-x-1"
-                      title="Generate random secure token"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
-                        <circle cx="12" cy="16" r="1"/>
-                        <path d="m7 11V7a5 5 0 0 1 10 0v4"/>
-                      </svg>
-                      <span class="hidden sm:inline">Generate</span>
-                    </button>
-                  </div>
-                  <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                    Required for security. Include this token in the 'X-Webhook-Token' header when calling the webhook. Use the Generate button for a cryptographically secure 64-character token.
-                  </p>
-                  <p v-if="!selectedNode.data.secretToken" class="mt-1 text-xs text-red-500 dark:text-red-400">
-                    ⚠️ Secret token is required for webhook security
-                  </p>
-                </div>
-                
-                <div class="mt-3">
-                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Description</label>
-                  <textarea
-                    v-model="selectedNode.data.description"
-                    rows="2"
-                    class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                    placeholder="Describe what this webhook does (optional)"
-                  ></textarea>
-                </div>
-                
-                <div class="mt-3">
-                  <label class="flex items-center">
-                    <input
-                      v-model="selectedNode.data.active"
-                      type="checkbox"
-                      class="w-4 h-4 text-blue-600 bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
-                    />
-                    <span class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">Active</span>
-                  </label>
-                  <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                    Uncheck to temporarily disable this webhook trigger
-                  </p>
-                </div>
-                
-                <!-- Webhook URL Display -->
-                <div v-if="selectedNode.data.customEndpoint" class="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded text-xs">
-                  <div class="font-medium text-blue-800 dark:text-blue-200 mb-2">🎣 Webhook URL:</div>
-                  <div class="text-blue-700 dark:text-blue-300 space-y-2">
-                    <div class="bg-white dark:bg-blue-900 p-2 rounded border border-blue-200 dark:border-blue-800 font-mono break-all">
-                      {{ webhookUrl }}
-                    </div>
-                    <div class="space-y-1">
-                      <div><strong>Method:</strong> POST</div>
-                      <div><strong>Auth:</strong> Required (secret token)</div>
-                      <div><strong>Status:</strong> {{ selectedNode.data.active ? '✅ Active' : '❌ Inactive' }}</div>
-                    </div>
-                    <div class="text-xs opacity-75 mt-2">
-                      <div><strong>Example curl:</strong></div>
-                      <div class="bg-neutral-800 text-green-400 p-2 rounded mt-1 font-mono text-xs overflow-x-auto">
-                        curl -X POST {{ webhookUrl }} \<br/>&nbsp;&nbsp;-H "X-Webhook-Token: {{ selectedNode.data.secretToken || 'YOUR_SECRET_TOKEN' }}" \<br/>&nbsp;&nbsp;-H "Content-Type: application/json" \<br/>&nbsp;&nbsp;-d '{"message": "Hello from webhook"}'
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Webhook Documentation -->
-                <div class="mt-4 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
-                  <div class="font-medium text-green-800 dark:text-green-200 mb-2">📖 Authentication Methods:</div>
-                  <div class="text-green-700 dark:text-green-300 space-y-2">
-                    <div class="space-y-1">
-                      <div class="font-medium">Custom APIs & Services:</div>
-                      <div class="pl-2 text-xs opacity-90">Header: <span class="font-mono">X-Webhook-Token: your-secret-token</span></div>
-                      <div class="pl-2 text-xs opacity-90">Body: <span class="font-mono">&#123;"token": "your-secret-token"&#125;</span></div>
-                      <div class="pl-2 text-xs opacity-90">Query: <span class="font-mono">?token=your-secret-token</span></div>
-                    </div>
-                    <div class="space-y-1">
-                      <div class="font-medium">Git Platforms (Automatic):</div>
-                      <div class="pl-2 text-xs opacity-90">✅ GitHub: X-Hub-Signature-256 (SHA256 HMAC)</div>
-                      <div class="pl-2 text-xs opacity-90">✅ GitLab: X-Gitlab-Token header</div>
-                      <div class="pl-2 text-xs opacity-90">✅ Bitbucket: X-Hub-Signature (SHA1 HMAC)</div>
-                      <div class="pl-2 text-xs opacity-90">✅ Azure DevOps: Authorization header</div>
-                    </div>
-                    <div class="pt-1 border-t border-green-200 dark:border-green-800">
-                      <div class="font-medium">Security Note:</div>
-                      <div class="text-xs opacity-90">Always configure a secret token for production webhooks. Git platforms will automatically sign requests using your secret.</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Common Use Cases -->
-                <div class="mt-3 p-3 bg-amber-50 dark:bg-amber-950 rounded text-xs">
-                  <div class="font-medium text-amber-800 dark:text-amber-200 mb-2">💡 Common Use Cases:</div>
-                  <div class="text-amber-700 dark:text-amber-300 space-y-1">
-                    <div>• <strong>CI/CD:</strong> Trigger deployments from GitHub, GitLab, or other platforms</div>
-                    <div>• <strong>Notifications:</strong> Respond to events from Slack, Discord, or monitoring tools</div>
-                    <div>• <strong>API Integration:</strong> Process data from external APIs or services</div>
-                    <div>• <strong>Automation:</strong> Execute workflows when specific events occur</div>
-                  </div>
-                </div>
+              <WebHookProperties 
+                v-if="selectedNode.data?.nodeType === 'webhook'" 
+                :nodeData="selectedNode"
+              />
 
-                <!-- Git Integration Examples -->
-                <div class="mt-3 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
-                  <div class="font-medium text-green-800 dark:text-green-200 mb-2">🔧 Git Platform Setup:</div>
-                  <div class="text-green-700 dark:text-green-300 space-y-2">
-                    <div class="space-y-1">
-                      <div class="font-medium">GitHub:</div>
-                      <div class="pl-2 text-xs opacity-90">1. Settings → Webhooks → Add webhook</div>
-                      <div class="pl-2 text-xs opacity-90">2. Payload URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                      <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
-                      <div class="pl-2 text-xs opacity-90">4. Content type: application/json</div>
-                    </div>
-                    <div class="space-y-1">
-                      <div class="font-medium">GitLab:</div>
-                      <div class="pl-2 text-xs opacity-90">1. Settings → Webhooks</div>
-                      <div class="pl-2 text-xs opacity-90">2. URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                      <div class="pl-2 text-xs opacity-90">3. Secret token: <span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
-                    </div>
-                    <div class="space-y-1">
-                      <div class="font-medium">Bitbucket:</div>
-                      <div class="pl-2 text-xs opacity-90">1. Repository Settings → Webhooks → Add webhook</div>
-                      <div class="pl-2 text-xs opacity-90">2. URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                      <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
-                    </div>
-                    <div class="space-y-1">
-                      <div class="font-medium">Azure DevOps:</div>
-                      <div class="pl-2 text-xs opacity-90">1. Project Settings → Service hooks</div>
-                      <div class="pl-2 text-xs opacity-90">2. Service: Web Hooks → URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                      <div class="pl-2 text-xs opacity-90">3. Basic auth: username=token, password=<span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Git Payload Examples -->
-                <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded text-xs">
-                  <div class="font-medium text-blue-800 dark:text-blue-200 mb-2">� Complete Webhook Examples:</div>
-                  <div class="text-blue-700 dark:text-blue-300 space-y-3">
-                    <div>
-                      <div class="font-medium mb-1">GitHub Push Event:</div>
-                      <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
-                        Headers:<br/>
-                        X-Hub-Signature-256: sha256=abc123...<br/>
-                        X-GitHub-Event: push<br/><br/>
-                        Body:<br/>
-                        {<br/>
-                        &nbsp;&nbsp;"ref": "refs/heads/main",<br/>
-                        &nbsp;&nbsp;"repository": {"name": "my-repo"},<br/>
-                        &nbsp;&nbsp;"head_commit": {<br/>
-                        &nbsp;&nbsp;&nbsp;&nbsp;"message": "Fix critical bug",<br/>
-                        &nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "John Doe"}<br/>
-                        &nbsp;&nbsp;}<br/>
-                        }
-                      </div>
-                    </div>
-                    <div>
-                      <div class="font-medium mb-1">GitLab Push Event:</div>
-                      <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
-                        Headers:<br/>
-                        X-Gitlab-Token: {{ selectedNode.data.secretToken || 'your-secret-token' }}<br/>
-                        X-Gitlab-Event: Push Hook<br/><br/>
-                        Body:<br/>
-                        {<br/>
-                        &nbsp;&nbsp;"ref": "refs/heads/main",<br/>
-                        &nbsp;&nbsp;"project": {"name": "my-repo"},<br/>
-                        &nbsp;&nbsp;"commits": [{<br/>
-                        &nbsp;&nbsp;&nbsp;&nbsp;"message": "Deploy to production",<br/>
-                        &nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "Jane Smith"}<br/>
-                        &nbsp;&nbsp;}]<br/>
-                        }
-                      </div>
-                    </div>
-                    <div>
-                      <div class="font-medium mb-1">Custom API Webhook:</div>
-                      <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
-                        Headers:<br/>
-                        X-Webhook-Token: {{ selectedNode.data.secretToken || 'your-secret-token' }}<br/>
-                        Content-Type: application/json<br/><br/>
-                        Body:<br/>
-                        {<br/>
-                        &nbsp;&nbsp;"event": "deployment",<br/>
-                        &nbsp;&nbsp;"environment": "production",<br/>
-                        &nbsp;&nbsp;"status": "success",<br/>
-                        &nbsp;&nbsp;"timestamp": "2024-01-15T10:30:00Z"<br/>
-                        }
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Payload Parsing Guide -->
-                <div class="mt-3 p-3 bg-purple-50 dark:bg-purple-950 rounded text-xs">
-                  <div class="font-medium text-purple-800 dark:text-purple-200 mb-2">📊 Webhook Data Access:</div>
-                  <div class="text-purple-700 dark:text-purple-300 space-y-2">
-                    <div class="space-y-1">
-                      <div class="font-medium">Output Socket:</div>
-                      <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded">
-                        This webhook node provides <strong>1 output socket</strong> containing raw webhook data.
-                      </div>
-                    </div>
-                    <div class="space-y-1">
-                      <div class="font-medium">Available Data:</div>
-                      <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded space-y-1">
-                        <div>• <strong>body</strong> - Complete request payload</div>
-                        <div>• <strong>headers</strong> - HTTP headers object</div>
-                        <div>• <strong>query</strong> - URL query parameters</div>
-                        <div>• <strong>endpoint</strong> - Webhook endpoint path</div>
-                        <div>• <strong>timestamp</strong> - Request timestamp</div>
-                      </div>
-                    </div>
-                    <div class="space-y-1">
-                      <div class="font-medium">Usage Examples:</div>
-                      <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded font-mono space-y-1">
-                        <div># Access Git data from body</div>
-                        <div>echo "Branch: $INPUT_1.body.ref"</div>
-                        <div>echo "Commit: $INPUT_1.body.head_commit.id"</div>
-                        <div>echo "Author: $INPUT_1.body.head_commit.author.name"</div>
-                        <div>echo "Message: $INPUT_1.body.head_commit.message"</div>
-                        <div># Access headers</div>
-                        <div>echo "Event: $INPUT_1.headers.x-github-event"</div>
-                        <div># Access full payload as JSON</div>
-                        <div>echo '$INPUT_1.body' | jq .</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
               <!-- Script Editor for execution nodes -->
               <div v-if="selectedNode.data?.script !== undefined">
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Script</label>
@@ -974,123 +645,21 @@
     </main>
 
     <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="mt-3">
-          <div class="flex items-center justify-center mx-auto w-12 h-12 rounded-full bg-red-100 dark:bg-red-900">
-            <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-            </svg>
-          </div>
-          <div class="mt-4 text-center">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Confirm Deletion</h3>
-            <div class="mt-2 px-7 py-3">
-              <p class="text-sm text-gray-500 dark:text-gray-300">
-                Are you sure you want to delete the following {{ itemsToDelete.length === 1 ? 'item' : 'items' }}?
-              </p>
-              <div class="mt-3 max-h-32 overflow-y-auto">
-                <ul class="text-sm text-gray-700 dark:text-gray-300">
-                  <li v-for="item in itemsToDelete" :key="item.id" class="py-1">
-                    <span class="font-medium">{{ item.type === 'node' ? '🔷' : '🔗' }}</span>
-                    {{ item.label }}
-                  </li>
-                </ul>
-              </div>
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                This action cannot be undone.
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="flex justify-center space-x-3 px-4 py-3">
-          <button
-            @click="cancelDelete"
-            class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-base font-medium rounded-md shadow-sm hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
-          >
-            Cancel
-          </button>
-          <button
-            @click="confirmDelete"
-            class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
+    <EditorDeleteModal
+      v-model="showDeleteModal"
+      :items="itemsToDelete"
+      @confirm="handleConfirmDelete"
+      @cancel="handleCancelDelete"
+    />
 
     <!-- Retention Settings Modal -->
-    <div v-if="showRetentionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="mt-3">
-          <div class="flex items-center justify-center mx-auto w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900">
-            <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15c1.66 0 3-1.34 3-3V9c0-1.66-1.34-3-3-3s-3 1.34-3 3v3c0 1.66 1.34 3 3 3z M9 9a3 3 0 1 1 6 0v3a3 3 0 1 1-6 0V9z M7 21h10"></path>
-            </svg>
-          </div>
-          <div class="mt-4 text-center">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Build Retention Settings</h3>
-            <div class="mt-2 px-7 py-3">
-              <p class="text-sm text-gray-500 dark:text-gray-300 mb-4">
-                Configure how long builds and logs are kept for this project.
-              </p>
-              
-              <div class="space-y-4 text-left">
-                <div>
-                  <label for="maxBuildsToKeep" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Maximum Builds to Keep
-                  </label>
-                  <input
-                    id="maxBuildsToKeep"
-                    v-model.number="retentionSettings.maxBuildsToKeep"
-                    type="number"
-                    min="1"
-                    max="1000"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Older builds will be automatically deleted
-                  </p>
-                </div>
-                
-                <div>
-                  <label for="maxLogDays" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Log Retention (Days)
-                  </label>
-                  <input
-                    id="maxLogDays"
-                    v-model.number="retentionSettings.maxLogDays"
-                    type="number"
-                    min="1"
-                    max="365"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Build logs older than this will be deleted
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="flex justify-center space-x-3 px-4 py-3">
-          <button
-            @click="cancelRetentionSettings"
-            class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-base font-medium rounded-md shadow-sm hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
-          >
-            Cancel
-          </button>
-          <button
-            @click="saveRetentionSettings"
-            :disabled="isSavingRetention"
-            class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-          >
-            <span v-if="isSavingRetention">Saving...</span>
-            <span v-else>Save Settings</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    <EditorRetentionModal
+      v-model="showRetentionModal"
+      :settings="retentionSettings"
+      :is-saving="isSavingRetention"
+      @save="handleSaveRetentionSettings"
+      @cancel="handleCancelRetentionSettings"
+    />
   </div>
 </template>
 
@@ -1099,10 +668,16 @@ import { VueFlow, useVueFlow, Handle, Position, ConnectionMode } from '@vue-flow
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { ref, computed, onMounted, onUnmounted, nextTick, defineComponent, h, markRaw, watch } from 'vue'
+import WebHookProperties from '@/components/property-panels/WebhookProperties.vue'
+import CronProperties from '../../components/property-panels/CronProperties.vue'
+import EditorDeleteModal from '@/components/modals/EditorDeleteModal.vue'
+import EditorRetentionModal from '@/components/modals/EditorRetentionModal.vue'
+
 // Import Vue Flow styles
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
+
 
 definePageMeta({
   middleware: 'auth'
@@ -1112,7 +687,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const webSocketStore = useWebSocketStore()
-const { isDark } = useDarkMode()
+const { isDark: dark } = useDarkMode()
 const isEditorReady = ref(false)
 const isSaving = ref(false)
 const selectedNode = ref(null)
@@ -1478,7 +1053,7 @@ const CustomNode = defineComponent({
             position: Position.Left,
             id: 'execution',
             style: { 
-              background: isDark.value ? '#737373' : '#555',
+              background: dark.value ? '#737373' : '#555',
               left: '-6px',
               top: executionTop,
               transform: totalInputs === 1 ? 'translateY(-50%)' : 'none'
@@ -1531,7 +1106,7 @@ const CustomNode = defineComponent({
             position: Position.Right,
             id: 'execution',
             style: { 
-              background: isDark.value ? '#737373' : '#555',
+              background: dark.value ? '#737373' : '#555',
               right: '-6px',
               top: executionTop,
               transform: totalOutputs === 1 ? 'translateY(-50%)' : 'none'
@@ -1596,8 +1171,8 @@ const CustomNode = defineComponent({
       return h('div', {
         class: 'px-4 py-2 shadow-md rounded-md border-1 bg-white dark:bg-neutral-700 border-neutral-200 dark:border-neutral-600 relative',
         style: {
-          backgroundColor: nodeData.color || (isDark.value ? '#404040' : '#ffffff'),
-          color: nodeData.textColor || (isDark.value ? '#f5f5f5' : '#000000'),
+          backgroundColor: nodeData.color || (dark.value ? '#404040' : '#ffffff'),
+          color: nodeData.textColor || (dark.value ? '#f5f5f5' : '#000000'),
           minWidth: '160px',
           minHeight: `${totalHeight}px`
         }
@@ -1644,7 +1219,7 @@ const togglePropertiesPanel = () => {
 }
 
 // Modal confirmation methods
-const confirmDelete = () => {
+const handleConfirmDelete = () => {
   showDeleteModal.value = false
   itemsToDelete.value = []
   if (window.deleteResolve) {
@@ -1657,7 +1232,7 @@ const confirmDelete = () => {
   }
 }
 
-const cancelDelete = () => {
+const handleCancelDelete = () => {
   showDeleteModal.value = false
   itemsToDelete.value = []
   if (window.deleteResolve) {
@@ -1669,7 +1244,7 @@ const cancelDelete = () => {
 // Retention settings modal methods
 const loadRetentionSettings = async () => {
   if (!project.value?.id) return
-  
+
   try {
     const response = await $fetch(`/api/projects/${project.value.id}/retention`)
     if (response.success) {
@@ -1680,16 +1255,16 @@ const loadRetentionSettings = async () => {
   }
 }
 
-const saveRetentionSettings = async () => {
+const handleSaveRetentionSettings = async () => {
   if (!project.value?.id) return
-  
+
   isSavingRetention.value = true
   try {
     const response = await $fetch(`/api/projects/${project.value.id}/retention`, {
       method: 'POST',
       body: retentionSettings.value
     })
-    
+
     if (response.success) {
       showRetentionModal.value = false
       // Show success message
@@ -1703,7 +1278,7 @@ const saveRetentionSettings = async () => {
   }
 }
 
-const cancelRetentionSettings = () => {
+const handleCancelRetentionSettings = () => {
   showRetentionModal.value = false
   // Reset to original values
   loadRetentionSettings()
@@ -2061,40 +1636,6 @@ const saveProject = async () => {
 }
 
 
-// Webhook endpoint validation
-const validateEndpoint = (event) => {
-  const value = event.target.value
-  // Remove invalid characters as user types
-  const cleanValue = value.replace(/[^a-zA-Z0-9-_]/g, '')
-  if (cleanValue !== value) {
-    selectedNode.value.data.customEndpoint = cleanValue
-  }
-}
-
-// Generate secure random token for webhook
-const generateSecretToken = () => {
-  if (!selectedNode.value) return
-  
-  // Generate a secure random token using crypto API if available, otherwise fallback
-  let token = ''
-  
-  if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
-    // Use crypto.getRandomValues for secure random generation
-    const array = new Uint8Array(32)
-    window.crypto.getRandomValues(array)
-    token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
-  } else {
-    // Fallback for environments without crypto API
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    for (let i = 0; i < 64; i++) {
-      token += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-  }
-  
-  selectedNode.value.data.secretToken = token
-}
-
-
 const validateExecutionNodes = () => {
   const errors = []
   
@@ -2391,163 +1932,6 @@ onUnmounted(() => {
   cleanupRealtimeConnection()
 })
 
-// Cron expression parsing and formatting
-const parseCronExpression = async (cronExpression) => {
-  if (!cronExpression || typeof cronExpression !== 'string') {
-    return {
-      description: 'Invalid cron expression',
-      nextRun: null,
-      isValid: false
-    }
-  }
-
-  try {
-    // Import croner dynamically since it's an ESM module
-    const { Cron } = await import('croner')
-    
-    // Create a cron instance to validate and get next run time
-    const cron = new Cron(cronExpression, { paused: true })
-    
-    // Get next execution time
-    const nextRun = cron.nextRun()
-    
-    // Generate human-readable description
-    const description = getCronDescription(cronExpression)
-    
-    return {
-      description,
-      nextRun,
-      isValid: true
-    }
-  } catch (error) {
-    return {
-      description: 'Invalid cron expression',
-      nextRun: null,
-      isValid: false
-    }
-  }
-}
-
-const getCronDescription = (cronExpression) => {
-  const parts = cronExpression.trim().split(/\s+/)
-  if (parts.length !== 5) {
-    return 'Invalid format (should be: minute hour day month dayOfWeek)'
-  }
-
-  const [minute, hour, day, month, dayOfWeek] = parts
-
-  // Common patterns
-  const commonPatterns = {
-    '0 0 * * *': 'Daily at midnight',
-    '0 * * * *': 'Every hour',
-    '*/5 * * * *': 'Every 5 minutes',
-    '*/10 * * * *': 'Every 10 minutes',
-    '*/15 * * * *': 'Every 15 minutes',
-    '*/30 * * * *': 'Every 30 minutes',
-    '0 0 * * 0': 'Weekly on Sunday at midnight',
-    '0 0 * * 1': 'Weekly on Monday at midnight',
-    '0 0 1 * *': 'Monthly on the 1st at midnight',
-    '0 0 1 1 *': 'Yearly on January 1st at midnight',
-    '0 9 * * 1-5': 'Weekdays at 9:00 AM',
-    '0 18 * * 1-5': 'Weekdays at 6:00 PM'
-  }
-
-  if (commonPatterns[cronExpression]) {
-    return commonPatterns[cronExpression]
-  }
-
-  // Build description from parts
-  let description = ''
-
-  // Minute
-  if (minute === '*') {
-    description += 'every minute'
-  } else if (minute.includes('/')) {
-    const interval = minute.split('/')[1]
-    description += `every ${interval} minutes`
-  } else if (minute.includes(',')) {
-    description += `at minutes ${minute}`
-  } else {
-    description += `at minute ${minute}`
-  }
-
-  // Hour
-  if (hour !== '*') {
-    if (hour.includes('/')) {
-      const interval = hour.split('/')[1]
-      description += `, every ${interval} hours`
-    } else if (hour.includes(',')) {
-      description += `, at hours ${hour}`
-    } else {
-      const hourNum = parseInt(hour)
-      const ampm = hourNum < 12 ? 'AM' : 'PM'
-      const displayHour = hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum
-      description += `, at ${displayHour}:${minute.padStart(2, '0')} ${ampm}`
-    }
-  }
-
-  // Day of month
-  if (day !== '*') {
-    if (day.includes('/')) {
-      const interval = day.split('/')[1]
-      description += `, every ${interval} days`
-    } else {
-      description += `, on day ${day} of the month`
-    }
-  }
-
-  // Month
-  if (month !== '*') {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    if (month.includes(',')) {
-      const monthNums = month.split(',').map(m => months[parseInt(m) - 1])
-      description += `, in ${monthNums.join(', ')}`
-    } else {
-      description += `, in ${months[parseInt(month) - 1]}`
-    }
-  }
-
-  // Day of week
-  if (dayOfWeek !== '*') {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    if (dayOfWeek.includes(',')) {
-      const dayNums = dayOfWeek.split(',').map(d => days[parseInt(d)])
-      description += `, on ${dayNums.join(', ')}`
-    } else if (dayOfWeek.includes('-')) {
-      const [start, end] = dayOfWeek.split('-').map(d => parseInt(d))
-      description += `, from ${days[start]} to ${days[end]}`
-    } else if (dayOfWeek === '1-5') {
-      description += ', on weekdays'
-    } else if (dayOfWeek === '0,6') {
-      description += ', on weekends'
-    } else {
-      description += `, on ${days[parseInt(dayOfWeek)]}`
-    }
-  }
-
-  // Capitalize first letter
-  return description.charAt(0).toUpperCase() + description.slice(1)
-}
-
-// Computed property for cron information
-const cronInfo = ref({ description: 'No cron expression configured', nextRun: null, isValid: false })
-
-// Computed property for webhook URL
-const webhookUrl = computed(() => {
-  if (!selectedNode.value?.data?.customEndpoint) return ''
-  if (typeof window === 'undefined') return `/api/webhook/${selectedNode.value.data.customEndpoint}`
-  return `${window.location.origin}/api/webhook/${selectedNode.value.data.customEndpoint}`
-})
-
-// Watch for changes to selected node cron expression
-watch(() => selectedNode.value?.data?.cronExpression, async (newExpression) => {
-  if (newExpression && selectedNode.value?.data?.nodeType === 'cron') {
-    cronInfo.value = await parseCronExpression(newExpression)
-  } else {
-    cronInfo.value = { description: 'No cron expression configured', nextRun: null, isValid: false }
-  }
-}, { immediate: true })
-
 // Watch for job completion to finish build recording
 watch(() => isJobRunningOnAgent.value, async (isRunning, wasRunning) => {
   // Detect when a job finishes (was running, now not running)
@@ -2675,18 +2059,15 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Hide scrollbars on the page */
 :deep(html), :deep(body) {
   overflow: hidden;
 }
 
-/* Ensure Vue Flow background is visible */
 :deep(.vue-flow__background) {
   opacity: 1 !important;
   z-index: 0 !important;
 }
 
-/* Vue Flow Controls - Dark Mode */
 :deep(.vue-flow-controls) {
   background: rgba(255, 255, 255, 0.9);
 }
@@ -2715,7 +2096,6 @@ onUnmounted(() => {
   background: #525252;
 }
 
-/* Vue Flow Edges - Dark Mode */
 :deep(.vue-flow__edge-path) {
   stroke: #737373;
 }
@@ -2724,7 +2104,6 @@ onUnmounted(() => {
   stroke: #a3a3a3;
 }
 
-/* Vue Flow Edge Labels - Dark Mode */
 :deep(.vue-flow__edge-text) {
   fill: #404040;
 }
@@ -2733,7 +2112,6 @@ onUnmounted(() => {
   fill: #d4d4d4;
 }
 
-/* Vue Flow Nodes - Dark Mode */
 :deep(.vue-flow__node) {
   color: #171717;
 }
@@ -2742,7 +2120,6 @@ onUnmounted(() => {
   color: #f5f5f5;
 }
 
-/* Vue Flow Selection Box - Dark Mode */
 :deep(.vue-flow__selection) {
   background: rgba(59, 130, 246, 0.1);
   border: 1px solid #3b82f6;
@@ -2753,12 +2130,6 @@ onUnmounted(() => {
   border: 1px solid #60a5fa;
 }
 
-/* Vue Flow Pane - Dark Mode */
-:deep(.vue-flow__pane) {
-  cursor: default;
-}
-
-/* Vue Flow Connection Line - Dark Mode */
 :deep(.vue-flow__connection-line) {
   stroke: #737373;
 }
@@ -2767,7 +2138,6 @@ onUnmounted(() => {
   stroke: #a3a3a3;
 }
 
-/* Vue Flow Attribution - Dark Mode */
 :deep(.vue-flow__attribution) {
   background: rgba(255, 255, 255, 0.8);
   color: #404040;
@@ -2778,7 +2148,6 @@ onUnmounted(() => {
   color: #d4d4d4;
 }
 
-/* Style handles in custom nodes */
 :deep(.vue-flow__handle) {
   width: 10px;
   height: 10px;

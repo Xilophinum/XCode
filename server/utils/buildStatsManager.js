@@ -280,7 +280,7 @@ export class BuildStatsManager {
       endDate = null
     } = options
 
-    const offset = (page - 1) * pageSize
+    const pOffset = (page - 1) * pageSize
     let whereConditions = [eq(builds.projectId, projectId)]
 
     if (status) {
@@ -306,7 +306,7 @@ export class BuildStatsManager {
       .where(whereClause)
       .orderBy(desc(builds.startedAt))
       .limit(pageSize)
-      .offset(offset)
+      .offset(pOffset)
 
     // Get total count
     const [{ totalCount }] = await this.db
@@ -353,12 +353,23 @@ export class BuildStatsManager {
     const maxLogDays = stats.maxLogDays || 30
 
     // Get builds to delete (keep only the most recent N builds)
-    const buildsToDelete = await this.db
+    const buildsToKeep = await this.db
       .select({ id: builds.id })
       .from(builds)
       .where(eq(builds.projectId, projectId))
       .orderBy(desc(builds.startedAt))
-      .offset(maxBuilds)
+      .limit(maxBuilds)
+
+    const keepIds = buildsToKeep.map(b => b.id)
+
+    // Get all builds for this project
+    const allBuilds = await this.db
+      .select({ id: builds.id })
+      .from(builds)
+      .where(eq(builds.projectId, projectId))
+
+    // Find builds to delete (those not in the keep list)
+    const buildsToDelete = allBuilds.filter(build => !keepIds.includes(build.id))
 
     if (buildsToDelete.length > 0) {
       const buildIds = buildsToDelete.map(b => b.id)

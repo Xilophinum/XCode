@@ -29,10 +29,6 @@ export default defineNuxtConfig({
   // Remove CSS from here and add it to app.vue instead
   // css: ['./assets/css/main.css'],
 
-  alias: {
-    '~': '.',
-    '@': '.'
-  },
   css: ['~/assets/css/main.css'],
   vite: {
       plugins: [tailwindcss()],
