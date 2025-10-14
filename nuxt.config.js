@@ -5,6 +5,8 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   ssr: false,
+  
+
   // Disable TypeScript
   typescript: {
     typeCheck: false
@@ -32,6 +34,11 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   vite: {
       plugins: [tailwindcss()],
+      server: {
+        https: {
+          rejectUnauthorized: false
+        }
+      }
   },
   runtimeConfig: {
     // Private keys (only available on server-side)

@@ -1,6 +1,8 @@
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import * as schema from './schema.js'
+import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
+import { createSchema } from './schema-factory.js'
 import { resolve } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 
@@ -8,6 +10,7 @@ export class DatabaseManager {
   constructor() {
     this.db = null
     this.sqlite = null // Store raw SQLite instance
+    this.postgres = null // Store raw PostgreSQL instance
     this.type = process.env.DATABASE_TYPE || 'sqlite'
     // Use absolute path to ensure database is created in the correct location
     this.url = process.env.DATABASE_URL || resolve(process.cwd(), 'data', 'projects.db')
@@ -20,9 +23,6 @@ export class DatabaseManager {
         break
       case 'postgres':
         await this.initializePostgres()
-        break
-      case 'mssql':
-        await this.initializeMSSQL()
         break
       default:
         throw new Error(`Unsupported database type: ${this.type}`)
@@ -45,56 +45,68 @@ export class DatabaseManager {
 
     this.sqlite = new Database(dbPath)
     this.sqlite.pragma('journal_mode = WAL')
+    const schema = createSchema('sqlite')
     this.db = drizzle(this.sqlite, { schema })
   }
 
   async initializePostgres() {
-    // This would be implemented when adding postgres support
-    throw new Error('PostgreSQL support not yet implemented - install postgres dependencies first')
+    // Parse DATABASE_URL if individual variables aren't provided
+    let connectionString = this.url
+    
+    if (!connectionString.startsWith('postgres://') && !connectionString.startsWith('postgresql://')) {
+      throw new Error('Invalid PostgreSQL connection string. Must start with postgres:// or postgresql://')
+    }
+
+    console.log('🔄 Connecting to PostgreSQL database...')
+    this.postgres = postgres(connectionString)
+    const schema = createSchema('postgres')
+    this.db = drizzlePostgres(this.postgres, { schema })
+    console.log('✅ PostgreSQL database connected successfully')
   }
 
-  async initializeMSSQL() {
-    // This would be implemented when adding MSSQL support
-    throw new Error('MSSQL support not yet implemented')
-  }
+
 
   async runMigrations() {
     if (this.type === 'sqlite') {
-      // Create tables if they don't exist
-      await this.createTables()
-      
-      // Add status column migration for existing items table (if needed)
-      try {
-        const result = this.sqlite.prepare("PRAGMA table_info(items)").all()
-        const hasStatusColumn = result.some(column => column.name === 'status')
-        
-        if (!hasStatusColumn) {
-          console.log('🔄 Adding status column to items table...')
-          this.sqlite.exec(`ALTER TABLE items ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`)
-          console.log('✅ Status column added to items table')
-        }
-      } catch (error) {
-        console.warn('⚠️ Migration warning (status column):', error.message)
-      }
-
-      // Add retention settings columns for build management
-      try {
-        const result = this.sqlite.prepare("PRAGMA table_info(items)").all()
-        const hasRetentionColumns = result.some(column => column.name === 'max_builds_to_keep')
-        
-        if (!hasRetentionColumns) {
-          console.log('🔄 Adding retention settings columns to items table...')
-          this.sqlite.exec(`ALTER TABLE items ADD COLUMN max_builds_to_keep INTEGER DEFAULT 50`)
-          this.sqlite.exec(`ALTER TABLE items ADD COLUMN max_log_days INTEGER DEFAULT 30`)
-          console.log('✅ Retention settings columns added to items table')
-        }
-      } catch (error) {
-        console.warn('⚠️ Migration warning (retention columns):', error.message)
-      }
+      await this.createSQLiteTables()
+      await this.runSQLiteMigrations()
+    } else if (this.type === 'postgres') {
+      await this.createPostgresTables()
     }
   }
 
-  async createTables() {
+  async runSQLiteMigrations() {
+    // Add status column migration for existing items table (if needed)
+    try {
+      const result = this.sqlite.prepare("PRAGMA table_info(items)").all()
+      const hasStatusColumn = result.some(column => column.name === 'status')
+      
+      if (!hasStatusColumn) {
+        console.log('🔄 Adding status column to items table...')
+        this.sqlite.exec(`ALTER TABLE items ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`)
+        console.log('✅ Status column added to items table')
+      }
+    } catch (error) {
+      console.warn('⚠️ Migration warning (status column):', error.message)
+    }
+
+    // Add retention settings columns for build management
+    try {
+      const result = this.sqlite.prepare("PRAGMA table_info(items)").all()
+      const hasRetentionColumns = result.some(column => column.name === 'max_builds_to_keep')
+      
+      if (!hasRetentionColumns) {
+        console.log('🔄 Adding retention settings columns to items table...')
+        this.sqlite.exec(`ALTER TABLE items ADD COLUMN max_builds_to_keep INTEGER DEFAULT 50`)
+        this.sqlite.exec(`ALTER TABLE items ADD COLUMN max_log_days INTEGER DEFAULT 30`)
+        console.log('✅ Retention settings columns added to items table')
+      }
+    } catch (error) {
+      console.warn('⚠️ Migration warning (retention columns):', error.message)
+    }
+  }
+
+  async createSQLiteTables() {
     // Create tables if they don't exist using the raw sqlite instance
     try {
       // Users table
@@ -298,6 +310,210 @@ export class DatabaseManager {
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_cron_jobs_enabled ON cron_jobs(enabled)`)
     } catch (error) {
       console.error('Error creating tables:', error)
+    }
+  }
+
+
+
+  async createPostgresTables() {
+    try {
+      console.log('🔄 Creating PostgreSQL tables...')
+      await this.postgres`SET client_min_messages TO warning;`
+      // Create tables using raw SQL for PostgreSQL
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS users (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          role VARCHAR(50),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS items (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          description TEXT,
+          type VARCHAR(50) NOT NULL CHECK (type IN ('folder', 'project')),
+          path TEXT NOT NULL,
+          user_id VARCHAR(255) NOT NULL,
+          diagram_data TEXT,
+          status VARCHAR(50) NOT NULL DEFAULT 'active',
+          max_builds_to_keep INTEGER DEFAULT 50,
+          max_log_days INTEGER DEFAULT 30,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS env_variables (
+          id VARCHAR(255) PRIMARY KEY,
+          key VARCHAR(255) UNIQUE NOT NULL,
+          value TEXT NOT NULL,
+          description TEXT,
+          is_secret VARCHAR(10) NOT NULL DEFAULT 'false',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS credential_vault (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          type VARCHAR(50) NOT NULL,
+          description TEXT,
+          username VARCHAR(255),
+          password TEXT,
+          token TEXT,
+          private_key TEXT,
+          certificate TEXT,
+          file_data TEXT,
+          file_name VARCHAR(255),
+          file_mime_type VARCHAR(100),
+          url VARCHAR(500),
+          environment VARCHAR(50),
+          tags TEXT,
+          custom_fields TEXT,
+          expires_at TEXT,
+          last_used TEXT,
+          is_active VARCHAR(10) NOT NULL DEFAULT 'true',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS password_vault (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          username VARCHAR(255),
+          password TEXT NOT NULL,
+          url VARCHAR(500),
+          description TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS system_settings (
+          id VARCHAR(255) PRIMARY KEY,
+          category VARCHAR(100) NOT NULL,
+          key VARCHAR(255) UNIQUE NOT NULL,
+          value TEXT,
+          default_value TEXT,
+          type VARCHAR(50) NOT NULL,
+          options TEXT,
+          label VARCHAR(255) NOT NULL,
+          description TEXT,
+          required VARCHAR(10) NOT NULL DEFAULT 'false',
+          readonly VARCHAR(10) NOT NULL DEFAULT 'false',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS agents (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          description TEXT,
+          token VARCHAR(255) UNIQUE NOT NULL,
+          max_concurrent_jobs INTEGER NOT NULL DEFAULT 1,
+          hostname VARCHAR(255),
+          platform VARCHAR(50),
+          architecture VARCHAR(50),
+          capabilities TEXT,
+          version VARCHAR(50),
+          system_info TEXT,
+          status VARCHAR(50) NOT NULL DEFAULT 'offline',
+          current_jobs INTEGER NOT NULL DEFAULT 0,
+          last_heartbeat TEXT,
+          ip_address VARCHAR(45),
+          first_connected_at TEXT,
+          total_builds INTEGER NOT NULL DEFAULT 0,
+          tags TEXT,
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS builds (
+          id VARCHAR(255) PRIMARY KEY,
+          project_id VARCHAR(255) NOT NULL,
+          build_number INTEGER NOT NULL DEFAULT 0,
+          agent_id VARCHAR(255),
+          agent_name VARCHAR(255),
+          job_id VARCHAR(255),
+          trigger VARCHAR(50) NOT NULL,
+          status VARCHAR(50) NOT NULL,
+          message TEXT,
+          started_at TEXT NOT NULL,
+          finished_at TEXT,
+          duration INTEGER,
+          node_count INTEGER,
+          nodes_executed INTEGER,
+          git_branch VARCHAR(255),
+          git_commit VARCHAR(255),
+          metadata TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS build_logs (
+          id VARCHAR(255) PRIMARY KEY,
+          build_id VARCHAR(255) NOT NULL,
+          node_id VARCHAR(255),
+          level VARCHAR(20) NOT NULL,
+          message TEXT NOT NULL,
+          command TEXT,
+          output TEXT,
+          timestamp TEXT NOT NULL,
+          sequence INTEGER NOT NULL,
+          source VARCHAR(50) NOT NULL DEFAULT 'system',
+          metadata TEXT,
+          created_at TEXT NOT NULL
+        )
+      `
+
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS cron_jobs (
+          id VARCHAR(255) PRIMARY KEY,
+          project_id VARCHAR(255) NOT NULL,
+          cron_node_id VARCHAR(255) NOT NULL,
+          cron_node_label VARCHAR(255) NOT NULL,
+          cron_expression VARCHAR(100) NOT NULL,
+          enabled VARCHAR(10) NOT NULL DEFAULT 'true',
+          nodes TEXT NOT NULL,
+          edges TEXT NOT NULL,
+          last_run TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
+      // Create indexes for better performance
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_project_id ON builds(project_id)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_status ON builds(status)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_started_at ON builds(started_at)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_build_logs_build_id ON build_logs(build_id)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_build_logs_timestamp ON build_logs(timestamp)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cron_jobs_project_id ON cron_jobs(project_id)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cron_jobs_enabled ON cron_jobs(enabled)`
+
+
+      console.log('✅ PostgreSQL tables created successfully')
+    } catch (error) {
+      console.error('Error creating PostgreSQL tables:', error)
     }
   }
 
