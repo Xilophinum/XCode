@@ -90,7 +90,7 @@ class AgentManager {
           
           // Find agent for the next command
           // Handle "any" as explicit choice for any available agent
-          const nextRequiresSpecificAgent = nextCommand.requiredAgentId && nextCommand.requiredAgentId !== 'any' && nextCommand.requiredAgentId !== 'local'
+          const nextRequiresSpecificAgent = nextCommand.requiredAgentId && nextCommand.requiredAgentId !== 'any'
           const nextAgentRequirements = nextRequiresSpecificAgent ? { agentId: nextCommand.requiredAgentId } : {}
           const nextAgent = await this.findAvailableAgent(nextAgentRequirements)
           
@@ -146,6 +146,9 @@ class AgentManager {
             workingDirectory: nextCommand.workingDirectory || '.',
             timeout: nextCommand.timeout,
             jobType: nextCommand.type,
+            retryEnabled: nextCommand.retryEnabled,
+            maxRetries: nextCommand.maxRetries,
+            retryDelay: nextCommand.retryDelay,
             isSequential: true,
             commandIndex: nextIndex,
             totalCommands: totalCommands
@@ -188,6 +191,9 @@ class AgentManager {
         finalOutput: output,
         message: `Job completed successfully (exit code: ${exitCode || 0})`
       })
+      
+      // Trigger next nodes based on success
+      await this.triggerNextNodes(job, { success: true, exitCode: exitCode || 0 })
 
       // Update build status if this job is associated with a build
       if (job.buildId) {
@@ -231,6 +237,11 @@ class AgentManager {
         exitCode: exitCode || 1,
         failedAt: new Date()
       })
+      
+      // Trigger next nodes based on failure
+      if (job) {
+        await this.triggerNextNodes(job, { success: false, exitCode: exitCode || 1, error: errorMessage })
+      }
 
       // Update build status if this job is associated with a build
       if (job && job.buildId) {
@@ -299,6 +310,25 @@ class AgentManager {
     
     // If a specific agent is requested, ONLY return that agent - no fallbacks!
     if (requirements.agentId) {
+      // Handle "local" as a special case - find the local agent
+      if (requirements.agentId === 'local') {
+        console.log(`🔍 Looking for local agent...`)
+        
+        // Find the local agent by name
+        for (const [agentId, agentInfo] of this.agentData) {
+          if (agentInfo.name === 'Local Agent' && agentInfo.status === 'online') {
+            const socket = this.connectedAgents.get(agentId)
+            if (socket && socket.connected) {
+              console.log(`✅ Found local agent: ${agentId}`)
+              return agentInfo
+            }
+          }
+        }
+        
+        console.log(`❌ Local agent not available - BLOCKING execution`)
+        return null
+      }
+      
       const socket = this.connectedAgents.get(requirements.agentId)
       const agentInfo = this.agentData.get(requirements.agentId)
       
@@ -315,6 +345,7 @@ class AgentManager {
     console.log(`🔍 No specific agent required - finding any available agent`)
     for (const [agentId, socket] of this.connectedAgents) {
       console.log(`🔍 Checking agent ${agentId}: connected=${socket?.connected}`)
+      
       
       if (socket && socket.connected) { // Socket.IO connected state
         // Get agent data and return it
@@ -350,6 +381,53 @@ class AgentManager {
           ...data
         })
       }
+    }
+  }
+  
+  // Trigger next nodes based on execution result
+  async triggerNextNodes(job, executionResult) {
+    if (!job.nodes || !job.edges) {
+      console.log(`⚠️ No graph data available for job ${job.jobId} to trigger next nodes`)
+      return
+    }
+    
+    try {
+      const { convertGraphToCommands } = await import('../api/projects/execute.post.js')
+      
+      // Find the current node that just completed
+      const currentNode = job.nodes.find(node => 
+        ['bash', 'powershell', 'cmd', 'python', 'node-js'].includes(node.data?.nodeType)
+      )
+      
+      if (!currentNode) {
+        console.log(`⚠️ Could not find execution node for job ${job.jobId}`)
+        return
+      }
+      
+      // Get next nodes based on execution result
+      const { getExecutionConnectedNodes } = await import('../api/projects/execute.post.js')
+      const nextNodes = getExecutionConnectedNodes(currentNode.id, job.nodes, job.edges, new Map(), executionResult)
+      
+      if (nextNodes.length === 0) {
+        console.log(`🏁 No next nodes to execute for job ${job.jobId}`)
+        return
+      }
+      
+      console.log(`🔄 Triggering ${nextNodes.length} next nodes for job ${job.jobId}`)
+      
+      // Execute next nodes
+      for (const nextNode of nextNodes) {
+        const nextCommands = convertGraphToCommands([nextNode], job.edges)
+        
+        if (nextCommands.length > 0) {
+          console.log(`🚀 Executing next node: ${nextNode.data.label}`)
+          // This would trigger execution of the next node
+          // For now, just log it - full implementation would dispatch to agent
+        }
+      }
+      
+    } catch (error) {
+      console.error(`❌ Error triggering next nodes for job ${job.jobId}:`, error)
     }
   }
 }

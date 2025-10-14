@@ -72,6 +72,7 @@ export class DatabaseManager {
       await this.runSQLiteMigrations()
     } else if (this.type === 'postgres') {
       await this.createPostgresTables()
+      await this.runPostgresMigrations()
     }
   }
 
@@ -103,6 +104,20 @@ export class DatabaseManager {
       }
     } catch (error) {
       console.warn('⚠️ Migration warning (retention columns):', error.message)
+    }
+
+    // Add isLocal column to agents table
+    try {
+      const result = this.sqlite.prepare("PRAGMA table_info(agents)").all()
+      const hasIsLocalColumn = result.some(column => column.name === 'is_local')
+      
+      if (!hasIsLocalColumn) {
+        console.log('🔄 Adding is_local column to agents table...')
+        this.sqlite.exec(`ALTER TABLE agents ADD COLUMN is_local TEXT NOT NULL DEFAULT 'false'`)
+        console.log('✅ is_local column added to agents table')
+      }
+    } catch (error) {
+      console.warn('⚠️ Migration warning (is_local column):', error.message)
     }
   }
 
@@ -202,6 +217,7 @@ export class DatabaseManager {
           description TEXT,
           token TEXT NOT NULL UNIQUE,
           max_concurrent_jobs INTEGER NOT NULL DEFAULT 1,
+          is_local TEXT NOT NULL DEFAULT 'false',
           hostname TEXT,
           platform TEXT,
           architecture TEXT,
@@ -425,6 +441,7 @@ export class DatabaseManager {
           description TEXT,
           token VARCHAR(255) UNIQUE NOT NULL,
           max_concurrent_jobs INTEGER NOT NULL DEFAULT 1,
+          is_local VARCHAR(10) NOT NULL DEFAULT 'false',
           hostname VARCHAR(255),
           platform VARCHAR(50),
           architecture VARCHAR(50),
@@ -514,6 +531,16 @@ export class DatabaseManager {
       console.log('✅ PostgreSQL tables created successfully')
     } catch (error) {
       console.error('Error creating PostgreSQL tables:', error)
+    }
+  }
+
+  async runPostgresMigrations() {
+    // Add is_local column to agents table
+    try {
+      await this.postgres`ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_local VARCHAR(10) NOT NULL DEFAULT 'false'`
+      console.log('✅ PostgreSQL migrations completed')
+    } catch (error) {
+      console.warn('⚠️ PostgreSQL migration warning:', error.message)
     }
   }
 

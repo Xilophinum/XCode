@@ -18,7 +18,7 @@
         <div class="flex items-center mb-2">
             <span class="text-sm text-neutral-500 dark:text-neutral-400 mr-2">/api/webhook/</span>
             <input
-            v-model="selectedNode.data.customEndpoint"
+            v-model="nodeData.data.customEndpoint"
             type="text"
             class="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono"
             placeholder="deploy-prod"
@@ -36,12 +36,12 @@
             </label>
             <div class="flex items-center space-x-2">
             <input
-                v-model="selectedNode.data.secretToken"
+                v-model="nodeData.data.secretToken"
                 type="text"
                 required
                 class="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono"
                 placeholder="Enter a secure secret token (required)"
-                :class="{ 'border-red-500 dark:border-red-400': !selectedNode.data.secretToken }"
+                :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.secretToken }"
             />
             <button
                 @click="generateSecretToken"
@@ -60,7 +60,7 @@
             <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
             Required for security. Include this token in the 'X-Webhook-Token' header when calling the webhook. Use the Generate button for a cryptographically secure 64-character token.
             </p>
-            <p v-if="!selectedNode.data.secretToken" class="mt-1 text-xs text-red-500 dark:text-red-400">
+            <p v-if="!nodeData.data.secretToken" class="mt-1 text-xs text-red-500 dark:text-red-400">
             ⚠️ Secret token is required for webhook security
             </p>
         </div>
@@ -68,7 +68,7 @@
         <div class="mt-3">
             <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Description</label>
             <textarea
-            v-model="selectedNode.data.description"
+            v-model="nodeData.data.description"
             rows="2"
             class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
             placeholder="Describe what this webhook does (optional)"
@@ -78,7 +78,7 @@
         <div class="mt-3">
             <label class="flex items-center">
             <input
-                v-model="selectedNode.data.active"
+                v-model="nodeData.data.active"
                 type="checkbox"
                 class="w-4 h-4 text-blue-600 bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
             />
@@ -90,7 +90,7 @@
         </div>
         
         <!-- Webhook URL Display -->
-        <div v-if="selectedNode.data.customEndpoint" class="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded text-xs">
+        <div v-if="nodeData.data.customEndpoint" class="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded text-xs">
             <div class="font-medium text-blue-800 dark:text-blue-200 mb-2">🎣 Webhook URL:</div>
             <div class="text-blue-700 dark:text-blue-300 space-y-2">
             <div class="bg-white dark:bg-blue-900 p-2 rounded border border-blue-200 dark:border-blue-800 font-mono break-all">
@@ -99,12 +99,12 @@
             <div class="space-y-1">
                 <div><strong>Method:</strong> POST</div>
                 <div><strong>Auth:</strong> Required (secret token)</div>
-                <div><strong>Status:</strong> {{ selectedNode.data.active ? '✅ Active' : '❌ Inactive' }}</div>
+                <div><strong>Status:</strong> {{ nodeData.data.active ? '✅ Active' : '❌ Inactive' }}</div>
             </div>
             <div class="text-xs opacity-75 mt-2">
                 <div><strong>Example curl:</strong></div>
                 <div class="bg-neutral-800 text-green-400 p-2 rounded mt-1 font-mono text-xs overflow-x-auto">
-                curl -X POST {{ webhookUrl }} \<br/>&nbsp;&nbsp;-H "X-Webhook-Token: {{ selectedNode.data.secretToken || 'YOUR_SECRET_TOKEN' }}" \<br/>&nbsp;&nbsp;-H "Content-Type: application/json" \<br/>&nbsp;&nbsp;-d '{"message": "Hello from webhook"}'
+                curl -X POST {{ webhookUrl }} \<br/>&nbsp;&nbsp;-H "X-Webhook-Token: {{ nodeData.data.secretToken || 'YOUR_SECRET_TOKEN' }}" \<br/>&nbsp;&nbsp;-H "Content-Type: application/json" \<br/>&nbsp;&nbsp;-d '{"message": "Hello from webhook"}'
                 </div>
             </div>
             </div>
@@ -153,26 +153,26 @@
                 <div class="font-medium">GitHub:</div>
                 <div class="pl-2 text-xs opacity-90">1. Settings → Webhooks → Add webhook</div>
                 <div class="pl-2 text-xs opacity-90">2. Payload URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
+                <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
                 <div class="pl-2 text-xs opacity-90">4. Content type: application/json</div>
             </div>
             <div class="space-y-1">
                 <div class="font-medium">GitLab:</div>
                 <div class="pl-2 text-xs opacity-90">1. Settings → Webhooks</div>
                 <div class="pl-2 text-xs opacity-90">2. URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                <div class="pl-2 text-xs opacity-90">3. Secret token: <span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
+                <div class="pl-2 text-xs opacity-90">3. Secret token: <span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
             </div>
             <div class="space-y-1">
                 <div class="font-medium">Bitbucket:</div>
                 <div class="pl-2 text-xs opacity-90">1. Repository Settings → Webhooks → Add webhook</div>
                 <div class="pl-2 text-xs opacity-90">2. URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
+                <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
             </div>
             <div class="space-y-1">
                 <div class="font-medium">Azure DevOps:</div>
                 <div class="pl-2 text-xs opacity-90">1. Project Settings → Service hooks</div>
                 <div class="pl-2 text-xs opacity-90">2. Service: Web Hooks → URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                <div class="pl-2 text-xs opacity-90">3. Basic auth: username=token, password=<span class="font-mono">{{ selectedNode.data.secretToken || 'your-secret-token' }}</span></div>
+                <div class="pl-2 text-xs opacity-90">3. Basic auth: username=token, password=<span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
             </div>
             </div>
         </div>
@@ -202,7 +202,7 @@
                 <div class="font-medium mb-1">GitLab Push Event:</div>
                 <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
                 Headers:<br/>
-                X-Gitlab-Token: {{ selectedNode.data.secretToken || 'your-secret-token' }}<br/>
+                X-Gitlab-Token: {{ nodeData.data.secretToken || 'your-secret-token' }}<br/>
                 X-Gitlab-Event: Push Hook<br/><br/>
                 Body:<br/>
                 {<br/>
@@ -219,7 +219,7 @@
                 <div class="font-medium mb-1">Custom API Webhook:</div>
                 <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
                 Headers:<br/>
-                X-Webhook-Token: {{ selectedNode.data.secretToken || 'your-secret-token' }}<br/>
+                X-Webhook-Token: {{ nodeData.data.secretToken || 'your-secret-token' }}<br/>
                 Content-Type: application/json<br/><br/>
                 Body:<br/>
                 {<br/>
@@ -282,22 +282,19 @@ const props = defineProps({
   }
 })
 
-// Use nodeData instead of selectedNode.data
-const selectedNode = props.nodeData
-
 // Webhook endpoint validation
 const validateEndpoint = (event) => {
   const value = event.target.value
   // Remove invalid characters as user types
   const cleanValue = value.replace(/[^a-zA-Z0-9-_]/g, '')
   if (cleanValue !== value) {
-    selectedNode.data.customEndpoint = cleanValue
+    props.nodeData.data.customEndpoint = cleanValue
   }
 }
 
 // Generate secure random token for webhook
 const generateSecretToken = () => {
-  if (!selectedNode) return
+  if (!props.nodeData) return
   // Generate a secure random token using crypto API if available, otherwise fallback
   let token = ''
   
@@ -313,13 +310,13 @@ const generateSecretToken = () => {
       token += chars.charAt(Math.floor(Math.random() * chars.length))
     }
   }
-  selectedNode.data.secretToken = token
+  props.nodeData.data.secretToken = token
 }
 
 // Computed property for webhook URL
 const webhookUrl = computed(() => {
-  if (!selectedNode.data?.customEndpoint) return ''
-  if (typeof window === 'undefined') return `/api/webhook/${selectedNode.data.customEndpoint}`
-  return `${window.location.origin}/api/webhook/${selectedNode.data.customEndpoint}`
+  if (!props.nodeData.data?.customEndpoint) return ''
+  if (typeof window === 'undefined') return `/api/webhook/${props.nodeData.data.customEndpoint}`
+  return `${window.location.origin}/api/webhook/${props.nodeData.data.customEndpoint}`
 })
 </script>

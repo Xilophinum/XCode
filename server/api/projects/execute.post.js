@@ -128,7 +128,7 @@ export default defineEventHandler(async (event) => {
     
     // Find agent for the first command
     // Handle "any" as explicit choice for any available agent
-    const requiresSpecificAgent = firstCommand.requiredAgentId && firstCommand.requiredAgentId !== 'any' && firstCommand.requiredAgentId !== 'local'
+    const requiresSpecificAgent = firstCommand.requiredAgentId && firstCommand.requiredAgentId !== 'any'
     const agentRequirements = requiresSpecificAgent ? { agentId: firstCommand.requiredAgentId } : {}
     const selectedAgent = await agentManager.findAvailableAgent(agentRequirements)
     
@@ -185,6 +185,9 @@ export default defineEventHandler(async (event) => {
       workingDirectory: firstCommand.workingDirectory || '.',
       timeout: firstCommand.timeout,
       jobType: firstCommand.type,
+      retryEnabled: firstCommand.retryEnabled,
+      maxRetries: firstCommand.maxRetries,
+      retryDelay: firstCommand.retryDelay,
       isSequential: true,
       commandIndex: 0,
       totalCommands: executableCommands.length
@@ -395,8 +398,6 @@ function getParameterNodeValue(paramNode) {
       return data.defaultValue || (data.choices?.[0] || '')
     case 'boolean-param':
       return data.defaultValue || false
-    case 'file-param':
-      return data.defaultValue || ''
     default:
       return ''
   }
@@ -441,7 +442,7 @@ function buildExecutionFlow(startNode, allNodes, allEdges, parameterValues, visi
   }
 
   // Find nodes connected via execution flow
-  const connectedNodes = getExecutionConnectedNodes(startNode.id, allNodes, allEdges)
+  const connectedNodes = getExecutionConnectedNodes(startNode.id, allNodes, allEdges, parameterValues)
   
   for (const connectedNode of connectedNodes) {
     const connectedCommands = buildExecutionFlow(connectedNode, allNodes, allEdges, parameterValues, visited)
@@ -476,7 +477,10 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
           timeout: node.data.timeout ? node.data.timeout * 1000 : 300000, // Default 5 minutes
           nodeId: node.id,
           nodeLabel: node.data.label,
-          requiredAgentId: node.data.agentId // Agent ID specified in node properties
+          requiredAgentId: node.data.agentId, // Agent ID specified in node properties
+          retryEnabled: node.data.retryEnabled || false,
+          maxRetries: node.data.maxRetries || 3,
+          retryDelay: node.data.retryDelay || 5
         })
       }
       break
@@ -484,7 +488,6 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
     case 'cron':
     case 'webhook':
     case 'job-trigger':
-    case 'api-trigger':
       // Trigger nodes don't generate executable commands during manual execution
       // They are only relevant for scheduling/triggering jobs
       console.log(`⏭️ Skipping trigger node during execution: ${node.data.label}`)
@@ -495,12 +498,15 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
     case 'text-param':
     case 'choice-param':
     case 'boolean-param':
-    case 'file-param':
       console.log(`⏭️ Skipping parameter node during execution: ${node.data.label}`)
       break
 
-    case 'parallel':
     case 'conditional':
+      // Conditional nodes are handled during execution flow, not as commands
+      console.log(`🔀 Conditional node found: ${node.data.label}`)
+      break
+
+    case 'parallel':
     case 'retry':
     case 'notification':
       // Control nodes - for now just log them
@@ -646,7 +652,19 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
 /**
  * Get nodes connected via execution flow from a given node
  */
-function getExecutionConnectedNodes(nodeId, allNodes, allEdges) {
+function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameterValues = new Map(), executionResult = null) {
+  const sourceNode = allNodes.find(node => node.id === nodeId)
+  
+  // Handle conditional nodes specially
+  if (sourceNode && sourceNode.data.nodeType === 'conditional') {
+    return getConditionalConnectedNodes(sourceNode, allNodes, allEdges, parameterValues)
+  }
+  
+  // Handle execution nodes with success/failure routing
+  if (sourceNode && ['bash', 'powershell', 'cmd', 'python', 'node-js'].includes(sourceNode.data.nodeType)) {
+    return getExecutionResultConnectedNodes(sourceNode, allNodes, allEdges, executionResult)
+  }
+  
   // Find edges that represent execution flow from this node
   const executionEdges = allEdges.filter(edge => 
     edge.source === nodeId && (edge.sourceHandle === 'execution' || !edge.sourceHandle)
@@ -658,4 +676,101 @@ function getExecutionConnectedNodes(nodeId, allNodes, allEdges) {
     .filter(node => node !== undefined)
 
   return connectedNodes
+}
+
+/**
+ * Handle execution node success/failure routing
+ */
+function getExecutionResultConnectedNodes(executionNode, allNodes, allEdges, executionResult) {
+  // Determine which socket to use based on execution result
+  const targetSocketId = (executionResult && executionResult.success) ? 'success' : 'failure'
+  
+  const outputEdge = allEdges.find(edge => 
+    edge.source === executionNode.id && edge.sourceHandle === targetSocketId
+  )
+  
+  if (outputEdge) {
+    const targetNode = allNodes.find(node => node.id === outputEdge.target)
+    console.log(`🔀 Execution "${executionNode.data.label}" routing to ${targetSocketId} path: ${targetNode?.data.label || 'unknown'}`)
+    return targetNode ? [targetNode] : []
+  }
+  
+  console.log(`⚠️ No output edge found for execution "${executionNode.data.label}" ${targetSocketId} path`)
+  return []
+}
+
+/**
+ * Handle conditional node execution flow
+ */
+function getConditionalConnectedNodes(conditionalNode, allNodes, allEdges, parameterValues = new Map()) {
+  // Find input connections to get parameter values
+  const inputConnections = allEdges.filter(edge => edge.target === conditionalNode.id)
+  
+  // Build parameter context for condition evaluation
+  const parameterContext = {}
+  
+  if (conditionalNode.data.inputSockets) {
+    conditionalNode.data.inputSockets.forEach(socket => {
+      const connection = inputConnections.find(edge => edge.targetHandle === socket.id)
+      if (connection) {
+        // Get parameter value from the parameter map
+        const paramData = parameterValues.get(connection.source)
+        if (paramData) {
+          parameterContext[socket.label] = paramData.value
+        } else {
+          // Fallback to placeholder if parameter not found
+          parameterContext[socket.label] = `[${socket.label}]`
+        }
+      }
+    })
+  }
+  
+  // Evaluate the condition
+  const condition = conditionalNode.data.condition || 'true'
+  let conditionResult = false
+  
+  try {
+    // Replace parameter placeholders with actual values
+    let evaluableCondition = condition
+    for (const [label, value] of Object.entries(parameterContext)) {
+      // Handle both ${label} and $label formats
+      const regexBraces = new RegExp(`\\$\\{${escapeRegex(label)}\\}`, 'g')
+      const regexNoBraces = new RegExp(`\\$${escapeRegex(label)}\\b`, 'g')
+      
+      const jsonValue = JSON.stringify(value)
+      evaluableCondition = evaluableCondition.replace(regexBraces, jsonValue)
+      evaluableCondition = evaluableCondition.replace(regexNoBraces, jsonValue)
+    }
+    
+    // Evaluate the condition using Function constructor (safer than eval)
+    conditionResult = new Function('return ' + evaluableCondition)()
+    console.log(`🔀 Conditional "${conditionalNode.data.label}" evaluated: ${condition} -> ${conditionResult}`)
+  } catch (error) {
+    console.error(`❌ Conditional evaluation error in "${conditionalNode.data.label}":`, error)
+    console.error(`❌ Condition: ${condition}`)
+    console.error(`❌ Parameter context:`, parameterContext)
+    conditionResult = false
+  }
+  
+  // Find the appropriate output edge based on condition result
+  const targetSocketId = conditionResult ? 'true' : 'false'
+  const outputEdge = allEdges.find(edge => 
+    edge.source === conditionalNode.id && edge.sourceHandle === targetSocketId
+  )
+  
+  if (outputEdge) {
+    const targetNode = allNodes.find(node => node.id === outputEdge.target)
+    console.log(`🔀 Conditional "${conditionalNode.data.label}" routing to ${targetSocketId} path: ${targetNode?.data.label || 'unknown'}`)
+    return targetNode ? [targetNode] : []
+  }
+  
+  console.log(`⚠️ No output edge found for conditional "${conditionalNode.data.label}" ${targetSocketId} path`)
+  return []
+}
+
+/**
+ * Escape special regex characters
+ */
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }

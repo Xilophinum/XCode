@@ -426,6 +426,10 @@ async function handleHeartbeat(socket, msg, agentManager) {
     const agentId = socket.agentId
     const { status, currentJobs, timestamp } = msg
     
+    // Update database heartbeat timestamp
+    const dataService = agentManager.dataService || await getDataService()
+    await dataService.updateAgentHeartbeat(agentId, status)
+    
     // Update agent data
     if (agentManager.agentData.has(agentId)) {
       const agentInfo = agentManager.agentData.get(agentId)
@@ -454,16 +458,6 @@ async function handleHeartbeat(socket, msg, agentManager) {
       console.log(`🔧 Re-adding agent ${agentId} to connectedAgents`)
       agentManager.connectedAgents.set(agentId, socket)
     }
-    
-    // Broadcast agent status update to all connected clients
-    broadcastToClients({
-      type: 'agent_status_update',
-      agentId: agentId,
-      status: status,
-      currentJobs: currentJobs || 0,
-      lastHeartbeat: new Date().toISOString(),
-      timestamp: new Date().toISOString()
-    })
     
     // Send heartbeat acknowledgment
     socket.emit('message', {
@@ -768,5 +762,91 @@ function broadcastToProject(projectId, message) {
     })
   } catch (error) {
     console.error('Error broadcasting to project:', error)
+  }
+}
+
+export async function broadcastBuildCompletion(buildEvent) {
+  try {
+    console.log(`🎯 Processing build completion for job triggers:`, buildEvent)
+    await checkAndTriggerJobs(buildEvent)
+  } catch (error) {
+    console.error('Error broadcasting build completion:', error)
+  }
+}
+
+async function checkAndTriggerJobs(buildEvent) {
+  try {
+    const dataService = await getDataService()
+    const allProjects = await dataService.getAllItems()
+    
+    for (const project of allProjects) {
+      if (project.type !== 'project' || !project.diagramData) continue
+      
+      const { nodes } = project.diagramData
+      if (!nodes || !Array.isArray(nodes)) continue
+      
+      const jobTriggerNodes = nodes.filter(node => 
+        node.data?.nodeType === 'job-trigger' &&
+        node.data.sourceProjectId === buildEvent.sourceProjectId
+      )
+      
+      for (const triggerNode of jobTriggerNodes) {
+        const shouldTrigger = checkTriggerCondition(triggerNode.data.triggerOn, buildEvent.status)
+        
+        if (shouldTrigger) {
+          console.log(`🚀 Triggering project ${project.name} due to ${buildEvent.sourceProjectId} completion`)
+          await executeTriggeredProject(project, triggerNode, buildEvent)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking job triggers:', error)
+  }
+}
+
+function checkTriggerCondition(triggerOn, buildStatus) {
+  switch (triggerOn) {
+    case 'success': return buildStatus === 'success'
+    case 'failure': return buildStatus === 'failure'
+    case 'always': return buildStatus === 'success' || buildStatus === 'failure'
+    default: return false
+  }
+}
+
+async function executeTriggeredProject(project, triggerNode, buildEvent) {
+  try {
+    if (project.status === 'disabled') {
+      console.log(`⚠️ Skipping disabled project: ${project.name}`)
+      return
+    }
+    
+    const executionData = {
+      projectId: project.id,
+      nodes: project.diagramData.nodes,
+      edges: project.diagramData.edges,
+      startTime: new Date().toISOString(),
+      trigger: 'job-trigger'
+    }
+    
+    const response = await $fetch('/api/projects/execute', {
+      method: 'POST',
+      body: executionData
+    })
+    
+    if (response.success) {
+      console.log(`✅ Successfully triggered project ${project.name} on agent ${response.agentName}`)
+      broadcastToProject(project.id, {
+        type: 'job_triggered',
+        projectId: project.id,
+        sourceProjectId: buildEvent.sourceProjectId,
+        triggerNode: triggerNode.data.label,
+        agentId: response.agentId,
+        jobId: response.jobId,
+        message: `Project triggered by ${buildEvent.sourceProjectId} completion (${buildEvent.status})`,
+        timestamp: new Date().toISOString()
+      })
+    }
+  } catch (error) {
+    console.error(`❌ Error executing triggered project ${project.name}:`, error)
   }
 }

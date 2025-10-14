@@ -249,6 +249,7 @@
                         </svg>
                       </button>
                       <button
+                        v-if="!agent.isLocal"
                         @click="deleteAgent(agent)"
                         class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                         title="Delete agent"
@@ -322,6 +323,54 @@
               >
                 <span v-if="creating">Creating...</span>
                 <span v-else>Create Agent</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Agent Modal -->
+    <div v-if="showEditAgentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="mt-3">
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Edit Agent</h3>
+          
+          <form @submit.prevent="updateAgent" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Agent Name</label>
+              <input
+                v-model="editAgentForm.name"
+                type="text"
+                required
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Concurrent Jobs</label>
+              <input
+                v-model.number="editAgentForm.maxConcurrentJobs"
+                type="number"
+                min="1"
+                required
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+            </div>
+            
+            <div class="flex justify-end space-x-3 pt-4">
+              <button
+                type="button"
+                @click="showEditAgentModal = false"
+                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Update Agent
               </button>
             </div>
           </form>
@@ -492,9 +541,36 @@ const toggleCapabilities = (agentId) => {
   }
 }
 
+// Edit agent modal state
+const showEditAgentModal = ref(false)
+const editingAgent = ref(null)
+const editAgentForm = ref({
+  name: '',
+  maxConcurrentJobs: 1
+})
+
 const editAgent = (agent) => {
-  // TODO: Implement agent editing
-  console.log('Edit agent:', agent)
+  editingAgent.value = agent
+  editAgentForm.value = {
+    name: agent.name,
+    maxConcurrentJobs: agent.maxConcurrentJobs
+  }
+  showEditAgentModal.value = true
+}
+
+const updateAgent = async () => {
+  try {
+    await $fetch(`/api/admin/agents/${editingAgent.value.id}`, {
+      method: 'PUT',
+      body: editAgentForm.value
+    })
+    
+    showEditAgentModal.value = false
+    await loadAgents(false)
+  } catch (error) {
+    console.error('Error updating agent:', error)
+    alert('Failed to update agent. Please try again.')
+  }
 }
 
 const deleteAgent = async (agent) => {

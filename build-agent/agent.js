@@ -15,9 +15,11 @@
  *   XCODE_SERVER_URL=<url>
  */
 
-const { spawn, exec } = require('child_process');
-const { io } = require('socket.io-client');
-const os = require('os');
+import { spawn, execSync } from 'child_process'
+import { io } from 'socket.io-client'
+import os from 'os'
+import fs from 'fs'
+import path from 'path'
 
 class XCodeBuildAgent {
   constructor(options = {}) {
@@ -82,8 +84,7 @@ class XCodeBuildAgent {
 
   detectCapabilities() {
     const capabilities = [];
-    const { execSync } = require('child_process');
-    
+
     // Helper function to safely check command availability
     const hasCommand = (command) => {
       try {
@@ -97,9 +98,9 @@ class XCodeBuildAgent {
     // Helper function to check file/directory existence
     const hasPath = (path) => {
       try {
-        return require('fs').existsSync(path);
+        return fs.existsSync(path)
       } catch {
-        return false;
+        return false
       }
     };
 
@@ -339,6 +340,19 @@ class XCodeBuildAgent {
     this.socket.send({ type, ...data });
   }
 
+  sendJobOutput(jobId, outputLine) {
+    if (this.currentJobs.has(jobId)) {
+      const job = this.currentJobs.get(jobId);
+      job.outputBuffer.push(outputLine);
+      
+      this.sendMessage('job_output', {
+        jobId,
+        output: outputLine,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
   handleMessage(message) {
     try {
       switch (message.type) {
@@ -402,33 +416,21 @@ class XCodeBuildAgent {
   }
 
   async handleJobExecution(jobData) {
-    const { jobId, commands, environment = {}, workingDirectory, timeout, jobType, nodeType } = jobData;
-
+    const { jobId, retryEnabled, maxRetries } = jobData;
+    
     console.log(`🚀 Starting job: ${jobId}`);
     
-    // Determine the execution type - prefer jobType, fallback to nodeType
-    const executionType = jobType || nodeType;
-    if (executionType) {
-      console.log(`🔧 Job type: ${executionType}`);
-    }
-
-    // Handle timeout - only apply if explicitly provided, otherwise no timeout
-    let effectiveTimeout = null;
-    if (timeout !== undefined && timeout !== null && timeout > 0) {
-      effectiveTimeout = timeout;
-      console.log(`⏱️ Job timeout set to: ${effectiveTimeout}ms`);
-    } else {
-      console.log(`⏱️ No timeout set - job will run indefinitely until completion`);
+    if (retryEnabled && maxRetries > 0) {
+      console.log(`🔄 Retry policy enabled: ${maxRetries} retries`);
     }
     
     this.currentJobs.set(jobId, { 
       startTime: Date.now(), 
       status: 'running',
-      process: null, // Will store the child process for cancellation
-      outputBuffer: [] // Store output lines for real-time streaming
+      process: null,
+      outputBuffer: []
     });
 
-    // Notify server that job started
     this.sendMessage('agent:job_status', {
         jobId,
         status: 'started',
@@ -436,59 +438,107 @@ class XCodeBuildAgent {
         timestamp: new Date().toISOString()
     });
 
+    // Start execution with retry logic (non-blocking)
+    this.executeJobWithRetry(jobData, 0);
+  }
+
+  async executeJobWithRetry(jobData, attempt) {
+    const { jobId, commands, environment = {}, workingDirectory, timeout, jobType, nodeType, retryEnabled, maxRetries, retryDelay } = jobData;
+    const maxAttempts = (retryEnabled && maxRetries > 0) ? maxRetries + 1 : 1;
+    
     try {
-        const result = await this.executeJob(commands, environment, workingDirectory, effectiveTimeout, executionType, jobId);
-        
-        const job = this.currentJobs.get(jobId);
-        this.currentJobs.delete(jobId);
-        console.log(`✅ Job completed: ${jobId}`);
-        
-        // Notify server of completion with final output
-        this.sendMessage('job_complete', {
-            jobId,
-            status: 'completed',
-            output: result.output,
-            outputLines: job?.outputBuffer || [],
-            exitCode: result.exitCode,
-            duration: Date.now() - (job?.startTime || Date.now()),
-            currentJobs: this.currentJobs.size,
-            message: `Job completed successfully (exit code: ${result.exitCode}, duration: ${Math.round((Date.now() - (job?.startTime || Date.now())) / 1000)}s)`,
-            timestamp: new Date().toISOString()
+      if (attempt > 0) {
+        console.log(`🔄 Retry attempt ${attempt}/${maxRetries} for job: ${jobId}`);
+        this.sendJobOutput(jobId, {
+          type: 'info',
+          message: `🔄 Retry attempt ${attempt}/${maxRetries}`,
+          timestamp: new Date().toISOString(),
+          source: 'agent'
         });
-        
-        this.sendMessage('agent:heartbeat', {
-            status: this.currentJobs.size > 0 ? 'busy' : 'online',
-            currentJobs: this.currentJobs.size,
-            timestamp: new Date().toISOString()
-        });
+      }
+      
+      const executionType = jobType || nodeType;
+      const effectiveTimeout = (timeout !== undefined && timeout !== null && timeout > 0) ? timeout : null;
+      
+      const result = await this.executeJob(commands, environment, workingDirectory, effectiveTimeout, executionType, jobId);
+      
+      // Success - complete the job
+      const job = this.currentJobs.get(jobId);
+      this.currentJobs.delete(jobId);
+      console.log(`✅ Job completed: ${jobId}`);
+      
+      this.sendMessage('job_complete', {
+          jobId,
+          status: 'completed',
+          output: result.output,
+          outputLines: job?.outputBuffer || [],
+          exitCode: result.exitCode,
+          duration: Date.now() - (job?.startTime || Date.now()),
+          currentJobs: this.currentJobs.size,
+          message: `Job completed successfully (exit code: ${result.exitCode})`,
+          timestamp: new Date().toISOString()
+      });
+      
+      this.sendMessage('agent:heartbeat', {
+          status: this.currentJobs.size > 0 ? 'busy' : 'online',
+          currentJobs: this.currentJobs.size,
+          timestamp: new Date().toISOString()
+      });
+      
     } catch (error) {
-        const job = this.currentJobs.get(jobId);
-        this.currentJobs.delete(jobId);
-        
-        // Determine if this was a cancellation or actual error
-        const wasCancelled = error.message.includes('cancelled') || error.code === 'CANCELLED';
-        const status = wasCancelled ? 'cancelled' : 'failed';
-        
-        console.error(`❌ Job ${status}: ${jobId}`, error.message);
-        
-        // Notify server of failure/cancellation with any output that was captured
-        this.sendMessage('agent:job_status', {
-            jobId,
-            status,
-            error: error.message,
-            output: error.output || '',
-            outputLines: job?.outputBuffer || [],
-            exitCode: error.exitCode || (wasCancelled ? -1 : 1),
-            currentJobs: this.currentJobs.size,
-            timestamp: new Date().toISOString()
-        });
-        
-        this.sendMessage('agent:heartbeat', {
-            status: this.currentJobs.size > 0 ? 'busy' : 'online',
-            currentJobs: this.currentJobs.size,
-            timestamp: new Date().toISOString()
-        });
+      const wasCancelled = error.message.includes('cancelled') || error.code === 'CANCELLED';
+      
+      // Don't retry if cancelled or timeout
+      if (wasCancelled || error.code === 'TIMEOUT') {
+        this.failJob(jobId, error, wasCancelled ? 'cancelled' : 'failed');
+        return;
+      }
+      
+      attempt++;
+      
+      // If no more attempts, fail the job
+      if (attempt >= maxAttempts) {
+        this.failJob(jobId, error, 'failed', `Job failed after ${attempt} attempts: ${error.message}`);
+        return;
+      }
+      
+      // Schedule retry (non-blocking)
+      console.log(`⏳ Scheduling retry in ${retryDelay}s...`);
+      this.sendJobOutput(jobId, {
+        type: 'warning',
+        message: `❌ Attempt ${attempt} failed: ${error.message}. Retrying in ${retryDelay}s...`,
+        timestamp: new Date().toISOString(),
+        source: 'agent'
+      });
+      
+      setTimeout(() => {
+        this.executeJobWithRetry(jobData, attempt);
+      }, (retryDelay || 0) * 1000);
     }
+  }
+
+  failJob(jobId, error, status, customMessage = null) {
+    const job = this.currentJobs.get(jobId);
+    this.currentJobs.delete(jobId);
+    
+    console.error(`❌ Job ${status}: ${jobId}`, error.message);
+    
+    this.sendMessage('agent:job_status', {
+        jobId,
+        status,
+        error: customMessage || error.message,
+        output: error.output || '',
+        outputLines: job?.outputBuffer || [],
+        exitCode: error.exitCode || (status === 'cancelled' ? -1 : 1),
+        currentJobs: this.currentJobs.size,
+        timestamp: new Date().toISOString()
+    });
+    
+    this.sendMessage('agent:heartbeat', {
+        status: this.currentJobs.size > 0 ? 'busy' : 'online',
+        currentJobs: this.currentJobs.size,
+        timestamp: new Date().toISOString()
+    });
   }
 
   async handleJobCancellation(cancellationData) {
@@ -582,9 +632,7 @@ class XCodeBuildAgent {
       let finalArgs = [...executorConfig.args];
 
       if (executorConfig.type === 'interpreter' && script) {
-        const fs = require('fs');
-        const path = require('path');
-        const tempDir = require('os').tmpdir();
+        const tempDir = os.tmpdir()
         
         tempFile = path.join(tempDir, `xcode_job_${Date.now()}${executorConfig.extension || '.tmp'}`);
         
@@ -713,9 +761,9 @@ class XCodeBuildAgent {
         // Clean up temporary file if created
         if (tempFile) {
           try {
-            require('fs').unlinkSync(tempFile);
+            fs.unlinkSync(tempFile)
           } catch (error) {
-            console.warn(`Failed to clean up temporary file: ${tempFile}`);
+            console.warn(`Failed to clean up temporary file: ${tempFile}`)
           }
         }
       };
@@ -1007,13 +1055,13 @@ Examples:
 }
 
 // Main execution
-if (require.main === module) {
-  const options = parseArgs();
-  const agent = new XCodeBuildAgent(options);
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const options = parseArgs()
+  const agent = new XCodeBuildAgent(options)
   agent.start().catch(error => {
-    console.error('❌ Failed to start agent:', error.message);
-    process.exit(1);
-  });
+    console.error('❌ Failed to start agent:', error.message)
+    process.exit(1)
+  })
 }
 
-module.exports = XCodeBuildAgent;
+export default XCodeBuildAgent

@@ -103,6 +103,7 @@ export const agents = sqliteTable('agents', {
   description: text('description'), // Optional description
   token: text('token').notNull().unique(), // Permanent token for agent authentication
   maxConcurrentJobs: integer('max_concurrent_jobs').notNull().default(1),
+  isLocal: text('is_local').notNull().default('false'), // 'true' for built-in local agent
   
   // System information (populated when agent connects)
   hostname: text('hostname'), // Agent machine hostname (populated by agent)

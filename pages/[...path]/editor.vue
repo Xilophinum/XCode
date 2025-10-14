@@ -403,7 +403,7 @@
         >
           <div class="p-4">
             <div class="flex justify-between items-center mb-4">
-              <h3 class="text-lg font-medium text-neutral-900 dark:text-white">Properties</h3>
+              <h3 class="text-lg font-medium text-neutral-900 dark:text-white">Node Properties</h3>
               <button
                 @click="togglePropertiesPanel"
                 class="p-1 rounded-md text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
@@ -416,21 +416,6 @@
             </div>
             
             <div v-if="selectedNode" class="space-y-4">
-              <div class="flex justify-between items-center">
-                <h4 class="font-medium text-neutral-900 dark:text-white">Node Properties</h4>
-                <button
-                  @click="selectedNode = null"
-                  class="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
-                >
-                  Clear Selection
-                </button>
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Node Type</label>
-                <p class="text-sm text-neutral-600 dark:text-neutral-400">{{ selectedNode.data?.nodeType || selectedNode.type }}</p>
-              </div>
-              
               <div>
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Label</label>
                 <input
@@ -470,47 +455,29 @@
                 >
               </div>
               
-              <!-- Parameter Node Configuration -->
-              <div v-if="selectedNode.data?.nodeType?.includes('-param')">
-                <div v-if="selectedNode.data.nodeType === 'choice-param'" class="mt-3">
-                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Choices (one per line)</label>
-                  <textarea
-                    :value="selectedNode.data.choices?.join('\n') || ''"
-                    @input="selectedNode.data.choices = $event.target.value.split('\n').filter(c => c.trim())"
-                    rows="3"
-                    class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                  ></textarea>
-                </div>
-                
-                <div class="mt-3">
-                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Default Value</label>
-                  <input
-                    v-if="selectedNode.data.nodeType === 'boolean-param'"
-                    v-model="selectedNode.data.defaultValue"
-                    type="checkbox"
-                    class="w-4 h-4 text-blue-600 bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
-                  >
-                  <select
-                    v-else-if="selectedNode.data.nodeType === 'choice-param'"
-                    v-model="selectedNode.data.defaultValue"
-                    class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                  >
-                    <option v-for="choice in selectedNode.data.choices" :key="choice" :value="choice">{{ choice }}</option>
-                  </select>
-                  <textarea
-                    v-else-if="selectedNode.data.nodeType === 'text-param'"
-                    v-model="selectedNode.data.defaultValue"
-                    rows="3"
-                    class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                  ></textarea>
-                  <input
-                    v-else
-                    v-model="selectedNode.data.defaultValue"
-                    type="text"
-                    class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                  >
-                </div>
-              </div>
+              <!-- Choice Parameter Configuration -->
+              <ChoiceParamProperties 
+                v-if="selectedNode.data?.nodeType === 'choice-param'" 
+                :nodeData="selectedNode"
+              />
+
+              <!-- Boolean Parameter Configuration -->
+              <BooleanParamProperties 
+                v-if="selectedNode.data?.nodeType === 'boolean-param'" 
+                :nodeData="selectedNode"
+              />
+
+              <!-- Text Parameter Configuration -->
+              <TextParamProperties 
+                v-if="selectedNode.data?.nodeType === 'text-param'" 
+                :nodeData="selectedNode"
+              />
+
+              <!-- String Parameter Configuration -->
+              <StringParamProperties 
+                v-if="selectedNode.data?.nodeType === 'string-param'" 
+                :nodeData="selectedNode"
+              />
               
               <!-- Input Sockets Management -->
               <div v-if="selectedNode.data && selectedNode.data.hasExecutionInput !== false">
@@ -561,7 +528,6 @@
                 >
                   <option value="" disabled>-- Select an execution agent --</option>
                   <option value="any">Any available agent</option>
-                  <option value="local">Local execution</option>
                   <option 
                     v-for="agent in availableAgents" 
                     :key="agent.id" 
@@ -592,6 +558,19 @@
                 :nodeData="selectedNode"
               />
 
+              <!-- Job Trigger Configuration for job-trigger nodes -->
+              <JobTriggerProperties 
+                v-if="selectedNode.data?.nodeType === 'job-trigger'" 
+                :nodeData="selectedNode"
+                :currentProjectId="project?.id"
+              />
+
+              <!-- Conditional Configuration for conditional nodes -->
+              <ConditionalProperties 
+                v-if="selectedNode.data?.nodeType === 'conditional'" 
+                :nodeData="selectedNode"
+              />
+
               <!-- Script Editor for execution nodes -->
               <div v-if="selectedNode.data?.script !== undefined">
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Script</label>
@@ -608,6 +587,52 @@
                   <div class="space-y-1">
                     <div v-for="(socket, index) in selectedNode.data.inputSockets" :key="socket.id" class="text-blue-700 dark:text-blue-300">
                       <code>${{ socket.label }}</code>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Retry Policy -->
+                <div class="mt-4 p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg">
+                  <div class="flex items-center justify-between mb-3">
+                    <label class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Retry Policy</label>
+                    <button
+                      @click="selectedNode.data.retryEnabled = !selectedNode.data.retryEnabled"
+                      :class="[
+                        'relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
+                        selectedNode.data.retryEnabled 
+                          ? 'bg-blue-600 focus:ring-blue-500' 
+                          : 'bg-gray-400 focus:ring-gray-300'
+                      ]"
+                    >
+                      <span
+                        :class="[
+                          'inline-block h-3 w-3 transform rounded-full bg-white transition-transform',
+                          selectedNode.data.retryEnabled ? 'translate-x-5' : 'translate-x-1'
+                        ]"
+                      />
+                    </button>
+                  </div>
+                  
+                  <div v-if="selectedNode.data.retryEnabled" class="space-y-3">
+                    <div>
+                      <label class="block text-xs text-neutral-600 dark:text-neutral-400 mb-1">Max Retries</label>
+                      <input
+                        v-model.number="selectedNode.data.maxRetries"
+                        type="number"
+                        min="1"
+                        max="10"
+                        class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+                      >
+                    </div>
+                    <div>
+                      <label class="block text-xs text-neutral-600 dark:text-neutral-400 mb-1">Retry Delay (seconds)</label>
+                      <input
+                        v-model.number="selectedNode.data.retryDelay"
+                        type="number"
+                        min="1"
+                        max="300"
+                        class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+                      >
                     </div>
                   </div>
                 </div>
@@ -670,6 +695,12 @@ import { Controls } from '@vue-flow/controls'
 import { ref, computed, onMounted, onUnmounted, nextTick, defineComponent, h, markRaw, watch } from 'vue'
 import WebHookProperties from '@/components/property-panels/WebhookProperties.vue'
 import CronProperties from '../../components/property-panels/CronProperties.vue'
+import JobTriggerProperties from '../../components/property-panels/JobTriggerProperties.vue'
+import ChoiceParamProperties from '../../components/property-panels/ChoiceParamProperties.vue'
+import BooleanParamProperties from '../../components/property-panels/BooleanParamProperties.vue'
+import TextParamProperties from '../../components/property-panels/TextParamProperties.vue'
+import StringParamProperties from '../../components/property-panels/StringParamProperties.vue'
+import ConditionalProperties from '../../components/property-panels/ConditionalProperties.vue'
 import EditorDeleteModal from '@/components/modals/EditorDeleteModal.vue'
 import EditorRetentionModal from '@/components/modals/EditorRetentionModal.vue'
 
@@ -936,16 +967,14 @@ const hierarchicalProject = computed(() => {
 const triggerNodes = [
   { type: 'cron', name: 'Cron Trigger', description: 'Schedule job execution with cron expressions' },
   { type: 'webhook', name: 'Webhook Trigger', description: 'Trigger via HTTP webhook' },
-  { type: 'job-trigger', name: 'Job Trigger', description: 'Trigger from another project completion' },
-  { type: 'api-trigger', name: 'API Trigger', description: 'Trigger via REST API call' }
+  { type: 'job-trigger', name: 'Job Trigger', description: 'Trigger from another project completion' }
 ]
 
 const parameterNodes = [
   { type: 'string-param', name: 'String Parameter', description: 'Single-line text parameter' },
   { type: 'text-param', name: 'Text Parameter', description: 'Multi-line text parameter' },
   { type: 'choice-param', name: 'Choice Parameter', description: 'Dropdown selection parameter' },
-  { type: 'boolean-param', name: 'Boolean Parameter', description: 'True/false parameter' },
-  { type: 'file-param', name: 'File Parameter', description: 'File upload parameter' }
+  { type: 'boolean-param', name: 'Boolean Parameter', description: 'True/false parameter' }
 ]
 
 const executionNodes = [
@@ -959,7 +988,6 @@ const executionNodes = [
 const controlNodes = [
   { type: 'parallel', name: 'Parallel', description: 'Execute multiple branches in parallel' },
   { type: 'conditional', name: 'Conditional', description: 'Conditional execution based on parameters' },
-  { type: 'retry', name: 'Retry', description: 'Retry failed executions' },
   { type: 'notification', name: 'Notification', description: 'Send notifications (email, slack, etc.)' }
 ]
 
@@ -974,6 +1002,8 @@ const isExecutionNode = (nodeType) => {
   if (!nodeType) return false
   return ['bash', 'powershell', 'cmd', 'python', 'node-js'].includes(nodeType)
 }
+
+
 
 // Agent data loading
 const loadAgents = async () => {
@@ -1039,13 +1069,27 @@ const CustomNode = defineComponent({
       const hasExecutionInput = nodeData.hasExecutionInput
       const totalInputs = (hasExecutionInput ? 1 : 0) + inputSocketsCount
       
+      // Calculate output counts
+      const hasExecutionOutput = nodeData.hasExecutionOutput
+      const hasDataOutput = nodeData.hasDataOutput
+      const outputSockets = nodeData.outputSockets || []
+      const totalOutputs = (hasExecutionOutput ? 1 : 0) + (hasDataOutput ? 1 : 0) + outputSockets.length
+      
+      // Calculate node height to accommodate all sockets
+      const baseHeight = 60
+      const minHeightForInputs = inputSocketsCount > 0 ? 120 + (inputSocketsCount * 25) : baseHeight // Ensure exec socket at center has clearance
+      const outputSocketSpace = outputSockets.length > 0 ? (outputSockets.length * 25) + 40 : 0
+      const totalHeight = Math.max(baseHeight, minHeightForInputs, outputSocketSpace)
+      
       // Create input handles array
       const inputHandles = []
       let currentInputIndex = 0
       
-      // Add execution input handle if node supports it
+      // Add execution input handle if node supports it (positioned above input sockets)
       if (hasExecutionInput) {
-        const executionTop = totalInputs === 1 ? '50%' : `${20 + (currentInputIndex * 25)}px`
+        const inputSocketsEndY = totalHeight - 20 // Where input sockets end
+        const inputSocketsStartY = inputSocketsCount > 0 ? inputSocketsEndY - ((inputSocketsCount - 1) * 25) : totalHeight
+        const executionSocketY = inputSocketsCount > 0 ? Math.max(30, inputSocketsStartY - 40) : totalHeight / 2
         inputHandles.push(
           h(Handle, {
             key: 'execution-input',
@@ -1055,18 +1099,18 @@ const CustomNode = defineComponent({
             style: { 
               background: dark.value ? '#737373' : '#555',
               left: '-6px',
-              top: executionTop,
-              transform: totalInputs === 1 ? 'translateY(-50%)' : 'none'
+              top: `${executionSocketY}px`,
+              transform: 'translateY(-50%)'
             }
           })
         )
-        currentInputIndex++
       }
       
-      // Add dynamic input sockets - positioned after execution input
+      // Add dynamic input sockets - positioned from bottom up
       if (nodeData.inputSockets && nodeData.inputSockets.length > 0) {
         nodeData.inputSockets.forEach((socket, index) => {
-          const topPosition = totalInputs === 1 ? '50%' : `${20 + (currentInputIndex * 25)}px`
+          const reverseIndex = nodeData.inputSockets.length - 1 - index
+          const topPosition = `${totalHeight - 20 - (reverseIndex * 25)}px`
           inputHandles.push(
             h(Handle, {
               key: `input-${socket.id}`,
@@ -1077,23 +1121,32 @@ const CustomNode = defineComponent({
                 background: '#3b82f6',
                 left: '-6px',
                 top: topPosition,
-                transform: totalInputs === 1 ? 'translateY(-50%)' : 'none',
+                transform: 'none',
                 borderRadius: '3px',
                 width: '10px',
                 height: '10px'
               }
-            })
+            }),
+            // Add socket label
+            h('div', {
+              key: `input-label-${socket.id}`,
+              style: {
+                position: 'absolute',
+                left: '8px',
+                top: topPosition,
+                transform: 'translateY(-50%)',
+                fontSize: '10px',
+                color: dark.value ? '#d1d5db' : '#374151',
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap'
+              }
+            }, socket.label)
           )
-          currentInputIndex++
         })
       }
       
       // Create output handles
       const outputHandles = []
-      const hasExecutionOutput = nodeData.hasExecutionOutput
-      const hasDataOutput = nodeData.hasDataOutput
-      const outputSockets = nodeData.outputSockets || []
-      const totalOutputs = (hasExecutionOutput ? 1 : 0) + (hasDataOutput ? 1 : 0) + outputSockets.length
       let currentOutputIndex = 0
       
       // Add execution output handle
@@ -1139,9 +1192,21 @@ const CustomNode = defineComponent({
         currentOutputIndex++
       }
       
-      // Add specific output socket handles (for webhook and other nodes with output sockets)
+      // Add specific output socket handles (for webhook, conditional and other nodes with output sockets)
       outputSockets.forEach((socket, index) => {
-        const socketTop = totalOutputs === 1 ? '50%' : `${20 + (currentOutputIndex * 25)}px`
+        // Position sockets from bottom up when multiple sockets
+        const socketTop = totalOutputs === 1 ? '50%' : `${totalHeight - 20 - (index * 25)}px`
+        
+        // Different colors for different socket types
+        let socketColor = '#8b5cf6' // Default purple for webhook data
+        if (nodeData.nodeType === 'conditional') {
+          socketColor = socket.id === 'true' ? '#10b981' : '#ef4444' // Green for true, red for false
+        } else if (['bash', 'powershell', 'cmd', 'python', 'node-js'].includes(nodeData.nodeType)) {
+          if (socket.id === 'success') socketColor = '#10b981' // Green for success
+          else if (socket.id === 'failure') socketColor = '#ef4444' // Red for failure  
+          else if (socket.id === 'output') socketColor = '#3b82f6' // Blue for output data
+        }
+        
         outputHandles.push(
           h(Handle, {
             key: `output-${socket.id}`,
@@ -1149,7 +1214,7 @@ const CustomNode = defineComponent({
             position: Position.Right,
             id: socket.id,
             style: { 
-              background: '#8b5cf6', // Purple for webhook data
+              background: socketColor,
               right: '-6px',
               top: socketTop,
               transform: totalOutputs === 1 ? 'translateY(-50%)' : 'none',
@@ -1157,16 +1222,24 @@ const CustomNode = defineComponent({
               width: '10px',
               height: '10px'
             }
-          })
+          }),
+          // Add socket label
+          h('div', {
+            key: `output-label-${socket.id}`,
+            style: {
+              position: 'absolute',
+              right: '8px',
+              top: socketTop,
+              transform: totalOutputs === 1 ? 'translateY(-50%)' : 'translateY(-50%)',
+              fontSize: '10px',
+              color: dark.value ? '#d1d5db' : '#374151',
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap'
+            }
+          }, socket.label)
         )
         currentOutputIndex++
       })
-      
-      // Calculate node height based on content and sockets
-      const baseHeight = 60
-      const maxSockets = Math.max(totalInputs, totalOutputs)
-      const socketHeight = maxSockets > 1 ? (maxSockets - 1) * 25 : 0
-      const totalHeight = Math.max(baseHeight, baseHeight + socketHeight)
       
       return h('div', {
         class: 'px-4 py-2 shadow-md rounded-md border-1 bg-white dark:bg-neutral-700 border-neutral-200 dark:border-neutral-600 relative',
@@ -1357,7 +1430,8 @@ const getDefaultNodeData = (type) => {
     // Socket configuration - every node has this
     inputSockets: [], // Array of {id, label, connected: false}
     hasExecutionOutput: true, // Most nodes have execution output
-    hasExecutionInput: true // Most nodes have execution input
+    hasExecutionInput: true, // Most nodes have execution input
+    hasDataOutput: false // Default to false, parameter nodes will override
   }
   
   switch (type) {
@@ -1388,18 +1462,9 @@ const getDefaultNodeData = (type) => {
       return { 
         ...baseData,
         hasExecutionInput: false,
-        jobName: '',
+        sourceProjectId: '',
         triggerOn: 'success', // success, failure, always
         waitForCompletion: true
-      }
-    case 'api-trigger':
-      return { 
-        ...baseData,
-        hasExecutionInput: false,
-        endpoint: '/api/trigger',
-        method: 'POST',
-        authRequired: false,
-        apiKey: ''
       }
       
     // Parameter nodes
@@ -1439,51 +1504,92 @@ const getDefaultNodeData = (type) => {
         defaultValue: false,
         description: 'Boolean parameter'
       }
-    case 'file-param':
-      return { 
-        ...baseData,
-        hasExecutionInput: false,
-        hasExecutionOutput: false,
-        hasDataOutput: true,
-        allowedExtensions: '',
-        description: 'File upload parameter'
-      }
       
     // Execution nodes
     case 'bash':
       return { 
         ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
         script: '#!/bin/bash\necho "Hello from bash"',
         workingDirectory: '.',
-        timeout: 300
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5
       }
     case 'powershell':
       return { 
         ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
         script: 'Write-Host "Hello from PowerShell"',
         workingDirectory: '.',
-        timeout: 300
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5
       }
     case 'cmd':
       return { 
         ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
         script: 'echo Hello from Command Prompt',
         workingDirectory: '.',
-        timeout: 300
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5
       }
     case 'python':
       return { 
         ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
         script: 'print("Hello from Python")',
         workingDirectory: '.',
-        timeout: 300
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5
       }
     case 'node-js':
       return { 
         ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
         script: 'console.log("Hello from Node.js");',
         workingDirectory: '.',
-        timeout: 300
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5
       }
       
     // Control nodes
@@ -1496,15 +1602,13 @@ const getDefaultNodeData = (type) => {
     case 'conditional':
       return { 
         ...baseData,
-        condition: '$param1 == "value"',
+        hasExecutionOutput: false, // Conditional has dual outputs instead
+        outputSockets: [
+          { id: 'true', label: 'True', connected: false },
+          { id: 'false', label: 'False', connected: false }
+        ],
+        condition: '$input1 == "value"',
         description: 'Conditional execution'
-      }
-    case 'retry':
-      return { 
-        ...baseData,
-        maxRetries: 3,
-        retryDelay: 5,
-        description: 'Retry on failure'
       }
     case 'notification':
       return { 
@@ -1625,7 +1729,19 @@ const saveProject = async () => {
       console.log('✅ Cron jobs updated')
     } catch (cronError) {
       console.warn('⚠️ Failed to update cron jobs:', cronError)
-      // Don't fail the save operation if cron update fails
+    }
+    
+    // Log job trigger nodes for debugging
+    const jobTriggerNodes = nodes.value.filter(node => node.data?.nodeType === 'job-trigger')
+    if (jobTriggerNodes.length > 0) {
+      console.log(`🎯 Found ${jobTriggerNodes.length} job trigger nodes:`, 
+        jobTriggerNodes.map(n => ({ 
+          id: n.id, 
+          label: n.data.label, 
+          sourceProject: n.data.sourceProjectId, 
+          triggerOn: n.data.triggerOn 
+        }))
+      )
     }
     
   } catch (error) {
@@ -2011,6 +2127,8 @@ onMounted(async () => {
   await nextTick()
   await initializeEditor()
   
+
+  
   console.log('✅ Editor component fully initialized')
 })
 
@@ -2051,7 +2169,7 @@ onUnmounted(() => {
   console.log('🔌 Editor component unmounting...')
   cleanupRealtimeConnection()
   
-  // Clean up agent status update listener
+  // Clean up event listeners
   if (typeof window !== 'undefined') {
     window.removeEventListener('agentStatusUpdate', handleAgentStatusUpdate)
   }

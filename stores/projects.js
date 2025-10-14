@@ -139,7 +139,9 @@ export const useProjectsStore = defineStore('projects', {
         }
         
         // JWT-based authentication - no need to pass userId
-        const items = await $fetch('/api/items')
+        const items = await $fetch('/api/items', {
+          timeout: 30000
+        })
         
         // Ensure items is always an array and parse dates
         const rawItems = Array.isArray(items) ? items : []
@@ -160,6 +162,7 @@ export const useProjectsStore = defineStore('projects', {
       try {
         const newFolder = await $fetch('/api/items', {
           method: 'POST',
+          timeout: 30000,
           body: {
             name,
             description: description || '',
@@ -230,6 +233,7 @@ export const useProjectsStore = defineStore('projects', {
       try {
         const newProject = await $fetch('/api/items', {
           method: 'POST',
+          timeout: 10000,
           body: {
             name,
             description: description || '',

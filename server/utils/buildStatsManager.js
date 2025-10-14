@@ -123,6 +123,16 @@ export class BuildStatsManager {
       source: 'system'
     })
 
+    // Broadcast build completion for job triggers
+    await this.broadcastBuildCompletion(build.projectId, result.status, {
+      buildId,
+      projectId: build.projectId,
+      status: result.status,
+      message: result.message,
+      duration,
+      trigger: build.trigger
+    })
+
     // Update project statistics
     await this.updateProjectStats(build.projectId)
 
@@ -402,6 +412,32 @@ export class BuildStatsManager {
         await this.db.delete(buildLogs).where(eq(buildLogs.id, log.id))
       }
       console.log(`🧹 Cleaned up ${oldLogs.length} old log entries`)
+    }
+  }
+
+  /**
+   * Broadcast build completion event for job triggers
+   * @param {string} projectId - Project ID that completed
+   * @param {string} status - Build status (success, failure, cancelled)
+   * @param {Object} buildData - Additional build data
+   */
+  async broadcastBuildCompletion(projectId, status, buildData) {
+    try {
+      // Import the WebSocket broadcast function
+      const { broadcastBuildCompletion } = await import('../plugins/websocket.js')
+      
+      // Broadcast the build completion event
+      await broadcastBuildCompletion({
+        type: 'build_completed',
+        sourceProjectId: projectId,
+        status: status,
+        buildData: buildData,
+        timestamp: new Date().toISOString()
+      })
+      
+      console.log(`📡 Broadcasted build completion for project ${projectId} with status: ${status}`)
+    } catch (error) {
+      console.error('Failed to broadcast build completion:', error)
     }
   }
 

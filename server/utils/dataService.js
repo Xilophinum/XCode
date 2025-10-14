@@ -617,9 +617,8 @@ export class DataService {
   async createAgent(agentData) {
     await this.ensureInitialized()
     
-    // Generate a secure token for the agent
-    const crypto = await import('crypto')
-    const token = crypto.randomBytes(32).toString('hex')
+    // Use provided token or generate a secure token for the agent
+    const token = agentData.token || (await import('crypto')).randomBytes(32).toString('hex')
     
     const agent = {
       id: agentData.id || `agent-${Date.now()}`,
@@ -637,7 +636,7 @@ export class DataService {
       systemInfo: null,
       
       // Runtime information
-      status: 'offline',
+      status: agentData.status || 'offline',
       currentJobs: 0,
       lastHeartbeat: null,
       ipAddress: null,
@@ -674,7 +673,8 @@ export class DataService {
       ...agent,
       capabilities: JSON.parse(agent.capabilities || '[]'),
       tags: JSON.parse(agent.tags || '[]'),
-      systemInfo: agent.systemInfo ? JSON.parse(agent.systemInfo) : null
+      systemInfo: agent.systemInfo ? JSON.parse(agent.systemInfo) : null,
+      isLocal: agent.isLocal === 'true'
     }
   }
 
@@ -713,7 +713,8 @@ export class DataService {
       ...agent,
       capabilities: JSON.parse(agent.capabilities || '[]'),
       tags: JSON.parse(agent.tags || '[]'),
-      systemInfo: agent.systemInfo ? JSON.parse(agent.systemInfo) : null
+      systemInfo: agent.systemInfo ? JSON.parse(agent.systemInfo) : null,
+      isLocal: agent.isLocal === 'true'
     }))
   }
 
@@ -732,7 +733,28 @@ export class DataService {
       ...agent,
       capabilities: JSON.parse(agent.capabilities || '[]'),
       tags: JSON.parse(agent.tags || '[]'),
-      systemInfo: agent.systemInfo ? JSON.parse(agent.systemInfo) : null
+      systemInfo: agent.systemInfo ? JSON.parse(agent.systemInfo) : null,
+      isLocal: agent.isLocal === 'true'
+    }
+  }
+
+  async getAgentByName(name) {
+    await this.ensureInitialized()
+    const result = await this.db
+      .select()
+      .from(agents)
+      .where(eq(agents.name, name))
+      .limit(1)
+
+    if (result.length === 0) return null
+    
+    const agent = result[0]
+    return {
+      ...agent,
+      capabilities: JSON.parse(agent.capabilities || '[]'),
+      tags: JSON.parse(agent.tags || '[]'),
+      systemInfo: agent.systemInfo ? JSON.parse(agent.systemInfo) : null,
+      isLocal: agent.isLocal === 'true'
     }
   }
 
@@ -753,6 +775,9 @@ export class DataService {
     }
     if (updates.systemInfo) {
       updateData.systemInfo = JSON.stringify(updates.systemInfo)
+    }
+    if (typeof updates.isLocal === 'boolean') {
+      updateData.isLocal = updates.isLocal ? 'true' : 'false'
     }
     
     await this.db

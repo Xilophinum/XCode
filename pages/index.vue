@@ -274,28 +274,28 @@
 
     <!-- Create Folder Modal -->
     <div v-if="showCreateFolderModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
-          <h3 class="text-lg font-medium text-gray-950 mb-4">Create New Folder</h3>
+          <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Folder</h3>
           <form @submit.prevent="handleCreateFolder">
             <div class="mb-4">
-              <label for="folderName" class="block text-sm font-medium text-gray-700">Folder Name</label>
+              <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Folder Name</label>
               <input
                 id="folderName"
                 v-model="folderForm.name"
                 type="text"
                 required
-                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
                 placeholder="Enter folder name"
               >
             </div>
             <div class="mb-4">
-              <label for="folderDescription" class="block text-sm font-medium text-gray-700">Description (Optional)</label>
+              <label for="folderDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
               <textarea
                 id="folderDescription"
                 v-model="folderForm.description"
                 rows="3"
-                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
                 placeholder="Enter folder description"
               ></textarea>
             </div>
@@ -303,7 +303,7 @@
               <button
                 type="button"
                 @click="showCreateFolderModal = false"
-                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
               >
                 Cancel
               </button>
@@ -370,25 +370,25 @@
 
     <!-- Delete Confirmation Modal -->
     <div v-if="showDeleteConfirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
-          <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-            <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 mb-4">
+            <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h3 class="text-lg font-medium text-gray-950 mb-2 text-center">Delete Folder</h3>
-          <p class="text-sm text-gray-600 mb-4 text-center">
+          <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-2 text-center">Delete Folder</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
             Are you sure you want to delete "<strong>{{ folderToDelete?.name }}</strong>"?
           </p>
-          <p class="text-sm text-red-600 mb-4 text-center">
+          <p class="text-sm text-red-600 dark:text-red-400 mb-4 text-center">
             <strong>Warning:</strong> This will also delete all folders and projects inside this folder. This action cannot be undone.
           </p>
           <div class="flex justify-end space-x-3">
             <button
               type="button"
               @click="cancelDelete"
-              class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
             >
               Cancel
             </button>

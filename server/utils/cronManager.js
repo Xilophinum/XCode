@@ -7,6 +7,7 @@ import { jobManager } from './jobManager.js'
 import { getAgentManager } from './agentManager.js'
 import { cronDbService } from './cronDbService.js'
 import { getDataService } from './dataService.js'
+import { executeProjectFromTrigger } from './triggerExecutor.js'
 
 class CronManager {
   constructor() {
@@ -328,7 +329,6 @@ class CronManager {
       }
 
       // Execute the connected workflow
-      const { executeProjectFromTrigger } = await import('./triggerExecutor.js')
       await executeProjectFromTrigger(projectId, nodes, edges, cronTriggerNode.id, null) // No trigger context for cron jobs
       
     } catch (error) {
