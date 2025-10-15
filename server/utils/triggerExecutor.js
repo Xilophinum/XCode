@@ -44,7 +44,7 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
     // Convert graph to execution commands for the agent
     const executionCommands = convertGraphToCommands(nodes, edges, triggerContext)
 
-    console.log(`🔧 Generated ${executionCommands.length} commands:`, executionCommands)
+    console.log(`🔧 Generated ${executionCommands.length} commands`)
 
     // Filter to get only executable commands
     const executableCommands = executionCommands.filter(cmd => 

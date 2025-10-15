@@ -1,17 +1,36 @@
 /**
  * Job Manager - Handles job storage, lifecycle, and output buffering
  * 
- * This manages all active and completed jobs, stores real-time output,
- * and provides APIs for job status tracking.
+ * This manages all active and completed jobs with database persistence,
+ * stores real-time output, and provides APIs for job status tracking.
  */
+
+import { getDB } from './database.js'
+import { v4 as uuidv4 } from 'uuid'
 
 class JobManager {
   constructor() {
-    // In-memory storage for jobs (in production, use a database)
+    // In-memory cache for active jobs (performance)
     this.jobs = new Map()
     this.jobsByProject = new Map() // projectId -> Set of jobIds
+    this.outputSequence = new Map() // jobId -> next sequence number
+    this.db = null
     
-    console.log('📋 Job Manager initialized')
+    console.log('📋 Job Manager initialized with database persistence')
+  }
+
+  async initialize() {
+    this.db = await getDB()
+    
+    // Load active jobs from database on startup
+    await this.loadActiveJobsFromDatabase()
+    
+    console.log(`📋 Loaded ${this.jobs.size} active jobs from database`)
+  }
+
+  async loadActiveJobsFromDatabase() {
+    // Jobs table was migrated to builds table - no active jobs to load on startup
+    console.log('📋 Jobs are now stored in builds table - starting with empty job cache')
   }
 
   /**
@@ -19,13 +38,46 @@ class JobManager {
    */
   async createJob(jobData) {
     const { jobId, projectId } = jobData
+    const now = new Date().toISOString()
     
-    // Store job
-    this.jobs.set(jobId, {
+    const jobRecord = {
+      id: jobId,
+      projectId: projectId,
+      buildId: jobData.buildId || null,
+      parentJobId: jobData.parentJobId || null,
+      status: jobData.status || 'queued',
+      agentId: jobData.agentId || null,
+      agentName: jobData.agentName || null,
+      currentCommandIndex: jobData.currentCommandIndex || null,
+      executionCommands: jobData.executionCommands ? JSON.stringify(jobData.executionCommands) : null,
+      nodes: jobData.nodes ? JSON.stringify(jobData.nodes) : null,
+      edges: jobData.edges ? JSON.stringify(jobData.edges) : null,
+      currentNodeId: jobData.currentNodeId || null,
+      currentNodeLabel: jobData.currentNodeLabel || null,
+      exitCode: null,
+      error: null,
+      message: null,
+      finalOutput: null,
+      canRetryOnReconnect: 'false',
+      parallelBranchesResult: null,
+      parallelMatrixResult: null,
+      startTime: jobData.startTime || now,
+      completedAt: null,
+      failedAt: null,
+      retriedAt: null,
+      createdAt: now,
+      updatedAt: now
+    }
+    
+    // Jobs are now stored in builds table - skip database insert for jobs
+    
+    // Store in memory cache
+    const memoryJob = {
       ...jobData,
       output: [],
-      createdAt: new Date().toISOString()
-    })
+      createdAt: now
+    }
+    this.jobs.set(jobId, memoryJob)
     
     // Track by project
     if (!this.jobsByProject.has(projectId)) {
@@ -33,7 +85,10 @@ class JobManager {
     }
     this.jobsByProject.get(projectId).add(jobId)
     
-    console.log(`📋 Created job ${jobId} for project ${projectId}`)
+    // Initialize output sequence
+    this.outputSequence.set(jobId, 0)
+    
+    console.log(`📋 Created job ${jobId} for project ${projectId} (persisted to database)`)
     
     // Broadcast job creation to subscribed clients
     if (globalThis.broadcastToProject) {
@@ -65,12 +120,40 @@ class JobManager {
       throw new Error(`Job ${jobId} not found`)
     }
 
-    // Update job data
+    const now = new Date().toISOString()
+    
+    // Update memory cache
     Object.assign(job, updates, {
-      updatedAt: new Date().toISOString()
+      updatedAt: now
     })
 
-    console.log(`📋 Updated job ${jobId}:`, Object.keys(updates))
+    // Prepare database updates
+    const dbUpdates = {
+      updatedAt: now
+    }
+    
+    // Map memory fields to database fields
+    if (updates.status !== undefined) dbUpdates.status = updates.status
+    if (updates.agentId !== undefined) dbUpdates.agentId = updates.agentId
+    if (updates.agentName !== undefined) dbUpdates.agentName = updates.agentName
+    if (updates.currentCommandIndex !== undefined) dbUpdates.currentCommandIndex = updates.currentCommandIndex
+    if (updates.executionCommands !== undefined) dbUpdates.executionCommands = JSON.stringify(updates.executionCommands)
+    if (updates.currentNodeId !== undefined) dbUpdates.currentNodeId = updates.currentNodeId
+    if (updates.currentNodeLabel !== undefined) dbUpdates.currentNodeLabel = updates.currentNodeLabel
+    if (updates.exitCode !== undefined) dbUpdates.exitCode = updates.exitCode
+    if (updates.error !== undefined) dbUpdates.error = updates.error
+    if (updates.message !== undefined) dbUpdates.message = updates.message
+    if (updates.finalOutput !== undefined) dbUpdates.finalOutput = updates.finalOutput
+    if (updates.canRetryOnReconnect !== undefined) dbUpdates.canRetryOnReconnect = updates.canRetryOnReconnect ? 'true' : 'false'
+    if (updates.parallelBranchesResult !== undefined) dbUpdates.parallelBranchesResult = JSON.stringify(updates.parallelBranchesResult)
+    if (updates.parallelMatrixResult !== undefined) dbUpdates.parallelMatrixResult = JSON.stringify(updates.parallelMatrixResult)
+    if (updates.completedAt !== undefined) dbUpdates.completedAt = updates.completedAt
+    if (updates.failedAt !== undefined) dbUpdates.failedAt = updates.failedAt
+    if (updates.retriedAt !== undefined) dbUpdates.retriedAt = updates.retriedAt
+
+    // Jobs are now stored in builds table - skip database update for jobs
+
+    console.log(`📋 Updated job ${jobId}:`, Object.keys(updates), '(persisted to database)')
     
     // Broadcast job status updates to subscribed clients
     if (globalThis.broadcastToProject && job.projectId) {
@@ -79,14 +162,14 @@ class JobManager {
         jobId: jobId,
         projectId: job.projectId,
         status: job.status,
-        message: job.message || updates.message || job.error || updates.error, // Include completion/error details
+        message: job.message || updates.message || job.error || updates.error,
         currentNodeId: job.currentNodeId,
         currentNodeLabel: job.currentNodeLabel,
         agentId: job.agentId,
         agentName: job.agentName,
         buildId: job.buildId,
         updates: updates,
-        timestamp: new Date().toISOString()
+        timestamp: now
       })
     }
     
@@ -116,7 +199,7 @@ class JobManager {
   }
 
   /**
-   * Add output to a job (real-time streaming)
+   * Add output to a job (real-time streaming with single-row JSON persistence)
    */
   async addJobOutput(jobId, outputLine) {
     const job = this.jobs.get(jobId)
@@ -125,30 +208,115 @@ class JobManager {
       return false
     }
 
+    const now = new Date().toISOString()
+    
     // Add timestamp if not provided
     if (!outputLine.timestamp) {
-      outputLine.timestamp = new Date().toISOString()
+      outputLine.timestamp = now
     }
 
-    job.output.push(outputLine)
-
-    // Keep only last 1000 lines to prevent memory issues
-    if (job.output.length > 1000) {
-      job.output = job.output.slice(-1000)
+    // Mask sensitive values in output if credential resolver is available
+    let maskedMessage = outputLine.message || String(outputLine)
+    if (job.credentialResolver && typeof job.credentialResolver.maskLog === 'function') {
+      maskedMessage = job.credentialResolver.maskLog(maskedMessage)
     }
 
-    // Broadcast output in real-time to subscribed clients
+    // Get next sequence number
+    const sequence = this.outputSequence.get(jobId) || 0
+    this.outputSequence.set(jobId, sequence + 1)
+
+    // Prepare output entry with masked content
+    const outputEntry = {
+      sequence: sequence,
+      type: outputLine.type || 'info',
+      message: maskedMessage,
+      command: outputLine.command || null,
+      output: outputLine.output || null,
+      source: outputLine.source || 'agent',
+      nodeId: outputLine.nodeId || null,
+      timestamp: outputLine.timestamp
+    }
+
+    // Update database with single-row JSON approach
+    if (!this.db) await this.initialize()
+    
+    // Store job output in builds table
+    try {
+      const { getDB } = await import('./database.js')
+      const { builds } = await import('./schema.js')
+      const { eq } = await import('drizzle-orm')
+      
+      const db = await getDB()
+      
+      // Get current output log from database - try both job ID and build ID
+      let buildResults = await db.select({ outputLog: builds.outputLog }).from(builds).where(eq(builds.id, jobId))
+      let build = buildResults[0]
+      
+      // If not found by job ID, try by build ID if available
+      if (!build && job.buildId) {
+        buildResults = await db.select({ outputLog: builds.outputLog }).from(builds).where(eq(builds.id, job.buildId))
+        build = buildResults[0]
+      }
+      
+      let currentLog = []
+      if (build && build.outputLog) {
+        try {
+          currentLog = JSON.parse(build.outputLog)
+        } catch (e) {
+          currentLog = []
+        }
+      }
+      
+      // Add new entry
+      currentLog.push(outputEntry)
+      
+      // Update database - use build ID if available, otherwise job ID
+      const recordId = job.buildId || jobId
+      await db.update(builds).set({ 
+        outputLog: JSON.stringify(currentLog),
+        updatedAt: now 
+      }).where(eq(builds.id, recordId))
+      
+    } catch (dbError) {
+      console.warn(`Failed to persist job output to database:`, dbError.message)
+    }
+
+    // Add to memory cache (keep only last 100 lines for performance) - use masked version
+    const maskedOutputLine = { ...outputLine, message: maskedMessage }
+    job.output.push(maskedOutputLine)
+    if (job.output.length > 100) {
+      job.output = job.output.slice(-100)
+    }
+
+    // Broadcast output in real-time to subscribed clients - use masked version
     if (globalThis.broadcastToProject && job.projectId) {
       globalThis.broadcastToProject(job.projectId, {
         type: 'job_output_line',
         jobId: jobId,
         projectId: job.projectId,
-        output: outputLine,
+        output: maskedOutputLine,
         timestamp: outputLine.timestamp
       })
     }
 
     return true
+  }
+
+  /**
+   * Get job output from memory cache
+   */
+  async getJobOutput(jobId, limit = 1000) {
+    const job = this.jobs.get(jobId)
+    if (!job || !job.output) {
+      return []
+    }
+    
+    // Apply limit if specified
+    if (limit && job.output.length > limit) {
+      return job.output.slice(-limit)
+    }
+    
+    return job.output
   }
 
   /**
@@ -183,20 +351,16 @@ class JobManager {
   }
 
   /**
-   * Get all active jobs across all projects
+   * Get all active jobs across all projects (from memory cache)
    */
   async getActiveJobs() {
+    // Since jobs table was migrated to builds table, return active jobs from memory
     const activeJobs = []
-    
     for (const job of this.jobs.values()) {
-      if (job.status === 'running' || 
-          job.status === 'started' || 
-          job.status === 'dispatched' ||
-          job.status === 'cancelling') {
+      if (['queued', 'dispatched', 'running', 'cancelling'].includes(job.status)) {
         activeJobs.push(job)
       }
     }
-    
     return activeJobs
   }
 
@@ -265,27 +429,44 @@ class JobManager {
   }
 
   /**
-   * Clean up old completed jobs (call this periodically)
+   * Clean up old completed jobs from memory cache
    */
   async cleanupOldJobs(maxAge = 24 * 60 * 60 * 1000) { // 24 hours default
     const cutoff = Date.now() - maxAge
-    const toDelete = []
-
+    const jobsToDelete = []
+    
+    // Find old completed jobs in memory
     for (const [jobId, job] of this.jobs.entries()) {
-      if (job.completedAt && new Date(job.completedAt).getTime() < cutoff) {
-        toDelete.push(jobId)
+      if (['completed', 'failed', 'cancelled'].includes(job.status)) {
+        const completedTime = job.completedAt ? new Date(job.completedAt).getTime() : job.createdAt ? new Date(job.createdAt).getTime() : Date.now()
+        if (completedTime < cutoff) {
+          jobsToDelete.push(jobId)
+        }
+      }
+    }
+    
+    // Clean up memory cache
+    for (const jobId of jobsToDelete) {
+      const job = this.jobs.get(jobId)
+      if (job) {
+        // Remove from project tracking
+        const projectJobs = this.jobsByProject.get(job.projectId)
+        if (projectJobs) {
+          projectJobs.delete(jobId)
+          if (projectJobs.size === 0) {
+            this.jobsByProject.delete(job.projectId)
+          }
+        }
+        
+        this.jobs.delete(jobId)
+        this.outputSequence.delete(jobId)
       }
     }
 
-    for (const jobId of toDelete) {
-      await this.deleteJob(jobId)
+    if (jobsToDelete.length > 0) {
+      console.log(`📋 Cleaned up ${jobsToDelete.length} old jobs from memory`)
     }
-
-    if (toDelete.length > 0) {
-      console.log(`📋 Cleaned up ${toDelete.length} old jobs`)
-    }
-
-    return toDelete.length
+    return jobsToDelete.length
   }
 
   /**
@@ -306,12 +487,77 @@ class JobManager {
   }
 }
 
-// Export singleton instance
-export const jobManager = new JobManager()
+// Create singleton instance
+let jobManagerInstance = null
+
+export async function getJobManager() {
+  if (!jobManagerInstance) {
+    jobManagerInstance = new JobManager()
+    await jobManagerInstance.initialize()
+  }
+  return jobManagerInstance
+}
+
+// Legacy export for backward compatibility
+export const jobManager = {
+  async createJob(jobData) {
+    const manager = await getJobManager()
+    return manager.createJob(jobData)
+  },
+  async getJob(jobId) {
+    const manager = await getJobManager()
+    return manager.getJob(jobId)
+  },
+  async updateJob(jobId, updates) {
+    const manager = await getJobManager()
+    return manager.updateJob(jobId, updates)
+  },
+  async deleteJob(jobId) {
+    const manager = await getJobManager()
+    return manager.deleteJob(jobId)
+  },
+  async addJobOutput(jobId, outputLine) {
+    const manager = await getJobManager()
+    return manager.addJobOutput(jobId, outputLine)
+  },
+  async getJobOutput(jobId, limit) {
+    const manager = await getJobManager()
+    return manager.getJobOutput(jobId, limit)
+  },
+  async getJobsForProject(projectId) {
+    const manager = await getJobManager()
+    return manager.getJobsForProject(projectId)
+  },
+  async getJobsByProject(projectId) {
+    const manager = await getJobManager()
+    return manager.getJobsForProject(projectId)
+  },
+  async getRunningJobForProject(projectId) {
+    const manager = await getJobManager()
+    return manager.getRunningJobForProject(projectId)
+  },
+  async getActiveJobs() {
+    const manager = await getJobManager()
+    return manager.getActiveJobs()
+  },
+  async cleanupOldJobs(maxAge) {
+    const manager = await getJobManager()
+    return manager.cleanupOldJobs(maxAge)
+  },
+  get jobs() {
+    // For backward compatibility - return empty Map if not initialized
+    return jobManagerInstance?.jobs || new Map()
+  }
+}
 
 // Cleanup old jobs every hour
 if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    jobManager.cleanupOldJobs().catch(console.error)
+  setInterval(async () => {
+    try {
+      const manager = await getJobManager()
+      await manager.cleanupOldJobs()
+    } catch (error) {
+      console.error('Error during job cleanup:', error)
+    }
   }, 60 * 60 * 1000) // 1 hour
 }

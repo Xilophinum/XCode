@@ -293,15 +293,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
           currentJob.status = message.status
           currentJob.nodeId = message.currentNodeId
           
-          // Only show status messages for failures and cancellations
-          // Success completions are handled by 'job_complete' message type
+          // Handle job status updates
           if (message.status === 'failed' || message.status === 'cancelled') {
             addJobMessage(projectId, 'System', 'warning', 
               `Job ${message.status}: ${message.message || 'No details provided'}`)
-            // Keep job in map for a while so UI can show final status
-            setTimeout(() => {
-              currentJobs.value.delete(projectId)
-            }, 5000)
+            // Remove job immediately for failed/cancelled jobs
+            currentJobs.value.delete(projectId)
           } else if (message.status === 'completed' && !message.suppressMessage) {
             // Only show completion message if there wasn't already a job_complete message
             // and the message contains useful details
@@ -309,9 +306,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
               addJobMessage(projectId, 'System', 'success', 
                 `Job completed: ${message.message}`)
             }
-            setTimeout(() => {
-              currentJobs.value.delete(projectId)
-            }, 5000)
+            // Remove job immediately for completed jobs
+            currentJobs.value.delete(projectId)
           }
         }
         break
@@ -336,9 +332,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
         const completedJob = currentJobs.value.get(projectId)
         if (completedJob) {
           completedJob.status = 'completed'
-          setTimeout(() => {
-            currentJobs.value.delete(projectId)
-          }, 5000)
+          // Remove job immediately so UI updates right away
+          currentJobs.value.delete(projectId)
         }
         break
         
@@ -347,9 +342,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
         const errorJob = currentJobs.value.get(projectId)
         if (errorJob) {
           errorJob.status = 'failed'
-          setTimeout(() => {
-            currentJobs.value.delete(projectId)
-          }, 5000)
+          // Remove job immediately so UI updates right away
+          currentJobs.value.delete(projectId)
         }
         break
         
@@ -383,7 +377,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
   
   // Add message to project's message array
-  const addJobMessage = (projectId, nodeLabel, type, message, value = undefined) => {
+  const addJobMessage = (projectId, nodeLabel, type, message, value = undefined, timestamp = undefined) => {
     if (!jobMessages.value.has(projectId)) {
       jobMessages.value.set(projectId, [])
     }
@@ -394,12 +388,40 @@ export const useWebSocketStore = defineStore('websocket', () => {
       type,
       message,
       value,
-      timestamp: new Date()
+      timestamp: timestamp ? new Date(timestamp) : new Date()
     })
+    
+    // Persist System messages to database via API call
+    if (nodeLabel === 'System') {
+      persistSystemMessage(projectId, type, message, timestamp)
+    }
     
     // Keep only last 1000 messages to prevent memory issues
     if (messages.length > 1000) {
       messages.splice(0, messages.length - 1000)
+    }
+  }
+  
+  // Persist System message to database
+  const persistSystemMessage = async (projectId, type, message, timestamp) => {
+    try {
+      // Find current running job to get buildId
+      const currentJob = getCurrentJob(projectId)
+      if (currentJob?.buildId) {
+        await $fetch(`/api/projects/${projectId}/builds/${currentJob.buildId}`, {
+          method: 'PATCH',
+          body: {
+            type: 'log',
+            level: type,
+            message: message,
+            source: 'system',
+            nodeLabel: 'System',
+            timestamp: timestamp || new Date().toISOString()
+          }
+        })
+      }
+    } catch (error) {
+      console.warn('Failed to persist System message:', error)
     }
   }
   
@@ -421,7 +443,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // Check if a project has a running job
   const isProjectJobRunning = (projectId) => {
     const job = currentJobs.value.get(projectId)
-    return job && ['running', 'pending', 'queued', 'created'].includes(job.status)
+    return job && ['running', 'pending', 'queued', 'created', 'dispatched'].includes(job.status)
   }
   
   // Disconnect WebSocket

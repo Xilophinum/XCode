@@ -129,59 +129,64 @@ export const agents = sqliteTable('agents', {
   updatedAt: text('updated_at').notNull(),
 })
 
-// Build execution tracking tables
+// Unified builds table (combines builds, jobs, and outputs)
 export const builds = sqliteTable('builds', {
   id: text('id').primaryKey(), // Unique build ID
   projectId: text('project_id').notNull(), // Reference to project
   buildNumber: integer('build_number').notNull(), // Sequential build number per project
-  agentId: text('agent_id'), // Agent that executed the build (null for local execution)
+  
+  // Agent information
+  agentId: text('agent_id'), // Agent executing the build
   agentName: text('agent_name'), // Human-readable agent name
-  jobId: text('job_id'), // Job ID from the job manager system
   
   // Build metadata
   trigger: text('trigger').notNull(), // 'manual', 'cron', 'webhook', 'pipeline', etc.
-  status: text('status').notNull(), // 'running', 'success', 'failure', 'cancelled', 'timeout'
+  status: text('status').notNull(), // 'queued', 'running', 'success', 'failure', 'cancelled'
   message: text('message'), // Build result message
   
   // Timing information
   startedAt: text('started_at').notNull(), // ISO timestamp when build started
-  finishedAt: text('finished_at'), // ISO timestamp when build finished (null if still running)
-  duration: integer('duration'), // Duration in milliseconds (calculated when finished)
+  finishedAt: text('finished_at'), // ISO timestamp when build finished
+  duration: integer('duration'), // Duration in milliseconds
+  
+  // Execution state
+  currentCommandIndex: integer('current_command_index'), // Current command being executed
+  executionCommands: text('execution_commands'), // JSON array of commands
+  currentNodeId: text('current_node_id'), // Currently executing node
+  currentNodeLabel: text('current_node_label'), // Node display name
+  
+  // Workflow data
+  nodes: text('nodes'), // JSON array of workflow nodes
+  edges: text('edges'), // JSON array of workflow edges
+  nodeCount: integer('node_count'), // Total nodes in workflow
+  nodesExecuted: integer('nodes_executed'), // Nodes successfully executed
+  
+  // Results and error handling
+  exitCode: integer('exit_code'), // Final exit code
+  error: text('error'), // Error message if failed
+  finalOutput: text('final_output'), // Final command output
+  
+  // Recovery and retry
+  canRetryOnReconnect: text('can_retry_on_reconnect').default('false'), // 'true'/'false'
+  
+  // Parallel execution results
+  parallelBranchesResult: text('parallel_branches_result'), // JSON result
+  parallelMatrixResult: text('parallel_matrix_result'), // JSON result
   
   // Build context
-  nodeCount: integer('node_count'), // Number of nodes in the workflow
-  nodesExecuted: integer('nodes_executed'), // Number of nodes successfully executed
   gitBranch: text('git_branch'), // Git branch if applicable
   gitCommit: text('git_commit'), // Git commit hash if applicable
+  metadata: text('metadata'), // JSON object for additional context
   
-  // Metadata
-  metadata: text('metadata'), // JSON object for additional build context
+  // Logs (single JSON column)
+  outputLog: text('output_log'), // JSON array of all build outputs
+  lastSequence: integer('last_sequence').default(0), // Track log sequence
   
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
 
-export const buildLogs = sqliteTable('build_logs', {
-  id: text('id').primaryKey(),
-  buildId: text('build_id').notNull(), // Reference to builds.id
-  nodeId: text('node_id'), // Specific node that generated this log (null for system logs)
 
-  // Log content
-  level: text('level').notNull(), // 'info', 'warn', 'error', 'success', 'debug'
-  message: text('message').notNull(), // Log message
-  command: text('command'), // Command that was executed (if applicable)
-  output: text('output'), // Command output (if applicable)
-
-  // Timing
-  timestamp: text('timestamp').notNull(), // ISO timestamp when log was created
-  sequence: integer('sequence').notNull(), // Sequential order within the build
-
-  // Context
-  source: text('source').notNull().default('system'), // 'system', 'agent', 'node', 'user'
-  metadata: text('metadata'), // JSON object for additional context
-
-  createdAt: text('created_at').notNull(),
-})
 
 // Cron job scheduling table
 export const cronJobs = sqliteTable('cron_jobs', {
@@ -202,3 +207,6 @@ export const cronJobs = sqliteTable('cron_jobs', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
+
+
+

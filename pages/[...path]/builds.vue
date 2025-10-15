@@ -468,38 +468,36 @@ const loadBuilds = async (page = 1) => {
 const loadBuildStats = async () => {
   try {
     if (!projectId.value) {
-      console.error('No project ID available for build stats API call')
-      buildStats.value = {
-        totalBuilds: 0,
-        successfulBuilds: 0,
-        failedBuilds: 0,
-        cancelledBuilds: 0,
-        successRate: 1,
-        lastBuildStatus: null,
-        lastBuildAt: null,
-        averageDuration: null,
-        fastestBuild: null,
-        slowestBuild: null
-      }
+      buildStats.value = { totalBuilds: 0, successfulBuilds: 0, failedBuilds: 0, successRate: 0 }
       return
     }
-    const response = await $fetch(`/api/projects/${projectId.value}/build-stats`)
-    buildStats.value = response.stats || response
+    const response = await $fetch(`/api/projects/${projectId.value}/builds`, { query: { page: 1, limit: 50 } })
+    if (!response.success || !response.builds) {
+      buildStats.value = { totalBuilds: 0, successfulBuilds: 0, failedBuilds: 0, successRate: 0 }
+      return
+    }
+    
+    const allBuilds = response.builds
+    const totalBuilds = allBuilds.length
+    const successfulBuilds = allBuilds.filter(b => b.status === 'success').length
+    const failedBuilds = allBuilds.filter(b => b.status === 'failure').length
+    const successRate = totalBuilds > 0 ? successfulBuilds / totalBuilds : 0
+    const lastBuild = allBuilds[0]
+    const durations = allBuilds.filter(b => b.duration).map(b => b.duration)
+    const averageDuration = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : null
+    
+    buildStats.value = {
+      totalBuilds,
+      successfulBuilds,
+      failedBuilds,
+      successRate,
+      lastBuildStatus: lastBuild?.status,
+      lastBuildAt: lastBuild?.startedAt,
+      averageDuration
+    }
   } catch (error) {
     console.error('Error loading build stats:', error)
-    // Set default stats if none exist
-    buildStats.value = {
-      totalBuilds: 0,
-      successfulBuilds: 0,
-      failedBuilds: 0,
-      cancelledBuilds: 0,
-      successRate: 1,
-      lastBuildStatus: null,
-      lastBuildAt: null,
-      averageDuration: null,
-      fastestBuild: null,
-      slowestBuild: null
-    }
+    buildStats.value = { totalBuilds: 0, successfulBuilds: 0, failedBuilds: 0, successRate: 0 }
   }
 }
 
@@ -536,7 +534,7 @@ const viewBuildLogs = async (build) => {
   loadingLogs.value = true
   
   try {
-    const response = await $fetch(`/api/projects/${projectPath.value}/builds/${build.id}/logs`)
+    const response = await $fetch(`/api/projects/${projectId.value}/builds/${build.id}/logs`)
     buildLogs.value = response.logs
   } catch (error) {
     console.error('Error loading build logs:', error)

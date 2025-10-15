@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { jobManager } from '../../utils/jobManager.js'
 import { getAgentManager } from '../../utils/agentManager.js'
 import { getDataService } from '../../utils/dataService.js'
+import { getCredentialResolver } from '../../utils/credentialResolver.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -83,7 +84,17 @@ export default defineEventHandler(async (event) => {
     // Convert graph to execution commands for the agent
     const executionCommands = convertGraphToCommands(nodes, edges)
 
-    console.log(`🔧 Generated ${executionCommands.length} commands:`, executionCommands)
+    console.log(`🔧 Generated ${executionCommands.length} commands:`)
+
+    // Resolve credentials and inject as environment variables
+    const credentialResolver = await getCredentialResolver()
+    const baseEnv = process.env
+    const resolvedEnv = await credentialResolver.resolveCredentials(nodes, baseEnv)
+    
+    console.log(`🔐 Resolved ${Object.keys(resolvedEnv).length - Object.keys(baseEnv).length} credential environment variables`)
+    
+    // Store credential resolver in job for log masking
+    job.credentialResolver = credentialResolver
 
     // Filter to get only executable commands (including orchestrator commands)
     const executableCommands = executionCommands.filter(cmd =>
@@ -124,34 +135,6 @@ export default defineEventHandler(async (event) => {
     job.executionCommands = executableCommands
     job.currentCommandIndex = 0
 
-    // Start with the first command - find appropriate agent
-    const firstCommand = executableCommands[0]
-    console.log(`🚀 Starting sequential execution with command 1/${executableCommands.length}: ${firstCommand.nodeLabel}`)
-    
-    // Find agent for the first command
-    // Handle "any" as explicit choice for any available agent
-    const requiresSpecificAgent = firstCommand.requiredAgentId && firstCommand.requiredAgentId !== 'any'
-    const agentRequirements = requiresSpecificAgent ? { agentId: firstCommand.requiredAgentId } : {}
-    const selectedAgent = await agentManager.findAvailableAgent(agentRequirements)
-    
-    if (!selectedAgent) {
-      const errorMsg = requiresSpecificAgent
-        ? `🚨 CRITICAL: Required agent "${selectedAgent.name}" not available for command: ${firstCommand.nodeLabel}. Execution BLOCKED to prevent running on wrong environment.`
-        : 'No agents available for job execution'
-      
-      console.error(errorMsg)
-      throw createError({
-        statusCode: 503,
-        statusMessage: errorMsg
-      })
-    }
-    
-    if (requiresSpecificAgent) {
-      console.log(`🔒 ENFORCING agent selection: ${selectedAgent.agentId} for command: ${firstCommand.nodeLabel}`)
-    } else {
-      console.log(`🎯 Selected agent ${selectedAgent.agentId} for first command: ${firstCommand.nodeLabel} (user chose "any available")`)
-    }
-
     // Start build recording for manual execution
     let currentBuildId = null
     try {
@@ -160,8 +143,8 @@ export default defineEventHandler(async (event) => {
 
       currentBuildId = await buildStatsManager.startBuild({
         projectId,
-        agentId: selectedAgent.agentId,
-        agentName: selectedAgent.name || selectedAgent.hostname,
+        agentId: availableAgent.agentId,
+        agentName: availableAgent.name || availableAgent.hostname,
         jobId,
         trigger: 'manual',
         message: 'Manual execution',
@@ -179,11 +162,122 @@ export default defineEventHandler(async (event) => {
     // Store buildId in job for later reference
     job.buildId = currentBuildId
 
+    // Start with the first command
+    const firstCommand = executableCommands[0]
+    console.log(`🚀 Starting sequential execution with command 1/${executableCommands.length}: ${firstCommand.nodeLabel}`)
+    
+    // Check if first command is an orchestrator
+    if (firstCommand.type === 'parallel_branches_orchestrator') {
+      console.log(`🔀 First command is parallel branches orchestrator - executing directly`)
+      console.log(`🔀 Orchestrator command details:`, firstCommand)
+      
+      // Update job with orchestrator execution
+      await jobManager.updateJob(jobId, {
+        status: 'running',
+        executionCommands: executableCommands,
+        currentCommandIndex: 0,
+        buildId: currentBuildId
+      })
+      
+      // Execute orchestrator directly
+      await agentManager.executeParallelBranches(jobId, firstCommand, job)
+      
+      // Broadcast orchestrator started event to WebSocket clients
+      if (globalThis.broadcastToProject) {
+        globalThis.broadcastToProject(projectId, {
+          type: 'job_started',
+          jobId,
+          buildId: currentBuildId,
+          agentId: 'orchestrator',
+          agentName: 'Parallel Branches Orchestrator',
+          status: 'running',
+          startTime: job.startTime,
+          message: 'Parallel branches orchestrator started',
+          timestamp: new Date().toISOString()
+        })
+      }
+
+      return {
+        success: true,
+        jobId,
+        buildId: currentBuildId,
+        agentId: 'orchestrator',
+        agentName: 'Parallel Branches Orchestrator',
+        startTime: job.startTime,
+        message: `Parallel branches orchestrator started${currentBuildId ? ` (build: ${currentBuildId})` : ''}`
+      }
+    }
+    
+    if (firstCommand.type === 'parallel_matrix_orchestrator') {
+      console.log(`🔀 First command is parallel matrix orchestrator - executing directly`)
+      
+      // Update job with orchestrator execution
+      await jobManager.updateJob(jobId, {
+        status: 'running',
+        executionCommands: executableCommands,
+        currentCommandIndex: 0,
+        buildId: currentBuildId
+      })
+      
+      // Execute orchestrator directly
+      await agentManager.executeParallelMatrix(jobId, firstCommand, job)
+      
+      // Broadcast orchestrator started event to WebSocket clients
+      if (globalThis.broadcastToProject) {
+        globalThis.broadcastToProject(projectId, {
+          type: 'job_started',
+          jobId,
+          buildId: currentBuildId,
+          agentId: 'orchestrator',
+          agentName: 'Parallel Matrix Orchestrator',
+          status: 'running',
+          startTime: job.startTime,
+          message: 'Parallel matrix orchestrator started',
+          timestamp: new Date().toISOString()
+        })
+      }
+
+      return {
+        success: true,
+        jobId,
+        buildId: currentBuildId,
+        agentId: 'orchestrator',
+        agentName: 'Parallel Matrix Orchestrator',
+        startTime: job.startTime,
+        message: `Parallel matrix orchestrator started${currentBuildId ? ` (build: ${currentBuildId})` : ''}`
+      }
+    }
+    
+    // Find agent for regular execution commands
+    const requiresSpecificAgent = firstCommand.requiredAgentId && firstCommand.requiredAgentId !== 'any'
+    const agentRequirements = requiresSpecificAgent ? { agentId: firstCommand.requiredAgentId } : {}
+    const selectedAgent = await agentManager.findAvailableAgent(agentRequirements)
+    
+    if (!selectedAgent) {
+      const errorMsg = requiresSpecificAgent
+        ? `🚨 CRITICAL: Required agent "${firstCommand.requiredAgentId}" not available for command: ${firstCommand.nodeLabel}. Execution BLOCKED to prevent running on wrong environment.`
+        : 'No agents available for job execution'
+      
+      console.error(errorMsg)
+      throw createError({
+        statusCode: 503,
+        statusMessage: errorMsg
+      })
+    }
+    
+    if (requiresSpecificAgent) {
+      console.log(`🔒 ENFORCING agent selection: ${selectedAgent.agentId} for command: ${firstCommand.nodeLabel}`)
+    } else {
+      console.log(`🎯 Selected agent ${selectedAgent.agentId} for first command: ${firstCommand.nodeLabel} (user chose "any available")`)
+    }
+
+    // Build recording already done above
+
     const dispatchSuccess = await agentManager.dispatchJobToAgent(selectedAgent.agentId, {
       jobId,
       projectId,
       commands: firstCommand.script,
-      environment: {},
+      environment: resolvedEnv,
       workingDirectory: firstCommand.workingDirectory || '.',
       timeout: firstCommand.timeout,
       jobType: firstCommand.type,
@@ -231,6 +325,21 @@ export default defineEventHandler(async (event) => {
     })
 
     console.log(`✅ Job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildId ? ` (build: ${currentBuildId})` : ''}`)
+
+    // Broadcast job started event to WebSocket clients
+    if (globalThis.broadcastToProject) {
+      globalThis.broadcastToProject(projectId, {
+        type: 'job_started',
+        jobId,
+        buildId: currentBuildId,
+        agentId: selectedAgent.agentId,
+        agentName: selectedAgent.name || selectedAgent.hostname,
+        status: 'dispatched',
+        startTime: job.startTime,
+        message: `Job dispatched to agent ${selectedAgent.name || selectedAgent.hostname}`,
+        timestamp: new Date().toISOString()
+      })
+    }
 
     return {
       success: true,
@@ -409,7 +518,7 @@ function getParameterNodeValue(paramNode) {
  * Find nodes that can start execution (trigger nodes or nodes without execution inputs)
  */
 function findExecutionStartingNodes(nodes, edges) {
-  return nodes.filter(node => {
+  const startingNodes = nodes.filter(node => {
     // Skip parameter nodes - they don't execute, they provide values
     if (node.data.nodeType?.includes('-param')) {
       return false
@@ -424,6 +533,31 @@ function findExecutionStartingNodes(nodes, edges) {
     return !hasIncomingExecutionConnections && 
            (node.data.hasExecutionInput === false || !node.data.hasExecutionInput)
   })
+
+  // If no starting nodes found (manual execution without triggers), find the first executable node
+  if (startingNodes.length === 0) {
+    // Prioritize orchestrator nodes first (parallel_branches, parallel_matrix)
+    const orchestratorNodes = nodes.filter(node => 
+      ['parallel_branches', 'parallel_matrix'].includes(node.data.nodeType)
+    )
+    
+    if (orchestratorNodes.length > 0) {
+      console.log(`🎯 No trigger nodes found - using orchestrator node for manual execution: ${orchestratorNodes[0].data.label}`)
+      return [orchestratorNodes[0]]
+    }
+    
+    // Fallback to regular execution nodes
+    const executableNodes = nodes.filter(node => 
+      ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_execution'].includes(node.data.nodeType)
+    )
+    
+    if (executableNodes.length > 0) {
+      console.log(`🎯 No trigger nodes found - using first executable node for manual execution: ${executableNodes[0].data.label}`)
+      return [executableNodes[0]]
+    }
+  }
+
+  return startingNodes
 }
 
 /**
@@ -734,7 +868,7 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
 /**
  * Get nodes connected via execution flow from a given node
  */
-function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameterValues = new Map(), executionResult = null) {
+export function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameterValues = new Map(), executionResult = null) {
   const sourceNode = allNodes.find(node => node.id === nodeId)
   
   // Handle conditional nodes specially
@@ -744,7 +878,7 @@ function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameterValues 
   
   // Handle execution nodes with success/failure routing
   // Note: parallel_execution nodes have no output sockets, so they don't need success/failure routing
-  if (sourceNode && ['bash', 'powershell', 'cmd', 'python', 'node'].includes(sourceNode.data.nodeType)) {
+  if (sourceNode && ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(sourceNode.data.nodeType)) {
     return getExecutionResultConnectedNodes(sourceNode, allNodes, allEdges, executionResult)
   }
   
@@ -767,6 +901,9 @@ function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameterValues 
 function getExecutionResultConnectedNodes(executionNode, allNodes, allEdges, executionResult) {
   // Determine which socket to use based on execution result
   const targetSocketId = (executionResult && executionResult.success) ? 'success' : 'failure'
+  
+  console.log(`🔍 Looking for ${targetSocketId} socket from node "${executionNode.data.label}" (${executionNode.data.nodeType})`)
+  console.log(`🔍 Available edges from this node:`, allEdges.filter(edge => edge.source === executionNode.id))
   
   const outputEdge = allEdges.find(edge => 
     edge.source === executionNode.id && edge.sourceHandle === targetSocketId
@@ -863,15 +1000,30 @@ function escapeRegex(string) {
  */
 function getBranchTargetNodes(parallelNode, allNodes, allEdges) {
   const targets = []
+  
+  console.log(`🔍 getBranchTargetNodes: Processing parallel node "${parallelNode.data.label}"`)
+  console.log(`🔍 Available branches:`, parallelNode.data.branches)
+  console.log(`🔍 All edges:`, allEdges.filter(edge => edge.source === parallelNode.id))
+
+  if (!parallelNode.data.branches || parallelNode.data.branches.length === 0) {
+    console.log(`⚠️ No branches defined for parallel node "${parallelNode.data.label}"`)
+    return targets
+  }
 
   for (const branch of parallelNode.data.branches) {
+    console.log(`🔍 Processing branch: ${branch.name} (${branch.id})`)
+    
     // Find edge connected to this branch socket
     const branchEdge = allEdges.find(edge =>
       edge.source === parallelNode.id && edge.sourceHandle === branch.id
     )
+    
+    console.log(`🔍 Branch edge found:`, branchEdge)
 
     if (branchEdge) {
       const targetNode = allNodes.find(n => n.id === branchEdge.target)
+      console.log(`🔍 Target node found:`, targetNode?.data.label)
+      
       if (targetNode) {
         targets.push({
           branchId: branch.id,

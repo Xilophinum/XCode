@@ -18,10 +18,13 @@ export default defineNitroPlugin(async (nitroApp) => {
   const agentManager = await getAgentManager()
   console.log(`🔧 WebSocket plugin initialized - existing agents: ${agentManager.agentData.size}, connections: ${agentManager.connectedAgents.size}`)
 
-  // Mark all agents as offline on server startup
+  // Mark all agents as offline on server startup and handle orphaned jobs
   const dataService = await getDataService()
   await dataService.markAllAgentsOffline()
   console.log(`🔧 All agents marked as offline on server startup - agents must reconnect`)
+  
+  // Handle any jobs that were running when server restarted
+  await handleServerRestartOrphanedJobs(agentManager)
 
   // Start heartbeat timeout checker (runs every 30 seconds)
   const HEARTBEAT_TIMEOUT = 60000 // 60 seconds
@@ -29,45 +32,53 @@ export default defineNitroPlugin(async (nitroApp) => {
 
   setInterval(async () => {
     try {
-      const allAgents = await dataService.getAgents()
       const now = Date.now()
+      const timedOutAgents = []
 
-      for (const agent of allAgents) {
-        // Skip if already offline
-        if (agent.status === 'offline' || agent.status === 'disconnected') continue
+      // Check in-memory agent data instead of querying database
+      for (const [agentId, agentInfo] of agentManager.agentData) {
+        // Skip if already offline or no heartbeat recorded
+        if (agentInfo.status === 'offline' || !agentInfo.lastHeartbeat) continue
 
-        // Check if agent has a lastHeartbeat and if it's stale
-        if (agent.lastHeartbeat) {
-          const lastHeartbeatTime = new Date(agent.lastHeartbeat).getTime()
-          const timeSinceHeartbeat = now - lastHeartbeatTime
+        const lastHeartbeatTime = new Date(agentInfo.lastHeartbeat).getTime()
+        const timeSinceHeartbeat = now - lastHeartbeatTime
 
-          if (timeSinceHeartbeat > HEARTBEAT_TIMEOUT) {
-            console.log(`⚠️ Agent ${agent.id} (${agent.name}) missed heartbeat (${Math.round(timeSinceHeartbeat / 1000)}s) - marking as offline`)
-
-            // Update database status
-            await dataService.updateAgentStatus(agent.id, 'offline')
-
-            // Remove from connected agents if present
-            if (agentManager.connectedAgents.has(agent.id)) {
-              agentManager.connectedAgents.delete(agent.id)
-            }
-
-            // Remove from agent data
-            if (agentManager.agentData.has(agent.id)) {
-              agentManager.agentData.delete(agent.id)
-            }
-
-            // Broadcast status update to clients
-            broadcastToClients({
-              type: 'agent_status_update',
-              agentId: agent.id,
-              status: 'offline',
-              currentJobs: 0,
-              lastHeartbeat: agent.lastHeartbeat,
-              timestamp: new Date().toISOString()
-            })
-          }
+        if (timeSinceHeartbeat > HEARTBEAT_TIMEOUT) {
+          console.log(`⚠️ Agent ${agentId} (${agentInfo.name}) missed heartbeat (${Math.round(timeSinceHeartbeat / 1000)}s) - marking as offline`)
+          timedOutAgents.push({ agentId, agentInfo })
         }
+      }
+
+      // Process timed-out agents
+      for (const { agentId, agentInfo } of timedOutAgents) {
+        // Update database status
+        await dataService.updateAgentStatus(agentId, 'offline')
+
+        // Handle orphaned jobs for timed-out agent
+        await handleOrphanedJobs(agentId, agentManager)
+
+        // Remove from connected agents
+        if (agentManager.connectedAgents.has(agentId)) {
+          agentManager.connectedAgents.delete(agentId)
+        }
+
+        // Update in-memory status
+        agentInfo.status = 'offline'
+        agentInfo.currentJobs = 0
+
+        // Broadcast status update to clients
+        broadcastToClients({
+          type: 'agent_status_update',
+          agentId: agentId,
+          status: 'offline',
+          currentJobs: 0,
+          lastHeartbeat: agentInfo.lastHeartbeat,
+          timestamp: new Date().toISOString()
+        })
+      }
+
+      if (timedOutAgents.length > 0) {
+        console.log(`🔄 Processed ${timedOutAgents.length} timed-out agents (in-memory check)`)
       }
     } catch (error) {
       console.error('❌ Error checking agent heartbeat timeouts:', error)
@@ -382,6 +393,9 @@ async function handleAgentRegistration(socket, msg, agentManager) {
     // Store in agent manager
     agentManager.agentData.set(socket.agentId, agentInfo)
     
+    // Check for jobs that can retry on this agent reconnection
+    await checkRetryableJobsOnReconnect(socket.agentId, agentManager)
+    
     console.log(`✅ Agent ${socket.agentId} registered successfully`)
     console.log(`📊 Platform: ${agentInfo.platform} (${agentInfo.architecture})`)
     console.log(`🏠 Hostname: ${agentInfo.hostname}`)
@@ -646,26 +660,6 @@ async function handleJobOutput(socket, msg, agentManager) {
     // Handle the agent job output (existing functionality)
     agentManager.handleJobOutput(socket.agentId, msg)
 
-    // Add output to build logs if job has associated build
-    const { jobManager } = await import('../utils/jobManager.js')
-    const job = await jobManager.getJob(msg.jobId)
-
-    if (job && job.buildId) {
-      const { getBuildStatsManager } = await import('../utils/buildStatsManager.js')
-      const buildStatsManager = await getBuildStatsManager()
-
-      // Add log entry to build logs
-      await buildStatsManager.addBuildLog(job.buildId, {
-        nodeId: msg.nodeId || null,
-        level: msg.output?.type || 'info',
-        message: msg.output?.message || String(msg.output || ''),
-        command: msg.output?.command || null,
-        output: msg.output?.output || null,
-        source: 'agent',
-        timestamp: msg.timestamp || new Date().toISOString()
-      })
-    }
-
     // Broadcast job output to subscribed clients
     if (msg.projectId) {
       broadcastToProject(msg.projectId, {
@@ -765,9 +759,252 @@ function broadcastToProject(projectId, message) {
   }
 }
 
+// Handle orphaned jobs when agent disconnects
+async function handleOrphanedJobs(agentId, agentManager) {
+  try {
+    const { jobManager } = await import('../utils/jobManager.js')
+    const activeJobs = await jobManager.getActiveJobs()
+    
+    const orphanedJobs = activeJobs.filter(job => job.agentId === agentId)
+    
+    if (orphanedJobs.length === 0) {
+      console.log(`✅ No orphaned jobs for disconnected agent ${agentId}`)
+      return
+    }
+    
+    console.log(`🚨 Found ${orphanedJobs.length} orphaned jobs for agent ${agentId}`)
+    
+    for (const job of orphanedJobs) {
+      const errorMsg = `Agent ${agentId} disconnected during job execution`
+      
+      // Check if job requires specific agent (no reassignment possible)
+      const requiresSpecificAgent = job.executionCommands && 
+        job.currentCommandIndex !== undefined &&
+        job.executionCommands[job.currentCommandIndex]?.requiredAgentId &&
+        job.executionCommands[job.currentCommandIndex].requiredAgentId !== 'any'
+      
+      if (requiresSpecificAgent) {
+        // Job requires specific agent - mark as failed and wait for reconnection
+        console.log(`⏸️ Job ${job.jobId} requires specific agent ${agentId} - marking as failed (will retry on reconnection)`)
+        
+        await jobManager.updateJob(job.jobId, {
+          status: 'failed',
+          error: `${errorMsg}. Job requires specific agent and cannot be reassigned.`,
+          failedAt: new Date(),
+          canRetryOnReconnect: true // Flag for potential retry
+        })
+      } else {
+        // Job can run on any agent - attempt reassignment
+        console.log(`🔄 Attempting to reassign job ${job.jobId} to another agent`)
+        
+        const availableAgent = await agentManager.findAvailableAgent()
+        
+        if (availableAgent) {
+          console.log(`✅ Reassigning job ${job.jobId} to agent ${availableAgent.agentId}`)
+          
+          // Get current command to retry
+          const currentCommand = job.executionCommands?.[job.currentCommandIndex || 0]
+          
+          if (currentCommand) {
+            // Update job with new agent
+            await jobManager.updateJob(job.jobId, {
+              agentId: availableAgent.agentId,
+              agentName: availableAgent.name || availableAgent.hostname,
+              status: 'running',
+              error: null // Clear previous error
+            })
+            
+            // Dispatch to new agent
+            const dispatchSuccess = await agentManager.dispatchJobToAgent(availableAgent.agentId, {
+              jobId: job.jobId,
+              projectId: job.projectId,
+              commands: currentCommand.script,
+              environment: {},
+              workingDirectory: currentCommand.workingDirectory || '.',
+              timeout: currentCommand.timeout,
+              jobType: currentCommand.type,
+              retryEnabled: currentCommand.retryEnabled,
+              maxRetries: currentCommand.maxRetries,
+              retryDelay: currentCommand.retryDelay,
+              isSequential: true,
+              commandIndex: job.currentCommandIndex || 0,
+              totalCommands: job.executionCommands?.length || 1,
+              isReassignment: true
+            })
+            
+            if (!dispatchSuccess) {
+              console.error(`❌ Failed to reassign job ${job.jobId} - marking as failed`)
+              await jobManager.updateJob(job.jobId, {
+                status: 'failed',
+                error: `${errorMsg}. Failed to reassign to available agent.`,
+                failedAt: new Date()
+              })
+            }
+          } else {
+            console.error(`❌ No current command found for job ${job.jobId} - marking as failed`)
+            await jobManager.updateJob(job.jobId, {
+              status: 'failed',
+              error: `${errorMsg}. No command to retry.`,
+              failedAt: new Date()
+            })
+          }
+        } else {
+          // No available agents - mark as failed
+          console.log(`❌ No available agents for reassignment - marking job ${job.jobId} as failed`)
+          await jobManager.updateJob(job.jobId, {
+            status: 'failed',
+            error: `${errorMsg}. No available agents for reassignment.`,
+            failedAt: new Date()
+          })
+        }
+      }
+      
+      // Update build status if job has associated build
+      if (job.buildId) {
+        try {
+          const { getBuildStatsManager } = await import('../utils/buildStatsManager.js')
+          const buildStatsManager = await getBuildStatsManager()
+          
+          const updatedJob = await jobManager.getJob(job.jobId)
+          if (updatedJob.status === 'failed') {
+            await buildStatsManager.finishBuild(job.buildId, {
+              status: 'failure',
+              message: updatedJob.error,
+              nodesExecuted: (job.currentCommandIndex || 0) + 1
+            })
+            console.log(`📊 BUILD STATS: Build ${job.buildId} marked as failed due to agent disconnect`)
+          }
+        } catch (buildError) {
+          console.warn('Failed to update build record for orphaned job:', buildError)
+        }
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error handling orphaned jobs:', error)
+  }
+}
+
+// Check for jobs that can retry when specific agent reconnects
+async function checkRetryableJobsOnReconnect(agentId, agentManager) {
+  try {
+    const { jobManager } = await import('../utils/jobManager.js')
+    const allJobs = Array.from(jobManager.jobs.values())
+    
+    const retryableJobs = allJobs.filter(job => 
+      job.status === 'failed' && 
+      job.canRetryOnReconnect === true &&
+      job.agentId === agentId
+    )
+    
+    if (retryableJobs.length === 0) {
+      console.log(`✅ No retryable jobs for reconnected agent ${agentId}`)
+      return
+    }
+    
+    console.log(`🔄 Found ${retryableJobs.length} retryable jobs for agent ${agentId}`)
+    
+    for (const job of retryableJobs) {
+      console.log(`🔄 Retrying job ${job.jobId} on reconnected agent ${agentId}`)
+      
+      // Get current command to retry
+      const currentCommand = job.executionCommands?.[job.currentCommandIndex || 0]
+      
+      if (currentCommand) {
+        // Update job status to retry
+        await jobManager.updateJob(job.jobId, {
+          status: 'running',
+          error: null,
+          canRetryOnReconnect: false, // Clear retry flag
+          retriedAt: new Date()
+        })
+        
+        // Dispatch to reconnected agent
+        const dispatchSuccess = await agentManager.dispatchJobToAgent(agentId, {
+          jobId: job.jobId,
+          projectId: job.projectId,
+          commands: currentCommand.script,
+          environment: {},
+          workingDirectory: currentCommand.workingDirectory || '.',
+          timeout: currentCommand.timeout,
+          jobType: currentCommand.type,
+          retryEnabled: currentCommand.retryEnabled,
+          maxRetries: currentCommand.maxRetries,
+          retryDelay: currentCommand.retryDelay,
+          isSequential: true,
+          commandIndex: job.currentCommandIndex || 0,
+          totalCommands: job.executionCommands?.length || 1,
+          isRetry: true
+        })
+        
+        if (!dispatchSuccess) {
+          console.error(`❌ Failed to retry job ${job.jobId} on reconnected agent`)
+          await jobManager.updateJob(job.jobId, {
+            status: 'failed',
+            error: 'Failed to retry job on agent reconnection',
+            failedAt: new Date()
+          })
+        } else {
+          console.log(`✅ Successfully retried job ${job.jobId} on reconnected agent ${agentId}`)
+        }
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error checking retryable jobs on reconnect:', error)
+  }
+}
+
+// Handle orphaned jobs on server restart
+async function handleServerRestartOrphanedJobs(agentManager) {
+  try {
+    const { jobManager } = await import('../utils/jobManager.js')
+    const activeJobs = await jobManager.getActiveJobs()
+    
+    if (activeJobs.length === 0) {
+      console.log(`✅ No orphaned jobs found on server restart`)
+      return
+    }
+    
+    console.log(`🚨 Found ${activeJobs.length} orphaned jobs on server restart`)
+    
+    for (const job of activeJobs) {
+      const errorMsg = 'Server restarted during job execution'
+      
+      console.log(`❌ Marking job ${job.jobId} as failed due to server restart`)
+      
+      await jobManager.updateJob(job.jobId, {
+        status: 'failed',
+        error: errorMsg,
+        failedAt: new Date()
+      })
+      
+      // Update build status if job has associated build
+      if (job.buildId) {
+        try {
+          const { getBuildStatsManager } = await import('../utils/buildStatsManager.js')
+          const buildStatsManager = await getBuildStatsManager()
+          
+          await buildStatsManager.finishBuild(job.buildId, {
+            status: 'failure',
+            message: errorMsg,
+            nodesExecuted: (job.currentCommandIndex || 0) + 1
+          })
+          console.log(`📊 BUILD STATS: Build ${job.buildId} marked as failed due to server restart`)
+        } catch (buildError) {
+          console.warn('Failed to update build record for restart orphaned job:', buildError)
+        }
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error handling server restart orphaned jobs:', error)
+  }
+}
+
 export async function broadcastBuildCompletion(buildEvent) {
   try {
-    console.log(`🎯 Processing build completion for job triggers:`, buildEvent)
+    console.log(`🎯 Processing build completion for job triggers:\nType: ${buildEvent.type}\nStatus: ${buildEvent.status}\nSource Project ID: ${buildEvent.sourceProjectId}`)
     await checkAndTriggerJobs(buildEvent)
   } catch (error) {
     console.error('Error broadcasting build completion:', error)

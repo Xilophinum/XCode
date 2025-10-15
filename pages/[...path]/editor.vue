@@ -587,10 +587,11 @@
               <ParallelExecutionProperties
                 v-if="selectedNode.data?.nodeType === 'parallel_execution'"
                 :nodeData="selectedNode"
+                :placeholderData="executionNodes"
               />
 
               <!-- Script Editor for execution nodes -->
-              <div v-if="selectedNode.data?.script !== undefined && selectedNode.data?.nodeType !== 'parallel_execution'">
+              <div v-if="selectedNode.data?.script !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix'].includes(selectedNode.data?.nodeType)">
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Script</label>
                 <textarea
                   v-model="selectedNode.data.script"
@@ -610,6 +611,10 @@
                 </div>
               </div>
 
+              <CredentialBinding 
+                v-if="selectedNode.data?.executionNode"
+                v-model="selectedNode.data.credentials" 
+              />
               <!-- Retry Policy -->
               <div v-if="selectedNode.data?.executionNode" class="mt-4 p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg">
                 <div class="flex items-center justify-between mb-3">
@@ -631,7 +636,7 @@
                     />
                   </button>
                 </div>
-                
+
                 <div v-if="selectedNode.data.retryEnabled" class="space-y-3">
                   <div>
                     <label class="block text-xs text-neutral-600 dark:text-neutral-400 mb-1">Max Retries</label>
@@ -711,19 +716,19 @@ import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { ref, computed, onMounted, onUnmounted, nextTick, defineComponent, h, markRaw, watch } from 'vue'
 import WebHookProperties from '@/components/property-panels/WebhookProperties.vue'
-import CronProperties from '../../components/property-panels/CronProperties.vue'
-import JobTriggerProperties from '../../components/property-panels/JobTriggerProperties.vue'
-import ChoiceParamProperties from '../../components/property-panels/ChoiceParamProperties.vue'
-import BooleanParamProperties from '../../components/property-panels/BooleanParamProperties.vue'
-import TextParamProperties from '../../components/property-panels/TextParamProperties.vue'
-import StringParamProperties from '../../components/property-panels/StringParamProperties.vue'
-import ConditionalProperties from '../../components/property-panels/ConditionalProperties.vue'
-import ParallelBranchesProperties from '../../components/property-panels/ParallelBranchesProperties.vue'
-import ParallelMatrixProperties from '../../components/property-panels/ParallelMatrixProperties.vue'
-import ParallelExecutionProperties from '../../components/property-panels/ParallelExecutionProperties.vue'
+import CronProperties from '@/components/property-panels/CronProperties.vue'
+import JobTriggerProperties from '@/components/property-panels/JobTriggerProperties.vue'
+import ChoiceParamProperties from '@/components/property-panels/ChoiceParamProperties.vue'
+import BooleanParamProperties from '@/components/property-panels/BooleanParamProperties.vue'
+import TextParamProperties from '@/components/property-panels/TextParamProperties.vue'
+import StringParamProperties from '@/components/property-panels/StringParamProperties.vue'
+import ConditionalProperties from '@/components/property-panels/ConditionalProperties.vue'
+import ParallelBranchesProperties from '@/components/property-panels/ParallelBranchesProperties.vue'
+import ParallelMatrixProperties from '@/components/property-panels/ParallelMatrixProperties.vue'
+import ParallelExecutionProperties from '@/components/property-panels/ParallelExecutionProperties.vue'
 import EditorDeleteModal from '@/components/modals/EditorDeleteModal.vue'
 import EditorRetentionModal from '@/components/modals/EditorRetentionModal.vue'
-
+import CredentialBinding from '@/components/CredentialBinding.vue'
 // Import Vue Flow styles
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -833,18 +838,21 @@ const finishBuild = async (status, message) => {
 }
 
 const addBuildLog = async (level, message, command = null) => {
-  if (!currentBuildId) return
+  if (!currentBuildId) {
+    console.warn('⚠️ Cannot add build log: currentBuildId is null')
+    return
+  }
   
+  console.log(`📝 Adding build log: ${level} - ${message}`)
   try {
-    await $fetch(`/api/projects/${project.value.id}/builds/${currentBuildId}`, {
+    await $fetch(`/api/projects/${project.value.id}/builds/${currentBuildId}/logs`, {
       method: 'PATCH',
       body: {
-        log: {
-          level: level,
-          message: message,
-          command: command,
-          source: 'system'
-        }
+        type: 'log',
+        level: level,
+        message: message,
+        command: command,
+        source: 'system'
       }
     })
   } catch (error) {
@@ -998,18 +1006,18 @@ const parameterNodes = [
 ]
 
 const executionNodes = [
-  { type: 'bash', name: 'Bash Script', description: 'Execute bash commands'},
-  { type: 'powershell', name: 'PowerShell Script', description: 'Execute PowerShell commands'},
-  { type: 'cmd', name: 'Command Prompt', description: 'Execute Windows CMD commands'},
-  { type: 'python', name: 'Python Script', description: 'Execute Python code'},
-  { type: 'python3', name: 'Python3 Script', description: 'Execute Python3 code'},
-  { type: 'node', name: 'Node.js Script', description: 'Execute Node.js/JavaScript code'},
-  { type: 'go', name: 'Go Script', description: 'Execute Go code'},
-  { type: 'ruby', name: 'Ruby Script', description: 'Execute Ruby code'},
-  { type: 'php', name: 'PHP Script', description: 'Execute PHP code'},
-  { type: 'java', name: 'Java Program', description: 'Execute Java code'},
-  { type: 'rust', name: 'Rust Script', description: 'Execute Rust code'},
-  { type: 'perl', name: 'Perl Script', description: 'Execute Perl code'},
+  { type: 'bash', name: 'Bash Script', description: 'Execute bash commands', placeholder: '#!/bin/bash\necho "Hello from bash"'},
+  { type: 'powershell', name: 'PowerShell Script', description: 'Execute PowerShell commands', placeholder: 'Write-Host "Hello from PowerShell"'},
+  { type: 'cmd', name: 'Command Prompt', description: 'Execute Windows CMD commands', placeholder: 'echo Hello from Command Prompt'},
+  { type: 'python', name: 'Python Script', description: 'Execute Python code', placeholder: 'print("Hello from Python")'},
+  { type: 'python3', name: 'Python3 Script', description: 'Execute Python3 code', placeholder: 'print("Hello from Python3")'},
+  { type: 'node', name: 'Node.js Script', description: 'Execute Node.js/JavaScript code', placeholder: 'console.log("Hello from Node.js")'},
+  { type: 'go', name: 'Go Script', description: 'Execute Go code', placeholder: 'package main\nimport "fmt"\nfunc main() {\n    fmt.Println("Hello from Go")\n}'},
+  { type: 'ruby', name: 'Ruby Script', description: 'Execute Ruby code', placeholder: 'puts "Hello from Ruby"'},
+  { type: 'php', name: 'PHP Script', description: 'Execute PHP code', placeholder: '<?php echo "Hello from PHP"; ?>'},
+  { type: 'java', name: 'Java Program', description: 'Execute Java code', placeholder: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from Java");\n    }\n}'},
+  { type: 'rust', name: 'Rust Script', description: 'Execute Rust code', placeholder: 'fn main() {\n    println!("Hello from Rust");\n}'},
+  { type: 'perl', name: 'Perl Script', description: 'Execute Perl code', placeholder: 'print "Hello from Perl\\n";'},
   { type: 'parallel_execution', name: 'Parallel Execution', description: 'Execution node for parallel branches (no output sockets)'}
 ]
 
@@ -1023,13 +1031,13 @@ const controlNodes = [
 // Agent computed properties and helpers
 const availableAgents = computed(() => {
   return agents.value.filter(agent => 
-    agent.capabilities.some(cap => ['bash', 'powershell', 'cmd', 'python', 'node'].includes(cap))
+    agent.capabilities.some(cap => ['bash', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl'].includes(cap))
   )
 })
 
 const isExecutionNode = (nodeType) => {
   if (!nodeType) return false
-  return ['bash', 'powershell', 'cmd', 'python', 'node'].includes(nodeType)
+  return ['bash', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_execution'].includes(nodeType)
 }
 
 
@@ -1230,7 +1238,7 @@ const CustomNode = defineComponent({
         let socketColor = '#8b5cf6' // Default purple for webhook data
         if (nodeData.nodeType === 'conditional') {
           socketColor = socket.id === 'true' ? '#10b981' : '#ef4444' // Green for true, red for false
-        } else if (['bash', 'powershell', 'cmd', 'python', 'node'].includes(nodeData.nodeType)) {
+        } else if (['bash', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl'].includes(nodeData.nodeType)) {
           if (socket.id === 'success') socketColor = '#10b981' // Green for success
           else if (socket.id === 'failure') socketColor = '#ef4444' // Red for failure
           else if (socket.id === 'output') socketColor = '#3b82f6' // Blue for output data
@@ -1594,6 +1602,7 @@ const getDefaultNodeData = (type) => {
         executionNode: true 
       }
     case 'python':
+    case 'python3':
       return { 
         ...baseData,
         hasExecutionOutput: false,
@@ -1629,7 +1638,114 @@ const getDefaultNodeData = (type) => {
         retryDelay: 5,
         executionNode: true 
       }
-      
+    case 'ruby':
+      return { 
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
+        script: 'puts "Hello from Ruby"',
+        workingDirectory: '.',
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5,
+        executionNode: true 
+      }
+    case 'go':
+      return { 
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
+        script: 'fmt.Println("Hello from Go")',
+        workingDirectory: '.',
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5,
+        executionNode: true 
+      }
+    case 'php':
+      return { 
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
+        script: '<?php echo "Hello from PHP"; ?>',
+        workingDirectory: '.',
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5,
+        executionNode: true 
+      }
+    case 'java':
+      return { 
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
+        script: 'public class HelloWorld { public static void main(String[] args) { System.out.println("Hello from Java"); } }',
+        workingDirectory: '.',
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5,
+        executionNode: true 
+      }
+    case 'rust':
+      return { 
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
+        script: 'fn main() { println!("Hello from Rust"); }',
+        workingDirectory: '.',
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5,
+        executionNode: true 
+      }
+    case 'perl':
+      return { 
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
+        script: 'print "Hello from Perl";',
+        workingDirectory: '.',
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5,
+        executionNode: true 
+      }
     // Control nodes
     case 'parallel_branches':
       return {
@@ -1883,9 +1999,12 @@ const clearExecutionResults = () => {
   }
 }
 
-const addExecutionResult = (nodeId, nodeLabel, type, message, value = undefined) => {
+const addExecutionResult = (nodeLabel, type, message, value = undefined) => {
   if (project.value?.id) {
     webSocketStore.addJobMessage(project.value.id, nodeLabel, type, message, value)
+    if (nodeLabel === 'System' && currentBuildId) {
+      addBuildLog(type, message)
+    }
   }
 }
 
@@ -1894,8 +2013,8 @@ const executeGraph = async () => {
   
   // Check if project is disabled
   if (project.value?.status === 'disabled') {
-    addExecutionResult(null, 'System', 'error', '🚫 Project is disabled. Manual execution is blocked.')
-    addExecutionResult(null, 'System', 'info', 'Enable the project to run manual executions.')
+    addExecutionResult('System', 'error', '🚫 Project is disabled. Manual execution is blocked.')
+    addExecutionResult('System', 'info', 'Enable the project to run manual executions.')
     return
   }
   
@@ -1904,9 +2023,9 @@ const executeGraph = async () => {
   if (validationErrors.length > 0) {
     // Show validation errors to user
     for (const error of validationErrors) {
-      addExecutionResult(null, 'System', 'error', error)
+      addExecutionResult('System', 'error', error)
     }
-    addExecutionResult(null, 'System', 'error', 'Execution blocked due to validation errors. Please fix the issues above and try again.')
+    addExecutionResult('System', 'error', 'Execution blocked due to validation errors. Please fix the issues above and try again.')
     return
   }
   
@@ -1922,7 +2041,7 @@ const executeGraph = async () => {
   const buildStartTime = Date.now()
   
   try {
-    addExecutionResult(null, 'System', 'info', 'Sending execution request to agent...')
+    addExecutionResult('System', 'info', 'Sending execution request to agent...')
     
     // Convert the graph to execution data for the agent
     const executionData = {
@@ -1932,43 +2051,30 @@ const executeGraph = async () => {
       startTime: new Date().toISOString()
     }
     
-    // Send execution request to server, which will dispatch to an agent
+    // Use regular API call but don't wait for completion - just dispatch
     const response = await $fetch('/api/projects/execute', {
       method: 'POST',
       body: executionData
     })
     
     if (response.success) {
-      // Job was successfully dispatched to an agent
-      addExecutionResult(null, 'System', 'success', `Job dispatched to agent ${response.agentName || response.agentId}`)
-      addExecutionResult(null, 'System', 'info', `Job ID: ${response.jobId}`)
-      addExecutionResult(null, 'System', 'info', 'Waiting for agent output...')
-      
-      // Update build record with agent information
-      if (currentBuildId) {
-        try {
-          await $fetch(`/api/projects/${project.value.id}/builds/${currentBuildId}`, {
-            method: 'PATCH',
-            body: {
-              agentId: response.agentId,
-              jobId: response.jobId
-            }
-          })
-        } catch (error) {
-          console.warn('Failed to update build with agent info:', error)
-        }
+      // Store the buildId from response for System message persistence
+      if (response.buildId) {
+        currentBuildId = response.buildId
       }
       
-      console.log('✅ Job dispatched to agent:', response)
+      addExecutionResult('System', 'success', `Job ${response.jobId} dispatched to ${response.agentName}`)
+      addExecutionResult('System', 'info', 'Execution started - waiting for agent output...')
       
+      // The job status and output will be received via WebSocket
+      console.log('✅ Job dispatched successfully:', response)
     } else {
-      addExecutionResult(null, 'System', 'error', `Failed to start execution: ${response.message || 'Unknown error'}`)
-      await recordBuildEvent('failure', 'Failed to dispatch job to agent')
+      addExecutionResult('System', 'error', `Failed to dispatch job: ${response.message || 'Unknown error'}`)
     }
     
   } catch (error) {
     console.error('Execution dispatch error:', error)
-    addExecutionResult(null, 'System', 'error', `Failed to start execution: ${error.message}`)
+    addExecutionResult('System', 'error', `Failed to start execution: ${error.message}`)
     
     await recordBuildEvent('failure', `Failed to dispatch job: ${error.message}`)
     await recordTerminalLog('error', `Execution dispatch failed: ${error.message}`, 'Run Graph')
@@ -1983,20 +2089,18 @@ const cancelExecution = async () => {
   if (isJobRunningOnAgent.value && currentProjectJob.value) {
     // Scenario 2: Cancel job running on agent
     console.log('🛑 Cancelling job running on agent:', currentProjectJob.value)
-    addExecutionResult(null, 'System', 'info', `Cancelling job ${currentProjectJob.value.jobId} on agent...`)
+    addExecutionResult('System', 'info', `Cancelling job ${currentProjectJob.value.jobId} on agent...`)
     
     try {
-      const response = await $fetch(`/api/jobs/${currentProjectJob.value.jobId}/cancel`, {
+      const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildId || currentProjectJob.value.jobId}/cancel`, {
         method: 'POST',
         body: {
-          projectId: project.value.id,
-          agentId: currentProjectJob.value.agentId,
           reason: 'Cancelled by user from editor'
         }
       })
       
       if (response.success) {
-        addExecutionResult(null, 'System', 'warning', `Job cancellation sent to agent. Waiting for confirmation...`)
+        addExecutionResult('System', 'warning', `Job cancellation sent to agent. Waiting for confirmation...`)
         
         // The job status will be updated via polling in setupJobStatusUpdates()
         // We don't immediately set isExecuting to false because we need to wait
@@ -2004,20 +2108,20 @@ const cancelExecution = async () => {
         
         console.log('✅ Cancellation request sent to agent successfully')
       } else {
-        addExecutionResult(null, 'System', 'error', `Failed to cancel job: ${response.message || 'Unknown error'}`)
+        addExecutionResult('System', 'error', `Failed to cancel job: ${response.message || 'Unknown error'}`)
         console.error('❌ Failed to cancel job on agent:', response)
       }
       
     } catch (error) {
       console.error('❌ Error cancelling job on agent:', error)
-      addExecutionResult(null, 'System', 'error', `Error cancelling job: ${error.message}`)
+      addExecutionResult('System', 'error', `Error cancelling job: ${error.message}`)
     }
     
   } else if (isExecuting.value) {
     // Scenario 1: Cancel local execution (started from this editor)
     // Since isExecuting is computed from job state, we need to cancel through the job system
     console.log('🛑 Cancelling local execution')
-    addExecutionResult(null, 'System', 'info', 'Cancellation requested by user...')
+    addExecutionResult('System', 'info', 'Cancellation requested by user...')
     
     // Record cancellation
     await recordTerminalLog('warning', 'Local execution cancelled by user', 'Cancel Execution')
@@ -2026,31 +2130,29 @@ const cancelExecution = async () => {
     try {
       // If there's a current job, cancel it through the job system
       if (currentProjectJob.value) {
-        const response = await $fetch(`/api/jobs/${currentProjectJob.value.jobId}/cancel`, {
+        const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildId || currentProjectJob.value.jobId}/cancel`, {
           method: 'POST',
           body: {
-            projectId: project.value.id,
-            agentId: currentProjectJob.value.agentId,
             reason: 'Cancelled by user from editor'
           }
         })
         
         if (response.success) {
-          addExecutionResult(null, 'System', 'warning', 'Job cancellation sent to agent. Waiting for confirmation...')
+          addExecutionResult('System', 'warning', 'Job cancellation sent to agent. Waiting for confirmation...')
         } else {
-          addExecutionResult(null, 'System', 'error', `Failed to cancel job: ${response.message || 'Unknown error'}`)
+          addExecutionResult('System', 'error', `Failed to cancel job: ${response.message || 'Unknown error'}`)
         }
       } else {
         // No job found, clear any local tracking
         activeJobs.value.clear()
-        addExecutionResult(null, 'System', 'warning', 'Local execution cancelled by user')
+        addExecutionResult('System', 'warning', 'Local execution cancelled by user')
       }
       
       console.log('✅ Local execution cancellation initiated')
       
     } catch (error) {
       console.error('Error during local cancellation:', error)
-      addExecutionResult(null, 'System', 'error', `Cancellation error: ${error.message}`)
+      addExecutionResult('System', 'error', `Cancellation error: ${error.message}`)
     }
   }
 }
@@ -2185,6 +2287,62 @@ const cleanupRealtimeConnection = () => {
   }
 }
 
+// Check current build status when page loads
+const checkCurrentBuildStatus = async () => {
+  if (!project.value?.id) return
+  
+  try {
+    const response = await $fetch(`/api/projects/${project.value.id}/status`)
+    if (response.isRunning && response.currentJob) {
+      // Update WebSocket store with current job
+      webSocketStore.currentJobs.set(project.value.id, {
+        jobId: response.currentJob.jobId,
+        buildId: response.currentJob.buildId || response.currentJob.jobId,
+        agentId: response.currentJob.agentId,
+        status: response.currentJob.status,
+        startTime: response.currentJob.startTime,
+        nodeId: response.currentJob.nodeId,
+        trigger: response.currentJob.trigger || 'unknown'
+      })
+      
+      // Load logs from build record (includes all parallel job outputs)
+      const buildId = response.currentJob.buildId || response.currentJob.jobId
+      const logsResponse = await $fetch(`/api/projects/${project.value.id}/builds/${buildId}/logs`)
+      
+      webSocketStore.clearJobMessages(project.value.id)
+      
+      if (logsResponse.success && logsResponse.logs?.length > 0) {
+        logsResponse.logs.forEach(logEntry => {
+          // Map source field to proper nodeLabel for display
+          let displayLabel = logEntry.nodeLabel
+          if (!displayLabel) {
+            if (logEntry.source === 'agent') displayLabel = 'Agent'
+            else if (logEntry.source === 'system') displayLabel = 'System'
+            else displayLabel = logEntry.source || 'Agent'
+          }
+          
+          webSocketStore.addJobMessage(
+            project.value.id,
+            displayLabel,
+            logEntry.type || 'info',
+            logEntry.message,
+            logEntry.value,
+            logEntry.timestamp // Preserve original timestamp
+          )
+        })
+      } else {
+        // Add status messages if no logs found
+        webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🔄 Restored running job: ${response.currentJob.jobId}`)
+        webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🤖 Agent: ${response.currentJob.agentId || 'Unknown'}`)
+        webSocketStore.addJobMessage(project.value.id, 'System', 'info', `⏱️ Started: ${new Date(response.currentJob.startTime).toLocaleString()}`)
+        webSocketStore.addJobMessage(project.value.id, 'System', 'info', 'Waiting for agent output...')
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to check current build status:', error)
+  }
+}
+
 // Initialize editor on mount
 onMounted(async () => {
   console.log('🚀 Editor component mounting...')
@@ -2222,11 +2380,12 @@ onMounted(async () => {
   // Set up real-time WebSocket updates
   await setupRealtimeConnection()
   
+  // Check if there's already a job running for this project
+  await checkCurrentBuildStatus()
+  
   // Initialize the editor
   await nextTick()
   await initializeEditor()
-  
-
   
   console.log('✅ Editor component fully initialized')
 })
@@ -2244,7 +2403,7 @@ const toggleProjectStatus = async () => {
       console.log(`✅ Project ${result.status}: ${project.value.name}`)
       
       // Show notification in terminal
-      addExecutionResult(null, 'System', 'info', `Project ${result.status === 'disabled' ? 'disabled' : 'enabled'} successfully`)
+      addExecutionResult('System', 'info', `Project ${result.status === 'disabled' ? 'disabled' : 'enabled'} successfully`)
       
       // If project was disabled and jobs are running, cancel them
       if (result.status === 'disabled' && isExecuting.value) {
@@ -2252,12 +2411,12 @@ const toggleProjectStatus = async () => {
       }
     } else {
       console.error('Failed to toggle project status:', result.error)
-      addExecutionResult(null, 'System', 'error', `Failed to ${project.value.status === 'disabled' ? 'enable' : 'disable'} project: ${result.error}`)
+      addExecutionResult('System', 'error', `Failed to ${project.value.status === 'disabled' ? 'enable' : 'disable'} project: ${result.error}`)
     }
     saveProject()
   } catch (error) {
     console.error('Error toggling project status:', error)
-    addExecutionResult(null, 'System', 'error', `Error changing project status: ${error.message}`)
+    addExecutionResult('System', 'error', `Error changing project status: ${error.message}`)
   } finally {
     isTogglingStatus.value = false
   }

@@ -51,13 +51,13 @@ class AgentManager {
   }
 
   // Handle job output from agent
-  handleJobOutput(agentId, data) {
+  async handleJobOutput(agentId, data) {
     const { jobId, output, type } = data
     
     if (jobId && output) {
       // The output from the agent is already in the correct format
-      // Just add it to the job's output array
-      jobManager.addJobOutput(jobId, output)
+      // Just add it to the job's output array (will be stored in build record)
+      await jobManager.addJobOutput(jobId, output)
       console.log(`📋 Added job output for ${jobId}:`, output.message || output)
     }
   }
@@ -117,7 +117,7 @@ class AgentManager {
             await jobManager.updateJob(jobId, {
               status: 'failed',
               error: errorMsg,
-              failedAt: new Date()
+              failedAt: new Date().toISOString()
             })
 
             // Update build status if this job is associated with a build
@@ -173,7 +173,7 @@ class AgentManager {
             await jobManager.updateJob(jobId, {
               status: 'failed',
               error: 'Failed to dispatch next command in sequence',
-              failedAt: new Date()
+              failedAt: new Date().toISOString()
             })
 
             // Update build status if this job is associated with a build
@@ -201,7 +201,7 @@ class AgentManager {
       await jobManager.updateJob(jobId, {
         status: 'completed',
         exitCode: exitCode || 0,
-        completedAt: new Date(),
+        completedAt: new Date().toISOString(),
         finalOutput: output,
         message: `Job completed successfully (exit code: ${exitCode || 0})`
       })
@@ -257,7 +257,7 @@ class AgentManager {
         status: 'failed',
         error: errorMessage,
         exitCode: exitCode || 1,
-        failedAt: new Date()
+        failedAt: new Date().toISOString()
       })
 
       // Notify any waiting parallel orchestrators
@@ -300,7 +300,7 @@ class AgentManager {
     }
 
     try {
-      console.log(`🚀 Dispatching job to agent ${agentId}:`, jobData)
+      console.log(`🚀 Dispatching job to agent ${agentId}:\nJob ID: ${jobData.jobId}\nProject ID: ${jobData.projectId}\nCommand(s): ${jobData.commands}`)
       
       // Send job to agent using Socket.IO
       socket.emit('message', {
@@ -323,13 +323,24 @@ class AgentManager {
     if (!socket) {
       throw new Error(`Agent ${agentId} is not connected`)
     }
-    // Send cancellation to agent using Nuxt WebSocket
-    socket.send({
+    // Send cancellation to agent using Socket.IO
+    socket.emit('message', {
       type: 'cancel_job',
       jobId: jobId
     })
 
     console.log(`Job ${jobId} cancellation sent to agent ${agentId}`)
+    return true
+  }
+
+  // Cancel job (wrapper method for API compatibility)
+  cancelJob(agentId, jobData) {
+    try {
+      return this.cancelJobOnAgent(agentId, jobData.jobId)
+    } catch (error) {
+      console.error(`Failed to cancel job ${jobData.jobId} on agent ${agentId}:`, error)
+      return false
+    }
   }
 
   // Find available agent for job execution
@@ -380,13 +391,11 @@ class AgentManager {
       if (socket && socket.connected) { // Socket.IO connected state
         // Get agent data and return it
         const agentInfo = this.agentData.get(agentId)
-        console.log(`🔍 Agent ${agentId} data:`, agentInfo)
-        
-        if (agentInfo && agentInfo.status === 'online') {
-          console.log(`✅ Found available agent: ${agentId}`)
+        if (agentInfo && ['online', 'idle', 'ready', 'busy'].includes(agentInfo.status)) {
+          console.log(`✅ Found available agent: ${agentId} (status: ${agentInfo.status})`)
           return agentInfo
         } else {
-          console.log(`❌ Agent ${agentId} not available - no data or not online`)
+          console.log(`❌ Agent ${agentId} not available - status: ${agentInfo?.status || 'no data'}`)
         }
       } else {
         console.log(`❌ Agent ${agentId} not connected`)
@@ -422,17 +431,28 @@ class AgentManager {
     }
 
     try {
-      const { convertGraphToCommands } = await import('../api/projects/execute.post.js')
-
-      // Find the current node that just completed
-      const currentNode = job.nodes.find(node =>
-        ['bash', 'powershell', 'cmd', 'python', 'node'].includes(node.data?.nodeType)
-      )
+      // Find the last executed node based on job execution commands
+      let currentNode = null
+      if (job.executionCommands && job.currentCommandIndex !== undefined) {
+        const lastCommand = job.executionCommands[job.currentCommandIndex]
+        if (lastCommand) {
+          currentNode = job.nodes.find(node => node.id === lastCommand.nodeId)
+        }
+      }
+      
+      // Fallback: find any execution node if we can't determine the current one
+      if (!currentNode) {
+        currentNode = job.nodes.find(node =>
+          ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(node.data?.nodeType)
+        )
+      }
 
       if (!currentNode) {
-        console.log(`⚠️ Could not find execution node for job ${job.jobId}`)
+        console.log(`⚠️ Could not find current execution node for job ${job.jobId}`)
         return
       }
+
+      console.log(`🔍 Finding next nodes from: ${currentNode.data.label} (${currentNode.data.nodeType})`)
 
       // Get next nodes based on execution result
       const { getExecutionConnectedNodes } = await import('../api/projects/execute.post.js')
@@ -445,14 +465,33 @@ class AgentManager {
 
       console.log(`🔄 Triggering ${nextNodes.length} next nodes for job ${job.jobId}`)
 
-      // Execute next nodes
+      // Execute next nodes by creating new jobs
       for (const nextNode of nextNodes) {
-        const nextCommands = convertGraphToCommands([nextNode], job.edges)
-
-        if (nextCommands.length > 0) {
-          console.log(`🚀 Executing next node: ${nextNode.data.label}`)
-          // This would trigger execution of the next node
-          // For now, just log it - full implementation would dispatch to agent
+        console.log(`🚀 Executing next node: ${nextNode.data.label}`)
+        
+        try {
+          // Create execution data for the next node
+          const executionData = {
+            projectId: job.projectId,
+            nodes: [nextNode], // Only execute this specific node
+            edges: job.edges,
+            startTime: new Date().toISOString(),
+            trigger: 'node-completion'
+          }
+          
+          // Execute the next node
+          const response = await $fetch('/api/projects/execute', {
+            method: 'POST',
+            body: executionData
+          })
+          
+          if (response.success) {
+            console.log(`✅ Successfully triggered next node ${nextNode.data.label} on agent ${response.agentName}`)
+          } else {
+            console.error(`❌ Failed to trigger next node ${nextNode.data.label}`)
+          }
+        } catch (error) {
+          console.error(`❌ Error executing next node ${nextNode.data.label}:`, error)
         }
       }
 
@@ -485,7 +524,7 @@ class AgentManager {
         await jobManager.updateJob(parentJobId, {
           status: 'failed',
           error: result.message,
-          failedAt: new Date()
+          failedAt: new Date().toISOString()
         })
 
         // Update build status if applicable
@@ -504,7 +543,7 @@ class AgentManager {
         return
       }
 
-      // Continue with next sequential command (if any)
+      // Continue with next sequential command (if any) or trigger next nodes
       await this.continueSequentialExecution(parentJobId)
 
     } catch (error) {
@@ -512,7 +551,7 @@ class AgentManager {
       await jobManager.updateJob(parentJobId, {
         status: 'failed',
         error: `Parallel branches orchestrator error: ${error.message}`,
-        failedAt: new Date()
+        failedAt: new Date().toISOString()
       })
 
       // Update build status if applicable
@@ -555,7 +594,7 @@ class AgentManager {
         await jobManager.updateJob(parentJobId, {
           status: 'failed',
           error: result.message,
-          failedAt: new Date()
+          failedAt: new Date().toISOString()
         })
 
         // Update build status if applicable
@@ -574,7 +613,7 @@ class AgentManager {
         return
       }
 
-      // Continue with next sequential command (if any)
+      // Continue with next sequential command (if any) or trigger next nodes
       await this.continueSequentialExecution(parentJobId)
 
     } catch (error) {
@@ -582,7 +621,7 @@ class AgentManager {
       await jobManager.updateJob(parentJobId, {
         status: 'failed',
         error: `Parallel matrix orchestrator error: ${error.message}`,
-        failedAt: new Date()
+        failedAt: new Date().toISOString()
       })
 
       // Update build status if applicable
@@ -687,7 +726,7 @@ class AgentManager {
         await jobManager.updateJob(parentJobId, {
           status: 'failed',
           error: errorMsg,
-          failedAt: new Date()
+          failedAt: new Date().toISOString()
         })
         return
       }
@@ -719,16 +758,19 @@ class AgentManager {
         await jobManager.updateJob(parentJobId, {
           status: 'failed',
           error: 'Failed to dispatch next command in sequence',
-          failedAt: new Date()
+          failedAt: new Date().toISOString()
         })
       }
     } else {
-      // No more commands - mark parent job as complete
+      // No more commands - mark parent job as complete and trigger next nodes
       console.log(`🎉 All commands (including parallel orchestration) completed for job ${parentJobId}`)
       await jobManager.updateJob(parentJobId, {
         status: 'completed',
-        completedAt: new Date()
+        completedAt: new Date().toISOString()
       })
+
+      // Trigger next nodes based on success
+      await this.triggerNextNodes(parentJobUpdated, { success: true, exitCode: 0 })
 
       // Update build status if this job is associated with a build
       if (parentJobUpdated.buildId) {

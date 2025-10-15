@@ -468,10 +468,23 @@ const agents = ref([])
 // Function to get build stats for a project
 const getBuildStats = async (projectId) => {
   try {
-    const response = await $fetch(`/api/projects/${projectId}/build-stats`)
-    return response?.stats || response || null
+    const response = await $fetch(`/api/projects/${projectId}/builds`, { query: { page: 1, limit: 10 } })
+    if (!response.success || !response.builds) return null
+    
+    const builds = response.builds
+    const totalBuilds = builds.length
+    if (totalBuilds === 0) return null
+    
+    const successfulBuilds = builds.filter(b => b.status === 'success').length
+    const successRate = totalBuilds > 0 ? successfulBuilds / totalBuilds : 0
+    const lastBuild = builds[0] // Most recent build
+    
+    return {
+      totalBuilds,
+      successRate,
+      lastBuildStatus: lastBuild?.status || 'None'
+    }
   } catch (error) {
-    // Silently handle missing build stats (common for new projects)
     if (error.statusCode === 404 || error.statusCode === 500) {
       return null
     }

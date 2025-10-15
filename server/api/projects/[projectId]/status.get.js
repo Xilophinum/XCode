@@ -1,6 +1,6 @@
 /**
  * GET /api/projects/[projectId]/status
- * Checks if a project has any running jobs (from cron, webhook, or manual execution)
+ * Get current execution status for a project
  */
 
 import { jobManager } from '../../../utils/jobManager.js'
@@ -8,7 +8,7 @@ import { jobManager } from '../../../utils/jobManager.js'
 export default defineEventHandler(async (event) => {
   try {
     const projectId = getRouterParam(event, 'projectId')
-    
+
     if (!projectId) {
       throw createError({
         statusCode: 400,
@@ -16,37 +16,35 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Find any running jobs for this project
-    const runningJob = await jobManager.getRunningJobForProject(projectId)
+    // Check if there are any running jobs for this project
+    const runningJobs = await jobManager.getJobsForProject(projectId)
+    const currentJob = runningJobs.find(job => 
+      ['running', 'pending', 'queued', 'created', 'dispatched'].includes(job.status)
+    )
     
-    if (!runningJob) {
-      return {
-        isRunning: false,
-        projectId,
-        message: 'No active jobs for this project'
-      }
-    }
+    console.log(`📋 Status check for project ${projectId}: found ${runningJobs.length} jobs, current job:`, currentJob)
 
     return {
-      isRunning: true,
+      success: true,
       projectId,
-      jobId: runningJob.jobId,
-      agentId: runningJob.agentId,
-      agentName: runningJob.agentName,
-      status: runningJob.status,
-      startTime: runningJob.startTime,
-      currentNodeId: runningJob.currentNodeId,
-      currentNodeLabel: runningJob.currentNodeLabel,
-      duration: Date.now() - new Date(runningJob.startTime).getTime(),
-      message: `Project is currently running on agent ${runningJob.agentName || runningJob.agentId}`
+      isRunning: !!currentJob,
+      currentJob: currentJob ? {
+        jobId: currentJob.jobId,
+        buildId: currentJob.buildId || currentJob.jobId,
+        agentId: currentJob.agentId,
+        status: currentJob.status,
+        startTime: currentJob.startTime,
+        nodeId: currentJob.currentNodeId,
+        trigger: currentJob.trigger || 'unknown'
+      } : null
     }
 
   } catch (error) {
-    console.error('❌ Error checking project status:', error)
+    console.error('❌ Error getting project status:', error)
     
     throw createError({
       statusCode: error.statusCode || 500,
-      statusMessage: error.statusMessage || 'Failed to check project status'
+      statusMessage: error.statusMessage || 'Failed to get project status'
     })
   }
 })

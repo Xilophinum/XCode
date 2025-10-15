@@ -373,12 +373,12 @@ class XCodeBuildAgent {
           break;
 
         case 'execute_job':
-          console.log('🎯 Received execute_job message:', message);
+          console.log(`🎯 Received execute_job message:\nType: ${message.type}\nCommand(s): ${message.commands}`);
           this.handleJobExecution(message);
           break;
 
         case 'cancel_job':
-          this.cancelJob(message.jobId);
+          this.handleJobCancellation(message);
           break;
 
         case 'heartbeat_ack':
@@ -453,7 +453,7 @@ class XCodeBuildAgent {
           type: 'info',
           message: `🔄 Retry attempt ${attempt}/${maxRetries}`,
           timestamp: new Date().toISOString(),
-          source: 'agent'
+          source: 'Agent'
         });
       }
       
@@ -508,7 +508,7 @@ class XCodeBuildAgent {
         type: 'warning',
         message: `❌ Attempt ${attempt} failed: ${error.message}. Retrying in ${retryDelay}s...`,
         timestamp: new Date().toISOString(),
-        source: 'agent'
+        source: 'Agent'
       });
       
       setTimeout(() => {
@@ -679,7 +679,7 @@ class XCodeBuildAgent {
               type: 'info',
               message: line.trim(),
               timestamp: new Date().toISOString(),
-              source: 'stdout'
+              source: 'Agent'
             };
             
             job.outputBuffer.push(outputLine);
@@ -710,7 +710,7 @@ class XCodeBuildAgent {
               type: 'error',
               message: line.trim(),
               timestamp: new Date().toISOString(),
-              source: 'stderr'
+              source: 'Agent'
             };
             
             job.outputBuffer.push(outputLine);

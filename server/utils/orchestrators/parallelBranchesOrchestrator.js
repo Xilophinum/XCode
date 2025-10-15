@@ -30,7 +30,9 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
   } = orchestratorCommand
 
   console.log(`🔀 Starting parallel branches orchestrator: ${nodeLabel}`)
-  console.log(`📊 Branches: ${branches.length}, Targets: ${branchTargets.length}, Max Concurrency: ${maxConcurrency || 'unlimited'}, Fail Fast: ${failFast}`)
+  console.log(`📊 Branches: ${branches?.length || 0}, Targets: ${branchTargets?.length || 0}, Max Concurrency: ${maxConcurrency || 'unlimited'}, Fail Fast: ${failFast}`)
+  console.log(`📊 Branch details:`, branches)
+  console.log(`📊 Branch targets:`, branchTargets)
 
   if (branchTargets.length === 0) {
     console.log(`⚠️  No branch targets found for orchestrator ${nodeLabel}`)
@@ -55,11 +57,12 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
       // Generate sub-job ID for this branch
       const subJobId = `${parentJob.jobId}_branch_${target.branchId}_${uuidv4().split('-')[0]}`
 
-      // Create sub-job record
+      // Create sub-job record with parent's buildId
       await jobManager.createJob({
         jobId: subJobId,
         projectId: parentJob.projectId,
         parentJobId: parentJob.jobId,
+        buildId: parentJob.buildId, // Use parent's buildId for unified logging
         status: 'queued',
         branchId: target.branchId,
         branchName: target.branchName,

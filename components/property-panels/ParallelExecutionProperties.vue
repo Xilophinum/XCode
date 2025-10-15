@@ -7,11 +7,11 @@
         v-model="nodeData.data.executionType"
         class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
       >
-        <option value="bash">Bash</option>
-        <option value="powershell">PowerShell</option>
-        <option value="cmd">CMD</option>
-        <option value="python">Python</option>
-        <option value="node">Node.js</option>
+        <option 
+          v-for="option in placeholderData.filter(option => option.type !== 'parallel_execution')" 
+          :key="option.type" 
+          :value="option.type"
+        >{{ option.name }}</option>
       </select>
     </div>
 
@@ -65,33 +65,17 @@
 
 <script setup>
 const props = defineProps({
-  nodeData: { type: Object, required: true }
+  nodeData: { 
+    type: Object, 
+    required: true 
+  },
+  placeholderData: {
+    type: Object,
+    required: true
+  }
 })
 
 const getPlaceholder = () => {
-  const placeholders = {
-    bash: 'echo "Hello from Bash"\nls -la',
-    powershell: 'Write-Host "Hello from PowerShell"\nGet-ChildItem',
-    cmd: 'echo Hello from CMD\ndir',
-    python: 'print("Hello from Python")\nimport os\nprint(os.listdir("."))',
-    node: 'console.log("Hello from Node.js");\nconst fs = require("fs");'
-  }
-  return placeholders[props.nodeData.data.executionType] || ''
-}
-
-const addInputSocket = () => {
-  if (!props.nodeData.data.inputSockets) {
-    props.nodeData.data.inputSockets = []
-  }
-  const socketIndex = props.nodeData.data.inputSockets.length + 1
-  props.nodeData.data.inputSockets.push({
-    id: `input_${socketIndex}`,
-    label: `Input ${socketIndex}`,
-    connected: false
-  })
-}
-
-const removeInputSocket = (index) => {
-  props.nodeData.data.inputSockets.splice(index, 1)
+  return props.placeholderData.find(item => item.type === props.nodeData.data.executionType)?.placeholder || ''
 }
 </script>

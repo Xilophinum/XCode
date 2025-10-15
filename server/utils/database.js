@@ -62,6 +62,9 @@ export class DatabaseManager {
     const schema = createSchema('postgres')
     this.db = drizzlePostgres(this.postgres, { schema })
     console.log('✅ PostgreSQL database connected successfully')
+    await this.postgres`SET client_min_messages TO warning;`
+    await this.postgres`SET log_min_messages TO warning;`
+    await this.postgres`SET log_min_error_statement TO error;`
   }
 
 
@@ -77,6 +80,49 @@ export class DatabaseManager {
   }
 
   async runSQLiteMigrations() {
+    // Drop legacy tables and migrate to unified builds
+    try {
+      this.sqlite.exec(`DROP TABLE IF EXISTS build_logs`)
+      this.sqlite.exec(`DROP TABLE IF EXISTS jobs`)
+      this.sqlite.exec(`DROP TABLE IF EXISTS job_outputs`)
+      console.log('✅ Dropped legacy tables (build_logs, jobs, job_outputs)')
+    } catch (error) {
+      console.warn('⚠️ Migration warning (drop tables):', error.message)
+    }
+
+    // Add new columns to existing builds table
+    try {
+      const columns = this.sqlite.prepare("PRAGMA table_info(builds)").all()
+      const columnNames = columns.map(col => col.name)
+      
+      const newColumns = [
+        'current_command_index INTEGER',
+        'execution_commands TEXT',
+        'current_node_id TEXT',
+        'current_node_label TEXT',
+        'nodes TEXT',
+        'edges TEXT',
+        'exit_code INTEGER',
+        'error TEXT',
+        'final_output TEXT',
+        'can_retry_on_reconnect TEXT DEFAULT "false"',
+        'parallel_branches_result TEXT',
+        'parallel_matrix_result TEXT',
+        'output_log TEXT',
+        'last_sequence INTEGER DEFAULT 0'
+      ]
+      
+      for (const column of newColumns) {
+        const columnName = column.split(' ')[0]
+        if (!columnNames.includes(columnName)) {
+          this.sqlite.exec(`ALTER TABLE builds ADD COLUMN ${column}`)
+        }
+      }
+      console.log('✅ Updated builds table with unified schema')
+    } catch (error) {
+      console.warn('⚠️ Migration warning (builds columns):', error.message)
+    }
+
     // Add status column migration for existing items table (if needed)
     try {
       const result = this.sqlite.prepare("PRAGMA table_info(items)").all()
@@ -256,7 +302,7 @@ export class DatabaseManager {
         )
       `)
 
-      // Build execution tracking tables
+      // Unified builds table (combines builds, jobs, and outputs)
       this.sqlite.exec(`
         CREATE TABLE IF NOT EXISTS builds (
           id TEXT PRIMARY KEY,
@@ -264,39 +310,37 @@ export class DatabaseManager {
           build_number INTEGER NOT NULL DEFAULT 0,
           agent_id TEXT,
           agent_name TEXT,
-          job_id TEXT,
           trigger TEXT NOT NULL,
           status TEXT NOT NULL,
           message TEXT,
           started_at TEXT NOT NULL,
           finished_at TEXT,
           duration INTEGER,
+          current_command_index INTEGER,
+          execution_commands TEXT,
+          current_node_id TEXT,
+          current_node_label TEXT,
+          nodes TEXT,
+          edges TEXT,
           node_count INTEGER,
           nodes_executed INTEGER,
+          exit_code INTEGER,
+          error TEXT,
+          final_output TEXT,
+          can_retry_on_reconnect TEXT DEFAULT 'false',
+          parallel_branches_result TEXT,
+          parallel_matrix_result TEXT,
           git_branch TEXT,
           git_commit TEXT,
           metadata TEXT,
+          output_log TEXT,
+          last_sequence INTEGER DEFAULT 0,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
       `)
 
-      this.sqlite.exec(`
-        CREATE TABLE IF NOT EXISTS build_logs (
-          id TEXT PRIMARY KEY,
-          build_id TEXT NOT NULL,
-          node_id TEXT,
-          level TEXT NOT NULL,
-          message TEXT NOT NULL,
-          command TEXT,
-          output TEXT,
-          timestamp TEXT NOT NULL,
-          sequence INTEGER NOT NULL,
-          source TEXT NOT NULL DEFAULT 'system',
-          metadata TEXT,
-          created_at TEXT NOT NULL
-        )
-      `)
+
 
       // Cron Jobs table
       this.sqlite.exec(`
@@ -315,15 +359,17 @@ export class DatabaseManager {
         )
       `)
 
+
+
       // Create indexes for better performance
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_project_id ON builds(project_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_status ON builds(status)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_started_at ON builds(started_at)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_build_number ON builds(project_id, build_number)`)
-      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_build_logs_build_id ON build_logs(build_id)`)
-      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_build_logs_timestamp ON build_logs(timestamp)`)
+
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_cron_jobs_project_id ON cron_jobs(project_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_cron_jobs_enabled ON cron_jobs(enabled)`)
+
     } catch (error) {
       console.error('Error creating tables:', error)
     }
@@ -334,7 +380,6 @@ export class DatabaseManager {
   async createPostgresTables() {
     try {
       console.log('🔄 Creating PostgreSQL tables...')
-      await this.postgres`SET client_min_messages TO warning;`
       // Create tables using raw SQL for PostgreSQL
       await this.postgres`
         CREATE TABLE IF NOT EXISTS users (
@@ -468,39 +513,37 @@ export class DatabaseManager {
           build_number INTEGER NOT NULL DEFAULT 0,
           agent_id VARCHAR(255),
           agent_name VARCHAR(255),
-          job_id VARCHAR(255),
           trigger VARCHAR(50) NOT NULL,
           status VARCHAR(50) NOT NULL,
           message TEXT,
           started_at TEXT NOT NULL,
           finished_at TEXT,
           duration INTEGER,
+          current_command_index INTEGER,
+          execution_commands TEXT,
+          current_node_id VARCHAR(255),
+          current_node_label VARCHAR(255),
+          nodes TEXT,
+          edges TEXT,
           node_count INTEGER,
           nodes_executed INTEGER,
+          exit_code INTEGER,
+          error TEXT,
+          final_output TEXT,
+          can_retry_on_reconnect VARCHAR(10) DEFAULT 'false',
+          parallel_branches_result TEXT,
+          parallel_matrix_result TEXT,
           git_branch VARCHAR(255),
           git_commit VARCHAR(255),
           metadata TEXT,
+          output_log TEXT,
+          last_sequence INTEGER DEFAULT 0,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
       `
 
-      await this.postgres`
-        CREATE TABLE IF NOT EXISTS build_logs (
-          id VARCHAR(255) PRIMARY KEY,
-          build_id VARCHAR(255) NOT NULL,
-          node_id VARCHAR(255),
-          level VARCHAR(20) NOT NULL,
-          message TEXT NOT NULL,
-          command TEXT,
-          output TEXT,
-          timestamp TEXT NOT NULL,
-          sequence INTEGER NOT NULL,
-          source VARCHAR(50) NOT NULL DEFAULT 'system',
-          metadata TEXT,
-          created_at TEXT NOT NULL
-        )
-      `
+
 
       await this.postgres`
         CREATE TABLE IF NOT EXISTS cron_jobs (
@@ -518,14 +561,16 @@ export class DatabaseManager {
         )
       `
 
+
+
       // Create indexes for better performance
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_project_id ON builds(project_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_status ON builds(status)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_started_at ON builds(started_at)`
-      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_build_logs_build_id ON build_logs(build_id)`
-      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_build_logs_timestamp ON build_logs(timestamp)`
+
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cron_jobs_project_id ON cron_jobs(project_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cron_jobs_enabled ON cron_jobs(enabled)`
+
 
 
       console.log('✅ PostgreSQL tables created successfully')
@@ -535,6 +580,37 @@ export class DatabaseManager {
   }
 
   async runPostgresMigrations() {
+    // Drop legacy tables
+    try {
+      await this.postgres`DROP TABLE IF EXISTS build_logs`
+      await this.postgres`DROP TABLE IF EXISTS jobs`
+      await this.postgres`DROP TABLE IF EXISTS job_outputs`
+      console.log('✅ Dropped legacy tables (build_logs, jobs, job_outputs)')
+    } catch (error) {
+      console.warn('⚠️ PostgreSQL migration warning (drop tables):', error.message)
+    }
+
+    // Add new columns to builds table
+    try {
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS current_command_index INTEGER`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS execution_commands TEXT`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS current_node_id VARCHAR(255)`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS current_node_label VARCHAR(255)`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS nodes TEXT`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS edges TEXT`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS exit_code INTEGER`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS error TEXT`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS final_output TEXT`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS can_retry_on_reconnect VARCHAR(10) DEFAULT 'false'`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS parallel_branches_result TEXT`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS parallel_matrix_result TEXT`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS output_log TEXT`
+      await this.postgres`ALTER TABLE builds ADD COLUMN IF NOT EXISTS last_sequence INTEGER DEFAULT 0`
+      console.log('✅ Updated builds table with unified schema')
+    } catch (error) {
+      console.warn('⚠️ PostgreSQL migration warning (builds columns):', error.message)
+    }
+
     // Add is_local column to agents table
     try {
       await this.postgres`ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_local VARCHAR(10) NOT NULL DEFAULT 'false'`

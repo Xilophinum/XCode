@@ -1,5 +1,5 @@
 import { getDB } from './database.js'
-import { builds, buildLogs, items } from './schema.js'
+import { builds, items } from './schema.js'
 import { eq, desc, and, gte, lte, count, avg, min, max } from 'drizzle-orm'
 
 export class BuildStatsManager {
@@ -52,13 +52,7 @@ export class BuildStatsManager {
 
     await this.db.insert(builds).values(build)
 
-    // Log the start
-    await this.addBuildLog(buildId, {
-      level: 'info',
-      message: 'Build started',
-      source: 'system',
-      sequence: 1
-    })
+
 
     console.log(`📊 Started build #${buildNumber} (${buildId}) for project ${buildData.projectId}`)
     return buildId
@@ -84,6 +78,56 @@ export class BuildStatsManager {
     await this.db.update(builds)
       .set(updateData)
       .where(eq(builds.id, buildId))
+  }
+
+  /**
+   * Add a log entry to a build
+   * @param {string} buildId - Build ID
+   * @param {Object} logEntry - Log entry data
+   */
+  async addBuildLog(buildId, logEntry) {
+    if (!this.db) await this.initialize()
+
+    const now = new Date().toISOString()
+    
+    // Get current build
+    const [build] = await this.db.select({ outputLog: builds.outputLog }).from(builds).where(eq(builds.id, buildId))
+    if (!build) {
+      throw new Error(`Build ${buildId} not found`)
+    }
+
+    // Parse existing logs
+    let logs = []
+    if (build.outputLog) {
+      try {
+        logs = JSON.parse(build.outputLog)
+      } catch (e) {
+        logs = []
+      }
+    }
+
+    // Add new log entry
+    const newLogEntry = {
+      timestamp: logEntry.timestamp || now,
+      type: logEntry.level || 'info',
+      message: logEntry.message,
+      source: logEntry.source || 'system',
+      nodeLabel: logEntry.nodeLabel || logEntry.source || 'System',
+      command: logEntry.command || null,
+      nodeId: logEntry.nodeId || null
+    }
+
+    logs.push(newLogEntry)
+
+    // Update build with new logs
+    await this.db.update(builds)
+      .set({ 
+        outputLog: JSON.stringify(logs),
+        updatedAt: now 
+      })
+      .where(eq(builds.id, buildId))
+
+    console.log(`📋 Added log entry to build ${buildId}: ${logEntry.message}`)
   }
 
   /**
@@ -116,12 +160,7 @@ export class BuildStatsManager {
       })
       .where(eq(builds.id, buildId))
 
-    // Log the completion
-    await this.addBuildLog(buildId, {
-      level: result.status === 'success' ? 'success' : 'error',
-      message: `Build ${result.status}: ${result.message || 'No message'}`,
-      source: 'system'
-    })
+
 
     // Broadcast build completion for job triggers
     await this.broadcastBuildCompletion(build.projectId, result.status, {
@@ -142,40 +181,7 @@ export class BuildStatsManager {
     console.log(`📊 Finished build ${buildId} with status: ${result.status}`)
   }
 
-  /**
-   * Add a log entry to a build
-   * @param {string} buildId - Build ID
-   * @param {Object} logData - Log data
-   */
-  async addBuildLog(buildId, logData) {
-    if (!this.db) await this.initialize()
 
-    // Get the next sequence number
-    const [result] = await this.db.select({ maxSeq: max(buildLogs.sequence) })
-      .from(buildLogs)
-      .where(eq(buildLogs.buildId, buildId))
-
-    const sequence = (result?.maxSeq || 0) + 1
-    const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    const now = new Date().toISOString()
-
-    const log = {
-      id: logId,
-      buildId: buildId,
-      nodeId: logData.nodeId || null,
-      level: logData.level,
-      message: logData.message,
-      command: logData.command || null,
-      output: logData.output || null,
-      timestamp: logData.timestamp || now,
-      sequence: sequence,
-      source: logData.source || 'system',
-      metadata: logData.metadata ? JSON.stringify(logData.metadata) : null,
-      createdAt: now
-    }
-
-    await this.db.insert(buildLogs).values(log)
-  }
 
   /**
    * Update project build statistics
@@ -335,20 +341,7 @@ export class BuildStatsManager {
     }
   }
 
-  /**
-   * Get build logs for a specific build
-   * @param {string} buildId - Build ID
-   * @returns {Promise<Array>} - Build logs
-   */
-  async getBuildLogs(buildId) {
-    if (!this.db) await this.initialize()
 
-    return await this.db
-      .select()
-      .from(buildLogs)
-      .where(eq(buildLogs.buildId, buildId))
-      .orderBy(buildLogs.sequence)
-  }
 
   /**
    * Clean up old builds according to retention policy
@@ -384,34 +377,12 @@ export class BuildStatsManager {
     if (buildsToDelete.length > 0) {
       const buildIds = buildsToDelete.map(b => b.id)
       
-      // Delete build logs first
-      for (const buildId of buildIds) {
-        await this.db.delete(buildLogs).where(eq(buildLogs.buildId, buildId))
-      }
-      
       // Delete builds
       for (const buildId of buildIds) {
         await this.db.delete(builds).where(eq(builds.id, buildId))
       }
 
       console.log(`🧹 Cleaned up ${buildIds.length} old builds for project ${projectId}`)
-    }
-
-    // Clean up old logs (older than maxLogDays)
-    const cutoffDate = new Date()
-    cutoffDate.setDate(cutoffDate.getDate() - maxLogDays)
-    const cutoffIso = cutoffDate.toISOString()
-
-    const oldLogs = await this.db
-      .select({ id: buildLogs.id })
-      .from(buildLogs)
-      .where(lte(buildLogs.timestamp, cutoffIso))
-
-    if (oldLogs.length > 0) {
-      for (const log of oldLogs) {
-        await this.db.delete(buildLogs).where(eq(buildLogs.id, log.id))
-      }
-      console.log(`🧹 Cleaned up ${oldLogs.length} old log entries`)
     }
   }
 
