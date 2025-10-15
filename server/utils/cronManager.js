@@ -367,7 +367,7 @@ class CronManager {
     
     return nodes.filter(node => 
       connectedNodeIds.has(node.id) && 
-      ['bash', 'powershell', 'cmd', 'python', 'node-js'].includes(node.data.nodeType)
+      ['bash', 'powershell', 'cmd', 'python', 'node'].includes(node.data.nodeType)
     )
   }
 

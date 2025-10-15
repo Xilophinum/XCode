@@ -9,6 +9,7 @@ class AgentManager {
     this.agentData = new Map() // agentId -> agent info
     this.dataService = null
     this.heartbeatIntervals = new Map() // agentId -> interval
+    this.jobCompletionCallbacks = new Map() // jobId -> callback function
   }
 
   async initialize(server = null) {
@@ -85,8 +86,21 @@ class AgentManager {
         if (currentIndex + 1 < totalCommands) {
           const nextIndex = currentIndex + 1
           const nextCommand = job.executionCommands[nextIndex]
-          
+
           console.log(`🔄 Starting next command ${nextIndex + 1}/${totalCommands}: ${nextCommand.nodeLabel}`)
+
+          // Check if the next command is a parallel orchestrator
+          if (nextCommand.type === 'parallel_branches_orchestrator') {
+            console.log(`🔀 Executing parallel branches orchestrator`)
+            await this.executeParallelBranches(jobId, nextCommand, job)
+            return // Don't continue with normal sequential flow
+          }
+
+          if (nextCommand.type === 'parallel_matrix_orchestrator') {
+            console.log(`🔀 Executing parallel matrix orchestrator`)
+            await this.executeParallelMatrix(jobId, nextCommand, job)
+            return // Don't continue with normal sequential flow
+          }
           
           // Find agent for the next command
           // Handle "any" as explicit choice for any available agent
@@ -184,14 +198,22 @@ class AgentManager {
       
       // No more commands or not a sequential job - mark as completed
       console.log(`🎉 All commands completed for job ${jobId}`)
-      await jobManager.updateJob(jobId, { 
+      await jobManager.updateJob(jobId, {
         status: 'completed',
         exitCode: exitCode || 0,
         completedAt: new Date(),
         finalOutput: output,
         message: `Job completed successfully (exit code: ${exitCode || 0})`
       })
-      
+
+      // Notify any waiting parallel orchestrators
+      this.notifyJobCompletion(jobId, {
+        jobId: jobId,
+        success: true,
+        exitCode: exitCode || 0,
+        output: output
+      })
+
       // Trigger next nodes based on success
       await this.triggerNextNodes(job, { success: true, exitCode: exitCode || 0 })
 
@@ -237,7 +259,15 @@ class AgentManager {
         exitCode: exitCode || 1,
         failedAt: new Date()
       })
-      
+
+      // Notify any waiting parallel orchestrators
+      this.notifyJobCompletion(jobId, {
+        jobId: jobId,
+        success: false,
+        error: errorMessage,
+        exitCode: exitCode || 1
+      })
+
       // Trigger next nodes based on failure
       if (job) {
         await this.triggerNextNodes(job, { success: false, exitCode: exitCode || 1, error: errorMessage })
@@ -390,44 +420,330 @@ class AgentManager {
       console.log(`⚠️ No graph data available for job ${job.jobId} to trigger next nodes`)
       return
     }
-    
+
     try {
       const { convertGraphToCommands } = await import('../api/projects/execute.post.js')
-      
+
       // Find the current node that just completed
-      const currentNode = job.nodes.find(node => 
-        ['bash', 'powershell', 'cmd', 'python', 'node-js'].includes(node.data?.nodeType)
+      const currentNode = job.nodes.find(node =>
+        ['bash', 'powershell', 'cmd', 'python', 'node'].includes(node.data?.nodeType)
       )
-      
+
       if (!currentNode) {
         console.log(`⚠️ Could not find execution node for job ${job.jobId}`)
         return
       }
-      
+
       // Get next nodes based on execution result
       const { getExecutionConnectedNodes } = await import('../api/projects/execute.post.js')
       const nextNodes = getExecutionConnectedNodes(currentNode.id, job.nodes, job.edges, new Map(), executionResult)
-      
+
       if (nextNodes.length === 0) {
         console.log(`🏁 No next nodes to execute for job ${job.jobId}`)
         return
       }
-      
+
       console.log(`🔄 Triggering ${nextNodes.length} next nodes for job ${job.jobId}`)
-      
+
       // Execute next nodes
       for (const nextNode of nextNodes) {
         const nextCommands = convertGraphToCommands([nextNode], job.edges)
-        
+
         if (nextCommands.length > 0) {
           console.log(`🚀 Executing next node: ${nextNode.data.label}`)
           // This would trigger execution of the next node
           // For now, just log it - full implementation would dispatch to agent
         }
       }
-      
+
     } catch (error) {
       console.error(`❌ Error triggering next nodes for job ${job.jobId}:`, error)
+    }
+  }
+
+  // Execute parallel branches orchestrator
+  async executeParallelBranches(parentJobId, orchestratorCommand, parentJob) {
+    console.log(`🔀 Executing parallel branches orchestrator for job ${parentJobId}`)
+
+    try {
+      // Import the orchestrator implementation
+      const { executeParallelBranches } = await import('./orchestrators/parallelBranchesOrchestrator.js')
+
+      // Execute the orchestrator
+      const result = await executeParallelBranches(orchestratorCommand, parentJob)
+
+      console.log(`${result.success ? '✅' : '⚠️'} Parallel branches orchestrator completed: ${result.message}`)
+
+      // Update parent job with aggregated results
+      await jobManager.updateJob(parentJobId, {
+        parallelBranchesResult: result
+      })
+
+      // Handle failure if necessary
+      if (!result.success && orchestratorCommand.failFast) {
+        console.error(`❌ Parallel branches failed with fail-fast enabled - marking parent job as failed`)
+        await jobManager.updateJob(parentJobId, {
+          status: 'failed',
+          error: result.message,
+          failedAt: new Date()
+        })
+
+        // Update build status if applicable
+        if (parentJob.buildId) {
+          try {
+            const buildStatsManager = await getBuildStatsManager()
+            await buildStatsManager.finishBuild(parentJob.buildId, {
+              status: 'failure',
+              message: result.message,
+              nodesExecuted: parentJob.currentCommandIndex + 1
+            })
+          } catch (buildError) {
+            console.warn('Failed to update build record:', buildError)
+          }
+        }
+        return
+      }
+
+      // Continue with next sequential command (if any)
+      await this.continueSequentialExecution(parentJobId)
+
+    } catch (error) {
+      console.error(`❌ Error in parallel branches orchestrator:`, error)
+      await jobManager.updateJob(parentJobId, {
+        status: 'failed',
+        error: `Parallel branches orchestrator error: ${error.message}`,
+        failedAt: new Date()
+      })
+
+      // Update build status if applicable
+      if (parentJob.buildId) {
+        try {
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(parentJob.buildId, {
+            status: 'failure',
+            message: `Orchestrator error: ${error.message}`,
+            nodesExecuted: parentJob.currentCommandIndex + 1
+          })
+        } catch (buildError) {
+          console.warn('Failed to update build record:', buildError)
+        }
+      }
+    }
+  }
+
+  // Execute parallel matrix orchestrator
+  async executeParallelMatrix(parentJobId, orchestratorCommand, parentJob) {
+    console.log(`🔀 Executing parallel matrix orchestrator for job ${parentJobId}`)
+
+    try {
+      // Import the orchestrator implementation
+      const { executeParallelMatrix } = await import('./orchestrators/parallelMatrixOrchestrator.js')
+
+      // Execute the orchestrator
+      const result = await executeParallelMatrix(orchestratorCommand, parentJob)
+
+      console.log(`${result.success ? '✅' : '⚠️'} Parallel matrix orchestrator completed: ${result.message}`)
+
+      // Update parent job with aggregated results
+      await jobManager.updateJob(parentJobId, {
+        parallelMatrixResult: result
+      })
+
+      // Handle failure if necessary
+      if (!result.success && orchestratorCommand.failFast) {
+        console.error(`❌ Parallel matrix failed with fail-fast enabled - marking parent job as failed`)
+        await jobManager.updateJob(parentJobId, {
+          status: 'failed',
+          error: result.message,
+          failedAt: new Date()
+        })
+
+        // Update build status if applicable
+        if (parentJob.buildId) {
+          try {
+            const buildStatsManager = await getBuildStatsManager()
+            await buildStatsManager.finishBuild(parentJob.buildId, {
+              status: 'failure',
+              message: result.message,
+              nodesExecuted: parentJob.currentCommandIndex + 1
+            })
+          } catch (buildError) {
+            console.warn('Failed to update build record:', buildError)
+          }
+        }
+        return
+      }
+
+      // Continue with next sequential command (if any)
+      await this.continueSequentialExecution(parentJobId)
+
+    } catch (error) {
+      console.error(`❌ Error in parallel matrix orchestrator:`, error)
+      await jobManager.updateJob(parentJobId, {
+        status: 'failed',
+        error: `Parallel matrix orchestrator error: ${error.message}`,
+        failedAt: new Date()
+      })
+
+      // Update build status if applicable
+      if (parentJob.buildId) {
+        try {
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(parentJob.buildId, {
+            status: 'failure',
+            message: `Orchestrator error: ${error.message}`,
+            nodesExecuted: parentJob.currentCommandIndex + 1
+          })
+        } catch (buildError) {
+          console.warn('Failed to update build record:', buildError)
+        }
+      }
+    }
+  }
+
+  // Wait for job completion (event-based, not polling)
+  async waitForJobCompletion(jobId) {
+    return new Promise((resolve) => {
+      // Register callback that will be invoked when job completes
+      this.jobCompletionCallbacks.set(jobId, (result) => {
+        resolve(result)
+      })
+
+      // Set a timeout fallback (60 minutes) in case callback is never called
+      setTimeout(async () => {
+        if (this.jobCompletionCallbacks.has(jobId)) {
+          this.jobCompletionCallbacks.delete(jobId)
+
+          // Check job status as fallback
+          const job = await jobManager.getJob(jobId)
+          if (job) {
+            resolve({
+              jobId: jobId,
+              success: job.status === 'completed',
+              error: job.error || 'Job completion timeout',
+              exitCode: job.exitCode
+            })
+          } else {
+            resolve({
+              jobId: jobId,
+              success: false,
+              error: 'Job not found or timed out'
+            })
+          }
+        }
+      }, 3600000) // 60 minutes timeout
+    })
+  }
+
+  // Notify job completion (called by handleJobComplete and handleJobError)
+  notifyJobCompletion(jobId, result) {
+    const callback = this.jobCompletionCallbacks.get(jobId)
+    if (callback) {
+      console.log(`🔔 Notifying job completion for ${jobId}:`, result.success ? 'SUCCESS' : 'FAILED')
+      callback(result)
+      this.jobCompletionCallbacks.delete(jobId)
+    }
+  }
+
+  // Continue sequential execution after parallel orchestration
+  async continueSequentialExecution(parentJobId) {
+    const parentJobUpdated = await jobManager.getJob(parentJobId)
+    const nextIndex = parentJobUpdated.currentCommandIndex + 1
+
+    console.log(`🔄 Continuing sequential execution: command ${nextIndex + 1}/${parentJobUpdated.executionCommands.length}`)
+
+    if (nextIndex < parentJobUpdated.executionCommands.length) {
+      // Update command index
+      await jobManager.updateJob(parentJobId, {
+        currentCommandIndex: nextIndex
+      })
+
+      const nextCommand = parentJobUpdated.executionCommands[nextIndex]
+
+      // Check if the next command is also an orchestrator
+      if (nextCommand.type === 'parallel_branches_orchestrator') {
+        console.log(`🔀 Next command is parallel branches orchestrator`)
+        await this.executeParallelBranches(parentJobId, nextCommand, parentJobUpdated)
+        return
+      }
+
+      if (nextCommand.type === 'parallel_matrix_orchestrator') {
+        console.log(`🔀 Next command is parallel matrix orchestrator`)
+        await this.executeParallelMatrix(parentJobId, nextCommand, parentJobUpdated)
+        return
+      }
+
+      // Regular sequential command - find agent and dispatch
+      const nextRequiresSpecificAgent = nextCommand.requiredAgentId && nextCommand.requiredAgentId !== 'any'
+      const nextAgentRequirements = nextRequiresSpecificAgent ? { agentId: nextCommand.requiredAgentId } : {}
+      const nextAgent = await this.findAvailableAgent(nextAgentRequirements)
+
+      if (!nextAgent) {
+        const errorMsg = nextRequiresSpecificAgent
+          ? `🚨 CRITICAL: Required agent "${nextCommand.requiredAgentId}" not available for command: ${nextCommand.nodeLabel}`
+          : 'No agents available for next command'
+
+        console.error(`❌ ${errorMsg}`)
+        await jobManager.updateJob(parentJobId, {
+          status: 'failed',
+          error: errorMsg,
+          failedAt: new Date()
+        })
+        return
+      }
+
+      await jobManager.updateJob(parentJobId, {
+        agentId: nextAgent.agentId,
+        agentName: nextAgent.name || nextAgent.hostname,
+        status: 'running'
+      })
+
+      const dispatchSuccess = await this.dispatchJobToAgent(nextAgent.agentId, {
+        jobId: parentJobId,
+        projectId: parentJobUpdated.projectId,
+        commands: nextCommand.script,
+        environment: {},
+        workingDirectory: nextCommand.workingDirectory || '.',
+        timeout: nextCommand.timeout,
+        jobType: nextCommand.type,
+        retryEnabled: nextCommand.retryEnabled,
+        maxRetries: nextCommand.maxRetries,
+        retryDelay: nextCommand.retryDelay,
+        isSequential: true,
+        commandIndex: nextIndex,
+        totalCommands: parentJobUpdated.executionCommands.length
+      })
+
+      if (!dispatchSuccess) {
+        console.error(`❌ Failed to dispatch next command for job ${parentJobId}`)
+        await jobManager.updateJob(parentJobId, {
+          status: 'failed',
+          error: 'Failed to dispatch next command in sequence',
+          failedAt: new Date()
+        })
+      }
+    } else {
+      // No more commands - mark parent job as complete
+      console.log(`🎉 All commands (including parallel orchestration) completed for job ${parentJobId}`)
+      await jobManager.updateJob(parentJobId, {
+        status: 'completed',
+        completedAt: new Date()
+      })
+
+      // Update build status if this job is associated with a build
+      if (parentJobUpdated.buildId) {
+        try {
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(parentJobUpdated.buildId, {
+            status: 'success',
+            message: 'Job completed successfully with parallel execution',
+            nodesExecuted: parentJobUpdated.executionCommands.length
+          })
+          console.log(`📊 BUILD STATS: Build ${parentJobUpdated.buildId} marked as successful`)
+        } catch (buildError) {
+          console.warn('Failed to update build record on job completion:', buildError)
+        }
+      }
     }
   }
 }

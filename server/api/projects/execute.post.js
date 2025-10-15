@@ -85,9 +85,9 @@ export default defineEventHandler(async (event) => {
 
     console.log(`🔧 Generated ${executionCommands.length} commands:`, executionCommands)
 
-    // Filter to get only executable commands
-    const executableCommands = executionCommands.filter(cmd => 
-      ['bash', 'powershell', 'cmd', 'python', 'node'].includes(cmd.type)
+    // Filter to get only executable commands (including orchestrator commands)
+    const executableCommands = executionCommands.filter(cmd =>
+      ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator'].includes(cmd.type)
     )
 
     if (executableCommands.length === 0) {
@@ -98,8 +98,10 @@ export default defineEventHandler(async (event) => {
     }
 
     // Validate that all executable commands have agent selection
-    const missingAgentCommands = executableCommands.filter(cmd => 
-      !cmd.requiredAgentId || cmd.requiredAgentId === ''
+    // Skip orchestrator commands as they don't execute directly
+    const missingAgentCommands = executableCommands.filter(cmd =>
+      !['parallel_branches_orchestrator', 'parallel_matrix_orchestrator'].includes(cmd.type) &&
+      (!cmd.requiredAgentId || cmd.requiredAgentId === '')
     )
 
     if (missingAgentCommands.length > 0) {
@@ -464,14 +466,14 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
     case 'powershell':
     case 'cmd':
     case 'python':
-    case 'node-js':
+    case 'node':
       // These are executable script nodes
       if (node.data.script) {
         // Resolve parameter placeholders in the script
         const resolvedScript = resolveScriptPlaceholders(node, allEdges, parameterValues)
         
         commands.push({
-          type: nodeType === 'node-js' ? 'node' : nodeType, // Normalize node-js to node
+          type: nodeType,
           script: resolvedScript,
           workingDirectory: node.data.workingDirectory || '.',
           timeout: node.data.timeout ? node.data.timeout * 1000 : 300000, // Default 5 minutes
@@ -483,6 +485,86 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
           retryDelay: node.data.retryDelay || 5
         })
       }
+      break
+
+    case 'parallel_execution':
+      // Parallel execution node - used within parallel branches
+      // Uses dynamic execution type (bash, powershell, cmd, python, node)
+      if (node.data.script) {
+        // Resolve parameter placeholders in the script
+        const resolvedScript = resolveScriptPlaceholders(node, allEdges, parameterValues)
+
+        commands.push({
+          type: node.data.executionType, // Dynamic type based on dropdown selection
+          script: resolvedScript,
+          workingDirectory: node.data.workingDirectory || '.',
+          timeout: node.data.timeout ? node.data.timeout * 1000 : 300000, // Default 5 minutes
+          nodeId: node.id,
+          nodeLabel: node.data.label,
+          requiredAgentId: node.data.agentId, // MUST have agent selection
+          retryEnabled: node.data.retryEnabled || false,
+          maxRetries: node.data.maxRetries || 3,
+          retryDelay: node.data.retryDelay || 5,
+          isParallelExecution: true // Flag to identify parallel execution nodes
+        })
+      }
+      break
+
+    case 'parallel_branches':
+      // Parallel branches node - orchestrates parallel execution of multiple branches
+      console.log(`🔀 Parallel Branches node: ${node.data.label}`)
+
+      // Create a parallel orchestration command
+      commands.push({
+        type: 'parallel_branches_orchestrator',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        branches: node.data.branches,
+        maxConcurrency: node.data.maxConcurrency,
+        failFast: node.data.failFast,
+        retryEnabled: node.data.retryEnabled,
+        maxRetries: node.data.maxRetries,
+        retryDelay: node.data.retryDelay,
+        // Get nodes connected to each branch socket
+        branchTargets: getBranchTargetNodes(node, allNodes, allEdges)
+      })
+      break
+
+    case 'parallel_matrix':
+      // Parallel matrix node - executes same job multiple times with JS-generated parameters
+      console.log(`🔀 Parallel Matrix node: ${node.data.label}`)
+
+      // Evaluate JavaScript to generate array
+      let items = []
+      try {
+        const evalFunction = new Function(node.data.script)
+        items = evalFunction()
+
+        if (!Array.isArray(items)) {
+          throw new Error('Script must return an array')
+        }
+        console.log(`✅ Matrix generated ${items.length} items:`, items)
+      } catch (error) {
+        console.error(`❌ Failed to evaluate parallel_matrix script:`, error)
+        throw error
+      }
+
+      // Create a parallel matrix orchestration command
+      commands.push({
+        type: 'parallel_matrix_orchestrator',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        items: items,
+        itemVariableName: node.data.itemVariableName || 'ITEM',
+        maxConcurrency: node.data.maxConcurrency,
+        failFast: node.data.failFast,
+        continueOnError: node.data.continueOnError,
+        retryEnabled: node.data.retryEnabled,
+        maxRetries: node.data.maxRetries,
+        retryDelay: node.data.retryDelay,
+        // Get node connected to iteration socket
+        iterationTarget: getIterationTargetNode(node, allNodes, allEdges)
+      })
       break
 
     case 'cron':
@@ -661,7 +743,8 @@ function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameterValues 
   }
   
   // Handle execution nodes with success/failure routing
-  if (sourceNode && ['bash', 'powershell', 'cmd', 'python', 'node-js'].includes(sourceNode.data.nodeType)) {
+  // Note: parallel_execution nodes have no output sockets, so they don't need success/failure routing
+  if (sourceNode && ['bash', 'powershell', 'cmd', 'python', 'node'].includes(sourceNode.data.nodeType)) {
     return getExecutionResultConnectedNodes(sourceNode, allNodes, allEdges, executionResult)
   }
   
@@ -773,4 +856,55 @@ function getConditionalConnectedNodes(conditionalNode, allNodes, allEdges, param
  */
 function escapeRegex(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Get target nodes connected to each branch socket of a parallel_branches node
+ */
+function getBranchTargetNodes(parallelNode, allNodes, allEdges) {
+  const targets = []
+
+  for (const branch of parallelNode.data.branches) {
+    // Find edge connected to this branch socket
+    const branchEdge = allEdges.find(edge =>
+      edge.source === parallelNode.id && edge.sourceHandle === branch.id
+    )
+
+    if (branchEdge) {
+      const targetNode = allNodes.find(n => n.id === branchEdge.target)
+      if (targetNode) {
+        targets.push({
+          branchId: branch.id,
+          branchName: branch.name,
+          targetNode: targetNode
+        })
+      }
+    } else {
+      console.log(`⚠️ No connection found for branch "${branch.name}" (${branch.id})`)
+    }
+  }
+
+  console.log(`🔀 Found ${targets.length} branch targets for parallel node "${parallelNode.data.label}"`)
+  return targets
+}
+
+/**
+ * Get target node connected to iteration socket of a parallel_matrix node
+ */
+function getIterationTargetNode(matrixNode, allNodes, allEdges) {
+  // Find edge connected to 'iteration' socket
+  const iterationEdge = allEdges.find(edge =>
+    edge.source === matrixNode.id && edge.sourceHandle === 'iteration'
+  )
+
+  if (iterationEdge) {
+    const targetNode = allNodes.find(n => n.id === iterationEdge.target)
+    if (targetNode) {
+      console.log(`🔀 Found iteration target for matrix node "${matrixNode.data.label}": ${targetNode.data.label}`)
+      return targetNode
+    }
+  }
+
+  console.log(`⚠️ No iteration target found for matrix node "${matrixNode.data.label}"`)
+  return null
 }

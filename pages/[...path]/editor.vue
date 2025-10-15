@@ -566,13 +566,31 @@
               />
 
               <!-- Conditional Configuration for conditional nodes -->
-              <ConditionalProperties 
-                v-if="selectedNode.data?.nodeType === 'conditional'" 
+              <ConditionalProperties
+                v-if="selectedNode.data?.nodeType === 'conditional'"
+                :nodeData="selectedNode"
+              />
+
+              <!-- Parallel Branches Configuration -->
+              <ParallelBranchesProperties
+                v-if="selectedNode.data?.nodeType === 'parallel_branches'"
+                :nodeData="selectedNode"
+              />
+
+              <!-- Parallel Matrix Configuration -->
+              <ParallelMatrixProperties
+                v-if="selectedNode.data?.nodeType === 'parallel_matrix'"
+                :nodeData="selectedNode"
+              />
+
+              <!-- Parallel Execution Configuration -->
+              <ParallelExecutionProperties
+                v-if="selectedNode.data?.nodeType === 'parallel_execution'"
                 :nodeData="selectedNode"
               />
 
               <!-- Script Editor for execution nodes -->
-              <div v-if="selectedNode.data?.script !== undefined">
+              <div v-if="selectedNode.data?.script !== undefined && selectedNode.data?.nodeType !== 'parallel_execution'">
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Script</label>
                 <textarea
                   v-model="selectedNode.data.script"
@@ -590,54 +608,53 @@
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <!-- Retry Policy -->
-                <div class="mt-4 p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg">
-                  <div class="flex items-center justify-between mb-3">
-                    <label class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Retry Policy</label>
-                    <button
-                      @click="selectedNode.data.retryEnabled = !selectedNode.data.retryEnabled"
+              <!-- Retry Policy -->
+              <div v-if="selectedNode.data?.executionNode" class="mt-4 p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg">
+                <div class="flex items-center justify-between mb-3">
+                  <label class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Retry Policy</label>
+                  <button
+                    @click="selectedNode.data.retryEnabled = !selectedNode.data.retryEnabled"
+                    :class="[
+                      'relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
+                      selectedNode.data.retryEnabled 
+                        ? 'bg-blue-600 focus:ring-blue-500' 
+                        : 'bg-gray-400 focus:ring-gray-300'
+                    ]"
+                  >
+                    <span
                       :class="[
-                        'relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
-                        selectedNode.data.retryEnabled 
-                          ? 'bg-blue-600 focus:ring-blue-500' 
-                          : 'bg-gray-400 focus:ring-gray-300'
+                        'inline-block h-3 w-3 transform rounded-full bg-white transition-transform',
+                        selectedNode.data.retryEnabled ? 'translate-x-5' : 'translate-x-1'
                       ]"
+                    />
+                  </button>
+                </div>
+                
+                <div v-if="selectedNode.data.retryEnabled" class="space-y-3">
+                  <div>
+                    <label class="block text-xs text-neutral-600 dark:text-neutral-400 mb-1">Max Retries</label>
+                    <input
+                      v-model.number="selectedNode.data.maxRetries"
+                      type="number"
+                      min="1"
+                      max="10"
+                      class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
                     >
-                      <span
-                        :class="[
-                          'inline-block h-3 w-3 transform rounded-full bg-white transition-transform',
-                          selectedNode.data.retryEnabled ? 'translate-x-5' : 'translate-x-1'
-                        ]"
-                      />
-                    </button>
                   </div>
-                  
-                  <div v-if="selectedNode.data.retryEnabled" class="space-y-3">
-                    <div>
-                      <label class="block text-xs text-neutral-600 dark:text-neutral-400 mb-1">Max Retries</label>
-                      <input
-                        v-model.number="selectedNode.data.maxRetries"
-                        type="number"
-                        min="1"
-                        max="10"
-                        class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                      >
-                    </div>
-                    <div>
-                      <label class="block text-xs text-neutral-600 dark:text-neutral-400 mb-1">Retry Delay (seconds)</label>
-                      <input
-                        v-model.number="selectedNode.data.retryDelay"
-                        type="number"
-                        min="1"
-                        max="300"
-                        class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                      >
-                    </div>
+                  <div>
+                    <label class="block text-xs text-neutral-600 dark:text-neutral-400 mb-1">Retry Delay (seconds)</label>
+                    <input
+                      v-model.number="selectedNode.data.retryDelay"
+                      type="number"
+                      min="1"
+                      max="300"
+                      class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+                    >
                   </div>
                 </div>
               </div>
-              
               <div>
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Position</label>
                 <div class="grid grid-cols-2 gap-2">
@@ -701,6 +718,9 @@ import BooleanParamProperties from '../../components/property-panels/BooleanPara
 import TextParamProperties from '../../components/property-panels/TextParamProperties.vue'
 import StringParamProperties from '../../components/property-panels/StringParamProperties.vue'
 import ConditionalProperties from '../../components/property-panels/ConditionalProperties.vue'
+import ParallelBranchesProperties from '../../components/property-panels/ParallelBranchesProperties.vue'
+import ParallelMatrixProperties from '../../components/property-panels/ParallelMatrixProperties.vue'
+import ParallelExecutionProperties from '../../components/property-panels/ParallelExecutionProperties.vue'
 import EditorDeleteModal from '@/components/modals/EditorDeleteModal.vue'
 import EditorRetentionModal from '@/components/modals/EditorRetentionModal.vue'
 
@@ -978,15 +998,24 @@ const parameterNodes = [
 ]
 
 const executionNodes = [
-  { type: 'bash', name: 'Bash Script', description: 'Execute bash commands' },
-  { type: 'powershell', name: 'PowerShell Script', description: 'Execute PowerShell commands' },
-  { type: 'cmd', name: 'Command Prompt', description: 'Execute Windows CMD commands' },
-  { type: 'python', name: 'Python Script', description: 'Execute Python code' },
-  { type: 'node-js', name: 'Node.js Script', description: 'Execute Node.js/JavaScript code' }
+  { type: 'bash', name: 'Bash Script', description: 'Execute bash commands'},
+  { type: 'powershell', name: 'PowerShell Script', description: 'Execute PowerShell commands'},
+  { type: 'cmd', name: 'Command Prompt', description: 'Execute Windows CMD commands'},
+  { type: 'python', name: 'Python Script', description: 'Execute Python code'},
+  { type: 'python3', name: 'Python3 Script', description: 'Execute Python3 code'},
+  { type: 'node', name: 'Node.js Script', description: 'Execute Node.js/JavaScript code'},
+  { type: 'go', name: 'Go Script', description: 'Execute Go code'},
+  { type: 'ruby', name: 'Ruby Script', description: 'Execute Ruby code'},
+  { type: 'php', name: 'PHP Script', description: 'Execute PHP code'},
+  { type: 'java', name: 'Java Program', description: 'Execute Java code'},
+  { type: 'rust', name: 'Rust Script', description: 'Execute Rust code'},
+  { type: 'perl', name: 'Perl Script', description: 'Execute Perl code'},
+  { type: 'parallel_execution', name: 'Parallel Execution', description: 'Execution node for parallel branches (no output sockets)'}
 ]
 
 const controlNodes = [
-  { type: 'parallel', name: 'Parallel', description: 'Execute multiple branches in parallel' },
+  { type: 'parallel_branches', name: 'Parallel Branches', description: 'Execute multiple different branches in parallel' },
+  { type: 'parallel_matrix', name: 'Parallel Matrix', description: 'Execute same job multiple times with different parameters' },
   { type: 'conditional', name: 'Conditional', description: 'Conditional execution based on parameters' },
   { type: 'notification', name: 'Notification', description: 'Send notifications (email, slack, etc.)' }
 ]
@@ -1000,7 +1029,7 @@ const availableAgents = computed(() => {
 
 const isExecutionNode = (nodeType) => {
   if (!nodeType) return false
-  return ['bash', 'powershell', 'cmd', 'python', 'node-js'].includes(nodeType)
+  return ['bash', 'powershell', 'cmd', 'python', 'node'].includes(nodeType)
 }
 
 
@@ -1201,10 +1230,20 @@ const CustomNode = defineComponent({
         let socketColor = '#8b5cf6' // Default purple for webhook data
         if (nodeData.nodeType === 'conditional') {
           socketColor = socket.id === 'true' ? '#10b981' : '#ef4444' // Green for true, red for false
-        } else if (['bash', 'powershell', 'cmd', 'python', 'node-js'].includes(nodeData.nodeType)) {
+        } else if (['bash', 'powershell', 'cmd', 'python', 'node'].includes(nodeData.nodeType)) {
           if (socket.id === 'success') socketColor = '#10b981' // Green for success
-          else if (socket.id === 'failure') socketColor = '#ef4444' // Red for failure  
+          else if (socket.id === 'failure') socketColor = '#ef4444' // Red for failure
           else if (socket.id === 'output') socketColor = '#3b82f6' // Blue for output data
+        } else if (nodeData.nodeType === 'parallel_branches') {
+          if (socket.id === 'success') socketColor = '#10b981' // Green for all success
+          else if (socket.id === 'failure') socketColor = '#ef4444' // Red for any failure
+          else if (socket.id === 'output') socketColor = '#3b82f6' // Blue for output data
+          else socketColor = '#8b5cf6' // Purple for branch execution sockets
+        } else if (nodeData.nodeType === 'parallel_matrix') {
+          if (socket.id === 'success') socketColor = '#10b981' // Green for all success
+          else if (socket.id === 'failure') socketColor = '#ef4444' // Red for any failure
+          else if (socket.id === 'output') socketColor = '#3b82f6' // Blue for aggregated output
+          else if (socket.id === 'iteration') socketColor = '#8b5cf6' // Purple for iteration
         }
         
         outputHandles.push(
@@ -1262,12 +1301,6 @@ const CustomNode = defineComponent({
           // Show parameter value for parameter nodes
           nodeData.nodeType?.includes('-param') && nodeData.defaultValue !== undefined
             ? h('div', { class: 'text-xs text-neutral-600 dark:text-neutral-400 mt-1 truncate w-48' }, `${nodeData.defaultValue}`)
-            : null,
-          // Show socket labels if any
-          nodeData.inputSockets && nodeData.inputSockets.length > 0
-            ? h('div', { class: 'text-xs text-neutral-500 dark:text-neutral-400 mt-2 truncate w-48' }, 
-                nodeData.inputSockets.map(socket => socket.label).join(', ')
-              )
             : null
         ]),
         
@@ -1521,7 +1554,8 @@ const getDefaultNodeData = (type) => {
         timeout: 300,
         retryEnabled: false,
         maxRetries: 3,
-        retryDelay: 5
+        retryDelay: 5,
+        executionNode: true 
       }
     case 'powershell':
       return { 
@@ -1538,7 +1572,8 @@ const getDefaultNodeData = (type) => {
         timeout: 300,
         retryEnabled: false,
         maxRetries: 3,
-        retryDelay: 5
+        retryDelay: 5,
+        executionNode: true 
       }
     case 'cmd':
       return { 
@@ -1555,7 +1590,8 @@ const getDefaultNodeData = (type) => {
         timeout: 300,
         retryEnabled: false,
         maxRetries: 3,
-        retryDelay: 5
+        retryDelay: 5,
+        executionNode: true 
       }
     case 'python':
       return { 
@@ -1572,9 +1608,10 @@ const getDefaultNodeData = (type) => {
         timeout: 300,
         retryEnabled: false,
         maxRetries: 3,
-        retryDelay: 5
+        retryDelay: 5,
+        executionNode: true 
       }
-    case 'node-js':
+    case 'node':
       return { 
         ...baseData,
         hasExecutionOutput: false,
@@ -1589,15 +1626,77 @@ const getDefaultNodeData = (type) => {
         timeout: 300,
         retryEnabled: false,
         maxRetries: 3,
-        retryDelay: 5
+        retryDelay: 5,
+        executionNode: true 
       }
       
     // Control nodes
-    case 'parallel':
-      return { 
+    case 'parallel_branches':
+      return {
         ...baseData,
-        maxConcurrency: 2,
-        description: 'Parallel execution'
+        hasExecutionInput: true,
+        hasExecutionOutput: false,
+        hasDataOutput: false,
+        outputSockets: [
+          { id: 'success', label: 'All Success', connected: false },
+          { id: 'failure', label: 'Any Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false },
+          { id: 'branch_1', label: 'Branch 1', connected: false },
+          { id: 'branch_2', label: 'Branch 2', connected: false }
+        ],
+        branches: [
+          { id: 'branch_1', name: 'Branch 1' },
+          { id: 'branch_2', name: 'Branch 2' }
+        ],
+        maxConcurrency: null,
+        failFast: false,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5,
+        description: 'Execute multiple branches in parallel',
+        executionNode: true 
+      }
+    case 'parallel_execution':
+      return {
+        ...baseData,
+        hasExecutionInput: true,
+        hasExecutionOutput: false,
+        hasDataOutput: false,
+        inputSockets: [],
+        outputSockets: [],
+        executionType: 'bash',
+        script: '',
+        workingDirectory: '.',
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5,
+        description: 'Execution node for parallel branches',
+        executionNode: true 
+      }
+    case 'parallel_matrix':
+      return {
+        ...baseData,
+        hasExecutionInput: true,
+        hasExecutionOutput: false,
+        hasDataOutput: false,
+        inputSockets: [],
+        outputSockets: [
+          { id: 'success', label: 'All Success', connected: false },
+          { id: 'failure', label: 'Any Failure', connected: false },
+          { id: 'output', label: 'Aggregated Output', connected: false },
+          { id: 'iteration', label: 'For Each Item', connected: false }
+        ],
+        script: 'return ["item1", "item2", "item3"]',
+        itemVariableName: 'ITEM',
+        maxConcurrency: null,
+        failFast: false,
+        continueOnError: false,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5,
+        description: 'Execute job for each item generated by JavaScript',
+        executionNode: true 
       }
     case 'conditional':
       return { 

@@ -845,14 +845,6 @@ class XCodeBuildAgent {
         extension: '.py',
         capabilities: ['python3']
       },
-      'node-js': {
-        name: 'Node.js',
-        type: 'interpreter',
-        command: 'node',
-        args: [],
-        extension: '.js',
-        capabilities: ['node']
-      },
       'node': {
         name: 'Node.js',
         type: 'interpreter',
