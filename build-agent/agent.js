@@ -368,12 +368,10 @@ class XCodeBuildAgent {
 
         case 'registered':
           console.log('✅ Agent registered successfully');
-          console.log(`📊 Capabilities: ${this.agentInfo.capabilities.join(', ')}`);
           this.startHeartbeat();
           break;
 
         case 'execute_job':
-          console.log(`🎯 Received execute_job message:\nType: ${message.type}\nCommand(s): ${message.commands}`);
           this.handleJobExecution(message);
           break;
 
@@ -451,6 +449,7 @@ class XCodeBuildAgent {
         console.log(`🔄 Retry attempt ${attempt}/${maxRetries} for job: ${jobId}`);
         this.sendJobOutput(jobId, {
           type: 'info',
+          level: 'info',
           message: `🔄 Retry attempt ${attempt}/${maxRetries}`,
           timestamp: new Date().toISOString(),
           source: 'Agent'
@@ -506,6 +505,7 @@ class XCodeBuildAgent {
       console.log(`⏳ Scheduling retry in ${retryDelay}s...`);
       this.sendJobOutput(jobId, {
         type: 'warning',
+        level: 'warning',
         message: `❌ Attempt ${attempt} failed: ${error.message}. Retrying in ${retryDelay}s...`,
         timestamp: new Date().toISOString(),
         source: 'Agent'
@@ -677,6 +677,7 @@ class XCodeBuildAgent {
           lines.forEach(line => {
             const outputLine = {
               type: 'info',
+              level: 'info',
               message: line.trim(),
               timestamp: new Date().toISOString(),
               source: 'Agent'
@@ -708,6 +709,7 @@ class XCodeBuildAgent {
           lines.forEach(line => {
             const outputLine = {
               type: 'error',
+              level: 'error',
               message: line.trim(),
               timestamp: new Date().toISOString(),
               source: 'Agent'

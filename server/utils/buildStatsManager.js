@@ -54,7 +54,7 @@ export class BuildStatsManager {
 
     console.log(`📊 Started build #${buildNumber} (${buildId}) for project ${buildData.projectId}`)
 
-    // Return both buildId and buildNumber
+    console.log(`📊 Started build #${buildNumber} (${buildId}) for project ${buildData.projectId}`)
     return {
       buildId,
       buildNumber
@@ -112,7 +112,7 @@ export class BuildStatsManager {
     // Add new log entry
     const newLogEntry = {
       timestamp: logEntry.timestamp || now,
-      type: logEntry.level || 'info',
+      level: logEntry.level || 'info',
       message: logEntry.message,
       source: logEntry.source || 'system',
       nodeLabel: logEntry.nodeLabel || logEntry.source || 'System',
@@ -155,7 +155,7 @@ export class BuildStatsManager {
     await this.db.update(builds)
       .set({
         status: result.status,
-        message: result.message || 'Build completed',
+        message: 'Build completed',
         finishedAt: now,
         duration: duration,
         nodesExecuted: result.nodesExecuted || build.nodesExecuted,
@@ -175,27 +175,12 @@ export class BuildStatsManager {
       trigger: build.trigger
     })
 
-    // Update project statistics
-    await this.updateProjectStats(build.projectId)
-
     // Clean up old builds if needed
     await this.cleanupOldBuilds(build.projectId)
 
     console.log(`📊 Finished build ${buildId} with status: ${result.status}`)
   }
 
-
-
-  /**
-   * Update project build statistics
-   * @param {string} projectId - Project ID
-   */
-  async updateProjectStats(projectId) {
-    // This method is now deprecated since we calculate stats in real-time
-    // Keeping it for backwards compatibility but it's essentially a no-op
-    console.log(`📊 updateProjectStats called for project ${projectId} (now using real-time calculation)`)
-    return true
-  }
 
   /**
    * Get project build statistics

@@ -12,6 +12,7 @@
       ></div>
     </div>
   </div>
+  <div v-else class="mt-2 mb-1 h-8"></div>
 </template>
 
 <script setup>
@@ -45,13 +46,22 @@ const progress = computed(() => {
   
   const { fastestBuild, slowestBuild, averageDuration } = props.buildStats
   
-  if (!fastestBuild || !slowestBuild) return 0
+  // If no historical data, use average duration for estimation
+  if (!fastestBuild || !slowestBuild || !averageDuration) {
+    if (averageDuration > 0) {
+      return (elapsedTime.value / averageDuration) * 100
+    }
+    return (elapsedTime.value / 60000) * 100 // Assume 1 minute default
+  }
   
   const range = slowestBuild - fastestBuild
-  if (range <= 0) return 50 // Default to 50% if no range
+  if (range <= 0) {
+    // Use average duration if no range
+    return (elapsedTime.value / averageDuration) * 100
+  }
   
   const progressInRange = (elapsedTime.value - fastestBuild) / range
-  return Math.max(0, Math.min(100, progressInRange * 100))
+  return Math.max(0, progressInRange * 100)
 })
 
 const isOverAverage = computed(() => {

@@ -347,7 +347,7 @@
                   }"
                   class="ml-2"
                 >
-                  [{{ log.level.toUpperCase() }}]
+                  [{{ log.source }}]
                 </span>
                 <span class="text-neutral-300 ml-2">{{ log.message }}</span>
                 <div v-if="log.output" class="mt-1 ml-4 text-cyan-400 whitespace-pre-wrap">{{ log.output }}</div>

@@ -62,7 +62,8 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
         jobId: subJobId,
         projectId: parentJob.projectId,
         parentJobId: parentJob.jobId,
-        buildId: parentJob.buildId, // Use parent's buildId for unified logging
+        buildId: parentJob.buildId,
+        buildNumber: parentJob.buildNumber,
         status: 'queued',
         branchId: target.branchId,
         branchName: target.branchName,

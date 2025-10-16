@@ -79,6 +79,8 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
         jobId: subJobId,
         projectId: parentJob.projectId,
         parentJobId: parentJob.jobId,
+        buildId: parentJob.buildId,
+        buildNumber: parentJob.buildNumber,
         status: 'queued',
         matrixIndex: index,
         matrixItem: item,

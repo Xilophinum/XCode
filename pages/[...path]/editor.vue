@@ -27,7 +27,7 @@
             v-if="isExecuting"
             @click="cancelExecution"
             class="relative inline-flex items-center px-2 py-2 border border-l-0 border-red-500 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 rounded-r-md"
-            :title="isJobRunningOnAgent ? `Cancel job ${currentProjectJob?.jobId} on agent` : 'Cancel local execution'"
+            :title="isJobRunningOnAgent ? `Cancel build ${currentProjectJob?.buildNumber} on agent` : 'Cancel local execution'"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" class="h-4 w-4">
               <path fill="currentColor" d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10s10-4.47 10-10S17.53 2 12 2zM17 15.59L15.59 17L12 13.41L8.41 17L7 15.59L10.59 12L7 8.41L8.41 7L12 10.59L15.59 7L17 8.41L13.41 12L17 15.59z"/>
@@ -368,7 +368,7 @@
               <div v-if="isJobRunningOnAgent && currentProjectJob" class="mb-4 p-3 bg-blue-950 border border-blue-800 rounded">
                 <div class="text-blue-200 text-sm font-medium mb-1">🤖 Job Running on Agent</div>
                 <div class="text-blue-300 text-xs">
-                  <div>Job ID: {{ currentProjectJob.jobId }}</div>
+                  <div>Build #: {{ currentProjectJob.buildNumber }}</div>
                   <div>Agent: {{ currentProjectJob.agentId }}</div>
                   <div>Started: {{ new Date(currentProjectJob.startTime).toLocaleString() }}</div>
                   <div v-if="currentProjectJob.nodeId">Current: {{ currentProjectJob.nodeId }}</div>
@@ -381,10 +381,10 @@
                 <span 
                   class="ml-2"
                   :class="{
-                    'text-green-400': result.type === 'success',
-                    'text-red-400': result.type === 'error',
-                    'text-blue-400': result.type === 'info',
-                    'text-yellow-400': result.type === 'warning'
+                    'text-green-400': result.level === 'success',
+                    'text-red-400': result.level === 'error',
+                    'text-blue-400': result.level === 'info',
+                    'text-yellow-400': result.level === 'warning'
                   }"
                 >
                   [{{ result.nodeLabel || result.source || 'AGENT' }}]
@@ -2013,10 +2013,10 @@ const clearExecutionResults = () => {
   }
 }
 
-const addExecutionResult = (nodeLabel, type, message, value = undefined) => {
+const addExecutionResult = (nodeLabel, level, message, value = undefined) => {
   if (project.value?.id) {
     // WebSocket store handles all log persistence now
-    webSocketStore.addJobMessage(project.value.id, nodeLabel, type, message, value)
+    webSocketStore.addJobMessage(project.value.id, nodeLabel, level, message, value)
   }
 }
 
@@ -2118,7 +2118,7 @@ const cancelExecution = async () => {
     addExecutionResult('System', 'info', `Cancelling job ${currentProjectJob.value.jobId} on agent...`)
     
     try {
-      const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildId || currentProjectJob.value.jobId}/cancel`, {
+      const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildId}/cancel`, {
         method: 'POST',
         body: {
           reason: 'Cancelled by user from editor'
@@ -2156,7 +2156,7 @@ const cancelExecution = async () => {
     try {
       // If there's a current job, cancel it through the job system
       if (currentProjectJob.value) {
-        const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildId || currentProjectJob.value.jobId}/cancel`, {
+        const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildId}/cancel`, {
           method: 'POST',
           body: {
             reason: 'Cancelled by user from editor'

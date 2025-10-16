@@ -329,7 +329,23 @@ class CronManager {
       }
 
       // Execute the connected workflow
-      await executeProjectFromTrigger(projectId, nodes, edges, cronTriggerNode.id, null) // No trigger context for cron jobs
+      const result = await executeProjectFromTrigger(projectId, nodes, edges, cronTriggerNode.id, null) // No trigger context for cron jobs
+      
+      // Broadcast job started with build information
+      if (result.success && globalThis.broadcastToProject) {
+        globalThis.broadcastToProject(projectId, {
+          type: 'cron_job_started',
+          projectId: projectId,
+          jobId: result.jobId,
+          buildId: result.buildId,
+          buildNumber: result.buildNumber,
+          agentId: result.agentId,
+          agentName: result.agentName,
+          cronNodeId: cronTriggerNode.id,
+          cronNodeLabel: cronTriggerNode.data.label,
+          timestamp: new Date().toISOString()
+        })
+      }
       
     } catch (error) {
       console.error(`❌ Error executing cron job for ${cronTriggerNode.data.label}:`, error)

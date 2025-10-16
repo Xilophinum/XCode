@@ -11,9 +11,9 @@ import { builds } from '~/server/utils/schema.js'
 export default defineEventHandler(async (event) => {
   try {
     const projectId = getRouterParam(event, 'projectId')
-    const buildIdOrNumber = getRouterParam(event, 'buildId') // Can be buildId (UUID) or buildNumber (integer)
+    const buildId = getRouterParam(event, 'buildId')
 
-    if (!projectId || !buildIdOrNumber) {
+    if (!projectId || !buildId) {
       throw createError({
         statusCode: 400,
         statusMessage: 'Project ID and Build ID/Number are required'
@@ -21,46 +21,17 @@ export default defineEventHandler(async (event) => {
     }
 
     let logs = []
-    let actualBuildId = buildIdOrNumber
-
-    console.log(`📋 Getting logs for project ${projectId}, build: ${buildIdOrNumber}`)
-
-    // If buildIdOrNumber is a number, look up the buildId from buildNumber
-    const db = await getDB()
-    if (!isNaN(buildIdOrNumber)) {
-      const buildNumber = parseInt(buildIdOrNumber)
-      console.log(`📋 Looking up buildId for buildNumber ${buildNumber}`)
-
-      const buildResults = await db.select({ id: builds.id })
-        .from(builds)
-        .where(and(
-          eq(builds.projectId, projectId),
-          eq(builds.buildNumber, buildNumber)
-        ))
-        .limit(1)
-
-      if (buildResults[0]?.id) {
-        actualBuildId = buildResults[0].id
-        console.log(`📋 Found buildId ${actualBuildId} for buildNumber ${buildNumber}`)
-      } else {
-        console.log(`📋 No build found for buildNumber ${buildNumber}`)
-        return {
-          success: true,
-          buildNumber,
-          logs: []
-        }
-      }
-    }
+    console.log(`📋 Getting logs for project ${projectId}, build: ${buildId}`)
 
     // Try memory first (for active builds)
-    let memoryLogs = await jobManager.getJobOutput(actualBuildId)
-    console.log(`📋 Memory logs for buildId ${actualBuildId}:`, memoryLogs ? `${memoryLogs.length} logs` : 'none')
-
+    let memoryLogs = await jobManager.getJobOutput(buildId)
+    console.log(`📋 Memory logs for buildId ${buildId}:`, memoryLogs ? `${memoryLogs.length} logs` : 'none')
     if (memoryLogs && memoryLogs.length > 0) {
       console.log(`📋 Found ${memoryLogs.length} logs in memory`)
       // Convert memory format to normalized format
       logs = memoryLogs.map(logEntry => ({
         type: logEntry.type || 'info',
+        level: logEntry.level || 'info',
         message: logEntry.message || String(logEntry),
         nodeLabel: logEntry.nodeLabel || logEntry.source || 'Agent',
         source: logEntry.source || 'agent',
@@ -69,12 +40,13 @@ export default defineEventHandler(async (event) => {
       }))
     } else {
       console.log(`📋 No logs in memory, checking database`)
-      // Get from database using actualBuildId
-      let buildResults = await db.select({ outputLog: builds.outputLog, buildNumber: builds.buildNumber })
+      // Get from database using buildId
+      const db = await getDB()
+      let buildResults = await db.select({ outputLog: builds.outputLog })
         .from(builds)
-        .where(eq(builds.id, actualBuildId))
+        .where(eq(builds.id, buildId))
 
-      console.log(`📋 Database query results for buildId ${actualBuildId}:`, buildResults.length > 0 ? 'found' : 'not found')
+      console.log(`📋 Database query results for buildId ${buildId}:`, buildResults.length > 0 ? 'found' : 'not found')
 
       if (buildResults[0]?.outputLog) {
         try {
@@ -83,6 +55,7 @@ export default defineEventHandler(async (event) => {
           // Convert database format to normalized format
           logs = dbLogs.map(logEntry => ({
             type: logEntry.type || 'info',
+            level: logEntry.level || 'info',
             message: logEntry.message || String(logEntry),
             nodeLabel: logEntry.nodeLabel || logEntry.source || 'Agent',
             source: logEntry.source || 'agent',
@@ -94,7 +67,7 @@ export default defineEventHandler(async (event) => {
           logs = []
         }
       } else {
-        console.log(`📋 No logs found in database for buildId ${actualBuildId}`)
+        console.log(`📋 No logs found in database for buildId ${buildId}`)
       }
     }
 
@@ -102,12 +75,9 @@ export default defineEventHandler(async (event) => {
 
     const result = {
       success: true,
-      buildId: actualBuildId,
-      buildNumber: !isNaN(buildIdOrNumber) ? parseInt(buildIdOrNumber) : null,
+      buildId: buildId,
       logs: logs || []
     }
-    
-    console.log(`📋 Returning logs response:`, result)
     return result
 
   } catch (error) {

@@ -22,6 +22,7 @@ export default defineEventHandler(async (event) => {
         nodesExecuted: body.nodesExecuted
       })
     } else if (body.type === 'log') {
+      console.log(`Logs sent to logs.patch for build ${buildId}`, body.message)
       // Add a log entry
       await buildStatsManager.addBuildLog(buildId, {
         nodeId: body.nodeId,

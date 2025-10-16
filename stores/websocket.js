@@ -12,7 +12,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
   
   // Subscriptions
   const subscribedProjects = ref(new Set())
-  const messageHandlers = ref(new Map()) // Map of event types to handler functions
   
   // Job state for real-time updates
   const currentJobs = ref(new Map()) // Map of projectId to { jobId, buildId, buildNumber, ... }
@@ -182,20 +181,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
   }
   
-  // Add message handler for specific event types
-  const addMessageHandler = (eventType, handler) => {
-    if (!messageHandlers.value.has(eventType)) {
-      messageHandlers.value.set(eventType, new Set())
-    }
-    messageHandlers.value.get(eventType).add(handler)
-  }
-  
-  // Remove message handler
-  const removeMessageHandler = (eventType, handler) => {
-    if (messageHandlers.value.has(eventType)) {
-      messageHandlers.value.get(eventType).delete(handler)
-    }
-  }
+
   
   // Handle incoming WebSocket messages
   const handleWebSocketMessage = (message) => {
@@ -215,18 +201,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
       
       // Update internal state based on message type
       updateInternalState(message)
-      
-      // Call registered handlers for this message type
-      if (messageHandlers.value.has(message.type)) {
-        const handlers = messageHandlers.value.get(message.type)
-        for (const handler of handlers) {
-          try {
-            handler(message)
-          } catch (error) {
-            console.error(`❌ Error in message handler for ${message.type}:`, error)
-          }
-        }
-      }
       
     } catch (error) {
       console.error('❌ Error handling WebSocket message:', error)
@@ -261,17 +235,36 @@ export const useWebSocketStore = defineStore('websocket', () => {
         if (message.jobId && message.agentId) {
           currentJobs.value.set(projectId, {
             jobId: message.jobId,
+            buildId: message.buildId,
+            buildNumber: message.buildNumber,
             agentId: message.agentId,
             status: message.status || 'running',
-            startTime: message.startTime,
+            startTime: message.startTime || new Date().toISOString(),
             nodeId: message.nodeId,
             trigger: 'cron'
           })
           addJobMessage(projectId, 'System', 'success', `🤖 Job started on agent ${message.agentName || message.agentId}`)
-          addJobMessage(projectId, 'System', 'info', `Job ID: ${message.jobId}`)
+          addJobMessage(projectId, 'System', 'info', `Build #: ${message.buildNumber}`)
         } else {
           // Fallback message when job details aren't available yet
           addJobMessage(projectId, 'System', 'info', `🎯 Cron job starting for ${message.cronNodeLabel || 'trigger'}...`)
+        }
+        break
+        
+      case 'cron_job_started':
+        currentJobs.value.set(projectId, {
+          jobId: message.jobId,
+          buildId: message.buildId,
+          agentId: message.agentId,
+          status: 'running',
+          startTime: message.timestamp || message.startTime || new Date().toISOString(),
+          nodeId: message.cronNodeId,
+          trigger: 'cron'
+        })
+        addJobMessage(projectId, 'System', 'success', `🤖 Cron job started on agent ${message.agentName}`)
+        addJobMessage(projectId, 'System', 'info', `Job ID: ${message.jobId}`)
+        if (message.buildId) {
+          addJobMessage(projectId, 'System', 'info', `Build ID: ${message.buildId}`)
         }
         break
         
@@ -293,7 +286,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
             buildId: newBuildId,
             agentId: message.agentId,
             status: message.status || 'created',
-            startTime: message.startTime,
+            startTime: message.startTime || new Date().toISOString(),
             nodeId: message.nodeId,
             trigger: 'manual'
           })
@@ -324,7 +317,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
           agentId: message.agentId,
           agentName: message.agentName,
           status: message.status || 'running',
-          startTime: message.startTime,
+          startTime: message.startTime || new Date().toISOString(),
           nodeId: message.nodeId,
           trigger: message.trigger || 'manual'
         })
@@ -358,13 +351,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
         
       case 'job_output_line':
         const outputData = message.output || message
-        addJobMessage(projectId, outputData.nodeLabel || 'Agent', outputData.level || outputData.type || 'info', outputData.message, outputData.value)
+        addJobMessage(projectId, outputData.nodeLabel || 'Agent', outputData.level || 'info', outputData.message, outputData.value)
         break
 
       case 'job_output':
         if (message.output && Array.isArray(message.output)) {
           message.output.forEach(outputLine => {
-            addJobMessage(projectId, outputLine.nodeLabel || 'Agent', outputLine.type || 'info',
+            addJobMessage(projectId, outputLine.nodeLabel || 'Agent', outputLine.level || 'info',
               outputLine.message, outputLine.value)
           })
         }
@@ -461,7 +454,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
   
   // Add message to project's message array
-  const addJobMessage = (projectId, nodeLabel, type, message, value = undefined, timestamp = undefined) => {
+  const addJobMessage = (projectId, nodeLabel, level, message, value = undefined, timestamp = undefined) => {
     if (!jobMessages.value.has(projectId)) {
       jobMessages.value.set(projectId, [])
     }
@@ -469,7 +462,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const messages = jobMessages.value.get(projectId)
     messages.push({
       nodeLabel,
-      type,
+      level,
       message,
       value,
       timestamp: timestamp ? new Date(timestamp) : new Date()
@@ -479,7 +472,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
     // Persist System messages to database via API call
     if (nodeLabel === 'System') {
-      persistSystemMessage(projectId, type, message, timestamp)
+      persistSystemMessage(projectId, level, message, timestamp)
     }
 
     // Keep only last 1000 messages to prevent memory issues
@@ -489,7 +482,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
   
   // Persist System message to database
-  const persistSystemMessage = async (projectId, type, message, timestamp) => {
+  const persistSystemMessage = async (projectId, level, message, timestamp) => {
     try {
       // Find current running job to get buildId
       const currentJob = getCurrentJob(projectId)
@@ -507,7 +500,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
           method: 'PATCH',
           body: {
             type: 'log',
-            level: type,
+            level: level,
             message: message,
             source: 'system',
             nodeLabel: 'System',
@@ -556,7 +549,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
       isAuthenticated.value = false
       connectionError.value = null
       subscribedProjects.value.clear()
-      messageHandlers.value.clear()
       console.log('🔌 WebSocket disconnected')
     } catch (error) {
       console.error('❌ Error disconnecting WebSocket:', error)
@@ -580,8 +572,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     disconnect,
     subscribeToProject,
     unsubscribeFromProject,
-    addMessageHandler,
-    removeMessageHandler,
+
     addJobMessage,
     
     // Getters

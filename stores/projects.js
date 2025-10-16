@@ -51,7 +51,7 @@ export const useProjectsStore = defineStore('projects', {
         (pathArray.length === 0 ? item.path.length === 0 : 
          item.path.length === pathArray.length && 
          item.path.every((segment, index) => segment === pathArray[index]))
-      )
+      ).sort((a, b) => a.name.localeCompare(b.name))
     },
 
     // Get a specific item by its complete path including name

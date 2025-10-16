@@ -8,13 +8,15 @@ import { jobManager } from './jobManager.js'
 import { getAgentManager } from './agentManager.js'
 import { getBuildStatsManager } from './buildStatsManager.js'
 import { getDataService } from './dataService.js'
-import executeModule from '../api/projects/execute.post.js'
+import { convertGraphToCommands }  from '../api/projects/execute.post.js'
 /**
  * Execute project from trigger (for cron or other triggers)
  */
 export async function executeProjectFromTrigger(projectId, nodes, edges, triggerNodeId, triggerContext = null) {
   console.log(`🎯 Executing project ${projectId} from trigger ${triggerNodeId}`)
-  
+    // Start build recording for triggered execution
+  let currentBuildId = null
+  let currentBuildNumber = null
   try {
     // Check project status before execution
 
@@ -35,11 +37,6 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
     const agentManager = await getAgentManager()
 
     console.log(`🔍 Trigger Execute: Looking for available agent...`)
-    console.log(`🔍 Connected agents: ${agentManager.connectedAgents.size}`)
-    console.log(`🔍 Agent data entries: ${agentManager.agentData.size}`)
-
-    // Import the graph conversion functions from the execute API
-    const { convertGraphToCommands } = executeModule
 
     // Convert graph to execution commands for the agent
     const executionCommands = convertGraphToCommands(nodes, edges, triggerContext)
@@ -67,8 +64,6 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
     // Generate unique job ID
     const jobId = `cron_job_${uuidv4()}`
 
-    // Start build recording for triggered execution
-    let currentBuildId = null
     try {
       const buildStatsManager = await getBuildStatsManager()
       
@@ -77,7 +72,7 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
         ? `Webhook trigger: ${triggerContext.endpoint}` 
         : `Cron trigger: ${triggerNodeId}`
       
-      currentBuildId = await buildStatsManager.startBuild({
+      const buildResult = await buildStatsManager.startBuild({
         projectId,
         agentId: null, // Will be updated when agent is assigned
         jobId,
@@ -95,7 +90,8 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
           } : null
         }
       })
-      
+      currentBuildId = buildResult.buildId
+      currentBuildNumber = buildResult.buildNumber
       console.log('✅ Build recording started for triggered execution:', currentBuildId)
     } catch (error) {
       console.warn('Failed to start build recording for triggered execution:', error)
@@ -114,8 +110,9 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
       currentNodeId: null,
       currentNodeLabel: null,
       triggeredBy: triggerNodeId,
-      triggerContext: triggerContext, // Store webhook/trigger context data
-      buildId: currentBuildId // Link job to build record
+      triggerContext: triggerContext,
+      buildId: currentBuildId,
+      buildNumber: currentBuildNumber
     }
 
     // Store job in job manager
@@ -247,19 +244,21 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
       agentName: selectedAgent.name || selectedAgent.hostname,
       executionCommands: executableCommands,
       currentCommandIndex: 0,
-      buildId: currentBuildId
+      buildId: currentBuildId,
+      buildNumber: currentBuildNumber
     })
 
-    console.log(`✅ Triggered job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildId ? ` (build: ${currentBuildId})` : ''}`)
+    console.log(`✅ Triggered job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildNumber ? ` (build #: ${currentBuildNumber})` : ''}`)
 
     return {
       success: true,
       jobId,
       buildId: currentBuildId,
+      buildNumber: currentBuildNumber,
       agentId: selectedAgent.agentId,
       agentName: selectedAgent.name || selectedAgent.hostname,
       startTime: job.startTime,
-      message: `Triggered job dispatched to agent ${selectedAgent.name || selectedAgent.hostname}${currentBuildId ? ` (build: ${currentBuildId})` : ''}`
+      message: `Triggered job dispatched to agent ${selectedAgent.name || selectedAgent.hostname}${currentBuildNumber ? ` (build #: ${currentBuildNumber})` : ''}`
     }
     
   } catch (error) {

@@ -44,13 +44,9 @@ export default defineEventHandler(async (event) => {
     const agentManager = await getAgentManager()
 
     console.log(`🔍 Execute API: Looking for available agent...`)
-    console.log(`🔍 Connected agents: ${agentManager.connectedAgents.size}`)
-    console.log(`🔍 Agent data entries: ${agentManager.agentData.size}`)
     
     // Find an available agent for this job
     const availableAgent = await agentManager.findAvailableAgent()
-    
-    console.log(`🔍 Available agent found:`, availableAgent)
     
     if (!availableAgent) {
       console.log(`❌ No agents available - connectedAgents size: ${agentManager.connectedAgents.size}, agentData size: ${agentManager.agentData.size}`)
@@ -100,7 +96,8 @@ export default defineEventHandler(async (event) => {
       status: 'queued',
       nodes,
       edges,
-      buildId: currentBuildId, // Include buildId from the start
+      buildId: currentBuildId,
+      buildNumber: currentBuildNumber,
       startTime: startTime || new Date().toISOString(),
       createdAt: new Date().toISOString(),
       output: [],
@@ -174,7 +171,6 @@ export default defineEventHandler(async (event) => {
     // Check if first command is an orchestrator
     if (firstCommand.type === 'parallel_branches_orchestrator') {
       console.log(`🔀 First command is parallel branches orchestrator - executing directly`)
-      console.log(`🔀 Orchestrator command details:`, firstCommand)
       
       // Update job with orchestrator execution
       await jobManager.updateJob(jobId, {
@@ -766,15 +762,8 @@ function getNestedProperty(obj, path) {
  */
 function resolveScriptPlaceholders(node, allEdges, parameterValues) {
   let script = node.data.script || ''
-
-  console.log(`🔧 Original script: "${script}"`)
-  console.log(`🔧 Input sockets:`, node.data.inputSockets)
-  console.log(`🔧 Parameter values:`, Array.from(parameterValues.entries()))
-  console.log(`🔧 Parameter values keys:`, Array.from(parameterValues.keys()))
-
   // Find all input connections to this node
   const inputConnections = allEdges.filter(edge => edge.target === node.id)
-  console.log(`🔧 Input connections:`, inputConnections)
 
   // Process each input socket placeholder
   if (node.data.inputSockets && node.data.inputSockets.length > 0) {
@@ -908,7 +897,6 @@ function getExecutionResultConnectedNodes(executionNode, allNodes, allEdges, exe
   const targetSocketId = (executionResult && executionResult.success) ? 'success' : 'failure'
   
   console.log(`🔍 Looking for ${targetSocketId} socket from node "${executionNode.data.label}" (${executionNode.data.nodeType})`)
-  console.log(`🔍 Available edges from this node:`, allEdges.filter(edge => edge.source === executionNode.id))
   
   const outputEdge = allEdges.find(edge => 
     edge.source === executionNode.id && edge.sourceHandle === targetSocketId
@@ -1008,7 +996,6 @@ function getBranchTargetNodes(parallelNode, allNodes, allEdges) {
   
   console.log(`🔍 getBranchTargetNodes: Processing parallel node "${parallelNode.data.label}"`)
   console.log(`🔍 Available branches:`, parallelNode.data.branches)
-  console.log(`🔍 All edges:`, allEdges.filter(edge => edge.source === parallelNode.id))
 
   if (!parallelNode.data.branches || parallelNode.data.branches.length === 0) {
     console.log(`⚠️ No branches defined for parallel node "${parallelNode.data.label}"`)
@@ -1022,8 +1009,6 @@ function getBranchTargetNodes(parallelNode, allNodes, allEdges) {
     const branchEdge = allEdges.find(edge =>
       edge.source === parallelNode.id && edge.sourceHandle === branch.id
     )
-    
-    console.log(`🔍 Branch edge found:`, branchEdge)
 
     if (branchEdge) {
       const targetNode = allNodes.find(n => n.id === branchEdge.target)

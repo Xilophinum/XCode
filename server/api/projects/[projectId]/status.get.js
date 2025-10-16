@@ -4,6 +4,10 @@
  */
 
 import { jobManager } from '../../../utils/jobManager.js'
+import { getBuildStatsManager } from '../../../utils/buildStatsManager.js'
+import { getDB } from '../../../utils/database.js'
+import { builds } from '../../../utils/schema.js'
+import { eq } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -24,19 +28,46 @@ export default defineEventHandler(async (event) => {
     
     console.log(`📋 Status check for project ${projectId}: found ${runningJobs.length} jobs, current job:`, currentJob)
 
+    // Get build number if there's a current job with buildId
+    let buildNumber = null
+    if (currentJob?.buildId) {
+      try {
+        const db = await getDB()
+        const [build] = await db.select({ buildNumber: builds.buildNumber })
+          .from(builds)
+          .where(eq(builds.id, currentJob.buildId))
+          .limit(1)
+        
+        buildNumber = build?.buildNumber || null
+      } catch (error) {
+        console.warn('Failed to get build number:', error)
+      }
+    }
+
+    // Get build stats for progress calculation
+    let buildStats = null
+    try {
+      const buildStatsManager = await getBuildStatsManager()
+      buildStats = await buildStatsManager.getProjectStats(projectId)
+    } catch (error) {
+      console.warn('Failed to get build stats:', error)
+    }
+
     return {
       success: true,
       projectId,
       isRunning: !!currentJob,
       currentJob: currentJob ? {
         jobId: currentJob.jobId,
-        buildId: currentJob.buildId || currentJob.jobId,
+        buildId: currentJob.buildId,
+        buildNumber: buildNumber,
         agentId: currentJob.agentId,
         status: currentJob.status,
         startTime: currentJob.startTime,
         nodeId: currentJob.currentNodeId,
         trigger: currentJob.trigger || 'unknown'
-      } : null
+      } : null,
+      buildStats
     }
 
   } catch (error) {

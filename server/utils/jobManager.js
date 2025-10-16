@@ -46,6 +46,7 @@ class JobManager {
       id: jobId,
       projectId: projectId,
       buildId: jobData.buildId || null,
+      buildNumber: jobData.buildNumber || null,
       parentJobId: jobData.parentJobId || null,
       status: jobData.status || 'queued',
       agentId: jobData.agentId || null,
@@ -68,18 +69,11 @@ class JobManager {
       failedAt: null,
       retriedAt: null,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      output: jobData.output || []
     }
     
-    // Jobs are now stored in builds table - skip database insert for jobs
-    
-    // Store in memory cache
-    const memoryJob = {
-      ...jobData,
-      output: [],
-      createdAt: now
-    }
-    this.jobs.set(jobId, memoryJob)
+    this.jobs.set(jobId, jobRecord)
     
     // Track by project
     if (!this.jobsByProject.has(projectId)) {
@@ -98,6 +92,7 @@ class JobManager {
         type: 'job_created',
         jobId: jobId,
         buildId: jobData.buildId || jobId,
+        buildNumber: jobData.buildNumber || null,
         projectId: projectId,
         agentId: jobData.agentId,
         agentName: jobData.agentName,
@@ -173,6 +168,7 @@ class JobManager {
         agentId: job.agentId,
         agentName: job.agentName,
         buildId: job.buildId,
+        buildNumber: job.buildNumber,
         updates: updates,
         timestamp: now
       })
@@ -208,6 +204,7 @@ class JobManager {
    */
   async addJobOutput(jobId, outputLine) {
     const job = this.jobs.get(jobId)
+    console.log(`job found to add job output: `, job)
     if (!job) {
       console.warn(`⚠️ Attempted to add output to non-existent job ${jobId}`)
       return false
@@ -234,6 +231,7 @@ class JobManager {
     const outputEntry = {
       sequence: sequence,
       type: outputLine.type || 'info',
+      level: outputLine.level || 'info',
       message: maskedMessage,
       command: outputLine.command || null,
       output: outputLine.output || null,
@@ -248,35 +246,28 @@ class JobManager {
     // Store job output in builds table
     try {
       const db = await getDB()
-      
-      // Get current output log from database - try both job ID and build ID
-      let buildResults = await db.select({ outputLog: builds.outputLog }).from(builds).where(eq(builds.id, jobId))
-      let build = buildResults[0]
-      
-      // If not found by job ID, try by build ID if available
-      if (!build && job.buildId) {
-        buildResults = await db.select({ outputLog: builds.outputLog }).from(builds).where(eq(builds.id, job.buildId))
-        build = buildResults[0]
-      }
-      
-      let currentLog = []
-      if (build && build.outputLog) {
-        try {
-          currentLog = JSON.parse(build.outputLog)
-        } catch (e) {
-          currentLog = []
+
+      if (job.buildId) {
+        const buildResults = await db.select({ outputLog: builds.outputLog }).from(builds).where(eq(builds.id, job.buildId))
+        const build = buildResults[0]
+
+        let currentLog = []
+        if (build && build.outputLog) {
+          try {
+            currentLog = JSON.parse(build.outputLog)
+          } catch (e) {
+            currentLog = []
+          }
         }
+        
+        // Add new entry
+        currentLog.push(outputEntry)
+      
+        await db.update(builds).set({ 
+          outputLog: JSON.stringify(currentLog),
+          updatedAt: now 
+        }).where(eq(builds.id, job.buildId))
       }
-      
-      // Add new entry
-      currentLog.push(outputEntry)
-      
-      // Update database - use build ID if available, otherwise job ID
-      const recordId = job.buildId || jobId
-      await db.update(builds).set({ 
-        outputLog: JSON.stringify(currentLog),
-        updatedAt: now 
-      }).where(eq(builds.id, recordId))
       
     } catch (dbError) {
       console.warn(`Failed to persist job output to database:`, dbError.message)
