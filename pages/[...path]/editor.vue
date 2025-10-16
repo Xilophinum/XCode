@@ -796,7 +796,7 @@ let currentBuildId = null
 
 const startBuild = async () => {
   if (!project.value?.id) return null
-  
+
   try {
     const response = await $fetch(`/api/projects/${project.value.id}/builds`, {
       method: 'POST',
@@ -807,9 +807,26 @@ const startBuild = async () => {
         agentId: null // Will be updated when agent is assigned
       }
     })
-    
+
+    // Response now contains { buildId, buildNumber }
     currentBuildId = response.buildId
-    console.log('✅ Build started:', currentBuildId)
+    console.log(`✅ Build #${response.buildNumber} started (${response.buildId})`)
+
+    // Update WebSocket store with buildId for System log persistence
+    // This ensures that any System logs added before job_created arrives can be persisted
+    const currentJob = webSocketStore.getCurrentJob(project.value.id)
+    if (currentJob) {
+      currentJob.buildId = currentBuildId
+      console.log(`📋 Updated current job with buildId: ${currentBuildId}`)
+    } else {
+      // Create a temporary job entry for log persistence
+      webSocketStore.currentJobs.set(project.value.id, {
+        buildId: currentBuildId,
+        status: 'starting'
+      })
+      console.log(`📋 Created temporary job entry with buildId: ${currentBuildId}`)
+    }
+
     return currentBuildId
   } catch (error) {
     console.warn('Failed to start build recording:', error)
@@ -838,10 +855,7 @@ const finishBuild = async (status, message) => {
 }
 
 const addBuildLog = async (level, message, command = null) => {
-  if (!currentBuildId) {
-    console.warn('⚠️ Cannot add build log: currentBuildId is null')
-    return
-  }
+  if (!currentBuildId) return console.warn('⚠️ Cannot add build log: currentBuildId is null');
   
   console.log(`📝 Adding build log: ${level} - ${message}`)
   try {
@@ -2001,10 +2015,8 @@ const clearExecutionResults = () => {
 
 const addExecutionResult = (nodeLabel, type, message, value = undefined) => {
   if (project.value?.id) {
+    // WebSocket store handles all log persistence now
     webSocketStore.addJobMessage(project.value.id, nodeLabel, type, message, value)
-    if (nodeLabel === 'System' && currentBuildId) {
-      addBuildLog(type, message)
-    }
   }
 }
 
@@ -2032,17 +2044,13 @@ const executeGraph = async () => {
   // This function only handles STARTING a job on an agent
   // The actual execution happens on the agent, and output is streamed back
   // isExecuting state is now automatically computed from WebSocket store
-  
+
   clearExecutionResults()
-  
-  // Start build recording
-  await startBuild()
-  await recordTerminalLog('info', 'Starting project execution', 'Run Graph')
-  const buildStartTime = Date.now()
-  
+
+  // Note: Build recording is now handled by the execute API
+  // We don't need to start a build here anymore
+
   try {
-    addExecutionResult('System', 'info', 'Sending execution request to agent...')
-    
     // Convert the graph to execution data for the agent
     const executionData = {
       projectId: project.value.id,
@@ -2050,22 +2058,40 @@ const executeGraph = async () => {
       edges: edges.value,
       startTime: new Date().toISOString()
     }
-    
+
     // Use regular API call but don't wait for completion - just dispatch
     const response = await $fetch('/api/projects/execute', {
       method: 'POST',
       body: executionData
     })
-    
+
     if (response.success) {
-      // Store the buildId from response for System message persistence
+
+      // Store the buildId from response and update WebSocket store immediately
       if (response.buildId) {
         currentBuildId = response.buildId
+
+        // Update WebSocket store with buildId for System log persistence
+        const currentJob = webSocketStore.getCurrentJob(project.value.id)
+        if (currentJob) {
+          currentJob.buildId = currentBuildId
+          console.log(`📋 Updated current job with buildId from API: ${currentBuildId}`)
+        } else {
+          // Create a temporary job entry for log persistence
+          webSocketStore.currentJobs.set(project.value.id, {
+            buildId: currentBuildId,
+            jobId: response.jobId,
+            status: 'dispatched'
+          })
+          console.log(`📋 Created job entry with buildId from API: ${currentBuildId}`)
+        }
       }
-      
+
+      // Now add System messages with buildId available
+      addExecutionResult('System', 'info', 'Sending execution request to agent...')
       addExecutionResult('System', 'success', `Job ${response.jobId} dispatched to ${response.agentName}`)
       addExecutionResult('System', 'info', 'Execution started - waiting for agent output...')
-      
+
       // The job status and output will be received via WebSocket
       console.log('✅ Job dispatched successfully:', response)
     } else {
@@ -2305,37 +2331,43 @@ const checkCurrentBuildStatus = async () => {
         trigger: response.currentJob.trigger || 'unknown'
       })
       
-      // Load logs from build record (includes all parallel job outputs)
-      const buildId = response.currentJob.buildId || response.currentJob.jobId
-      const logsResponse = await $fetch(`/api/projects/${project.value.id}/builds/${buildId}/logs`)
-      
-      webSocketStore.clearJobMessages(project.value.id)
-      
-      if (logsResponse.success && logsResponse.logs?.length > 0) {
-        logsResponse.logs.forEach(logEntry => {
-          // Map source field to proper nodeLabel for display
-          let displayLabel = logEntry.nodeLabel
-          if (!displayLabel) {
-            if (logEntry.source === 'agent') displayLabel = 'Agent'
-            else if (logEntry.source === 'system') displayLabel = 'System'
-            else displayLabel = logEntry.source || 'Agent'
-          }
-          
-          webSocketStore.addJobMessage(
-            project.value.id,
-            displayLabel,
-            logEntry.type || 'info',
-            logEntry.message,
-            logEntry.value,
-            logEntry.timestamp // Preserve original timestamp
-          )
-        })
+      // Only load logs if we don't already have them in the WebSocket store
+      const existingMessages = webSocketStore.getJobMessages(project.value.id)
+
+      if (!existingMessages || existingMessages.length === 0) {
+        // Load logs from build record (includes all parallel job outputs)
+        const buildId = response.currentJob.buildId || response.currentJob.jobId
+        const logsResponse = await $fetch(`/api/projects/${project.value.id}/builds/${buildId}/logs`)
+
+        if (logsResponse.success && logsResponse.logs?.length > 0) {
+          logsResponse.logs.forEach(logEntry => {
+            // Map source field to proper nodeLabel for display
+            let displayLabel = logEntry.nodeLabel
+            if (!displayLabel) {
+              if (logEntry.source === 'agent') displayLabel = 'Agent'
+              else if (logEntry.source === 'system') displayLabel = 'System'
+              else displayLabel = logEntry.source || 'Agent'
+            }
+
+            webSocketStore.addJobMessage(
+              project.value.id,
+              displayLabel,
+              logEntry.type || 'info',
+              logEntry.message,
+              logEntry.value,
+              logEntry.timestamp // Preserve original timestamp
+            )
+          })
+          console.log(`📋 Loaded ${logsResponse.logs.length} logs from database for job ${response.currentJob.jobId}`)
+        } else {
+          // Add status messages if no logs found
+          webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🔄 Restored running job: ${response.currentJob.jobId}`)
+          webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🤖 Agent: ${response.currentJob.agentId || 'Unknown'}`)
+          webSocketStore.addJobMessage(project.value.id, 'System', 'info', `⏱️ Started: ${new Date(response.currentJob.startTime).toLocaleString()}`)
+          webSocketStore.addJobMessage(project.value.id, 'System', 'info', 'Waiting for agent output...')
+        }
       } else {
-        // Add status messages if no logs found
-        webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🔄 Restored running job: ${response.currentJob.jobId}`)
-        webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🤖 Agent: ${response.currentJob.agentId || 'Unknown'}`)
-        webSocketStore.addJobMessage(project.value.id, 'System', 'info', `⏱️ Started: ${new Date(response.currentJob.startTime).toLocaleString()}`)
-        webSocketStore.addJobMessage(project.value.id, 'System', 'info', 'Waiting for agent output...')
+        console.log(`📋 Using ${existingMessages.length} existing messages from WebSocket store - skipping database load`)
       }
     }
   } catch (error) {

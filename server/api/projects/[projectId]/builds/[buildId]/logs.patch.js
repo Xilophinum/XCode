@@ -25,6 +25,7 @@ export default defineEventHandler(async (event) => {
       // Add a log entry
       await buildStatsManager.addBuildLog(buildId, {
         nodeId: body.nodeId,
+        nodeLabel: body.nodeLabel,
         level: body.level,
         message: body.message,
         command: body.command,

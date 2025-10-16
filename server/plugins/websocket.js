@@ -3,7 +3,8 @@ import { Server } from "socket.io";
 import jwt from 'jsonwebtoken'
 import { getAgentManager } from '../utils/agentManager.js'
 import { getDataService } from '../utils/dataService.js'
-
+import { jobManager } from '../utils/jobManager.js'
+import { getBuildStatsManager } from '../utils/buildStatsManager.js'
 // Store client connections for broadcasting
 const clientConnections = new Map() // clientId -> socket
 const projectSubscriptions = new Map() // projectId -> Set of clientIds
@@ -203,8 +204,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             
           case 'agent:job_status':
             if (socket.authenticated) {
-              // Job status update from agent - could update job progress if needed
-              console.log(`📊 Job status update from agent ${socket.agentId}:`, msg)
+              await handleAgentJobStatus(socket, msg, agentManager)
             } else {
               console.log(`❌ Job status from unauthenticated socket: ${socket.id}`)
             }
@@ -723,6 +723,112 @@ async function handleJobError(socket, msg, agentManager) {
   }
 }
 
+async function handleAgentJobStatus(socket, msg, agentManager) {
+  try {
+    const { jobId, status, error, output, outputLines, exitCode, currentJobs, message } = msg
+
+    console.log(`📊 Agent job status update: ${jobId} -> ${status}`)
+
+    // Update agent status based on current jobs
+    if (currentJobs !== undefined) {
+      const agent = agentManager.agentData.get(socket.agentId)
+      if (agent) {
+        agent.currentJobs = currentJobs
+        agent.status = currentJobs > 0 ? 'busy' : 'online'
+        agent.lastHeartbeat = new Date().toISOString()
+      }
+    }
+
+    // Get projectId from job record
+    const job = await jobManager.getJob(jobId)
+    
+    if (!job) {
+      console.error(`❌ Job ${jobId} not found for status update`)
+      return
+    }
+
+    const projectId = job.projectId
+
+    // Get agent name from agent manager
+    const agent = agentManager.agentData.get(socket.agentId)
+    const agentName = agent?.name || socket.agentId
+
+    // Handle different job status types
+    switch (status) {
+      case 'started':
+        // Job has started execution on the agent
+        broadcastToProject(projectId, {
+          type: 'job_started',
+          jobId,
+          projectId,
+          agentId: socket.agentId,
+          agentName,
+          status: 'running',
+          timestamp: msg.timestamp || new Date().toISOString()
+        })
+        break
+
+      case 'failed':
+        // Job failed on the agent
+        broadcastToProject(projectId, {
+          type: 'job_error',
+          jobId,
+          projectId,
+          status: 'failed',
+          error: error || message,
+          output: output || '',
+          outputLines: outputLines || [],
+          exitCode: exitCode || 1,
+          timestamp: msg.timestamp || new Date().toISOString()
+        })
+        break
+
+      case 'cancelled':
+        // Job was successfully cancelled
+        broadcastToProject(projectId, {
+          type: 'job_cancelled',
+          jobId,
+          projectId,
+          status: 'cancelled',
+          message: message || 'Job was cancelled',
+          timestamp: msg.timestamp || new Date().toISOString()
+        })
+        break
+
+      case 'cancelling':
+        // Job is in the process of being cancelled
+        broadcastToProject(projectId, {
+          type: 'job_cancelling',
+          jobId,
+          projectId,
+          status: 'cancelling',
+          message: message || 'Job cancellation initiated',
+          timestamp: msg.timestamp || new Date().toISOString()
+        })
+        break
+
+      case 'cancel_failed':
+        // Job cancellation failed
+        broadcastToProject(projectId, {
+          type: 'job_cancel_failed',
+          jobId,
+          projectId,
+          status: 'cancel_failed',
+          error: error || message || 'Job cancellation failed',
+          timestamp: msg.timestamp || new Date().toISOString()
+        })
+        break
+
+      default:
+        console.warn(`⚠️ Unknown job status: ${status} for job ${jobId}`)
+        break
+    }
+
+  } catch (error) {
+    console.error('Agent job status handling error:', error)
+  }
+}
+
 // Broadcasting functions
 function broadcastToClients(message) {
   try {
@@ -762,7 +868,6 @@ function broadcastToProject(projectId, message) {
 // Handle orphaned jobs when agent disconnects
 async function handleOrphanedJobs(agentId, agentManager) {
   try {
-    const { jobManager } = await import('../utils/jobManager.js')
     const activeJobs = await jobManager.getActiveJobs()
     
     const orphanedJobs = activeJobs.filter(job => job.agentId === agentId)
@@ -862,7 +967,6 @@ async function handleOrphanedJobs(agentId, agentManager) {
       // Update build status if job has associated build
       if (job.buildId) {
         try {
-          const { getBuildStatsManager } = await import('../utils/buildStatsManager.js')
           const buildStatsManager = await getBuildStatsManager()
           
           const updatedJob = await jobManager.getJob(job.jobId)
@@ -888,7 +992,6 @@ async function handleOrphanedJobs(agentId, agentManager) {
 // Check for jobs that can retry when specific agent reconnects
 async function checkRetryableJobsOnReconnect(agentId, agentManager) {
   try {
-    const { jobManager } = await import('../utils/jobManager.js')
     const allJobs = Array.from(jobManager.jobs.values())
     
     const retryableJobs = allJobs.filter(job => 
@@ -958,7 +1061,6 @@ async function checkRetryableJobsOnReconnect(agentId, agentManager) {
 // Handle orphaned jobs on server restart
 async function handleServerRestartOrphanedJobs(agentManager) {
   try {
-    const { jobManager } = await import('../utils/jobManager.js')
     const activeJobs = await jobManager.getActiveJobs()
     
     if (activeJobs.length === 0) {
@@ -982,7 +1084,6 @@ async function handleServerRestartOrphanedJobs(agentManager) {
       // Update build status if job has associated build
       if (job.buildId) {
         try {
-          const { getBuildStatsManager } = await import('../utils/buildStatsManager.js')
           const buildStatsManager = await getBuildStatsManager()
           
           await buildStatsManager.finishBuild(job.buildId, {

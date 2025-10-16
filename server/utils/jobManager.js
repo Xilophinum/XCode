@@ -7,6 +7,8 @@
 
 import { getDB } from './database.js'
 import { v4 as uuidv4 } from 'uuid'
+import { builds } from './schema.js'
+import { eq } from 'drizzle-orm'
 
 class JobManager {
   constructor() {
@@ -89,13 +91,16 @@ class JobManager {
     this.outputSequence.set(jobId, 0)
     
     console.log(`📋 Created job ${jobId} for project ${projectId} (persisted to database)`)
-    
+
     // Broadcast job creation to subscribed clients
     if (globalThis.broadcastToProject) {
       globalThis.broadcastToProject(projectId, {
         type: 'job_created',
         jobId: jobId,
+        buildId: jobData.buildId || jobId,
         projectId: projectId,
+        agentId: jobData.agentId,
+        agentName: jobData.agentName,
         status: jobData.status || 'created',
         timestamp: new Date().toISOString()
       })
@@ -242,10 +247,6 @@ class JobManager {
     
     // Store job output in builds table
     try {
-      const { getDB } = await import('./database.js')
-      const { builds } = await import('./schema.js')
-      const { eq } = await import('drizzle-orm')
-      
       const db = await getDB()
       
       // Get current output log from database - try both job ID and build ID

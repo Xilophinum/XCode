@@ -18,44 +18,79 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Get running job for this build
-    const job = await jobManager.getJob(buildId)
-    if (!job) {
+    // Get all jobs associated with this buildId (for parallel builds)
+    const allJobs = Array.from(jobManager.jobs.values())
+    const jobsToCancel = allJobs.filter(j => j.buildId === buildId)
+
+    if (jobsToCancel.length === 0) {
       throw createError({
         statusCode: 404,
         statusMessage: 'Build not found or not running'
       })
     }
 
-    if (!['queued', 'dispatched', 'running'].includes(job.status)) {
+    // Check if any jobs are in a cancellable state
+    const cancellableJobs = jobsToCancel.filter(j =>
+      ['queued', 'dispatched', 'running'].includes(j.status)
+    )
+
+    if (cancellableJobs.length === 0) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'Build is not in a cancellable state'
+        statusMessage: 'Build has no jobs in a cancellable state'
       })
     }
 
-    // Cancel via agent manager
     const agentManager = await getAgentManager()
-    const success = await agentManager.cancelJobOnAgent(job.agentId, buildId)
+    const cancelResults = []
 
-    if (!success) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: 'Failed to cancel build'
-      })
+    // Cancel ALL jobs associated with this buildId
+    for (const job of cancellableJobs) {
+      try {
+        const jobId = job.jobId || job.id
+
+        // Cancel via agent manager
+        const success = await agentManager.cancelJobOnAgent(job.agentId, jobId)
+
+        if (success) {
+          // Update job status to cancelled
+          await jobManager.updateJob(jobId, {
+            status: 'cancelled',
+            message: 'Build cancelled by user',
+            completedAt: new Date().toISOString()
+          })
+
+          cancelResults.push({
+            jobId: jobId,
+            success: true
+          })
+        } else {
+          cancelResults.push({
+            jobId: jobId,
+            success: false,
+            error: 'Failed to cancel on agent'
+          })
+        }
+      } catch (error) {
+        cancelResults.push({
+          jobId: job.jobId || job.id,
+          success: false,
+          error: error.message
+        })
+      }
     }
 
-    // Update job status to cancelled
-    await jobManager.updateJob(buildId, {
-      status: 'cancelled',
-      message: 'Build cancelled by user',
-      completedAt: new Date().toISOString()
-    })
+    const successCount = cancelResults.filter(r => r.success).length
+    const failCount = cancelResults.length - successCount
 
     return {
-      success: true,
+      success: successCount > 0,
       buildId,
-      message: 'Build cancellation requested'
+      message: `Cancelled ${successCount} of ${cancellableJobs.length} jobs`,
+      cancelResults,
+      totalJobs: cancellableJobs.length,
+      successCount,
+      failCount
     }
 
   } catch (error) {

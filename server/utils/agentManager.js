@@ -1,6 +1,9 @@
 import { getDataService } from './dataService.js'
 import { jobManager } from './jobManager.js'
 import { getBuildStatsManager } from './buildStatsManager.js'
+import { getExecutionConnectedNodes } from '../api/projects/execute.post.js'
+import { executeParallelBranches } from './orchestrators/parallelBranchesOrchestrator.js'
+import { executeParallelMatrix } from './orchestrators/parallelMatrixOrchestrator.js'
 
 class AgentManager {
   constructor() {
@@ -455,7 +458,6 @@ class AgentManager {
       console.log(`🔍 Finding next nodes from: ${currentNode.data.label} (${currentNode.data.nodeType})`)
 
       // Get next nodes based on execution result
-      const { getExecutionConnectedNodes } = await import('../api/projects/execute.post.js')
       const nextNodes = getExecutionConnectedNodes(currentNode.id, job.nodes, job.edges, new Map(), executionResult)
 
       if (nextNodes.length === 0) {
@@ -505,9 +507,6 @@ class AgentManager {
     console.log(`🔀 Executing parallel branches orchestrator for job ${parentJobId}`)
 
     try {
-      // Import the orchestrator implementation
-      const { executeParallelBranches } = await import('./orchestrators/parallelBranchesOrchestrator.js')
-
       // Execute the orchestrator
       const result = await executeParallelBranches(orchestratorCommand, parentJob)
 
@@ -575,9 +574,6 @@ class AgentManager {
     console.log(`🔀 Executing parallel matrix orchestrator for job ${parentJobId}`)
 
     try {
-      // Import the orchestrator implementation
-      const { executeParallelMatrix } = await import('./orchestrators/parallelMatrixOrchestrator.js')
-
       // Execute the orchestrator
       const result = await executeParallelMatrix(orchestratorCommand, parentJob)
 

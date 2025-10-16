@@ -27,11 +27,12 @@ export default defineEventHandler(async (event) => {
       metadata: body.metadata
     }
 
-    const buildId = await buildStatsManager.startBuild(buildData)
-    
+    const buildResult = await buildStatsManager.startBuild(buildData)
+
     return {
       success: true,
-      buildId
+      buildId: buildResult.buildId,
+      buildNumber: buildResult.buildNumber
     }
   } catch (error) {
     console.error('Error starting build:', error)

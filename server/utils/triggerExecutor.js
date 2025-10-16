@@ -7,7 +7,8 @@ import { v4 as uuidv4 } from 'uuid'
 import { jobManager } from './jobManager.js'
 import { getAgentManager } from './agentManager.js'
 import { getBuildStatsManager } from './buildStatsManager.js'
-
+import { getDataService } from './dataService.js'
+import executeModule from '../api/projects/execute.post.js'
 /**
  * Execute project from trigger (for cron or other triggers)
  */
@@ -16,7 +17,7 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
   
   try {
     // Check project status before execution
-    const { getDataService } = await import('./dataService.js')
+
     const dataService = await getDataService()
     const project = await dataService.getItemById(projectId)
     
@@ -38,7 +39,6 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
     console.log(`🔍 Agent data entries: ${agentManager.agentData.size}`)
 
     // Import the graph conversion functions from the execute API
-    const executeModule = await import('../api/projects/execute.post.js')
     const { convertGraphToCommands } = executeModule
 
     // Convert graph to execution commands for the agent

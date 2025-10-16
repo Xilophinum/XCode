@@ -15,7 +15,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const messageHandlers = ref(new Map()) // Map of event types to handler functions
   
   // Job state for real-time updates
-  const currentJobs = ref(new Map()) // Map of projectId to job info
+  const currentJobs = ref(new Map()) // Map of projectId to { jobId, buildId, buildNumber, ... }
   const jobMessages = ref(new Map()) // Map of projectId to messages array
   
   // Connection status computed
@@ -171,11 +171,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
         socket.value.emit('unsubscribe_project', { projectId })
       }
       subscribedProjects.value.delete(projectId)
-      
-      // Clean up project-specific data
+
+      // DON'T delete messages - they should persist so user can see them when they return
+      // Only clear current job state
       currentJobs.value.delete(projectId)
-      jobMessages.value.delete(projectId)
-      
+
       console.log(`📡 Unsubscribed from project: ${projectId}`)
     } catch (error) {
       console.error(`❌ Failed to unsubscribe from project ${projectId}:`, error)
@@ -247,11 +247,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
       case 'webhook_trigger_fired':
         addJobMessage(projectId, 'System', 'info', `🎣 Webhook triggered: ${message.webhookNodeLabel || message.endpoint}`)
         break
-        
+
       case 'webhook_trigger_error':
         addJobMessage(projectId, 'System', 'error', `❌ Webhook trigger error: ${message.error}`)
         break
-        
+
       case 'cron_trigger_fired':
         addJobMessage(projectId, 'System', 'info', `⏰ Cron trigger fired: ${message.cronExpression || message.cronNodeLabel}`)
         break
@@ -276,15 +276,59 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
         
       case 'job_created':
+        // Check if this is a main job or a sub-job (parallel branch/matrix)
+        const isSubJob = message.jobId.includes('_branch_') || message.jobId.includes('_matrix_')
+        const existingMainJob = currentJobs.value.get(projectId)
+
+        if (!isSubJob) {
+          // This is a main job - preserve existing buildId if it's already a proper build ID
+          const existingBuildId = existingMainJob?.buildId
+          const hasValidBuildId = existingBuildId && existingBuildId.startsWith('build_')
+          const newBuildId = message.buildId && message.buildId.startsWith('build_')
+            ? message.buildId
+            : (hasValidBuildId ? existingBuildId : message.jobId)
+
+          currentJobs.value.set(projectId, {
+            jobId: message.jobId,
+            buildId: newBuildId,
+            agentId: message.agentId,
+            status: message.status || 'created',
+            startTime: message.startTime,
+            nodeId: message.nodeId,
+            trigger: 'manual'
+          })
+          console.log(`📋 Main job created with buildId: ${newBuildId}`)
+        } else {
+          // This is a sub-job - don't overwrite main job, just log it
+          console.log(`📋 Sub-job created: ${message.jobId} (preserving main job)`)
+        }
+        // Show the message for all jobs
+        addJobMessage(projectId, 'System', 'success', `🚀 Job created: ${message.jobId}`)
+        break
+
+      case 'job_started':
+        // Update or create job with buildId when job actually starts
+        const existingJob = currentJobs.value.get(projectId)
+
+        // Preserve existing buildId if it's a valid build ID
+        const existingStartedBuildId = existingJob?.buildId
+        const hasValidStartedBuildId = existingStartedBuildId && existingStartedBuildId.startsWith('build_')
+        const newStartedBuildId = message.buildId && message.buildId.startsWith('build_')
+          ? message.buildId
+          : (hasValidStartedBuildId ? existingStartedBuildId : message.buildId || message.jobId)
+
         currentJobs.value.set(projectId, {
+          ...(existingJob || {}),
           jobId: message.jobId,
+          buildId: newStartedBuildId,
           agentId: message.agentId,
-          status: message.status || 'created',
+          agentName: message.agentName,
+          status: message.status || 'running',
           startTime: message.startTime,
           nodeId: message.nodeId,
-          trigger: 'manual'
+          trigger: message.trigger || 'manual'
         })
-        addJobMessage(projectId, 'System', 'success', `🚀 Job created: ${message.jobId}`)
+        console.log(`✅ Job started with buildId: ${newStartedBuildId}`)
         break
         
       case 'job_status_updated':
@@ -292,10 +336,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
         if (currentJob) {
           currentJob.status = message.status
           currentJob.nodeId = message.currentNodeId
-          
+
           // Handle job status updates
           if (message.status === 'failed' || message.status === 'cancelled') {
-            addJobMessage(projectId, 'System', 'warning', 
+            addJobMessage(projectId, 'System', 'warning',
               `Job ${message.status}: ${message.message || 'No details provided'}`)
             // Remove job immediately for failed/cancelled jobs
             currentJobs.value.delete(projectId)
@@ -303,7 +347,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
             // Only show completion message if there wasn't already a job_complete message
             // and the message contains useful details
             if (message.message && message.message !== 'No details provided') {
-              addJobMessage(projectId, 'System', 'success', 
+              addJobMessage(projectId, 'System', 'success',
                 `Job completed: ${message.message}`)
             }
             // Remove job immediately for completed jobs
@@ -316,16 +360,16 @@ export const useWebSocketStore = defineStore('websocket', () => {
         const outputData = message.output || message
         addJobMessage(projectId, outputData.nodeLabel || 'Agent', outputData.level || outputData.type || 'info', outputData.message, outputData.value)
         break
-        
+
       case 'job_output':
         if (message.output && Array.isArray(message.output)) {
           message.output.forEach(outputLine => {
-            addJobMessage(projectId, outputLine.nodeLabel || 'Agent', outputLine.type || 'info', 
+            addJobMessage(projectId, outputLine.nodeLabel || 'Agent', outputLine.type || 'info',
               outputLine.message, outputLine.value)
           })
         }
         break
-        
+
       case 'job_complete':
         const completionMessage = message.result?.message || message.message || 'Job completed successfully'
         addJobMessage(projectId, 'System', 'success', `✅ ${completionMessage}`)
@@ -336,7 +380,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
           currentJobs.value.delete(projectId)
         }
         break
-        
+
       case 'job_error':
         addJobMessage(projectId, 'System', 'error', `❌ Job error: ${message.error || 'Unknown error'}`)
         const errorJob = currentJobs.value.get(projectId)
@@ -346,7 +390,47 @@ export const useWebSocketStore = defineStore('websocket', () => {
           currentJobs.value.delete(projectId)
         }
         break
-        
+
+      case 'job_started':
+        // Job has started execution on agent
+        addJobMessage(projectId, 'System', 'success', `🚀 Job started on agent ${message.agentName || message.agentId}`)
+        const startedJob = currentJobs.value.get(projectId)
+        if (startedJob) {
+          startedJob.status = 'running'
+          startedJob.agentId = message.agentId
+          startedJob.agentName = message.agentName
+        }
+        break
+
+      case 'job_cancelled':
+        // Job was successfully cancelled
+        addJobMessage(projectId, 'System', 'warning', `🛑 ${message.message || 'Job was cancelled'}`)
+        const cancelledJob = currentJobs.value.get(projectId)
+        if (cancelledJob) {
+          cancelledJob.status = 'cancelled'
+          // Remove job immediately so UI updates right away
+          currentJobs.value.delete(projectId)
+        }
+        break
+
+      case 'job_cancelling':
+        // Job is being cancelled
+        addJobMessage(projectId, 'System', 'warning', `⏳ ${message.message || 'Job cancellation initiated'}`)
+        const cancellingJob = currentJobs.value.get(projectId)
+        if (cancellingJob) {
+          cancellingJob.status = 'cancelling'
+        }
+        break
+
+      case 'job_cancel_failed':
+        // Job cancellation failed
+        addJobMessage(projectId, 'System', 'error', `❌ ${message.error || 'Job cancellation failed'}`)
+        const cancelFailedJob = currentJobs.value.get(projectId)
+        if (cancelFailedJob) {
+          cancelFailedJob.status = 'cancel_failed'
+        }
+        break
+
       case 'cron_trigger_error':
         addJobMessage(projectId, 'System', 'error', `❌ Cron trigger error: ${message.error}`)
         break
@@ -381,7 +465,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     if (!jobMessages.value.has(projectId)) {
       jobMessages.value.set(projectId, [])
     }
-    
+
     const messages = jobMessages.value.get(projectId)
     messages.push({
       nodeLabel,
@@ -390,12 +474,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
       value,
       timestamp: timestamp ? new Date(timestamp) : new Date()
     })
-    
+
+    console.log(`📝 Added message to UI [${nodeLabel}]: ${message} (Total: ${messages.length})`)
+
     // Persist System messages to database via API call
     if (nodeLabel === 'System') {
       persistSystemMessage(projectId, type, message, timestamp)
     }
-    
+
     // Keep only last 1000 messages to prevent memory issues
     if (messages.length > 1000) {
       messages.splice(0, messages.length - 1000)
@@ -407,8 +493,17 @@ export const useWebSocketStore = defineStore('websocket', () => {
     try {
       // Find current running job to get buildId
       const currentJob = getCurrentJob(projectId)
+
       if (currentJob?.buildId) {
-        await $fetch(`/api/projects/${projectId}/builds/${currentJob.buildId}`, {
+        const buildId = currentJob.buildId
+
+        // Validate it's a proper buildId (starts with 'build_')
+        if (!buildId.startsWith('build_')) {
+          console.warn(`⚠️ Skipping persistence - invalid buildId: ${buildId}`)
+          return
+        }
+
+        await $fetch(`/api/projects/${projectId}/builds/${buildId}/logs`, {
           method: 'PATCH',
           body: {
             type: 'log',
@@ -419,9 +514,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
             timestamp: timestamp || new Date().toISOString()
           }
         })
+        console.log(`✅ Persisted System log to build ${buildId}`)
+      } else {
+        console.warn('⚠️ Cannot persist System message: No buildId available yet')
       }
     } catch (error) {
-      console.warn('Failed to persist System message:', error)
+      console.error('❌ Failed to persist System message:', error)
     }
   }
   
@@ -437,6 +535,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   
   // Clear messages for a project
   const clearJobMessages = (projectId) => {
+    console.log(`🧹 Clearing all messages for project ${projectId}`)
     jobMessages.value.set(projectId, [])
   }
   

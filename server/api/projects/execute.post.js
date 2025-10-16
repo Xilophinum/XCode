@@ -8,6 +8,7 @@ import { jobManager } from '../../utils/jobManager.js'
 import { getAgentManager } from '../../utils/agentManager.js'
 import { getDataService } from '../../utils/dataService.js'
 import { getCredentialResolver } from '../../utils/credentialResolver.js'
+import { getBuildStatsManager } from '../../utils/buildStatsManager.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -62,7 +63,35 @@ export default defineEventHandler(async (event) => {
     // Generate unique job ID
     const jobId = `job_${uuidv4()}`
 
-    // Create job record
+    // Start build recording BEFORE creating job so we have buildId and buildNumber
+    let currentBuildId = null
+    let currentBuildNumber = null
+    try {
+
+      const buildStatsManager = await getBuildStatsManager()
+
+      const buildResult = await buildStatsManager.startBuild({
+        projectId,
+        agentId: availableAgent.agentId,
+        agentName: availableAgent.name || availableAgent.hostname,
+        jobId,
+        trigger: 'manual',
+        message: 'Manual execution',
+        nodeCount: nodes.length,
+        branch: null,
+        commit: null,
+        metadata: null
+      })
+
+      currentBuildId = buildResult.buildId
+      currentBuildNumber = buildResult.buildNumber
+
+      console.log(`✅ Build #${currentBuildNumber} started for manual execution (${currentBuildId})`)
+    } catch (error) {
+      console.warn('Failed to start build recording for manual execution:', error)
+    }
+
+    // Create job record WITH buildId
     const job = {
       jobId,
       projectId,
@@ -71,6 +100,7 @@ export default defineEventHandler(async (event) => {
       status: 'queued',
       nodes,
       edges,
+      buildId: currentBuildId, // Include buildId from the start
       startTime: startTime || new Date().toISOString(),
       createdAt: new Date().toISOString(),
       output: [],
@@ -135,32 +165,7 @@ export default defineEventHandler(async (event) => {
     job.executionCommands = executableCommands
     job.currentCommandIndex = 0
 
-    // Start build recording for manual execution
-    let currentBuildId = null
-    try {
-      const { getBuildStatsManager } = await import('../../utils/buildStatsManager.js')
-      const buildStatsManager = await getBuildStatsManager()
-
-      currentBuildId = await buildStatsManager.startBuild({
-        projectId,
-        agentId: availableAgent.agentId,
-        agentName: availableAgent.name || availableAgent.hostname,
-        jobId,
-        trigger: 'manual',
-        message: 'Manual execution',
-        nodeCount: nodes.length,
-        branch: null,
-        commit: null,
-        metadata: null
-      })
-
-      console.log('✅ Build recording started for manual execution:', currentBuildId)
-    } catch (error) {
-      console.warn('Failed to start build recording for manual execution:', error)
-    }
-
-    // Store buildId in job for later reference
-    job.buildId = currentBuildId
+    // Build recording already done above (currentBuildId already set)
 
     // Start with the first command
     const firstCommand = executableCommands[0]
@@ -201,10 +206,11 @@ export default defineEventHandler(async (event) => {
         success: true,
         jobId,
         buildId: currentBuildId,
+        buildNumber: currentBuildNumber,
         agentId: 'orchestrator',
         agentName: 'Parallel Branches Orchestrator',
         startTime: job.startTime,
-        message: `Parallel branches orchestrator started${currentBuildId ? ` (build: ${currentBuildId})` : ''}`
+        message: `Parallel branches orchestrator started${currentBuildId ? ` (build #${currentBuildNumber})` : ''}`
       }
     }
     
@@ -296,7 +302,6 @@ export default defineEventHandler(async (event) => {
       // Update build record with failure if build was started
       if (currentBuildId) {
         try {
-          const { getBuildStatsManager } = await import('../../utils/buildStatsManager.js')
           const buildStatsManager = await getBuildStatsManager()
           await buildStatsManager.finishBuild(currentBuildId, {
             status: 'failure',

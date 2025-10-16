@@ -1,6 +1,7 @@
 import { getDB } from './database.js'
 import { users, items, envVariables, credentialVault, systemSettings, agents } from './schema.js'
 import { eq } from 'drizzle-orm'
+import crypto from 'crypto'
 
 export class DataService {
   constructor() {
@@ -618,7 +619,7 @@ export class DataService {
     await this.ensureInitialized()
     
     // Use provided token or generate a secure token for the agent
-    const token = agentData.token || (await import('crypto')).randomBytes(32).toString('hex')
+    const token = agentData.token || crypto.randomBytes(32).toString('hex')
     
     const agent = {
       id: agentData.id || `agent-${Date.now()}`,

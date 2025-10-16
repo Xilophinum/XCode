@@ -1,7 +1,7 @@
 import { getDB } from './database.js'
 import { builds, items } from './schema.js'
 import { eq, desc, and, gte, lte, count, avg, min, max } from 'drizzle-orm'
-
+import { broadcastBuildCompletion } from '../plugins/websocket.js'
 export class BuildStatsManager {
   constructor() {
     this.db = null
@@ -52,10 +52,13 @@ export class BuildStatsManager {
 
     await this.db.insert(builds).values(build)
 
-
-
     console.log(`📊 Started build #${buildNumber} (${buildId}) for project ${buildData.projectId}`)
-    return buildId
+
+    // Return both buildId and buildNumber
+    return {
+      buildId,
+      buildNumber
+    }
   }
 
   /**
@@ -394,9 +397,6 @@ export class BuildStatsManager {
    */
   async broadcastBuildCompletion(projectId, status, buildData) {
     try {
-      // Import the WebSocket broadcast function
-      const { broadcastBuildCompletion } = await import('../plugins/websocket.js')
-      
       // Broadcast the build completion event
       await broadcastBuildCompletion({
         type: 'build_completed',
