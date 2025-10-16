@@ -32,8 +32,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
     
     try {
-      console.log('🔌 Initializing universal WebSocket connection...')
-      
       // Create Socket.IO connection
       socket.value = io('/', {
         autoConnect: true,
@@ -45,7 +43,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       // Handle connection events
       socket.value.on('connect', async () => {
-        console.log('✅ WebSocket connected successfully')
         isConnected.value = true
         connectionError.value = null
         
@@ -85,7 +82,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
       // Handle all real-time messages and events
       socket.value.on('message', handleWebSocketMessage)
       socket.value.on('client_authenticated', (data) => {
-        console.log('✅ Client authenticated successfully:', data.userEmail)
         isAuthenticated.value = true
         connectionError.value = null
         
@@ -130,8 +126,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
         userId: authStore.user.id,
         userEmail: authStore.user.email
       })
-      
-      console.log('🔐 Client authentication sent for user:', authStore.user.email)
     } catch (error) {
       console.error('❌ Client authentication failed:', error)
       connectionError.value = 'Authentication failed: ' + error.message
@@ -154,8 +148,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
       
       socket.value.emit('subscribe_project', { projectId })
       subscribedProjects.value.add(projectId)
-      
-      console.log(`📡 Subscribed to project: ${projectId}`)
       return true
     } catch (error) {
       console.error(`❌ Failed to subscribe to project ${projectId}:`, error)
@@ -171,17 +163,32 @@ export const useWebSocketStore = defineStore('websocket', () => {
       }
       subscribedProjects.value.delete(projectId)
 
-      // DON'T delete messages - they should persist so user can see them when they return
-      // Only clear current job state
-      currentJobs.value.delete(projectId)
-
-      console.log(`📡 Unsubscribed from project: ${projectId}`)
+      // Only clear messages - job state should persist for progress bars and status indicators
+      // currentJobs will be cleared when job completes (see job_complete, job_error, job_status_updated handlers)
+      jobMessages.value.delete(projectId)
     } catch (error) {
       console.error(`❌ Failed to unsubscribe from project ${projectId}:`, error)
     }
   }
-  
 
+  const unsubscribeFromAllProjects = () => {
+    try {
+      for (const projectId of subscribedProjects.value) {
+          unsubscribeFromProject(projectId)
+      }
+      subscribedProjects.value.clear()
+
+      // DON'T clear currentJobs - they're needed for progress bars across navigation
+      // Jobs are automatically cleared when they complete (see job_complete, job_error handlers)
+
+      // Clear all messages since we're leaving all projects
+      jobMessages.value.clear()
+
+      console.log('📡 Unsubscribed from all projects (keeping job state for progress bars)')
+    } catch (error) {
+      console.error(`❌ Failed to unsubscribe from all projects:`, error)
+    }
+  }
   
   // Handle incoming WebSocket messages
   const handleWebSocketMessage = (message) => {
@@ -334,8 +341,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
           if (message.status === 'failed' || message.status === 'cancelled') {
             addJobMessage(projectId, 'System', 'warning',
               `Job ${message.status}: ${message.message || 'No details provided'}`)
-            // Remove job immediately for failed/cancelled jobs
+            // Remove job and clear messages for failed/cancelled jobs
             currentJobs.value.delete(projectId)
+            // Note: Messages are NOT cleared here - user should still see failure logs
           } else if (message.status === 'completed' && !message.suppressMessage) {
             // Only show completion message if there wasn't already a job_complete message
             // and the message contains useful details
@@ -343,8 +351,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
               addJobMessage(projectId, 'System', 'success',
                 `Job completed: ${message.message}`)
             }
-            // Remove job immediately for completed jobs
+            // Remove job for completed jobs
             currentJobs.value.delete(projectId)
+            // Note: Messages are NOT cleared here - user should still see completion logs
           }
         }
         break
@@ -529,9 +538,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // Clear messages for a project
   const clearJobMessages = (projectId) => {
     console.log(`🧹 Clearing all messages for project ${projectId}`)
-    jobMessages.value.set(projectId, [])
+    jobMessages.value.delete(projectId)
   }
-  
+
   // Check if a project has a running job
   const isProjectJobRunning = (projectId) => {
     const job = currentJobs.value.get(projectId)
@@ -572,9 +581,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
     disconnect,
     subscribeToProject,
     unsubscribeFromProject,
-
+    unsubscribeFromAllProjects,
     addJobMessage,
-    
     // Getters
     getJobMessages,
     getCurrentJob,

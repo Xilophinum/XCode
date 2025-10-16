@@ -92,15 +92,9 @@ export default defineNitroPlugin(async (nitroApp) => {
   globalThis.broadcastToProject = broadcastToProject
 
   io.on("connection", (socket) => {
-    console.log("New connection:", socket.id);
-    
-    // Check if this might be a reconnection of an existing agent
-    console.log(`🔧 Current state - agentData: ${agentManager.agentData.size}, connectedAgents: ${agentManager.connectedAgents.size}`)
-    
     // Handle Socket.IO events directly (for client connections)
     socket.on("authenticate", async (msg) => {
       try {
-        console.log('📨 Direct authenticate event received:', msg)
         // Handle client authentication
         if (msg.type === 'client') {
           await handleClientAuthentication(socket, msg)
@@ -115,7 +109,6 @@ export default defineNitroPlugin(async (nitroApp) => {
     
     socket.on("subscribe_project", async (msg) => {
       try {
-        console.log('📨 Direct subscribe_project event received:', msg)
         if (socket.clientAuthenticated) {
           await handleProjectSubscription(socket, msg)
         } else {
@@ -128,7 +121,6 @@ export default defineNitroPlugin(async (nitroApp) => {
     
     socket.on("unsubscribe_project", async (msg) => {
       try {
-        console.log('📨 Direct unsubscribe_project event received:', msg)
         if (socket.clientAuthenticated) {
           await handleProjectUnsubscription(socket, msg)
         } else {
@@ -234,8 +226,6 @@ export default defineNitroPlugin(async (nitroApp) => {
     });
 
     socket.on("disconnect", async () => {
-      console.log("Connection disconnected:", socket.id);
-      
       // Clean up agent from manager if it was authenticated
       if (socket.authenticated && socket.agentId) {
         // Mark agent as offline in database
@@ -354,8 +344,6 @@ async function handleAuthentication(socket, msg, agentManager) {
 
 async function handleAgentRegistration(socket, msg, agentManager) {
   try {
-    console.log(`Agent ${socket.agentId} registering with capabilities`)
-    
     // Update agent in database with system information
     const dataService = agentManager.dataService || await getDataService()
     const updatedAgent = await dataService.registerAgent(socket.agentToken, {
@@ -399,7 +387,6 @@ async function handleAgentRegistration(socket, msg, agentManager) {
     console.log(`✅ Agent ${socket.agentId} registered successfully`)
     console.log(`📊 Platform: ${agentInfo.platform} (${agentInfo.architecture})`)
     console.log(`🏠 Hostname: ${agentInfo.hostname}`)
-    console.log(`⚡ Capabilities: ${agentInfo.capabilities.join(', ')}`)
     
     // Broadcast agent registration to all admin connections
     console.log(`📡 Broadcasting agent registration update for ${socket.agentId}`)
@@ -492,8 +479,6 @@ async function handleHeartbeat(socket, msg, agentManager) {
 // Client authentication and subscription handlers
 async function handleClientAuthentication(socket, msg) {
   try {
-    console.log('Client authenticating with user data:', msg)
-    
     // For client authentication, we'll validate the JWT token from the cookie
     // The cookie should be available in the socket handshake
     const cookies = socket.handshake.headers.cookie
@@ -556,9 +541,6 @@ async function handleClientAuthentication(socket, msg) {
     
     // Store in client connections map
     clientConnections.set(socket.clientId, socket)
-    
-    console.log(`✅ Client authenticated: ${user.email} (ID: ${user.id})`)
-    
     // Send authentication success
     socket.emit('client_authenticated', {
       clientId: socket.clientId,
@@ -598,8 +580,6 @@ async function handleProjectSubscription(socket, msg) {
     }
     socket.subscribedProjects.add(projectId)
     
-    console.log(`📡 Client ${socket.clientId} subscribed to project ${projectId}`)
-    
     socket.emit('project_subscribed', {
       projectId: projectId,
       status: 'subscribed'
@@ -638,8 +618,6 @@ async function handleProjectUnsubscription(socket, msg) {
     if (socket.subscribedProjects) {
       socket.subscribedProjects.delete(projectId)
     }
-    
-    console.log(`📡 Client ${socket.clientId} unsubscribed from project ${projectId}`)
     
     socket.emit('project_unsubscribed', {
       projectId: projectId,

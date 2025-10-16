@@ -468,6 +468,7 @@ definePageMeta({
 
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
+const webSocketStore = useWebSocketStore()
 
 // Modal state
 const showCreateFolderModal = ref(false)
@@ -750,6 +751,7 @@ onMounted(async () => {
     await projectsStore.loadData()
     await loadAgents()
   }
+  webSocketStore.unsubscribeFromAllProjects()
 })
 
 onUnmounted(() => {

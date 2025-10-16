@@ -1,11 +1,11 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-950" @click="closeAllMenus">
+  <div class="h-screen overflow-hidden bg-gray-50 dark:bg-gray-950 flex flex-col" @click="closeAllMenus">
     <!-- Navigation -->
     <AppNavigation :breadcrumbs="pathSegments" />
 
     <!-- Main Content -->
-    <main class="max-w-8xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div class="px-4 py-6 sm:px-0">
+    <main class="flex-1 overflow-hidden flex flex-col max-w-8xl mx-auto w-full py-6 sm:px-6 lg:px-8">
+      <div class="flex-1 overflow-hidden flex flex-col px-4 sm:px-0">
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">
           <div>
@@ -78,14 +78,16 @@
           </div>
         </div>
 
-        <!-- Loading State -->
-        <div v-if="projectsStore.isLoading" class="text-center py-8">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p class="mt-2 text-gray-600 dark:text-gray-300">Loading...</p>
-        </div>
+        <!-- Scrollable Container -->
+        <div class="flex-1 overflow-y-auto overflow-x-hidden overscroll-none" style="scrollbar-gutter: stable;">
+          <!-- Loading State -->
+          <div v-if="projectsStore.isLoading" class="text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p class="mt-2 text-gray-600 dark:text-gray-300">Loading...</p>
+          </div>
 
-        <!-- Content Grid -->
-        <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <!-- Content Grid -->
+          <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 pb-6">
           <!-- Folders -->
           <div
             v-for="folder in foldersAtCurrentPath"
@@ -261,6 +263,7 @@
             </svg>
             <h3 class="mt-2 text-sm font-medium text-gray-950 dark:text-white">No items found</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new folder or project.</p>
+          </div>
           </div>
         </div>
       </div>
@@ -457,7 +460,7 @@ const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const webSocketStore = useWebSocketStore()
 
-import { nextTick, onMounted, onUnmounted } from 'vue'
+import { nextTick, onMounted, onUnmounted, watch } from 'vue'
 
 // Build stats for project colors
 const projectBuildStats = ref(new Map())
@@ -691,7 +694,12 @@ const navigateToFolder = (folderName) => {
   router.push(`/browse?path=${newPath.join('/')}`)
 }
 
-const openProject = (project) => {
+const openProject = async (project) => {
+  // Unsubscribe from all browse projects before navigating to editor
+  for (const projectId of subscribedProjectIds.value) {
+    await webSocketStore.unsubscribeFromProject(projectId)
+  }
+  subscribedProjectIds.value.clear()
   projectsStore.setCurrentProject(project)
   const projectPath = [...project.path, project.name]
   router.push(`/${projectPath.join('/')}/editor`)
@@ -929,24 +937,48 @@ const handleAgentStatusUpdate = (event) => {
   }
 }
 
+// Track currently subscribed projects
+const subscribedProjectIds = ref(new Set())
+
 // Setup WebSocket subscriptions for visible projects
 const setupProjectSubscriptions = async () => {
   try {
     if (!webSocketStore.isConnected) {
       await webSocketStore.connect()
     }
-    
-    // Subscribe to all visible projects for real-time updates
+
+    // Get current visible projects
     const visibleProjects = [...projectsAtCurrentPath.value]
+    const visibleProjectIds = new Set(visibleProjects.map(p => p.id))
+
+    // Unsubscribe from projects that are no longer visible
+    for (const projectId of subscribedProjectIds.value) {
+      if (!visibleProjectIds.has(projectId)) {
+        await webSocketStore.unsubscribeFromProject(projectId)
+        subscribedProjectIds.value.delete(projectId)
+      }
+    }
+
+    // Subscribe to newly visible projects
     for (const project of visibleProjects) {
-      await webSocketStore.subscribeToProject(project.id)
+      if (!subscribedProjectIds.value.has(project.id)) {
+        await webSocketStore.subscribeToProject(project.id)
+        subscribedProjectIds.value.add(project.id)
+      }
     }
   } catch (error) {
     console.error('Failed to setup project subscriptions:', error)
   }
 }
 
-
+// Watch for path changes and update subscriptions
+watch(
+  () => pathSegments.value,
+  async () => {
+    await setupProjectSubscriptions()
+  },
+  { deep: true }
+)
 
 // Load data on mount
 onMounted(async () => {
@@ -955,13 +987,13 @@ onMounted(async () => {
     if (!authStore.isAuthenticated) {
       await authStore.initializeAuth()
     }
-    
+
     // Only load data if authenticated
     if (authStore.isAuthenticated) {
       await projectsStore.loadData()
       await loadAgents()
       await setupProjectSubscriptions()
-      
+
       // Listen for real-time agent status updates
       if (typeof window !== 'undefined') {
         window.addEventListener('agentStatusUpdate', handleAgentStatusUpdate)
@@ -972,12 +1004,55 @@ onMounted(async () => {
   }
 })
 
-// Clean up event listener on unmount
+// Clean up event listener and subscriptions on unmount
 onUnmounted(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('agentStatusUpdate', handleAgentStatusUpdate)
   }
-  
 
+  // Unsubscribe from all projects we subscribed to
+  for (const projectId of subscribedProjectIds.value) {
+    webSocketStore.unsubscribeFromProject(projectId)
+  }
+  subscribedProjectIds.value.clear()
 })
 </script>
+
+<style scoped>
+/* Smooth scrolling for the grid container */
+.overflow-y-auto {
+  scroll-behavior: smooth;
+}
+
+/* Prevent overscroll bounce */
+.overscroll-none {
+  overscroll-behavior: none;
+}
+
+/* Custom scrollbar styling for webkit browsers */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+
+/* Dark mode scrollbar */
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(75, 85, 99, 0.5);
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(75, 85, 99, 0.7);
+}
+</style>

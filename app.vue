@@ -20,7 +20,6 @@ onMounted(async () => {
     
     // Only connect WebSocket if user is authenticated
     if (authStore.isAuthenticated) {
-      console.log('🌐 Initializing global WebSocket connection...')
       await webSocketStore.connect()
     }
   } catch (error) {

@@ -25,8 +25,6 @@ export default defineEventHandler(async (event) => {
     const currentJob = runningJobs.find(job => 
       ['running', 'pending', 'queued', 'created', 'dispatched'].includes(job.status)
     )
-    
-    console.log(`📋 Status check for project ${projectId}: found ${runningJobs.length} jobs, current job:`, currentJob)
 
     // Get build number if there's a current job with buildId
     let buildNumber = null

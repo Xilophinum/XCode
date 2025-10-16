@@ -1061,7 +1061,6 @@ const loadAgents = async () => {
   try {
     const data = await $fetch('/api/admin/agents')
     agents.value = data
-    console.log(`🤖 Loaded ${data.length} agents`)
   } catch (error) {
     console.error('Error loading agents:', error)
     agents.value = []
@@ -2212,8 +2211,6 @@ const setupRealtimeConnection = async () => {
     if (project.value?.id) {
       await webSocketStore.subscribeToProject(project.value.id)
     }
-    
-    console.log('✅ Real-time connection established for editor')
   } catch (error) {
     console.error('❌ Failed to setup real-time connection:', error)
   }
@@ -2226,11 +2223,9 @@ const initializeEditor = async () => {
     if (project.value?.diagramData) {
       nodes.value = project.value.diagramData.nodes || []
       edges.value = project.value.diagramData.edges || []
-      console.log(`📊 Loaded ${nodes.value.length} nodes and ${edges.value.length} edges`)
     } else {
       nodes.value = []
       edges.value = []
-      console.log('📊 Starting with empty diagram')
     }
     
     isEditorReady.value = true
@@ -2309,7 +2304,6 @@ watch(() => isJobRunningOnAgent.value, async (isRunning, wasRunning) => {
 const cleanupRealtimeConnection = () => {
   if (project.value?.id) {
     webSocketStore.unsubscribeFromProject(project.value.id)
-    console.log(`🔌 Editor unsubscribed from project ${project.value.id}`)
   }
 }
 
@@ -2377,8 +2371,6 @@ const checkCurrentBuildStatus = async () => {
 
 // Initialize editor on mount
 onMounted(async () => {
-  console.log('🚀 Editor component mounting...')
-  
   // Ensure authentication is initialized before loading data
   if (!authStore.isAuthenticated) {
     await authStore.initializeAuth()
@@ -2403,23 +2395,20 @@ onMounted(async () => {
     await navigateTo('/')
     return
   }
-  
-  console.log(`📋 Editor loaded for project: ${project.value.name} (ID: ${project.value.id})`)
-  
+
   // Set current project
   projectsStore.setCurrentProject(project.value)
-  
+
   // Set up real-time WebSocket updates
   await setupRealtimeConnection()
-  
+
   // Check if there's already a job running for this project
+  // This will load messages from the database if needed
   await checkCurrentBuildStatus()
   
   // Initialize the editor
   await nextTick()
   await initializeEditor()
-  
-  console.log('✅ Editor component fully initialized')
 })
 
 // Project status toggle function
@@ -2456,9 +2445,7 @@ const toggleProjectStatus = async () => {
 
 // Cleanup on unmount
 onUnmounted(() => {
-  console.log('🔌 Editor component unmounting...')
   cleanupRealtimeConnection()
-  
   // Clean up event listeners
   if (typeof window !== 'undefined') {
     window.removeEventListener('agentStatusUpdate', handleAgentStatusUpdate)

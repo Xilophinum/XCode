@@ -43,25 +43,23 @@ const isRunning = computed(() => {
 
 const progress = computed(() => {
   if (!isRunning.value || !props.buildStats) return 0
-  
+
   const { fastestBuild, slowestBuild, averageDuration } = props.buildStats
-  
+
   // If no historical data, use average duration for estimation
   if (!fastestBuild || !slowestBuild || !averageDuration) {
     if (averageDuration > 0) {
-      return (elapsedTime.value / averageDuration) * 100
+      const calc = (elapsedTime.value / averageDuration) * 100
+      return calc
     }
-    return (elapsedTime.value / 60000) * 100 // Assume 1 minute default
+    const calc = (elapsedTime.value / 60000) * 100
+    return calc
   }
-  
-  const range = slowestBuild - fastestBuild
-  if (range <= 0) {
-    // Use average duration if no range
-    return (elapsedTime.value / averageDuration) * 100
-  }
-  
-  const progressInRange = (elapsedTime.value - fastestBuild) / range
-  return Math.max(0, progressInRange * 100)
+
+  // Use average duration for more predictable progress
+  // The old "range" method caused 0% for the first fastestBuild milliseconds
+  const calc = Math.min(100, (elapsedTime.value / averageDuration) * 100)
+  return calc
 })
 
 const isOverAverage = computed(() => {
@@ -98,33 +96,58 @@ const updateElapsedTime = () => {
   if (currentJob.value?.startTime) {
     const startTime = new Date(currentJob.value.startTime).getTime()
     elapsedTime.value = Date.now() - startTime
+  } else {
+    console.warn(`⚠️ [${props.projectId}] Cannot update elapsed time - no startTime available`, currentJob.value)
   }
+}
+
+const startProgressTracking = () => {
+  // Clear any existing interval
+  if (intervalId.value) {
+    clearInterval(intervalId.value)
+    intervalId.value = null
+  }
+
+  // Update immediately to sync with current time
+  updateElapsedTime()
+
+  // Start interval
+  intervalId.value = setInterval(updateElapsedTime, 1000)
+}
+
+const stopProgressTracking = () => {
+  if (intervalId.value) {
+    clearInterval(intervalId.value)
+    intervalId.value = null
+  }
+  elapsedTime.value = 0
 }
 
 onMounted(() => {
   if (isRunning.value) {
-    updateElapsedTime()
-    intervalId.value = setInterval(updateElapsedTime, 1000)
+    startProgressTracking()
   }
 })
 
 onUnmounted(() => {
-  if (intervalId.value) {
-    clearInterval(intervalId.value)
-  }
+  stopProgressTracking()
 })
 
 // Watch for job status changes
-watch(isRunning, (newValue) => {
+watch(isRunning, (newValue, oldValue) => {
   if (newValue) {
-    updateElapsedTime()
-    intervalId.value = setInterval(updateElapsedTime, 1000)
+    startProgressTracking()
   } else {
-    if (intervalId.value) {
-      clearInterval(intervalId.value)
-      intervalId.value = null
-    }
-    elapsedTime.value = 0
+    stopProgressTracking()
   }
 })
+
+// Watch for currentJob changes (in case job data arrives after mount)
+watch(currentJob, (newJob, oldJob) => {
+  if (newJob && !oldJob) {
+    if (isRunning.value && !intervalId.value) {
+      startProgressTracking()
+    }
+  }
+}, { deep: true })
 </script>
