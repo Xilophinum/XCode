@@ -616,8 +616,17 @@ export class DataService {
     await this.ensureInitialized()
     
     const setting = {
-      id: Date.now().toString(),
-      ...data,
+      id: data.id || Date.now().toString(),
+      category: data.category,
+      key: data.key,
+      value: data.value,
+      defaultValue: data.defaultValue,
+      type: data.type,
+      options: data.options,
+      label: data.label,
+      description: data.description,
+      required: data.required,
+      readonly: data.readonly,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
