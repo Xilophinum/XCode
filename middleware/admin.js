@@ -2,7 +2,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   const authStore = useAuthStore()
   
   // First ensure user is authenticated
-  if (process.client && !authStore.isAuthenticated) {
+  if (import.meta.client && !authStore.isAuthenticated) {
     await authStore.initializeAuth()
   }
   
