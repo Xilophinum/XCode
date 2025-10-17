@@ -123,6 +123,99 @@
                       </button>
 
                       <div v-if="expandedLogs.has(log.id)" class="mt-2 space-y-2">
+                        <!-- Show diagram changes if available -->
+                        <div v-if="log.previousData?.diagramChanges" class="rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3">
+                          <p class="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-2">
+                            📊 Diagram Changes
+                          </p>
+
+                          <!-- Nodes Added -->
+                          <div v-if="log.previousData.diagramChanges.nodesAdded?.length > 0" class="mb-3">
+                            <p class="text-xs font-medium text-green-700 dark:text-green-400 mb-1">
+                              ✅ Added Nodes ({{ log.previousData.diagramChanges.nodesAdded.length }}):
+                            </p>
+                            <ul class="list-disc list-inside space-y-1">
+                              <li v-for="node in log.previousData.diagramChanges.nodesAdded" :key="node.id"
+                                  class="text-xs text-gray-700 dark:text-gray-300 ml-2">
+                                <span class="font-medium">"{{ node.label }}"</span>
+                                <span class="text-gray-500 dark:text-gray-400"> ({{ node.type }})</span>
+                              </li>
+                            </ul>
+                          </div>
+
+                          <!-- Nodes Deleted -->
+                          <div v-if="log.previousData.diagramChanges.nodesDeleted?.length > 0" class="mb-3">
+                            <p class="text-xs font-medium text-red-700 dark:text-red-400 mb-1">
+                              ❌ Deleted Nodes ({{ log.previousData.diagramChanges.nodesDeleted.length }}):
+                            </p>
+                            <ul class="list-disc list-inside space-y-1">
+                              <li v-for="node in log.previousData.diagramChanges.nodesDeleted" :key="node.id"
+                                  class="text-xs text-gray-700 dark:text-gray-300 ml-2">
+                                <span class="font-medium line-through">"{{ node.label }}"</span>
+                                <span class="text-gray-500 dark:text-gray-400"> ({{ node.type }})</span>
+                              </li>
+                            </ul>
+                          </div>
+
+                          <!-- Nodes Modified -->
+                          <div v-if="log.previousData.diagramChanges.nodesModified?.length > 0" class="mb-3">
+                            <p class="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1">
+                              ✏️ Modified Nodes ({{ log.previousData.diagramChanges.nodesModified.length }}):
+                            </p>
+                            <div v-for="node in log.previousData.diagramChanges.nodesModified" :key="node.id"
+                                 class="mb-2 ml-2 border-l-2 border-blue-300 dark:border-blue-600 pl-2">
+                              <p class="text-xs font-medium text-gray-800 dark:text-gray-200">
+                                "{{ node.label }}"
+                              </p>
+                              <div v-for="mod in node.modifications" :key="mod.field" class="mt-1">
+                                <p class="text-xs text-gray-600 dark:text-gray-400">
+                                  <span class="font-medium">{{ mod.field }}:</span>
+                                </p>
+                                <div class="flex gap-2 items-start mt-0.5">
+                                  <div class="flex-1 bg-red-50 dark:bg-red-900/20 rounded px-2 py-1">
+                                    <p class="text-xs text-red-700 dark:text-red-400 font-mono break-words">
+                                      {{ formatFieldValue(mod.field, mod.before) }}
+                                    </p>
+                                  </div>
+                                  <span class="text-xs text-gray-400">→</span>
+                                  <div class="flex-1 bg-green-50 dark:bg-green-900/20 rounded px-2 py-1">
+                                    <p class="text-xs text-green-700 dark:text-green-400 font-mono break-words">
+                                      {{ formatFieldValue(mod.field, mod.after) }}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Connections Added -->
+                          <div v-if="log.previousData.diagramChanges.edgesAdded?.length > 0" class="mb-3">
+                            <p class="text-xs font-medium text-green-700 dark:text-green-400 mb-1">
+                              🔗 Added Connections ({{ log.previousData.diagramChanges.edgesAdded.length }}):
+                            </p>
+                            <ul class="list-disc list-inside space-y-1">
+                              <li v-for="edge in log.previousData.diagramChanges.edgesAdded" :key="`${edge.source}-${edge.target}`"
+                                  class="text-xs text-gray-700 dark:text-gray-300 ml-2">
+                                "{{ edge.sourceLabel }}" → "{{ edge.targetLabel }}"
+                              </li>
+                            </ul>
+                          </div>
+
+                          <!-- Connections Deleted -->
+                          <div v-if="log.previousData.diagramChanges.edgesDeleted?.length > 0" class="mb-3">
+                            <p class="text-xs font-medium text-red-700 dark:text-red-400 mb-1">
+                              ⛓️‍💥 Deleted Connections ({{ log.previousData.diagramChanges.edgesDeleted.length }}):
+                            </p>
+                            <ul class="list-disc list-inside space-y-1">
+                              <li v-for="edge in log.previousData.diagramChanges.edgesDeleted" :key="`${edge.source}-${edge.target}`"
+                                  class="text-xs text-gray-700 dark:text-gray-300 ml-2 line-through">
+                                "{{ edge.sourceLabel }}" → "{{ edge.targetLabel }}"
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+
+                        <!-- Show other field changes -->
                         <div v-if="log.previousData" class="rounded bg-gray-100 dark:bg-gray-700 p-2">
                           <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Before:</p>
                           <pre class="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ formatData(log.previousData) }}</pre>
@@ -363,14 +456,57 @@ const formatDate = (dateString) => {
 const formatData = (data) => {
   if (!data) return 'N/A'
 
+  // Create a copy without the diagramChanges (shown separately)
+  const { diagramChanges, ...rest } = data
+
   // Only show relevant fields for display
   const filtered = {
-    name: data.name,
-    description: data.description,
-    status: data.status,
-    // Don't show diagram data as it's too verbose
+    name: rest.name,
+    description: rest.description,
+    status: rest.status,
+    maxBuildsToKeep: rest.maxBuildsToKeep,
+    maxLogDays: rest.maxLogDays,
+    allowedGroups: rest.allowedGroups
   }
 
+  // Remove undefined fields
+  Object.keys(filtered).forEach(key => {
+    if (filtered[key] === undefined) {
+      delete filtered[key]
+    }
+  })
+
   return JSON.stringify(filtered, null, 2)
+}
+
+const formatFieldValue = (field, value) => {
+  if (!value && value !== 0 && value !== false) return '(empty)'
+
+  // For script/code fields, show a preview if too long
+  if ((field === 'script' || field === 'code') && value.length > 100) {
+    return value.substring(0, 100) + '... (' + value.length + ' chars)'
+  }
+
+  // For configuration fields, try to parse and format nicely
+  if (field.includes('_config') || field === 'webhook_config' || field === 'job_trigger_config') {
+    try {
+      const parsed = JSON.parse(value)
+      return JSON.stringify(parsed, null, 2)
+    } catch {
+      return value
+    }
+  }
+
+  // For cron expressions, show as-is
+  if (field === 'cron_expression') {
+    return value
+  }
+
+  // For conditions, show as-is
+  if (field === 'condition') {
+    return value
+  }
+
+  return value
 }
 </script>

@@ -282,6 +282,256 @@ export class AuditLogger {
 }
 
 /**
+ * Analyzes diagram changes and returns detailed diff information
+ * @param {Object} previousDiagram - Previous diagram data
+ * @param {Object} newDiagram - New diagram data
+ * @returns {Object} Detailed change information
+ */
+export function analyzeDiagramChanges(previousDiagram, newDiagram) {
+  if (!previousDiagram || !newDiagram) {
+    return null
+  }
+
+  const changes = {
+    nodesAdded: [],
+    nodesDeleted: [],
+    nodesModified: [],
+    edgesAdded: [],
+    edgesDeleted: [],
+    summary: []
+  }
+
+  const prevNodes = previousDiagram.nodes || []
+  const newNodes = newDiagram.nodes || []
+  const prevEdges = previousDiagram.edges || []
+  const newEdges = newDiagram.edges || []
+
+  // Create lookup maps
+  const prevNodeMap = new Map(prevNodes.map(n => [n.id, n]))
+  const newNodeMap = new Map(newNodes.map(n => [n.id, n]))
+  const prevEdgeMap = new Map(prevEdges.map(e => [`${e.source}-${e.target}`, e]))
+  const newEdgeMap = new Map(newEdges.map(e => [`${e.source}-${e.target}`, e]))
+
+  // Detect added nodes
+  for (const node of newNodes) {
+    if (!prevNodeMap.has(node.id)) {
+      changes.nodesAdded.push({
+        id: node.id,
+        type: node.type,
+        label: node.data?.label || 'Unlabeled',
+        position: node.position
+      })
+    }
+  }
+
+  // Detect deleted nodes
+  for (const node of prevNodes) {
+    if (!newNodeMap.has(node.id)) {
+      changes.nodesDeleted.push({
+        id: node.id,
+        type: node.type,
+        label: node.data?.label || 'Unlabeled'
+      })
+    }
+  }
+
+  // Detect modified nodes
+  for (const node of newNodes) {
+    const prevNode = prevNodeMap.get(node.id)
+    if (prevNode && newNodeMap.has(node.id)) {
+      const modifications = []
+
+      // Check label changes
+      const prevLabel = prevNode.data?.label
+      const newLabel = node.data?.label
+      if (prevLabel !== newLabel) {
+        modifications.push({
+          field: 'label',
+          before: prevLabel || '',
+          after: newLabel || ''
+        })
+      }
+
+      // Check script changes (for execution nodes)
+      const executionNodeTypes = ['bash', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl']
+      if (node.data?.nodeType && executionNodeTypes.includes(node.data.nodeType)) {
+        const prevScript = prevNode.data?.script
+        const newScript = node.data?.script
+        if (prevScript !== newScript) {
+          modifications.push({
+            field: 'script',
+            before: prevScript || '',
+            after: newScript || ''
+          })
+        }
+
+        // Check code changes
+        const prevCode = prevNode.data?.code
+        const newCode = node.data?.code
+        if (prevCode !== newCode) {
+          modifications.push({
+            field: 'code',
+            before: prevCode || '',
+            after: newCode || ''
+          })
+        }
+      }
+
+      // Check trigger configuration changes (for trigger nodes)
+      const triggerNodeTypes = ['cron', 'webhook', 'job-trigger']
+      if (node.data?.nodeType && triggerNodeTypes.includes(node.data.nodeType)) {
+        // For cron triggers
+        if (node.data.nodeType === 'cron') {
+          const prevCron = prevNode.data?.cronExpression
+          const newCron = node.data?.cronExpression
+          if (prevCron !== newCron) {
+            modifications.push({
+              field: 'cron_expression',
+              before: prevCron || '',
+              after: newCron || ''
+            })
+          }
+        }
+
+        // For webhook triggers
+        if (node.data.nodeType === 'webhook') {
+          const prevWebhook = JSON.stringify(prevNode.data?.webhook || {})
+          const newWebhook = JSON.stringify(node.data?.webhook || {})
+          if (prevWebhook !== newWebhook) {
+            modifications.push({
+              field: 'webhook_config',
+              before: prevWebhook,
+              after: newWebhook
+            })
+          }
+        }
+
+        // For job triggers
+        if (node.data.nodeType === 'job-trigger') {
+          const prevTrigger = JSON.stringify({
+            projectId: prevNode.data?.triggerProjectId,
+            onStatus: prevNode.data?.onStatus
+          })
+          const newTrigger = JSON.stringify({
+            projectId: node.data?.triggerProjectId,
+            onStatus: node.data?.onStatus
+          })
+          if (prevTrigger !== newTrigger) {
+            modifications.push({
+              field: 'job_trigger_config',
+              before: prevTrigger,
+              after: newTrigger
+            })
+          }
+        }
+      }
+
+      // Check conditional node changes
+      if (node.data?.nodeType === 'conditional') {
+        const prevCondition = prevNode.data?.condition
+        const newCondition = node.data?.condition
+        if (prevCondition !== newCondition) {
+          modifications.push({
+            field: 'condition',
+            before: prevCondition || '',
+            after: newCondition || ''
+          })
+        }
+      }
+
+      // Check parallel execution changes
+      if (node.data?.nodeType === 'parallel_execution') {
+        const prevExecScript = prevNode.data?.script
+        const newExecScript = node.data?.script
+        if (prevExecScript !== newExecScript) {
+          modifications.push({
+            field: 'script',
+            before: prevExecScript || '',
+            after: newExecScript || ''
+          })
+        }
+      }
+
+      // Check position changes (significant movements only, > 50px)
+      const posChanged = Math.abs((prevNode.position?.x || 0) - (node.position?.x || 0)) > 50 ||
+                        Math.abs((prevNode.position?.y || 0) - (node.position?.y || 0)) > 50
+      if (posChanged) {
+        modifications.push({
+          field: 'position',
+          before: `(${prevNode.position?.x || 0}, ${prevNode.position?.y || 0})`,
+          after: `(${node.position?.x || 0}, ${node.position?.y || 0})`
+        })
+      }
+
+      if (modifications.length > 0) {
+        changes.nodesModified.push({
+          id: node.id,
+          type: node.type,
+          label: node.data?.label || 'Unlabeled',
+          modifications
+        })
+      }
+    }
+  }
+
+  // Detect added edges
+  for (const [key, edge] of newEdgeMap) {
+    if (!prevEdgeMap.has(key)) {
+      const sourceNode = newNodeMap.get(edge.source)
+      const targetNode = newNodeMap.get(edge.target)
+      changes.edgesAdded.push({
+        source: edge.source,
+        target: edge.target,
+        sourceLabel: sourceNode?.data?.label || edge.source,
+        targetLabel: targetNode?.data?.label || edge.target
+      })
+    }
+  }
+
+  // Detect deleted edges
+  for (const [key, edge] of prevEdgeMap) {
+    if (!newEdgeMap.has(key)) {
+      const sourceNode = prevNodeMap.get(edge.source)
+      const targetNode = prevNodeMap.get(edge.target)
+      changes.edgesDeleted.push({
+        source: edge.source,
+        target: edge.target,
+        sourceLabel: sourceNode?.data?.label || edge.source,
+        targetLabel: targetNode?.data?.label || edge.target
+      })
+    }
+  }
+
+  // Generate human-readable summary
+  if (changes.nodesAdded.length > 0) {
+    const labels = changes.nodesAdded.map(n => `"${n.label}"`).join(', ')
+    changes.summary.push(`Added ${changes.nodesAdded.length} node${changes.nodesAdded.length > 1 ? 's' : ''}: ${labels}`)
+  }
+
+  if (changes.nodesDeleted.length > 0) {
+    const labels = changes.nodesDeleted.map(n => `"${n.label}"`).join(', ')
+    changes.summary.push(`Deleted ${changes.nodesDeleted.length} node${changes.nodesDeleted.length > 1 ? 's' : ''}: ${labels}`)
+  }
+
+  if (changes.nodesModified.length > 0) {
+    for (const mod of changes.nodesModified) {
+      const modTypes = mod.modifications.map(m => m.field).join(', ')
+      changes.summary.push(`Modified "${mod.label}": ${modTypes}`)
+    }
+  }
+
+  if (changes.edgesAdded.length > 0) {
+    changes.summary.push(`Added ${changes.edgesAdded.length} connection${changes.edgesAdded.length > 1 ? 's' : ''}`)
+  }
+
+  if (changes.edgesDeleted.length > 0) {
+    changes.summary.push(`Deleted ${changes.edgesDeleted.length} connection${changes.edgesDeleted.length > 1 ? 's' : ''}`)
+  }
+
+  return changes
+}
+
+/**
  * Helper function to generate a human-readable changes summary
  * @param {Object} previousData - Data before change
  * @param {Object} newData - Data after change
@@ -302,10 +552,21 @@ export function generateChangesSummary(previousData, newData) {
   const fieldsToCheck = ['name', 'description', 'status', 'diagramData', 'maxBuildsToKeep', 'maxLogDays']
 
   for (const field of fieldsToCheck) {
-    if (previousData[field] !== newData[field]) {
-      if (field === 'diagramData') {
-        changes.push('Updated project diagram data')
-      } else if (field === 'name') {
+    if (field === 'diagramData') {
+      // Deep comparison for diagram data
+      const prevDiagram = previousData[field]
+      const newDiagram = newData[field]
+
+      if (JSON.stringify(prevDiagram) !== JSON.stringify(newDiagram)) {
+        const diagramChanges = analyzeDiagramChanges(prevDiagram, newDiagram)
+        if (diagramChanges && diagramChanges.summary.length > 0) {
+          changes.push(...diagramChanges.summary)
+        } else {
+          changes.push('Updated project diagram data')
+        }
+      }
+    } else if (previousData[field] !== newData[field]) {
+      if (field === 'name') {
         changes.push(`Renamed from "${previousData[field]}" to "${newData[field]}"`)
       } else if (field === 'description') {
         changes.push('Updated description')

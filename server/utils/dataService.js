@@ -2,7 +2,7 @@ import { getDB } from './database.js'
 import { users, items, envVariables, credentialVault, systemSettings, agents, auditLogs, projectSnapshots } from './schema.js'
 import { eq } from 'drizzle-orm'
 import crypto from 'crypto'
-import { AuditLogger, generateChangesSummary } from './audit-logger.js'
+import { AuditLogger, generateChangesSummary, analyzeDiagramChanges } from './audit-logger.js'
 
 export class DataService {
   constructor() {
@@ -197,6 +197,34 @@ export class DataService {
     if (userInfo) {
       const changesSummary = generateChangesSummary(previousItem, updatedItem)
 
+      // For projects with diagram changes, store detailed change metadata
+      let diagramChangesMetadata = null
+      if (updatedItem.type === 'project' && JSON.stringify(previousItem.diagramData) !== JSON.stringify(updatedItem.diagramData)) {
+        diagramChangesMetadata = analyzeDiagramChanges(previousItem.diagramData, updatedItem.diagramData)
+      }
+
+      // Create a lightweight version of the data for audit log
+      // Only include non-diagram fields to avoid duplication with snapshots
+      const lightweightPrevData = {
+        name: previousItem.name,
+        description: previousItem.description,
+        status: previousItem.status,
+        maxBuildsToKeep: previousItem.maxBuildsToKeep,
+        maxLogDays: previousItem.maxLogDays,
+        allowedGroups: previousItem.allowedGroups,
+        // Include diagram change metadata instead of full diagram
+        diagramChanges: diagramChangesMetadata
+      }
+
+      const lightweightNewData = {
+        name: updatedItem.name,
+        description: updatedItem.description,
+        status: updatedItem.status,
+        maxBuildsToKeep: updatedItem.maxBuildsToKeep,
+        maxLogDays: updatedItem.maxLogDays,
+        allowedGroups: updatedItem.allowedGroups
+      }
+
       await this.auditLogger.logEvent({
         entityType: updatedItem.type,
         entityId: updatedItem.id,
@@ -205,14 +233,14 @@ export class DataService {
         userId: userInfo.userId,
         userName: userInfo.userName,
         changesSummary,
-        previousData: previousItem,
-        newData: updatedItem,
+        previousData: updatedItem.type === 'project' ? lightweightPrevData : previousItem,
+        newData: updatedItem.type === 'project' ? lightweightNewData : updatedItem,
         ipAddress: userInfo.ipAddress,
         userAgent: userInfo.userAgent
       })
 
-      // Create snapshot for project updates
-      if (updatedItem.type === 'project' && updatedItem.diagramData) {
+      // Create snapshot for project updates (only when diagram actually changed)
+      if (updatedItem.type === 'project' && updatedItem.diagramData && diagramChangesMetadata) {
         await this.auditLogger.createSnapshot({
           projectId: updatedItem.id,
           projectName: updatedItem.name,
