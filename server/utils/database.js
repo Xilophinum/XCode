@@ -90,6 +90,53 @@ export class DatabaseManager {
       console.warn('⚠️ Migration warning (drop tables):', error.message)
     }
 
+    // Add LDAP and access control columns to users table
+    try {
+      const columns = this.sqlite.prepare("PRAGMA table_info(users)").all()
+      const columnNames = columns.map(col => col.name)
+      
+      const newColumns = [
+        'user_type TEXT NOT NULL DEFAULT "local"',
+        'external_id TEXT',
+        'groups TEXT',
+        'last_login TEXT',
+        'is_active TEXT NOT NULL DEFAULT "true"'
+      ]
+      
+      for (const column of newColumns) {
+        const columnName = column.split(' ')[0]
+        if (!columnNames.includes(columnName)) {
+          this.sqlite.exec(`ALTER TABLE users ADD COLUMN ${column}`)
+        }
+      }
+      
+      console.log('✅ Updated users table with LDAP and access control support')
+    } catch (error) {
+      console.warn('⚠️ Migration warning (users columns):', error.message)
+    }
+
+    // Add access control columns to items table
+    try {
+      const columns = this.sqlite.prepare("PRAGMA table_info(items)").all()
+      const columnNames = columns.map(col => col.name)
+      
+      const accessColumns = [
+        'access_policy TEXT DEFAULT "public"',
+        'allowed_groups TEXT'
+      ]
+      
+      for (const column of accessColumns) {
+        const columnName = column.split(' ')[0]
+        if (!columnNames.includes(columnName)) {
+          this.sqlite.exec(`ALTER TABLE items ADD COLUMN ${column}`)
+        }
+      }
+      
+      console.log('✅ Updated items table with access control support')
+    } catch (error) {
+      console.warn('⚠️ Migration warning (items access control):', error.message)
+    }
+
     // Add new columns to existing builds table
     try {
       const columns = this.sqlite.prepare("PRAGMA table_info(builds)").all()
@@ -176,8 +223,13 @@ export class DatabaseManager {
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
           email TEXT UNIQUE NOT NULL,
-          password_hash TEXT NOT NULL,
+          password_hash TEXT,
           role TEXT,
+          user_type TEXT NOT NULL DEFAULT 'local',
+          external_id TEXT,
+          groups TEXT,
+          last_login TEXT,
+          is_active TEXT NOT NULL DEFAULT 'true',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
@@ -196,6 +248,8 @@ export class DatabaseManager {
           status TEXT NOT NULL DEFAULT 'active',
           max_builds_to_keep INTEGER DEFAULT 50,
           max_log_days INTEGER DEFAULT 30,
+          access_policy TEXT DEFAULT 'public',
+          allowed_groups TEXT,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           FOREIGN KEY (user_id) REFERENCES users (id)
@@ -397,6 +451,8 @@ export class DatabaseManager {
         )
       `)
 
+
+
       // Create indexes for better performance
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_project_id ON builds(project_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_status ON builds(status)`)
@@ -431,8 +487,13 @@ export class DatabaseManager {
           id VARCHAR(255) PRIMARY KEY,
           name VARCHAR(255) NOT NULL,
           email VARCHAR(255) UNIQUE NOT NULL,
-          password_hash VARCHAR(255) NOT NULL,
+          password_hash VARCHAR(255),
           role VARCHAR(50),
+          user_type VARCHAR(50) NOT NULL DEFAULT 'local',
+          external_id VARCHAR(255),
+          groups TEXT,
+          last_login TEXT,
+          is_active VARCHAR(10) NOT NULL DEFAULT 'true',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
@@ -450,6 +511,8 @@ export class DatabaseManager {
           status VARCHAR(50) NOT NULL DEFAULT 'active',
           max_builds_to_keep INTEGER DEFAULT 50,
           max_log_days INTEGER DEFAULT 30,
+          access_policy VARCHAR(50) DEFAULT 'public',
+          allowed_groups TEXT,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
@@ -656,10 +719,10 @@ export class DatabaseManager {
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)`
 
+
+
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_snapshots_project_id ON project_snapshots(project_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_snapshots_version ON project_snapshots(project_id, version)`
-
-
 
       console.log('✅ PostgreSQL tables created successfully')
     } catch (error) {
@@ -705,6 +768,28 @@ export class DatabaseManager {
       console.log('✅ PostgreSQL migrations completed')
     } catch (error) {
       console.warn('⚠️ PostgreSQL migration warning:', error.message)
+    }
+
+    // Add LDAP support columns to users table
+    try {
+      await this.postgres`ALTER TABLE users ADD COLUMN IF NOT EXISTS user_type VARCHAR(50) NOT NULL DEFAULT 'local'`
+      await this.postgres`ALTER TABLE users ADD COLUMN IF NOT EXISTS external_id VARCHAR(255)`
+      await this.postgres`ALTER TABLE users ADD COLUMN IF NOT EXISTS groups TEXT`
+      await this.postgres`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TEXT`
+      await this.postgres`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active VARCHAR(10) NOT NULL DEFAULT 'true'`
+      await this.postgres`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`
+      console.log('✅ Updated users table with LDAP support')
+    } catch (error) {
+      console.warn('⚠️ PostgreSQL migration warning (LDAP columns):', error.message)
+    }
+
+    // Add access control columns to items table
+    try {
+      await this.postgres`ALTER TABLE items ADD COLUMN IF NOT EXISTS access_policy VARCHAR(50) DEFAULT 'public'`
+      await this.postgres`ALTER TABLE items ADD COLUMN IF NOT EXISTS allowed_groups TEXT`
+      console.log('✅ Updated items table with access control support')
+    } catch (error) {
+      console.warn('⚠️ PostgreSQL migration warning (access control):', error.message)
     }
   }
 

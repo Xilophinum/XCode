@@ -7,7 +7,6 @@ import { cronManager } from '../utils/cronManager.js'
 
 export default async function (nitroApp) {
   console.log('🕐 Initializing Cron Manager...')
-  
   // Restore cron jobs from database on server startup
   try {
     await cronManager.restoreCronJobsFromDatabase()
@@ -15,14 +14,4 @@ export default async function (nitroApp) {
   } catch (error) {
     console.error('❌ Failed to initialize Cron Manager:', error)
   }
-  
-  nitroApp.hooks.hook('close', async () => {
-    console.log('🛑 Shutting down Cron Manager...')
-    // Cancel all cron jobs on server shutdown
-    const scheduledJobs = cronManager.getScheduledJobs()
-    for (const job of scheduledJobs) {
-      cronManager.cancelCronJob(job.jobId)
-    }
-    console.log('✅ Cron Manager shutdown complete')
-  })
 }

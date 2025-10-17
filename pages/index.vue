@@ -4,8 +4,8 @@
     <AppNavigation />
 
     <!-- Main Content -->
-    <main class="max-w-8xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div class="px-4 py-6 sm:px-0">
+    <main class="max-w-8xl mx-auto py-4 sm:px-6 lg:px-8">
+      <div class="px-4 sm:px-0">
         <div class="mb-8">
           <h2 class="text-2xl font-bold text-gray-950 dark:text-white">Dashboard</h2>
           <p class="text-gray-600 dark:text-gray-300">Manage your hierarchical project folders</p>
@@ -89,8 +89,10 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                   <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Success Rate</dt>
-                    <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ buildSuccessRate }}%</dd>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Build Success Rate</dt>
+                    <dd 
+                      :class="['text-lg font-medium', buildSuccessRate > 80 ? 'text-green-600 dark:text-green-400' : buildSuccessRate > 70 ? 'text-yellow-600 dark:text-yellow-400' : buildSuccessRate > 55 ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400']"
+                    >{{ buildSuccessRate }}%</dd>
                   </dl>
                 </div>
               </div>
@@ -207,7 +209,7 @@
               <p class="text-gray-600 dark:text-gray-300 mb-4">No folders yet. Create your first folder!</p>
             </div>
 
-            <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div
                 v-for="folder in rootFolders"
                 :key="folder.id"
@@ -501,7 +503,7 @@ const filteredPaths = ref([])
 
 // Get root level folders (folders with empty path)
 const rootFolders = computed(() => {
-  return projectsStore.getFoldersAtPath([])
+  return projectsStore.getFoldersAtPath([]).sort((a, b) => a.name.localeCompare(b.name))
 })
 
 // Get all available paths for move destination
@@ -547,9 +549,16 @@ const busyAgentsCount = computed(() => {
   return agents.value.filter(agent => agent.status === 'busy').length
 })
 
-const buildSuccessRate = computed(() => {
-  // TODO: Calculate from actual build stats
-  return 85
+const buildSuccessRate = ref(0)
+
+const { data: projectStats } = await useLazyAsyncData('project-stats', () => $fetch('/api/projects/stats'))
+
+watchEffect(() => {
+  if (projectStats.value?.length) {
+    buildSuccessRate.value = Math.round(
+      (projectStats.value.reduce((acc, project) => acc + project.successRate, 0) / projectStats.value.length) * 100
+    )
+  }
 })
 
 // Actions

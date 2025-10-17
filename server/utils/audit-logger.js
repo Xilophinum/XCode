@@ -58,8 +58,6 @@ export class AuditLogger {
       }
 
       await this.db.insert(this.auditLogs).values(auditLog)
-
-      console.log(`📝 Audit log: ${action} ${entityType} "${entityName}" by ${userName}`)
       return auditLog
     } catch (error) {
       console.error('❌ Error logging audit event:', error)
@@ -121,8 +119,6 @@ export class AuditLogger {
       }
 
       await this.db.insert(this.projectSnapshots).values(snapshot)
-
-      console.log(`📸 Snapshot created: "${projectName}" v${nextVersion} (${snapshotType})`)
       return snapshot
     } catch (error) {
       console.error('❌ Error creating snapshot:', error)
@@ -308,7 +304,7 @@ export function generateChangesSummary(previousData, newData) {
   for (const field of fieldsToCheck) {
     if (previousData[field] !== newData[field]) {
       if (field === 'diagramData') {
-        changes.push('Updated project configuration')
+        changes.push('Updated project diagram data')
       } else if (field === 'name') {
         changes.push(`Renamed from "${previousData[field]}" to "${newData[field]}"`)
       } else if (field === 'description') {

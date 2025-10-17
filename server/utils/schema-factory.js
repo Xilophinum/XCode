@@ -9,8 +9,13 @@ export function createSchema(dbType) {
         id: pgVarchar('id', { length: 255 }).primaryKey(),
         name: pgVarchar('name', { length: 255 }).notNull(),
         email: pgVarchar('email', { length: 255 }).notNull().unique(),
-        passwordHash: pgVarchar('password_hash', { length: 255 }).notNull(),
+        passwordHash: pgVarchar('password_hash', { length: 255 }),
         role: pgVarchar('role', { length: 50 }),
+        userType: pgVarchar('user_type', { length: 50 }).notNull().default('local'),
+        externalId: pgVarchar('external_id', { length: 255 }),
+        groups: pgText('groups'),
+        lastLogin: pgText('last_login'),
+        isActive: pgVarchar('is_active', { length: 10 }).notNull().default('true'),
         createdAt: pgText('created_at').notNull(),
         updatedAt: pgText('updated_at').notNull(),
       }),
@@ -24,6 +29,9 @@ export function createSchema(dbType) {
         userId: pgVarchar('user_id', { length: 255 }).notNull(),
         diagramData: pgText('diagram_data'),
         status: pgVarchar('status', { length: 50 }).notNull().default('active'),
+        // Access control
+        accessPolicy: pgVarchar('access_policy', { length: 50 }).default('public'), // 'owner', 'groups', 'public'
+        allowedGroups: pgText('allowed_groups'), // JSON array of group names for group-based access
         maxBuildsToKeep: pgInteger('max_builds_to_keep').default(50),
         maxLogDays: pgInteger('max_log_days').default(30),
         createdAt: pgText('created_at').notNull(),

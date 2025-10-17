@@ -4,7 +4,7 @@
     <AppNavigation :breadcrumbs="pathSegments" />
 
     <!-- Main Content -->
-    <main class="flex-1 overflow-hidden flex flex-col max-w-8xl mx-auto w-full py-6 sm:px-6 lg:px-8">
+    <main class="flex-1 overflow-hidden flex flex-col max-w-8xl mx-auto w-full py-4 sm:px-6 lg:px-8">
       <div class="flex-1 overflow-hidden flex flex-col px-4 sm:px-0">
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">
@@ -124,10 +124,22 @@
                 >
                   <div class="py-1">
                     <button
+                      @click.stop="confirmRenameItem(folder)"
+                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Rename
+                    </button>
+                    <button
                       @click.stop="confirmMoveItem(folder)"
                       class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       Move
+                    </button>
+                    <button
+                      @click.stop="showAccessSettings(folder)"
+                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Access Settings
                     </button>
                     <button
                       @click.stop="confirmDeleteFolder(folder)"
@@ -197,10 +209,22 @@
                 >
                   <div class="py-1">
                     <button
+                      @click.stop="confirmRenameItem(project)"
+                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Rename
+                    </button>
+                    <button
                       @click.stop="confirmMoveItem(project)"
                       class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       Move
+                    </button>
+                    <button
+                      @click.stop="showAccessSettings(project)"
+                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Access Settings
                     </button>
                     <button
                       @click.stop="toggleProjectStatus(project)"
@@ -217,6 +241,7 @@
                     >
                       Delete
                     </button>
+                    
                   </div>
                 </div>
               </div>
@@ -468,6 +493,149 @@
     </div>
   </div>
 
+  <!-- Rename Item Modal -->
+  <div v-if="showRenameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" @click="cancelRename">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full" @click.stop>
+      <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+        Rename {{ itemToRename?.type === 'folder' ? 'Folder' : 'Project' }}
+      </h3>
+      
+      <form @submit.prevent="handleRenameItem">
+        <div class="mb-4">
+          <label for="renameName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Name
+          </label>
+          <input
+            id="renameName"
+            v-model="renameForm.name"
+            type="text"
+            required
+            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+            placeholder="Enter new name"
+          >
+        </div>
+        
+        <div class="mb-4">
+          <label for="renameDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Description (Optional)
+          </label>
+          <textarea
+            id="renameDescription"
+            v-model="renameForm.description"
+            rows="3"
+            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+            placeholder="Enter description"
+          ></textarea>
+        </div>
+        
+        <div class="flex justify-end space-x-4">
+          <button
+            type="button"
+            @click="cancelRename"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            :disabled="!renameForm.name.trim()"
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Rename
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Access Settings Modal -->
+  <div v-if="showAccessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" @click="cancelAccessSettings">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full" @click.stop>
+      <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+        Access Settings - {{ itemForAccess?.name }}
+      </h3>
+      
+      <form @submit.prevent="handleAccessUpdate">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Access Policy
+          </label>
+          <select
+            v-model="accessForm.access_policy"
+            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+          >
+            <option value="public">Public - All users can access</option>
+            <option value="owner">Owner Only - Only creator can access</option>
+            <option value="groups">Groups - Only specified groups can access</option>
+          </select>
+        </div>
+        
+        <div v-if="accessForm.access_policy === 'groups'" class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Allowed Groups
+          </label>
+          
+          <!-- Selected Groups -->
+          <div v-if="accessForm.allowed_groups.length > 0" class="mb-2">
+            <div class="flex flex-wrap gap-2">
+              <span
+                v-for="(group, index) in accessForm.allowed_groups"
+                :key="index"
+                class="inline-flex items-center px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full"
+              >
+                {{ group }}
+                <button
+                  type="button"
+                  @click="removeGroupFromAccess(index)"
+                  class="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                >
+                  ×
+                </button>
+              </span>
+            </div>
+          </div>
+          
+          <!-- Available Groups -->
+          <div v-if="availableGroups.length > 0">
+            <select
+              @change="addGroupToAccess($event.target.value); $event.target.value = ''"
+              class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+            >
+              <option value="">Select a group to add...</option>
+              <option
+                v-for="group in availableGroups.filter(g => !accessForm.allowed_groups.includes(g))"
+                :key="group"
+                :value="group"
+              >
+                {{ group }}
+              </option>
+            </select>
+          </div>
+          
+          <p v-else class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            No groups available. Groups are created from user LDAP memberships or manual assignment.
+          </p>
+        </div>
+        
+        <div class="flex justify-end space-x-4">
+          <button
+            type="button"
+            @click="cancelAccessSettings"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Update Access
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <AuditHistoryModal
     :isOpen="showAuditModal"
     :entityId="selectedEntityForAudit?.id"
@@ -632,7 +800,9 @@ const showCreateFolderModal = ref(false)
 const showCreateProjectModal = ref(false)
 const showDeleteProjectModal = ref(false)
 const showMoveModal = ref(false)
+const showRenameModal = ref(false)
 const showAuditModal = ref(false)
+const showAccessModal = ref(false)
 
 // Menu states
 const activeProjectMenu = ref(null)
@@ -659,6 +829,24 @@ const projectToDelete = ref(null)
 const itemToMove = ref(null)
 const destinationPath = ref('')
 const filteredPaths = ref([])
+
+// Rename-related state
+const itemToRename = ref(null)
+const renameForm = ref({
+  name: '',
+  description: ''
+})
+
+// Access settings state
+const itemForAccess = ref(null)
+const accessForm = ref({
+  access_policy: 'public',
+  allowed_groups: []
+})
+const groups = ref([])
+const availableGroups = computed(() => {
+  return groups.value.map(g => g.name)
+})
 
 // Get items at current path
 const foldersAtCurrentPath = computed(() => {
@@ -836,6 +1024,105 @@ const cancelMove = () => {
   itemToMove.value = null
   destinationPath.value = ''
   filteredPaths.value = []
+}
+
+// Rename handlers
+const confirmRenameItem = (item) => {
+  itemToRename.value = item
+  renameForm.value.name = item.name
+  renameForm.value.description = item.description || ''
+  showRenameModal.value = true
+  activeProjectMenu.value = null
+  activeFolderMenu.value = null
+}
+
+const handleRenameItem = async () => {
+  if (!itemToRename.value || !renameForm.value.name.trim()) return
+  
+  const result = await projectsStore.updateItem(itemToRename.value.id, {
+    name: renameForm.value.name.trim(),
+    description: renameForm.value.description.trim()
+  })
+  
+  if (result.success) {
+    cancelRename()
+  } else {
+    console.error('Failed to rename item:', result.error)
+    alert('Failed to rename item. Please try again.')
+  }
+}
+
+const cancelRename = () => {
+  showRenameModal.value = false
+  itemToRename.value = null
+  renameForm.value = { name: '', description: '' }
+}
+
+// Access settings handlers
+const showAccessSettings = async (item) => {
+  itemForAccess.value = item
+  accessForm.value.access_policy = item.accessPolicy || 'public'
+  accessForm.value.allowed_groups = item.allowedGroups || []
+  
+  await loadGroups()
+  
+  showAccessModal.value = true
+  activeProjectMenu.value = null
+  activeFolderMenu.value = null
+}
+
+const loadGroups = async () => {
+  try {
+    const settings = await $fetch('/api/admin/system-settings')
+    const groupsSetting = Object.values(settings).flat().find(s => s.key === 'user_groups')
+    if (groupsSetting?.value) {
+      groups.value = JSON.parse(groupsSetting.value).map((name, index) => ({ id: index, name }))
+    } else {
+      groups.value = []
+    }
+  } catch (error) {
+    console.error('Failed to load groups:', error)
+    groups.value = []
+  }
+}
+
+const handleAccessUpdate = async () => {
+  if (!itemForAccess.value) return
+  
+  try {
+    await $fetch(`/api/items/${itemForAccess.value.id}`, {
+      method: 'PUT',
+      body: {
+        accessPolicy: accessForm.value.access_policy,
+        allowedGroups: accessForm.value.allowed_groups
+      }
+    })
+    
+    // Update local item
+    itemForAccess.value.accessPolicy = accessForm.value.access_policy
+    itemForAccess.value.allowedGroups = accessForm.value.allowed_groups
+    
+    cancelAccessSettings()
+  } catch (error) {
+    console.error('Failed to update access settings:', error)
+    alert('Failed to update access settings. Please try again.')
+  }
+}
+
+const cancelAccessSettings = () => {
+  showAccessModal.value = false
+  itemForAccess.value = null
+  accessForm.value = { access_policy: 'public', allowed_groups: [] }
+}
+
+const addGroupToAccess = (group) => {
+  if (!accessForm.value.allowed_groups.includes(group)) {
+    accessForm.value.allowed_groups.push(group)
+  }
+}
+
+const removeGroupFromAccess = (index) => {
+  accessForm.value.allowed_groups.splice(index, 1)
 }
 
 const filterPaths = () => {

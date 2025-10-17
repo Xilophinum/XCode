@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
     // Extract user info for audit logging
     const userInfo = {
       userId: userAuth.userId,
-      userName: userAuth.name,
+      userName: userAuth.userName,
       ipAddress: event.node.req.socket.remoteAddress || event.node.req.headers['x-forwarded-for'] || 'unknown',
       userAgent: event.node.req.headers['user-agent'] || 'unknown'
     }

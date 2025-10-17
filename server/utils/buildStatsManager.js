@@ -341,7 +341,6 @@ export class BuildStatsManager {
     // Get retention settings
     const stats = await this.getProjectStats(projectId)
     const maxBuilds = stats.maxBuildsToKeep || 50
-    const maxLogDays = stats.maxLogDays || 30
 
     // Get builds to delete (keep only the most recent N builds)
     const buildsToKeep = await this.db
@@ -428,6 +427,25 @@ export class BuildStatsManager {
     }
 
     return true
+  }
+
+  async getAllBuildStats() {
+    if (!this.db) await this.initialize()
+
+    const projects = await this.db
+      .select()
+      .from(items)
+      .where(eq(items.type, 'project'))
+    const stats = []
+    for (const project of projects) {
+      const projectStats = await this.getProjectStats(project.id)
+      stats.push({
+        ...projectStats,
+        projectId: project.id,
+        projectName: project.name
+      })
+    }
+    return stats
   }
 }
 

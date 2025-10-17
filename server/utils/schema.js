@@ -4,8 +4,13 @@ export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
+  passwordHash: text('password_hash'), // Nullable for LDAP users
   role: text('role'), // 'admin' or 'user' - nullable for backward compatibility
+  userType: text('user_type').notNull().default('local'), // 'local', 'ldap', 'saml', 'oauth'
+  externalId: text('external_id'), // LDAP DN or external system ID
+  groups: text('groups'), // JSON array of group names/DNs
+  lastLogin: text('last_login'), // Track last login time
+  isActive: text('is_active').notNull().default('true'), // Enable/disable users
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
@@ -19,6 +24,10 @@ export const items = sqliteTable('items', {
   userId: text('user_id').notNull(),
   diagramData: text('diagram_data'), // JSON as string for project data
   status: text('status').notNull().default('active'), // 'active' or 'disabled' for projects
+  
+  // Access control
+  accessPolicy: text('access_policy').default('public'), // 'owner', 'groups', 'public'
+  allowedGroups: text('allowed_groups'), // JSON array of group names for group-based access
   
   // Build retention settings (for projects only)
   maxBuildsToKeep: integer('max_builds_to_keep').default(50), // How many builds to retain per project
@@ -253,6 +262,3 @@ export const projectSnapshots = sqliteTable('project_snapshots', {
 
   createdAt: text('created_at').notNull(),
 })
-
-
-

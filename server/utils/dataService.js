@@ -16,8 +16,6 @@ export class DataService {
     this.auditLogger = new AuditLogger(this.db, { auditLogs, projectSnapshots })
     // Initialize system settings with defaults if they don't exist
     await this.initializeSystemSettings()
-    // Remove deprecated settings
-    // await this.removeDeprecatedSettings()
   }
 
   // User methods
@@ -30,6 +28,10 @@ export class DataService {
       email: userData.email,
       passwordHash: userData.passwordHash,
       role: userData.role || 'user',
+      userType: userData.userType || 'local',
+      externalId: userData.externalId || null,
+      lastLogin: userData.lastLogin || null,
+      isActive: userData.isActive || 'true',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -97,7 +99,7 @@ export class DataService {
         entityName: item.name,
         action: 'create',
         userId: userInfo.userId,
-        userName: userInfo.name,
+        userName: userInfo.userName,
         changesSummary: `Created ${item.type} "${item.name}"`,
         newData: this.parseItem(item),
         ipAddress: userInfo.ipAddress,
@@ -114,7 +116,7 @@ export class DataService {
           maxBuildsToKeep: itemData.maxBuildsToKeep || 50,
           maxLogDays: itemData.maxLogDays || 30,
           userId: userInfo.userId,
-          userName: userInfo.name,
+          userName: userInfo.userName,
           snapshotType: 'auto',
           description: 'Initial version'
         })
@@ -128,12 +130,20 @@ export class DataService {
   async getItemsByUserId(userId) {
     await this.ensureInitialized()
     
-    const itemList = await this.db
-      .select()
-      .from(items)
-      .where(eq(items.userId, userId))
-
-    return itemList.map(item => this.parseItem(item))
+    const user = await this.getUserById(userId)
+    if (!user) return []
+    
+    // Admin users see all items
+    if (user.role === 'admin') {
+      const allItems = await this.getAllItems()
+      return allItems
+    }
+    
+    // Regular users see items based on access control
+    const allItems = await this.getAllItems()
+    const { AccessControl } = await import('./accessControl.js')
+    
+    return await AccessControl.filterAccessibleItems(allItems, userId)
   }
 
   async getItemById(id) {
@@ -150,7 +160,6 @@ export class DataService {
 
   async updateItem(id, updates, userInfo = null) {
     await this.ensureInitialized()
-
     // Get the item before update for audit log
     const previousItem = await this.getItemById(id)
     if (!previousItem) {
@@ -172,6 +181,11 @@ export class DataService {
       updateData.diagramData = JSON.stringify(updates.diagramData)
     }
 
+    // Handle allowedGroups as JSON if provided
+    if (updates.allowedGroups !== undefined) {
+      updateData.allowedGroups = updates.allowedGroups ? JSON.stringify(updates.allowedGroups) : null
+    }
+
     await this.db
       .update(items)
       .set(updateData)
@@ -189,7 +203,7 @@ export class DataService {
         entityName: updatedItem.name,
         action: 'update',
         userId: userInfo.userId,
-        userName: userInfo.name,
+        userName: userInfo.userName,
         changesSummary,
         previousData: previousItem,
         newData: updatedItem,
@@ -207,7 +221,7 @@ export class DataService {
           maxBuildsToKeep: updatedItem.maxBuildsToKeep || 50,
           maxLogDays: updatedItem.maxLogDays || 30,
           userId: userInfo.userId,
-          userName: userInfo.name,
+          userName: userInfo.userName,
           snapshotType: 'auto',
           description: changesSummary
         })
@@ -235,7 +249,7 @@ export class DataService {
         entityName: item.name,
         action: 'delete',
         userId: userInfo.userId,
-        userName: userInfo.name,
+        userName: userInfo.userName,
         changesSummary: `Deleted ${item.type} "${item.name}"`,
         previousData: item,
         ipAddress: userInfo.ipAddress,
@@ -308,6 +322,7 @@ export class DataService {
       ...item,
       path: JSON.parse(item.path || '[]'),
       diagramData: item.diagramData ? JSON.parse(item.diagramData) : null,
+      allowedGroups: item.allowedGroups ? JSON.parse(item.allowedGroups) : [],
       createdAt: new Date(item.createdAt),
       updatedAt: new Date(item.updatedAt),
     }
@@ -602,10 +617,7 @@ export class DataService {
     
     const setting = {
       id: Date.now().toString(),
-      category: data.category,
-      key: data.key,
-      value: data.value,
-      description: data.description || '',
+      ...data,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -660,6 +672,11 @@ export class DataService {
     return result[0] || null
   }
 
+  // Alias for getSystemSettingByKey
+  async getSystemSetting(key) {
+    return await this.getSystemSettingByKey(key)
+  }
+
   async updateSystemSettingByKey(key, value) {
     await this.ensureInitialized()
     
@@ -693,6 +710,11 @@ export class DataService {
       name: user.name,
       email: user.email,
       role: user.role,
+      userType: user.userType || 'local',
+      externalId: user.externalId,
+      groups: user.groups || '',
+      lastLogin: user.lastLogin,
+      isActive: user.isActive || 'true',
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     }))
@@ -707,6 +729,22 @@ export class DataService {
         role: role,
         updatedAt: new Date().toISOString() 
       })
+      .where(eq(users.id, userId))
+
+    return await this.getUserById(userId)
+  }
+
+  async updateUser(userId, updates) {
+    await this.ensureInitialized()
+    
+    const updateData = {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    }
+
+    await this.db
+      .update(users)
+      .set(updateData)
       .where(eq(users.id, userId))
 
     return await this.getUserById(userId)
@@ -1118,6 +1156,139 @@ export class DataService {
         description: 'Current version of the application',
         required: 'true',
         readonly: 'true'
+      },
+      {
+        category: 'authentication',
+        key: 'ldap_enabled',
+        value: 'false',
+        defaultValue: 'false',
+        type: 'boolean',
+        label: 'Enable LDAP Authentication',
+        description: 'Enable LDAP/Active Directory authentication for users',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        category: 'authentication',
+        key: 'ldap_url',
+        value: '',
+        defaultValue: '',
+        type: 'text',
+        label: 'LDAP Server URL',
+        description: 'LDAP server URL (e.g., ldap://domain.com:389 or ldaps://domain.com:636)',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        category: 'authentication',
+        key: 'ldap_bind_dn',
+        value: '',
+        defaultValue: '',
+        type: 'text',
+        label: 'Bind DN',
+        description: 'Service account DN for LDAP binding (optional)',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        category: 'authentication',
+        key: 'ldap_bind_password',
+        value: '',
+        defaultValue: '',
+        type: 'password',
+        label: 'Bind Password',
+        description: 'Service account password for LDAP binding (optional)',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        category: 'authentication',
+        key: 'ldap_user_search_base',
+        value: '',
+        defaultValue: '',
+        type: 'text',
+        label: 'User Search Base',
+        description: 'Base DN for user searches (e.g., ou=users,dc=domain,dc=com)',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        category: 'authentication',
+        key: 'ldap_user_search_filter',
+        value: '(mail={username})',
+        defaultValue: '(mail={username})',
+        type: 'text',
+        label: 'User Search Filter',
+        description: 'LDAP filter for finding users. Use {username} placeholder (e.g., (mail={username}) or (sAMAccountName={username}))',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        category: 'authentication',
+        key: 'ldap_timeout',
+        value: '5000',
+        defaultValue: '5000',
+        type: 'number',
+        label: 'Connection Timeout (ms)',
+        description: 'LDAP connection timeout in milliseconds',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        category: 'authentication',
+        key: 'ldap_auto_create_users',
+        value: 'true',
+        defaultValue: 'true',
+        type: 'boolean',
+        label: 'Auto-create LDAP Users',
+        description: 'Automatically create user accounts for successful LDAP authentications',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        category: 'authentication',
+        key: 'ldap_default_role',
+        value: 'user',
+        defaultValue: 'user',
+        type: 'select',
+        options: JSON.stringify(['user', 'admin']),
+        label: 'Default Role for LDAP Users',
+        description: 'Default role assigned to new LDAP users',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        category: 'authentication',
+        key: 'ldap_use_tls',
+        value: 'false',
+        defaultValue: 'false',
+        type: 'boolean',
+        label: 'Use TLS/StartTLS',
+        description: 'Enable TLS encryption for LDAP connections',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        category: 'authentication',
+        key: 'ldap_tls_certificate',
+        value: '',
+        defaultValue: '',
+        type: 'file',
+        label: 'TLS Certificate (.pem)',
+        description: 'Upload CA certificate for TLS verification (optional)',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        category: 'general',
+        key: 'user_groups',
+        value: '[]',
+        defaultValue: '[]',
+        type: 'text',
+        label: 'User Groups',
+        description: 'JSON array of available user groups for access control',
+        required: 'false',
+        readonly: 'true'
       }
     ]
 
@@ -1130,34 +1301,11 @@ export class DataService {
         .limit(1)
 
       if (!existing.length) {
-        await this.db.insert(systemSettings).values({
-          ...setting,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })
+        await this.createSystemSetting(setting)
       }
     }
   }
-
-  // Remove deprecated settings
-  async removeDeprecatedSettings() {
-    await this.ensureInitialized()
-    
-    const deprecatedSettings = [
-      'require_email_verification'
-    ]
-    
-    for (const settingKey of deprecatedSettings) {
-      try {
-        await this.db
-          .delete(systemSettings)
-          .where(eq(systemSettings.key, settingKey))
-        console.log(`Removed deprecated setting: ${settingKey}`)
-      } catch (error) {
-        console.log(`Setting ${settingKey} not found or already removed`)
-      }
-    }
-  }
+  
 }
 
 // Singleton instance

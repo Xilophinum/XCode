@@ -35,28 +35,49 @@
               <p class="text-gray-600 dark:text-gray-300 mt-2">Loading settings...</p>
             </div>
             
-            <div v-else class="space-y-8">
+            <div v-else class="space-y-4">
               <!-- Settings by Category -->
-              <div v-for="(settings, category) in groupedSystemSettings" :key="category" class="border-b border-gray-200 dark:border-gray-700 pb-8 last:border-b-0">
-                <h3 class="text-md font-medium text-gray-950 dark:text-white mb-4 capitalize flex items-center">
-                  <!-- Category Icons -->
-                  <svg v-if="category === 'branding'" class="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
+              <div v-for="(settings, category) in groupedSystemSettings" :key="category" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <button
+                  @click="toggleCategory(category)"
+                  class="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <div class="flex items-center">
+                    <h3 class="text-md font-medium text-gray-950 dark:text-white flex items-center">
+                      <!-- Category Icons -->
+                      <svg v-if="category === 'branding'" class="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
+                      </svg>
+                      <svg v-else-if="category === 'security'" class="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                      </svg>
+                      <svg v-else-if="category === 'authentication'" class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                      </svg>
+                      <svg v-else-if="category === 'notifications'" class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.828 7l5.657-5.657A2 2 0 0112 0h8a2 2 0 012 2v8a2 2 0 01-.586 1.414L15.657 17H12l-5.657-5.657A2 2 0 015 10.828V2a2 2 0 01.828-1.172z"></path>
+                      </svg>
+                      <svg v-else-if="category === 'general'" class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                      </svg>
+                      <svg v-else class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                      </svg>
+                      {{ getCategoryTitle(category) }}
+                    </h3>
+                  </div>
+                  <svg 
+                    :class="expandedCategories.has(category) ? 'rotate-180' : ''"
+                    class="w-5 h-5 text-gray-400 transition-transform duration-200" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                   </svg>
-                  <svg v-else-if="category === 'security'" class="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                  </svg>
-                  <svg v-else-if="category === 'notifications'" class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.828 7l5.657-5.657A2 2 0 0112 0h8a2 2 0 012 2v8a2 2 0 01-.586 1.414L15.657 17H12l-5.657-5.657A2 2 0 015 10.828V2a2 2 0 01.828-1.172z"></path>
-                  </svg>
-                  <svg v-else-if="category === 'general'" class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                  </svg>
-                  <svg v-else class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                  </svg>
-                  {{ getCategoryTitle(category) }}
-                </h3>
+                </button>
+                
+                <div v-if="expandedCategories.has(category)" class="p-6 bg-white dark:bg-gray-800">
                 
                 <div class="grid grid-cols-1 gap-6">
                   <div v-for="setting in settings" :key="setting.key" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
@@ -82,6 +103,17 @@
                         v-model="setting.value"
                         :disabled="setting.readonly === 'true'"
                         type="text"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-950 dark:text-white"
+                        @change="updateSetting(setting.key, setting.value)"
+                      >
+                      
+                      <!-- Password Input -->
+                      <input
+                        v-else-if="setting.type === 'password'"
+                        :id="setting.key"
+                        v-model="setting.value"
+                        :disabled="setting.readonly === 'true'"
+                        type="password"
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-950 dark:text-white"
                         @change="updateSetting(setting.key, setting.value)"
                       >
@@ -168,6 +200,79 @@
                       >
                     </div>
                   </div>
+                  
+                  <!-- LDAP Test Section -->
+                  <div v-if="category === 'authentication' && hasLdapSettings" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+                    <div class="flex items-center justify-between mb-4">
+                      <h4 class="text-md font-medium text-gray-950 dark:text-white">LDAP Connection Test</h4>
+                      <span v-if="ldapTestResult?.success" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                        ✓ Last test successful
+                      </span>
+                      <span v-else-if="ldapTestResult && !ldapTestResult.success" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">
+                        ✗ Last test failed
+                      </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Test Username</label>
+                        <input
+                          v-model="ldapTestForm.username"
+                          type="text"
+                          placeholder="user@domain.com or username"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+                        >
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Test Password</label>
+                        <input
+                          v-model="ldapTestForm.password"
+                          type="password"
+                          placeholder="Password"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+                        >
+                      </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                      <button
+                        @click="testLdapConnection"
+                        :disabled="!ldapTestForm.username || !ldapTestForm.password || ldapTesting"
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        <svg v-if="ldapTesting" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {{ ldapTesting ? 'Testing...' : 'Test LDAP Connection' }}
+                      </button>
+                      
+                      <div v-if="ldapTestResult" class="text-sm">
+                        <span v-if="ldapTestResult.success" class="text-green-600 dark:text-green-400">
+                          ✓ {{ ldapTestResult.message }}
+                        </span>
+                        <span v-else class="text-red-600 dark:text-red-400">
+                          ✗ {{ ldapTestResult.message }}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div v-if="ldapTestResult?.success && ldapTestResult.user" class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-md">
+                      <h5 class="text-sm font-medium text-green-800 dark:text-green-200 mb-2">User Information Retrieved:</h5>
+                      <div class="text-xs text-green-700 dark:text-green-300 space-y-1">
+                        <div><strong>DN:</strong> {{ ldapTestResult.user.dn }}</div>
+                        <div><strong>Name:</strong> {{ ldapTestResult.user.name }}</div>
+                        <div><strong>Email:</strong> {{ ldapTestResult.user.email }}</div>
+                        <div v-if="ldapTestResult.user.groups?.length"><strong>Groups:</strong> {{ ldapTestResult.user.groups.join(', ') }}</div>
+                      </div>
+                    </div>
+                    
+                    <div v-if="ldapTestResult && !ldapTestResult.success" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
+                      <h5 class="text-sm font-medium text-red-800 dark:text-red-200 mb-2">Error Details:</h5>
+                      <div class="text-xs text-red-700 dark:text-red-300">{{ ldapTestResult.error }}</div>
+                    </div>
+                  </div>
+                </div>
                 </div>
               </div>
               
@@ -326,6 +431,57 @@
           </div>
         </div>
 
+        <!-- Groups Management Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-semibold text-gray-950 dark:text-white">Groups Management</h2>
+              <button
+                @click="showGroupModal = true"
+                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Create Group
+              </button>
+            </div>
+            
+            <div class="space-y-3">
+              <div v-if="groups.length === 0" class="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
+                No groups created
+              </div>
+              <div
+                v-for="group in groups"
+                :key="group.id"
+                class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+              >
+                <div class="flex-1">
+                  <div class="font-medium text-sm text-gray-950 dark:text-white">{{ group.name }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">{{ group.description || 'No description' }}</div>
+                  <div class="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                    {{ group.memberCount || 0 }} members
+                  </div>
+                </div>
+                <div class="flex space-x-2">
+                  <button
+                    @click="editGroup(group)"
+                    class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    @click="deleteGroup(group.id)"
+                    class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- User Management Section -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div class="p-6">
@@ -345,27 +501,46 @@
                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   <tr v-for="user in users" :key="user.id">
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm font-medium text-gray-950 dark:text-white">{{ user.name }}</div>
+                      <div class="flex items-center space-x-2">
+                        <div class="text-sm font-medium text-gray-950 dark:text-white">{{ user.name }}</div>
+                        <span v-if="user.userType === 'ldap'" class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
+                          LDAP
+                        </span>
+                      </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm text-gray-950 dark:text-white">{{ user.email }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span :class="user.role === 'admin' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' : 'bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200'" 
-                            class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                        {{ user.role }}
-                      </span>
+                      <div class="flex items-center space-x-2">
+                        <span :class="user.role === 'admin' ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' : 'bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200'" 
+                              class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                          {{ user.role }}
+                        </span>
+                        <span v-if="user.isActive === 'false'" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">
+                          Inactive
+                        </span>
+                      </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {{ formatDate(user.createdAt) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        @click="toggleUserRole(user)"
-                        class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
-                      >
-                        {{ user.role === 'admin' ? 'Make User' : 'Make Admin' }}
-                      </button>
+                      <div class="flex space-x-2">
+                        <button
+                          @click="toggleUserRole(user)"
+                          class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                        >
+                          {{ user.role === 'admin' ? 'Make User' : 'Make Admin' }}
+                        </button>
+                        <button
+                          v-if="user.userType !== 'ldap'"
+                          @click="manageUserGroups(user)"
+                          class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300"
+                        >
+                          Groups
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -841,19 +1016,123 @@
       </div>
     </div>
 
-    <!-- System Settings Modal (Placeholder) -->
-    <div v-if="showSettingsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <!-- Group Modal -->
+    <div v-if="showGroupModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
       <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">System Settings</h3>
-        <p class="text-gray-600 dark:text-gray-300 mb-4">System settings functionality is not implemented yet.</p>
-        <div class="flex justify-end">
-          <button
-            @click="closeSettingsModal"
-            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-          >
-            Close
-          </button>
-        </div>
+        <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">
+          {{ editingGroup ? 'Edit Group' : 'Create Group' }}
+        </h3>
+        
+        <form @submit.prevent="saveGroup">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Name</label>
+            <input
+              v-model="groupForm.name"
+              type="text"
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+              placeholder="Group name"
+            >
+          </div>
+          
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+            <textarea
+              v-model="groupForm.description"
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+              placeholder="Optional description"
+            ></textarea>
+          </div>
+          
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              @click="closeGroupModal"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
+            >
+              {{ editingGroup ? 'Update' : 'Create' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- User Groups Modal -->
+    <div v-if="showUserGroupsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">
+          Manage Groups - {{ selectedUser?.name }}
+        </h3>
+        
+        <form @submit.prevent="saveUserGroups">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">User Groups</label>
+            
+            <!-- Current Groups -->
+            <div v-if="userGroupForm.groups.length > 0" class="mb-3">
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="(group, index) in userGroupForm.groups"
+                  :key="index"
+                  class="inline-flex items-center px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full"
+                >
+                  {{ group }}
+                  <button
+                    type="button"
+                    @click="removeUserGroup(index)"
+                    class="ml-1 text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300"
+                  >
+                    ×
+                  </button>
+                </span>
+              </div>
+            </div>
+            
+            <!-- Available Groups -->
+            <div v-if="availableGroupsForUser.length > 0">
+              <select
+                @change="addUserGroup($event.target.value); $event.target.value = ''"
+                class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+              >
+                <option value="">Select a group to add...</option>
+                <option
+                  v-for="group in availableGroupsForUser"
+                  :key="group.name"
+                  :value="group.name"
+                >
+                  {{ group.name }}
+                </option>
+              </select>
+            </div>
+            
+            <p v-else class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              No additional groups available.
+            </p>
+          </div>
+          
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              @click="closeUserGroupsModal"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
+            >
+              Update Groups
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -868,10 +1147,14 @@ definePageMeta({
 
 // Data
 const envVariables = ref([])
-const credentials = ref([])
+const storedCredentials = ref({
+  success: false,
+  credentials: []
+})
 const systemSettings = ref({})
 const groupedSystemSettings = ref({})
 const users = ref([])
+const groups = ref([])
 const loading = ref(false)
 
 // Filter state
@@ -879,8 +1162,15 @@ const credentialFilter = ref('')
 
 // Computed for filtered credentials
 const filteredCredentials = computed(() => {
-  if (!credentialFilter.value) return credentials.value
-  return credentials.value.filter(cred => cred.type === credentialFilter.value)
+  if (!credentialFilter.value) return storedCredentials.value.credentials
+  return storedCredentials.value.credentials.filter(cred => cred.type === credentialFilter.value)
+})
+
+// Check if LDAP settings exist
+const hasLdapSettings = computed(() => {
+  return Object.values(groupedSystemSettings.value).some(category => 
+    category.some(setting => setting.category === 'authentication')
+  )
 })
 
 // Modal states
@@ -888,12 +1178,16 @@ const showEnvModal = ref(false)
 const showCredentialModal = ref(false)
 const showCredentialViewModal = ref(false)
 const showSettingsModal = ref(false)
+const showGroupModal = ref(false)
+const showUserGroupsModal = ref(false)
 
 // Editing states
 const editingEnvVariable = ref(null)
 const editingCredential = ref(null)
 const editingSystemSetting = ref(null)
 const viewingCredential = ref(null)
+const editingGroup = ref(null)
+const selectedUser = ref(null)
 
 // Form data
 const envForm = ref({
@@ -927,6 +1221,30 @@ const newTag = ref('')
 const newCustomFieldKey = ref('')
 const newCustomFieldValue = ref('')
 
+const groupForm = ref({
+  name: '',
+  description: ''
+})
+
+const userGroupForm = ref({
+  groups: []
+})
+
+const availableGroupsForUser = computed(() => {
+  return groups.value.filter(group => !userGroupForm.value.groups.includes(group.name))
+})
+
+// LDAP test state
+const ldapTestForm = ref({
+  username: '',
+  password: ''
+})
+const ldapTesting = ref(false)
+const ldapTestResult = ref(null)
+
+// Category expansion state
+const expandedCategories = ref(new Set(['branding']))
+
 const systemSettingsForm = ref({
   category: '',
   key: '',
@@ -947,7 +1265,7 @@ const loadEnvVariables = async () => {
 const loadCredentials = async () => {
   try {
     const data = await $fetch('/api/admin/credentials')
-    credentials.value = data
+    storedCredentials.value = data
   } catch (error) {
     console.error('Failed to load credentials:', error)
   }
@@ -959,6 +1277,32 @@ const loadUsers = async () => {
     users.value = data
   } catch (error) {
     console.error('Failed to load users:', error)
+  }
+}
+
+const loadGroups = async () => {
+  try {
+    const [settings, users] = await Promise.all([
+      $fetch('/api/admin/system-settings'),
+      $fetch('/api/admin/users')
+    ])
+    
+    const groupsSetting = Object.values(settings).flat().find(s => s.key === 'user_groups')
+    if (groupsSetting?.value) {
+      const groupNames = JSON.parse(groupsSetting.value)
+      groups.value = groupNames.map((name, index) => {
+        const memberCount = users.filter(user => {
+          if (!user.groups) return false
+          const userGroups = user.groups.split(',').map(g => g.trim()).filter(g => g)
+          return userGroups.includes(name)
+        }).length
+        return { id: index, name, memberCount }
+      })
+    } else {
+      groups.value = []
+    }
+  } catch (error) {
+    console.error('Failed to load groups:', error)
   }
 }
 
@@ -1094,6 +1438,7 @@ const getCategoryTitle = (category) => {
     'branding': 'Branding & Appearance',
     'general': 'General Settings',
     'security': 'Security Settings',
+    'authentication': 'Authentication & LDAP',
     'notifications': 'Notification Settings',
     'system': 'System Information'
   }
@@ -1284,13 +1629,169 @@ const toggleUserRole = async (user) => {
   }
 }
 
+const toggleCategory = (category) => {
+  if (expandedCategories.value.has(category)) {
+    expandedCategories.value.delete(category)
+  } else {
+    expandedCategories.value.add(category)
+  }
+}
+
+// LDAP test methods
+const testLdapConnection = async () => {
+  ldapTesting.value = true
+  ldapTestResult.value = null
+  
+  try {
+    // Get current LDAP settings
+    const authSettings = groupedSystemSettings.value.authentication || []
+    const config = {
+      url: authSettings.find(s => s.key === 'ldap_url')?.value,
+      bindDN: authSettings.find(s => s.key === 'ldap_bind_dn')?.value,
+      bindPassword: authSettings.find(s => s.key === 'ldap_bind_password')?.value,
+      userSearchBase: authSettings.find(s => s.key === 'ldap_user_search_base')?.value,
+      userSearchFilter: authSettings.find(s => s.key === 'ldap_user_search_filter')?.value,
+      timeout: parseInt(authSettings.find(s => s.key === 'ldap_timeout')?.value || '5000'),
+      useTLS: authSettings.find(s => s.key === 'ldap_use_tls')?.value === 'true',
+      tlsCertificate: authSettings.find(s => s.key === 'ldap_tls_certificate')?.value
+    }
+    
+    const result = await $fetch('/api/admin/ldap/test', {
+      method: 'POST',
+      body: {
+        username: ldapTestForm.value.username,
+        password: ldapTestForm.value.password,
+        config
+      }
+    })
+    
+    ldapTestResult.value = result
+    
+    // Clear password after test
+    ldapTestForm.value.password = ''
+  } catch (error) {
+    console.error('LDAP test failed:', error)
+    ldapTestResult.value = {
+      success: false,
+      message: 'Test failed',
+      error: error.message || 'Unknown error'
+    }
+  } finally {
+    ldapTesting.value = false
+  }
+}
+
+// Group management methods
+const saveGroup = async () => {
+  try {
+    const currentGroups = groups.value.map(g => g.name)
+    let updatedGroups
+    
+    if (editingGroup.value) {
+      updatedGroups = currentGroups.map(name => name === editingGroup.value.name ? groupForm.value.name : name)
+    } else {
+      updatedGroups = [...currentGroups, groupForm.value.name]
+    }
+    
+    await $fetch('/api/admin/system-settings/user_groups', {
+      method: 'PUT',
+      body: { value: JSON.stringify(updatedGroups) }
+    })
+    
+    closeGroupModal()
+    await loadGroups()
+    await loadUsers()
+  } catch (error) {
+    console.error('Failed to save group:', error)
+  }
+}
+
+const editGroup = (group) => {
+  editingGroup.value = group
+  groupForm.value = {
+    name: group.name,
+    description: group.description
+  }
+  showGroupModal.value = true
+}
+
+const deleteGroup = async (id) => {
+  if (confirm('Are you sure you want to delete this group?')) {
+    try {
+      const groupToDelete = groups.value.find(g => g.id === id)
+      const updatedGroups = groups.value.filter(g => g.id !== id).map(g => g.name)
+      
+      await $fetch('/api/admin/system-settings/user_groups', {
+        method: 'PUT',
+        body: { value: JSON.stringify(updatedGroups) }
+      })
+      
+      await loadGroups()
+      await loadUsers()
+    } catch (error) {
+      console.error('Failed to delete group:', error)
+    }
+  }
+}
+
+const closeGroupModal = () => {
+  showGroupModal.value = false
+  editingGroup.value = null
+  groupForm.value = {
+    name: '',
+    description: ''
+  }
+}
+
+// User group management methods
+const manageUserGroups = (user) => {
+  selectedUser.value = user
+  userGroupForm.value = {
+    groups: user.groups ? user.groups.split(',').filter(g => g.trim()) : []
+  }
+  showUserGroupsModal.value = true
+}
+
+const addUserGroup = (groupName) => {
+  if (groupName && !userGroupForm.value.groups.includes(groupName)) {
+    userGroupForm.value.groups.push(groupName)
+  }
+}
+
+const removeUserGroup = (index) => {
+  userGroupForm.value.groups.splice(index, 1)
+}
+
+const saveUserGroups = async () => {
+  try {
+    await $fetch(`/api/admin/users/${selectedUser.value.id}/groups`, {
+      method: 'PUT',
+      body: { groups: userGroupForm.value.groups.join(',') }
+    })
+    closeUserGroupsModal()
+    await loadUsers()
+    await loadGroups()
+  } catch (error) {
+    console.error('Failed to update user groups:', error)
+  }
+}
+
+const closeUserGroupsModal = () => {
+  showUserGroupsModal.value = false
+  selectedUser.value = null
+  userGroupForm.value = {
+    groups: []
+  }
+}
+
 // Initialize data
 onMounted(async () => {
   await Promise.all([
     loadSystemSettings(),
     loadEnvVariables(),
     loadCredentials(),
-    loadUsers()
+    loadUsers(),
+    loadGroups()
   ])
 })
 </script>
