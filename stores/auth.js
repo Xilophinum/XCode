@@ -16,7 +16,7 @@ export const useAuthStore = defineStore('auth', {
     async login(email, password) {
       this.isLoading = true
       try {
-        const user = await $fetch('/api/auth/login', {
+        await $fetch('/api/auth/login', {
           method: 'POST',
           body: { email, password }
         })

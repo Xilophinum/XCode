@@ -15,7 +15,7 @@ export async function getAuthenticatedUser(event) {
     // Verify JWT token
     const config = useRuntimeConfig()
     const decoded = jwt.verify(token, config.jwtSecret)
-    
+    console.log('✅ User authenticated:', decoded)
     return decoded
   } catch (error) {
     if (error.statusCode) {

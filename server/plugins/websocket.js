@@ -538,6 +538,7 @@ async function handleClientAuthentication(socket, msg) {
     socket.clientId = `client_${user.id}_${socket.id}` // Include user ID in client ID
     socket.userId = user.id
     socket.userEmail = user.email
+    socket.userName = user.name
     
     // Store in client connections map
     clientConnections.set(socket.clientId, socket)
@@ -546,6 +547,7 @@ async function handleClientAuthentication(socket, msg) {
       clientId: socket.clientId,
       userId: user.id,
       userEmail: user.email,
+      userName: user.name,
       status: 'connected'
     })
     

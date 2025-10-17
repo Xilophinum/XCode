@@ -1,15 +1,19 @@
 import { getDB } from './database.js'
-import { users, items, envVariables, credentialVault, systemSettings, agents } from './schema.js'
+import { users, items, envVariables, credentialVault, systemSettings, agents, auditLogs, projectSnapshots } from './schema.js'
 import { eq } from 'drizzle-orm'
 import crypto from 'crypto'
+import { AuditLogger, generateChangesSummary } from './audit-logger.js'
 
 export class DataService {
   constructor() {
     this.db = null
+    this.auditLogger = null
   }
 
   async initialize() {
     this.db = await getDB()
+    // Initialize audit logger
+    this.auditLogger = new AuditLogger(this.db, { auditLogs, projectSnapshots })
     // Initialize system settings with defaults if they don't exist
     await this.initializeSystemSettings()
     // Remove deprecated settings
@@ -67,9 +71,9 @@ export class DataService {
   }
 
   // Item methods (folders and projects)
-  async createItem(itemData) {
+  async createItem(itemData, userInfo = null) {
     await this.ensureInitialized()
-    
+
     const item = {
       id: Date.now().toString(),
       name: itemData.name,
@@ -84,7 +88,39 @@ export class DataService {
     }
 
     await this.db.insert(items).values(item)
-    
+
+    // Log audit event
+    if (userInfo) {
+      await this.auditLogger.logEvent({
+        entityType: item.type,
+        entityId: item.id,
+        entityName: item.name,
+        action: 'create',
+        userId: userInfo.userId,
+        userName: userInfo.name,
+        changesSummary: `Created ${item.type} "${item.name}"`,
+        newData: this.parseItem(item),
+        ipAddress: userInfo.ipAddress,
+        userAgent: userInfo.userAgent
+      })
+
+      // Create initial snapshot for projects
+      if (item.type === 'project' && item.diagramData) {
+        await this.auditLogger.createSnapshot({
+          projectId: item.id,
+          projectName: item.name,
+          diagramData: JSON.parse(item.diagramData),
+          status: item.status,
+          maxBuildsToKeep: itemData.maxBuildsToKeep || 50,
+          maxLogDays: itemData.maxLogDays || 30,
+          userId: userInfo.userId,
+          userName: userInfo.name,
+          snapshotType: 'auto',
+          description: 'Initial version'
+        })
+      }
+    }
+
     // Return the item with parsed data
     return this.parseItem(item)
   }
@@ -112,9 +148,15 @@ export class DataService {
     return item[0] ? this.parseItem(item[0]) : null
   }
 
-  async updateItem(id, updates) {
+  async updateItem(id, updates, userInfo = null) {
     await this.ensureInitialized()
-    
+
+    // Get the item before update for audit log
+    const previousItem = await this.getItemById(id)
+    if (!previousItem) {
+      throw new Error('Item not found')
+    }
+
     const updateData = {
       ...updates,
       updatedAt: new Date().toISOString(),
@@ -135,20 +177,76 @@ export class DataService {
       .set(updateData)
       .where(eq(items.id, id))
 
-    return await this.getItemById(id)
+    const updatedItem = await this.getItemById(id)
+
+    // Log audit event
+    if (userInfo) {
+      const changesSummary = generateChangesSummary(previousItem, updatedItem)
+
+      await this.auditLogger.logEvent({
+        entityType: updatedItem.type,
+        entityId: updatedItem.id,
+        entityName: updatedItem.name,
+        action: 'update',
+        userId: userInfo.userId,
+        userName: userInfo.name,
+        changesSummary,
+        previousData: previousItem,
+        newData: updatedItem,
+        ipAddress: userInfo.ipAddress,
+        userAgent: userInfo.userAgent
+      })
+
+      // Create snapshot for project updates
+      if (updatedItem.type === 'project' && updatedItem.diagramData) {
+        await this.auditLogger.createSnapshot({
+          projectId: updatedItem.id,
+          projectName: updatedItem.name,
+          diagramData: updatedItem.diagramData,
+          status: updatedItem.status,
+          maxBuildsToKeep: updatedItem.maxBuildsToKeep || 50,
+          maxLogDays: updatedItem.maxLogDays || 30,
+          userId: userInfo.userId,
+          userName: userInfo.name,
+          snapshotType: 'auto',
+          description: changesSummary
+        })
+      }
+    }
+
+    return updatedItem
   }
 
-  async deleteItem(id) {
+  async deleteItem(id, userInfo = null) {
     await this.ensureInitialized()
-    
+
+    // Get item for audit log before deletion
+    const item = userInfo ? await this.getItemById(id) : null
+
     await this.db
       .delete(items)
       .where(eq(items.id, id))
+
+    // Log audit event
+    if (userInfo && item) {
+      await this.auditLogger.logEvent({
+        entityType: item.type,
+        entityId: item.id,
+        entityName: item.name,
+        action: 'delete',
+        userId: userInfo.userId,
+        userName: userInfo.name,
+        changesSummary: `Deleted ${item.type} "${item.name}"`,
+        previousData: item,
+        ipAddress: userInfo.ipAddress,
+        userAgent: userInfo.userAgent
+      })
+    }
   }
 
   async getAllItems() {
     await this.ensureInitialized()
-    
+
     const itemList = await this.db
       .select()
       .from(items)
@@ -156,9 +254,9 @@ export class DataService {
     return itemList.map(item => this.parseItem(item))
   }
 
-  async deleteItemWithCascade(id) {
+  async deleteItemWithCascade(id, userInfo = null) {
     await this.ensureInitialized()
-    
+
     // First get the item to be deleted
     const itemToDelete = await this.getItemById(id)
     if (!itemToDelete) {
@@ -167,19 +265,19 @@ export class DataService {
 
     // If it's a folder, we need to delete all children recursively
     if (itemToDelete.type === 'folder') {
-      await this.deleteFolderAndChildren(itemToDelete)
+      await this.deleteFolderAndChildren(itemToDelete, userInfo)
     } else {
       // For projects, just delete the item
-      await this.deleteItem(id)
+      await this.deleteItem(id, userInfo)
     }
   }
 
-  async deleteFolderAndChildren(folder) {
+  async deleteFolderAndChildren(folder, userInfo = null) {
     await this.ensureInitialized()
-    
+
     // Build the path for children of this folder
     const childPath = [...folder.path, folder.name]
-    
+
     // Find all items that are children of this folder
     // Children have a path that starts with the folder's path + folder name
     const allItems = await this.getAllItems()
@@ -194,14 +292,14 @@ export class DataService {
     // Delete all children first (recursively)
     for (const child of childItems) {
       if (child.type === 'folder') {
-        await this.deleteFolderAndChildren(child)
+        await this.deleteFolderAndChildren(child, userInfo)
       } else {
-        await this.deleteItem(child.id)
+        await this.deleteItem(child.id, userInfo)
       }
     }
 
     // Finally delete the folder itself
-    await this.deleteItem(folder.id)
+    await this.deleteItem(folder.id, userInfo)
   }
 
   // Helper methods

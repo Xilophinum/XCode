@@ -164,6 +164,38 @@ export function createSchema(dbType) {
         lastRun: pgText('last_run'),
         createdAt: pgText('created_at').notNull(),
         updatedAt: pgText('updated_at').notNull(),
+      }),
+
+      auditLogs: pgTable('audit_logs', {
+        id: pgVarchar('id', { length: 255 }).primaryKey(),
+        entityType: pgVarchar('entity_type', { length: 50 }).notNull(),
+        entityId: pgVarchar('entity_id', { length: 255 }).notNull(),
+        entityName: pgVarchar('entity_name', { length: 255 }).notNull(),
+        action: pgVarchar('action', { length: 50 }).notNull(),
+        userId: pgVarchar('user_id', { length: 255 }).notNull(),
+        userName: pgVarchar('user_name', { length: 255 }).notNull(),
+        changesSummary: pgText('changes_summary'),
+        previousData: pgText('previous_data'),
+        newData: pgText('new_data'),
+        ipAddress: pgVarchar('ip_address', { length: 45 }),
+        userAgent: pgText('user_agent'),
+        createdAt: pgText('created_at').notNull(),
+      }),
+
+      projectSnapshots: pgTable('project_snapshots', {
+        id: pgVarchar('id', { length: 255 }).primaryKey(),
+        projectId: pgVarchar('project_id', { length: 255 }).notNull(),
+        projectName: pgVarchar('project_name', { length: 255 }).notNull(),
+        version: pgInteger('version').notNull(),
+        diagramData: pgText('diagram_data').notNull(),
+        description: pgText('description'),
+        status: pgVarchar('status', { length: 50 }).notNull(),
+        maxBuildsToKeep: pgInteger('max_builds_to_keep'),
+        maxLogDays: pgInteger('max_log_days'),
+        createdBy: pgVarchar('created_by', { length: 255 }).notNull(),
+        createdByName: pgVarchar('created_by_name', { length: 255 }).notNull(),
+        snapshotType: pgVarchar('snapshot_type', { length: 50 }).notNull(),
+        createdAt: pgText('created_at').notNull(),
       })
     }
   } else {
@@ -330,6 +362,38 @@ export function createSchema(dbType) {
         lastRun: text('last_run'),
         createdAt: text('created_at').notNull(),
         updatedAt: text('updated_at').notNull(),
+      }),
+
+      auditLogs: sqliteTable('audit_logs', {
+        id: text('id').primaryKey(),
+        entityType: text('entity_type').notNull(),
+        entityId: text('entity_id').notNull(),
+        entityName: text('entity_name').notNull(),
+        action: text('action').notNull(),
+        userId: text('user_id').notNull(),
+        userName: text('user_name').notNull(),
+        changesSummary: text('changes_summary'),
+        previousData: text('previous_data'),
+        newData: text('new_data'),
+        ipAddress: text('ip_address'),
+        userAgent: text('user_agent'),
+        createdAt: text('created_at').notNull(),
+      }),
+
+      projectSnapshots: sqliteTable('project_snapshots', {
+        id: text('id').primaryKey(),
+        projectId: text('project_id').notNull(),
+        projectName: text('project_name').notNull(),
+        version: integer('version').notNull(),
+        diagramData: text('diagram_data').notNull(),
+        description: text('description'),
+        status: text('status').notNull(),
+        maxBuildsToKeep: integer('max_builds_to_keep'),
+        maxLogDays: integer('max_log_days'),
+        createdBy: text('created_by').notNull(),
+        createdByName: text('created_by_name').notNull(),
+        snapshotType: text('snapshot_type').notNull(),
+        createdAt: text('created_at').notNull(),
       })
     }
   }

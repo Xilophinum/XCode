@@ -95,7 +95,18 @@
             class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/30 relative group"
           >
             <!-- Folder Actions Menu -->
-            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+              <!-- Audit History Button -->
+              <button
+                @click.stop="showAuditHistory(folder)"
+                class="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                title="View history"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+
               <div class="relative">
                 <button
                   @click.stop="toggleFolderMenu(folder.id)"
@@ -157,7 +168,18 @@
             ]"
           >
             <!-- Project Actions Menu -->
-            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+              <!-- Audit History Button -->
+              <button
+                @click.stop="showAuditHistory(project)"
+                class="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                title="View history"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+
               <div class="relative">
                 <button
                   @click.stop="toggleProjectMenu(project.id)"
@@ -445,10 +467,19 @@
       </div>
     </div>
   </div>
+
+  <AuditHistoryModal
+    :isOpen="showAuditModal"
+    :entityId="selectedEntityForAudit?.id"
+    :entityName="selectedEntityForAudit?.name"
+    :entityType="selectedEntityForAudit?.type"
+    @close="handleAuditModalClose"
+  />
 </template>
 
 <script setup>
 import ProjectProgressBar from '@/components/ProjectProgressBar.vue'
+import AuditHistoryModal from '@/components/AuditHistoryModal.vue'
 
 definePageMeta({
   middleware: 'auth'
@@ -601,10 +632,14 @@ const showCreateFolderModal = ref(false)
 const showCreateProjectModal = ref(false)
 const showDeleteProjectModal = ref(false)
 const showMoveModal = ref(false)
+const showAuditModal = ref(false)
 
 // Menu states
 const activeProjectMenu = ref(null)
 const activeFolderMenu = ref(null)
+
+// Audit history state
+const selectedEntityForAudit = ref(null)
 
 // Form data
 const folderForm = ref({
@@ -723,6 +758,33 @@ const toggleFolderMenu = (folderId) => {
 const closeAllMenus = () => {
   activeProjectMenu.value = null
   activeFolderMenu.value = null
+}
+
+// Audit history handlers
+const showAuditHistory = (entity) => {
+  selectedEntityForAudit.value = entity
+  showAuditModal.value = true
+  activeProjectMenu.value = null
+  activeFolderMenu.value = null
+}
+
+const handleAuditModalClose = () => {
+  showAuditModal.value = false
+  selectedEntityForAudit.value = null
+}
+
+const handleProjectReverted = async (updatedProject) => {
+  // Refresh the projects store to get the latest data
+  await projectsStore.loadData()
+
+  // Reload build stats for the reverted project
+  const stats = await getBuildStats(updatedProject.id)
+  if (stats) {
+    projectBuildStats.value.set(updatedProject.id, stats)
+  }
+
+  showAuditModal.value = false
+  selectedEntityForAudit.value = null
 }
 
 // Move handlers

@@ -208,5 +208,51 @@ export const cronJobs = sqliteTable('cron_jobs', {
   updatedAt: text('updated_at').notNull(),
 })
 
+// Audit logs table - tracks all changes to folders and projects
+export const auditLogs = sqliteTable('audit_logs', {
+  id: text('id').primaryKey(),
+  entityType: text('entity_type').notNull(), // 'folder' or 'project'
+  entityId: text('entity_id').notNull(), // ID of the folder/project
+  entityName: text('entity_name').notNull(), // Name at time of action
+  action: text('action').notNull(), // 'create', 'update', 'delete', 'restore'
+  userId: text('user_id').notNull(), // Who performed the action
+  userName: text('user_name').notNull(), // User name at time of action
+
+  // Change details
+  changesSummary: text('changes_summary'), // Human-readable summary of changes
+  previousData: text('previous_data'), // JSON of data before change (for updates/deletes)
+  newData: text('new_data'), // JSON of data after change (for creates/updates)
+
+  // Additional context
+  ipAddress: text('ip_address'), // User IP address
+  userAgent: text('user_agent'), // Browser/client info
+
+  createdAt: text('created_at').notNull(),
+})
+
+// Project snapshots table - stores historical versions for reversion
+export const projectSnapshots = sqliteTable('project_snapshots', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull(), // Reference to project
+  projectName: text('project_name').notNull(), // Project name at snapshot time
+  version: integer('version').notNull(), // Sequential version number
+
+  // Snapshot data
+  diagramData: text('diagram_data').notNull(), // Full project configuration JSON
+  description: text('description'), // Optional description of this version
+  status: text('status').notNull(), // 'active' or 'disabled'
+
+  // Retention settings at snapshot time
+  maxBuildsToKeep: integer('max_builds_to_keep'),
+  maxLogDays: integer('max_log_days'),
+
+  // Context
+  createdBy: text('created_by').notNull(), // User who created this snapshot
+  createdByName: text('created_by_name').notNull(), // User name at snapshot time
+  snapshotType: text('snapshot_type').notNull(), // 'auto' (on save) or 'manual' (user-triggered)
+
+  createdAt: text('created_at').notNull(),
+})
+
 
 

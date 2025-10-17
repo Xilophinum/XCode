@@ -4,14 +4,23 @@ import { getAuthenticatedUser } from '../../utils/auth.js'
 export default defineEventHandler(async (event) => {
   try {
     // Authenticate user
-    await getAuthenticatedUser(event)
-    
+    const userAuth = await getAuthenticatedUser(event)
+
     const itemId = getRouterParam(event, 'id')
+
+    // Extract user info for audit logging
+    const userInfo = {
+      userId: userAuth.userId,
+      userName: userAuth.name,
+      ipAddress: event.node.req.socket.remoteAddress || event.node.req.headers['x-forwarded-for'] || 'unknown',
+      userAgent: event.node.req.headers['user-agent'] || 'unknown'
+    }
+
     const dataService = await getDataService()
-    
+
     // Use cascade delete for both folders and projects
-    await dataService.deleteItemWithCascade(itemId)
-    
+    await dataService.deleteItemWithCascade(itemId, userInfo)
+
     return { success: true }
   } catch (error) {
     console.error('Delete error:', error)

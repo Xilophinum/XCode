@@ -359,7 +359,43 @@ export class DatabaseManager {
         )
       `)
 
+      // Audit Logs table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS audit_logs (
+          id TEXT PRIMARY KEY,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          entity_name TEXT NOT NULL,
+          action TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          user_name TEXT NOT NULL,
+          changes_summary TEXT,
+          previous_data TEXT,
+          new_data TEXT,
+          ip_address TEXT,
+          user_agent TEXT,
+          created_at TEXT NOT NULL
+        )
+      `)
 
+      // Project Snapshots table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS project_snapshots (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          project_name TEXT NOT NULL,
+          version INTEGER NOT NULL,
+          diagram_data TEXT NOT NULL,
+          description TEXT,
+          status TEXT NOT NULL,
+          max_builds_to_keep INTEGER,
+          max_log_days INTEGER,
+          created_by TEXT NOT NULL,
+          created_by_name TEXT NOT NULL,
+          snapshot_type TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      `)
 
       // Create indexes for better performance
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_project_id ON builds(project_id)`)
@@ -369,6 +405,15 @@ export class DatabaseManager {
 
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_cron_jobs_project_id ON cron_jobs(project_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_cron_jobs_enabled ON cron_jobs(enabled)`)
+
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_id ON audit_logs(entity_id)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_type ON audit_logs(entity_type)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)`)
+
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_project_snapshots_project_id ON project_snapshots(project_id)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_project_snapshots_version ON project_snapshots(project_id, version)`)
 
     } catch (error) {
       console.error('Error creating tables:', error)
@@ -561,7 +606,41 @@ export class DatabaseManager {
         )
       `
 
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS audit_logs (
+          id VARCHAR(255) PRIMARY KEY,
+          entity_type VARCHAR(50) NOT NULL,
+          entity_id VARCHAR(255) NOT NULL,
+          entity_name VARCHAR(255) NOT NULL,
+          action VARCHAR(50) NOT NULL,
+          user_id VARCHAR(255) NOT NULL,
+          user_name VARCHAR(255) NOT NULL,
+          changes_summary TEXT,
+          previous_data TEXT,
+          new_data TEXT,
+          ip_address VARCHAR(45),
+          user_agent TEXT,
+          created_at TEXT NOT NULL
+        )
+      `
 
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS project_snapshots (
+          id VARCHAR(255) PRIMARY KEY,
+          project_id VARCHAR(255) NOT NULL,
+          project_name VARCHAR(255) NOT NULL,
+          version INTEGER NOT NULL,
+          diagram_data TEXT NOT NULL,
+          description TEXT,
+          status VARCHAR(50) NOT NULL,
+          max_builds_to_keep INTEGER,
+          max_log_days INTEGER,
+          created_by VARCHAR(255) NOT NULL,
+          created_by_name VARCHAR(255) NOT NULL,
+          snapshot_type VARCHAR(50) NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      `
 
       // Create indexes for better performance
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_project_id ON builds(project_id)`
@@ -570,6 +649,15 @@ export class DatabaseManager {
 
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cron_jobs_project_id ON cron_jobs(project_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cron_jobs_enabled ON cron_jobs(enabled)`
+
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_entity_id ON audit_logs(entity_id)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_entity_type ON audit_logs(entity_type)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)`
+
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_snapshots_project_id ON project_snapshots(project_id)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_snapshots_version ON project_snapshots(project_id, version)`
 
 
 
