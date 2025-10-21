@@ -1,0 +1,51 @@
+// https://nuxt.com/docs/api/configuration/nuxt-config
+import tailwindcss from "@tailwindcss/vite";
+
+export default defineNuxtConfig({
+  compatibilityDate: '2025-07-15',
+  devtools: { enabled: true },
+  ssr: false,
+  
+
+  // Disable TypeScript
+  typescript: {
+    typeCheck: false
+  },
+  imports: {
+    dirs: []
+  },
+
+  modules: [
+    '@nuxt/eslint',
+    '@nuxt/image',
+    '@nuxt/scripts',
+    '@nuxt/ui',
+    '@pinia/nuxt',
+    '@vueuse/nuxt'
+  ],
+  nitro: {
+    experimental: {
+      websocket: true
+    }
+  },
+  // Remove CSS from here and add it to app.vue instead
+  // css: ['./assets/css/main.css'],
+
+  css: ['~/assets/css/main.css'],
+  vite: {
+      plugins: [tailwindcss()],
+      server: {
+        https: {
+          rejectUnauthorized: false
+        }
+      }
+  },
+  runtimeConfig: {
+    // Private keys (only available on server-side)
+    jwtSecret: 'your-secret-key',
+    // Public keys (exposed to client-side)
+    public: {
+      apiBase: '/api'
+    }
+  }
+})
