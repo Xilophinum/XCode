@@ -218,7 +218,7 @@ class AgentManager {
       })
 
       // Trigger next nodes based on success
-      await this.triggerNextNodes(job, { success: true, exitCode: exitCode || 0 })
+      await this.triggerNextNodes(job, { success: true, exitCode: exitCode || 0, output: output })
 
       // Update build status if this job is associated with a build
       if (job.buildNumber) {
@@ -273,7 +273,7 @@ class AgentManager {
 
       // Trigger next nodes based on failure
       if (job) {
-        await this.triggerNextNodes(job, { success: false, exitCode: exitCode || 1, error: errorMessage })
+        await this.triggerNextNodes(job, { success: false, exitCode: exitCode || 1, error: errorMessage, output: data.output })
       }
 
       // Update build status if this job is associated with a build
@@ -434,18 +434,22 @@ class AgentManager {
     }
 
     try {
+      // Parse nodes and edges if they are JSON strings
+      const nodes = typeof job.nodes === 'string' ? JSON.parse(job.nodes) : job.nodes
+      const edges = typeof job.edges === 'string' ? JSON.parse(job.edges) : job.edges
+      
       // Find the last executed node based on job execution commands
       let currentNode = null
       if (job.executionCommands && job.currentCommandIndex !== undefined) {
         const lastCommand = job.executionCommands[job.currentCommandIndex]
         if (lastCommand) {
-          currentNode = job.nodes.find(node => node.id === lastCommand.nodeId)
+          currentNode = nodes.find(node => node.id === lastCommand.nodeId)
         }
       }
       
       // Fallback: find any execution node if we can't determine the current one
       if (!currentNode) {
-        currentNode = job.nodes.find(node =>
+        currentNode = nodes.find(node =>
           ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(node.data?.nodeType)
         )
       }
@@ -458,7 +462,7 @@ class AgentManager {
       console.log(`🔍 Finding next nodes from: ${currentNode.data.label} (${currentNode.data.nodeType})`)
 
       // Get next nodes based on execution result
-      const nextNodes = getExecutionConnectedNodes(currentNode.id, job.nodes, job.edges, new Map(), executionResult)
+      const nextNodes = getExecutionConnectedNodes(currentNode.id, nodes, edges, new Map(), executionResult)
 
       if (nextNodes.length === 0) {
         console.log(`🏁 No next nodes to execute for job ${job.jobId}`)
@@ -472,13 +476,36 @@ class AgentManager {
         console.log(`🚀 Executing next node: ${nextNode.data.label}`)
         
         try {
+          // Create parameter values map including execution outputs
+          const parameterValues = new Map()
+          
+          // Add execution output if available
+          if (executionResult && executionResult.output) {
+            // Find edges connecting current node's output to next node's input
+            const outputConnection = edges.find(edge => 
+              edge.source === currentNode.id && 
+              edge.target === nextNode.id && 
+              edge.sourceHandle === 'output'
+            )
+            
+            if (outputConnection && outputConnection.targetHandle) {
+              console.log(`📤 Passing execution output "${executionResult.output}" to node: ${nextNode.data.label}`)
+              parameterValues.set(`${nextNode.id}_${outputConnection.targetHandle}`, {
+                label: outputConnection.targetHandle,
+                value: executionResult.output,
+                nodeType: 'execution-output'
+              })
+            }
+          }
+          
           // Create execution data for the next node
           const executionData = {
             projectId: job.projectId,
             nodes: [nextNode], // Only execute this specific node
-            edges: job.edges,
+            edges: edges,
             startTime: new Date().toISOString(),
-            trigger: 'node-completion'
+            trigger: 'node-completion',
+            executionOutputs: parameterValues // Pass the execution outputs
           }
           
           // Execute the next node
@@ -498,7 +525,7 @@ class AgentManager {
       }
 
     } catch (error) {
-      console.error(`❌ Error triggering next nodes for job ${job.jobId}:`, error)
+      console.error(`❌ Error triggering next nodes for job ${job?.jobId || 'undefined'}:`, error)
     }
   }
 
@@ -766,7 +793,7 @@ class AgentManager {
       })
 
       // Trigger next nodes based on success
-      await this.triggerNextNodes(parentJobUpdated, { success: true, exitCode: 0 })
+      await this.triggerNextNodes(parentJobUpdated, { success: true, exitCode: 0, output: parentJobUpdated.finalOutput })
 
       // Update build status if this job is associated with a build
       if (parentJobUpdated.buildNumber) {

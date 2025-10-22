@@ -14,7 +14,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const subscribedProjects = ref(new Set())
   
   // Job state for real-time updates
-  const currentJobs = ref(new Map()) // Map of projectId to { jobId, buildId, buildNumber, ... }
+  const currentJobs = ref(new Map()) // Map of projectId to { jobId, buildNumber, ... }
   const jobMessages = ref(new Map()) // Map of projectId to messages array
   
   // Connection status computed
@@ -242,7 +242,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
         if (message.jobId && message.agentId) {
           currentJobs.value.set(projectId, {
             jobId: message.jobId,
-            buildId: message.buildId,
             buildNumber: message.buildNumber,
             agentId: message.agentId,
             status: message.status || 'running',
@@ -261,7 +260,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       case 'cron_job_started':
         currentJobs.value.set(projectId, {
           jobId: message.jobId,
-          buildId: message.buildId,
+          buildNumber: message.buildNumber,
           agentId: message.agentId,
           status: 'running',
           startTime: message.timestamp || message.startTime || new Date().toISOString(),
@@ -270,8 +269,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
         })
         addJobMessage(projectId, 'System', 'success', `🤖 Cron job started on agent ${message.agentName}`)
         addJobMessage(projectId, 'System', 'info', `Job ID: ${message.jobId}`)
-        if (message.buildId) {
-          addJobMessage(projectId, 'System', 'info', `Build ID: ${message.buildId}`)
+        if (message.buildNumber) {
+          addJobMessage(projectId, 'System', 'info', `Build #: ${message.buildNumber}`)
         }
         break
         
@@ -281,23 +280,16 @@ export const useWebSocketStore = defineStore('websocket', () => {
         const existingMainJob = currentJobs.value.get(projectId)
 
         if (!isSubJob) {
-          // This is a main job - preserve existing buildId if it's already a proper build ID
-          const existingBuildId = existingMainJob?.buildId
-          const hasValidBuildId = existingBuildId && existingBuildId.startsWith('build_')
-          const newBuildId = message.buildId && message.buildId.startsWith('build_')
-            ? message.buildId
-            : (hasValidBuildId ? existingBuildId : message.jobId)
-
           currentJobs.value.set(projectId, {
             jobId: message.jobId,
-            buildId: newBuildId,
+            buildNumber: message.buildNumber,
             agentId: message.agentId,
             status: message.status || 'created',
             startTime: message.startTime || new Date().toISOString(),
             nodeId: message.nodeId,
             trigger: 'manual'
           })
-          console.log(`📋 Main job created with buildId: ${newBuildId}`)
+          console.log(`📋 Main job created with buildNumber: ${message.buildNumber}`)
         } else {
           // This is a sub-job - don't overwrite main job, just log it
           console.log(`📋 Sub-job created: ${message.jobId} (preserving main job)`)
@@ -307,20 +299,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'job_started':
-        // Update or create job with buildId when job actually starts
+        // Update or create job when job actually starts
         const existingJob = currentJobs.value.get(projectId)
-
-        // Preserve existing buildId if it's a valid build ID
-        const existingStartedBuildId = existingJob?.buildId
-        const hasValidStartedBuildId = existingStartedBuildId && existingStartedBuildId.startsWith('build_')
-        const newStartedBuildId = message.buildId && message.buildId.startsWith('build_')
-          ? message.buildId
-          : (hasValidStartedBuildId ? existingStartedBuildId : message.buildId || message.jobId)
 
         currentJobs.value.set(projectId, {
           ...(existingJob || {}),
           jobId: message.jobId,
-          buildId: newStartedBuildId,
+          buildNumber: message.buildNumber || existingJob?.buildNumber,
           agentId: message.agentId,
           agentName: message.agentName,
           status: message.status || 'running',
@@ -328,7 +313,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
           nodeId: message.nodeId,
           trigger: message.trigger || 'manual'
         })
-        console.log(`✅ Job started with buildId: ${newStartedBuildId}`)
+        console.log(`✅ Job started with buildNumber: ${message.buildNumber || existingJob?.buildNumber}`)
         break
         
       case 'job_status_updated':
@@ -493,19 +478,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // Persist System message to database
   const persistSystemMessage = async (projectId, level, message, timestamp) => {
     try {
-      // Find current running job to get buildId
+      // Find current running job to get buildNumber
       const currentJob = getCurrentJob(projectId)
 
-      if (currentJob?.buildId) {
-        const buildId = currentJob.buildId
+      if (currentJob?.buildNumber) {
+        const buildNumber = currentJob.buildNumber
 
-        // Validate it's a proper buildId (starts with 'build_')
-        if (!buildId.startsWith('build_')) {
-          console.warn(`⚠️ Skipping persistence - invalid buildId: ${buildId}`)
-          return
-        }
-
-        await $fetch(`/api/projects/${projectId}/builds/${buildId}/logs`, {
+        await $fetch(`/api/projects/${projectId}/builds/${buildNumber}/logs`, {
           method: 'PATCH',
           body: {
             type: 'log',
@@ -516,9 +495,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
             timestamp: timestamp || new Date().toISOString()
           }
         })
-        console.log(`✅ Persisted System log to build ${buildId}`)
+        console.log(`✅ Persisted System log to build #${buildNumber}`)
       } else {
-        console.warn('⚠️ Cannot persist System message: No buildId available yet')
+        console.warn('⚠️ Cannot persist System message: No buildNumber available yet')
       }
     } catch (error) {
       console.error('❌ Failed to persist System message:', error)

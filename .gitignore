@@ -6,6 +6,7 @@
 .cache
 .github
 .claude
+.amazonq
 .npmrc
 dist
 

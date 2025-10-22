@@ -80,7 +80,95 @@ export class DatabaseManager {
   }
 
   async runSQLiteMigrations() {
-    // Drop legacy tables and migrate to unified builds
+    // Migration: Update builds table to use composite primary key
+    try {
+      // Check if builds table has old schema with id column
+      const tableInfo = this.sqlite.prepare("PRAGMA table_info(builds)").all()
+      const hasIdColumn = tableInfo.some(col => col.name === 'id')
+      
+      if (hasIdColumn) {
+        console.log('🔄 Migrating builds table to new schema...')
+        
+        // Backup existing data
+        const existingBuilds = this.sqlite.prepare("SELECT * FROM builds").all()
+        
+        // Drop old table
+        this.sqlite.exec("DROP TABLE builds")
+        
+        // Recreate with new schema
+        this.sqlite.exec(`
+          CREATE TABLE builds (
+            project_id TEXT NOT NULL,
+            project_name TEXT NOT NULL,
+            build_number INTEGER NOT NULL,
+            agent_id TEXT,
+            agent_name TEXT,
+            trigger TEXT NOT NULL,
+            status TEXT NOT NULL,
+            message TEXT,
+            started_at TEXT NOT NULL,
+            finished_at TEXT,
+            duration INTEGER,
+            current_command_index INTEGER,
+            execution_commands TEXT,
+            current_node_id TEXT,
+            current_node_label TEXT,
+            nodes TEXT,
+            edges TEXT,
+            node_count INTEGER,
+            nodes_executed INTEGER,
+            exit_code INTEGER,
+            error TEXT,
+            final_output TEXT,
+            can_retry_on_reconnect TEXT DEFAULT 'false',
+            parallel_branches_result TEXT,
+            parallel_matrix_result TEXT,
+            git_branch TEXT,
+            git_commit TEXT,
+            metadata TEXT,
+            output_log TEXT,
+            last_sequence INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (project_id, build_number)
+          )
+        `)
+        
+        // Restore data (excluding id column)
+        if (existingBuilds.length > 0) {
+          const insertStmt = this.sqlite.prepare(`
+            INSERT INTO builds (
+              project_id, project_name, build_number, agent_id, agent_name,
+              trigger, status, message, started_at, finished_at, duration,
+              current_command_index, execution_commands, current_node_id,
+              current_node_label, nodes, edges, node_count, nodes_executed,
+              exit_code, error, final_output, can_retry_on_reconnect,
+              parallel_branches_result, parallel_matrix_result, git_branch,
+              git_commit, metadata, output_log, last_sequence, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `)
+          
+          for (const build of existingBuilds) {
+            insertStmt.run(
+              build.project_id, build.project_name, build.build_number,
+              build.agent_id, build.agent_name, build.trigger, build.status,
+              build.message, build.started_at, build.finished_at, build.duration,
+              build.current_command_index, build.execution_commands,
+              build.current_node_id, build.current_node_label, build.nodes,
+              build.edges, build.node_count, build.nodes_executed, build.exit_code,
+              build.error, build.final_output, build.can_retry_on_reconnect,
+              build.parallel_branches_result, build.parallel_matrix_result,
+              build.git_branch, build.git_commit, build.metadata, build.output_log,
+              build.last_sequence, build.created_at, build.updated_at
+            )
+          }
+        }
+        
+        console.log(`✅ Migrated builds table with ${existingBuilds.length} records`)
+      }
+    } catch (error) {
+      console.error('Error migrating builds table:', error)
+    }
   }
 
   async createSQLiteTables() {
@@ -228,10 +316,9 @@ export class DatabaseManager {
       // Unified builds table (combines builds, jobs, and outputs)
       this.sqlite.exec(`
         CREATE TABLE IF NOT EXISTS builds (
-          id TEXT PRIMARY KEY,
           project_id TEXT NOT NULL,
           project_name TEXT NOT NULL,
-          build_number INTEGER NOT NULL DEFAULT 0,
+          build_number INTEGER NOT NULL,
           agent_id TEXT,
           agent_name TEXT,
           trigger TEXT NOT NULL,
@@ -260,7 +347,8 @@ export class DatabaseManager {
           output_log TEXT,
           last_sequence INTEGER DEFAULT 0,
           created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (project_id, build_number)
         )
       `)
 
@@ -486,10 +574,9 @@ export class DatabaseManager {
 
       await this.postgres`
         CREATE TABLE IF NOT EXISTS builds (
-          id VARCHAR(255) PRIMARY KEY,
           project_id VARCHAR(255) NOT NULL,
           project_name VARCHAR(255) NOT NULL,
-          build_number INTEGER NOT NULL DEFAULT 0,
+          build_number INTEGER NOT NULL,
           agent_id VARCHAR(255),
           agent_name VARCHAR(255),
           trigger VARCHAR(50) NOT NULL,
@@ -518,7 +605,8 @@ export class DatabaseManager {
           output_log TEXT,
           last_sequence INTEGER DEFAULT 0,
           created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (project_id, build_number)
         )
       `
 
@@ -602,24 +690,96 @@ export class DatabaseManager {
   }
 
   async runPostgresMigrations() {
-    // Add project_name column to builds table if it doesn't exist
+    // Migration: Update builds table to use composite primary key
     try {
-      const result = await this.postgres`
+      // Check if builds table has old schema with id column
+      const idColumnCheck = await this.postgres`
         SELECT column_name 
         FROM information_schema.columns 
-        WHERE table_name = 'builds' AND column_name = 'project_name'
+        WHERE table_name = 'builds' AND column_name = 'id'
       `
       
-      if (result.length === 0) {
-        console.log('🔄 Adding project_name column to builds table...')
-        await this.postgres`ALTER TABLE builds ADD COLUMN project_name VARCHAR(255) NOT NULL DEFAULT ''`
-        console.log('✅ Added project_name column to builds table')
+      if (idColumnCheck.length > 0) {
+        console.log('🔄 Migrating builds table to new schema...')
+        
+        // Backup existing data
+        const existingBuilds = await this.postgres`SELECT * FROM builds`
+        
+        // Drop old table
+        await this.postgres`DROP TABLE builds`
+        
+        // Recreate with new schema
+        await this.postgres`
+          CREATE TABLE builds (
+            project_id VARCHAR(255) NOT NULL,
+            project_name VARCHAR(255) NOT NULL,
+            build_number INTEGER NOT NULL,
+            agent_id VARCHAR(255),
+            agent_name VARCHAR(255),
+            trigger VARCHAR(50) NOT NULL,
+            status VARCHAR(50) NOT NULL,
+            message TEXT,
+            started_at TEXT NOT NULL,
+            finished_at TEXT,
+            duration INTEGER,
+            current_command_index INTEGER,
+            execution_commands TEXT,
+            current_node_id VARCHAR(255),
+            current_node_label VARCHAR(255),
+            nodes TEXT,
+            edges TEXT,
+            node_count INTEGER,
+            nodes_executed INTEGER,
+            exit_code INTEGER,
+            error TEXT,
+            final_output TEXT,
+            can_retry_on_reconnect VARCHAR(10) DEFAULT 'false',
+            parallel_branches_result TEXT,
+            parallel_matrix_result TEXT,
+            git_branch VARCHAR(255),
+            git_commit VARCHAR(255),
+            metadata TEXT,
+            output_log TEXT,
+            last_sequence INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (project_id, build_number)
+          )
+        `
+        
+        // Restore data (excluding id column)
+        if (existingBuilds.length > 0) {
+          for (const build of existingBuilds) {
+            await this.postgres`
+              INSERT INTO builds (
+                project_id, project_name, build_number, agent_id, agent_name,
+                trigger, status, message, started_at, finished_at, duration,
+                current_command_index, execution_commands, current_node_id,
+                current_node_label, nodes, edges, node_count, nodes_executed,
+                exit_code, error, final_output, can_retry_on_reconnect,
+                parallel_branches_result, parallel_matrix_result, git_branch,
+                git_commit, metadata, output_log, last_sequence, created_at, updated_at
+              ) VALUES (
+                ${build.project_id}, ${build.project_name}, ${build.build_number},
+                ${build.agent_id}, ${build.agent_name}, ${build.trigger}, ${build.status},
+                ${build.message}, ${build.started_at}, ${build.finished_at}, ${build.duration},
+                ${build.current_command_index}, ${build.execution_commands},
+                ${build.current_node_id}, ${build.current_node_label}, ${build.nodes},
+                ${build.edges}, ${build.node_count}, ${build.nodes_executed}, ${build.exit_code},
+                ${build.error}, ${build.final_output}, ${build.can_retry_on_reconnect},
+                ${build.parallel_branches_result}, ${build.parallel_matrix_result},
+                ${build.git_branch}, ${build.git_commit}, ${build.metadata}, ${build.output_log},
+                ${build.last_sequence}, ${build.created_at}, ${build.updated_at}
+              )
+            `
+          }
+        }
+        
+        console.log(`✅ Migrated builds table with ${existingBuilds.length} records`)
       }
     } catch (error) {
-      console.error('Error adding project_name column:', error)
+      console.error('Error migrating builds table:', error)
     }
-
-    // Drop legacy tables and migrate to unified builds
   }
 
   getDatabase() {

@@ -2,6 +2,39 @@
   <div class="h-screen bg-neutral-50 dark:bg-neutral-900 overflow-hidden">
     <!-- Navigation -->
     <AppNavigation :breadcrumbs="pathSegments">
+      <template #mobile-actions>
+        <!-- Mobile: Only show Run/Cancel and Save buttons -->
+        <div class="inline-flex rounded-md shadow-sm">
+          <button
+            @click="executeGraph"
+            :disabled="isExecuting || project?.status === 'disabled'"
+            class="relative inline-flex items-center px-2 py-2 border border-transparent text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 rounded-l-md"
+            :class="{ 'rounded-r-md': !isExecuting }"
+          >
+            <svg v-if="isExecuting" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 718-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-dasharray="40" stroke-dashoffset="40" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6l10 6l-10 6Z"><animate fill="freeze" attributeName="fill-opacity" begin="0.5s" dur="0.5s" values="0;1"/><animate fill="freeze" attributeName="stroke-dashoffset" dur="0.5s" values="40;0"/></path></svg>
+          </button>
+          <button
+            v-if="isExecuting"
+            @click="cancelExecution"
+            class="relative inline-flex items-center px-2 py-2 border border-l-0 border-red-500 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 rounded-r-md"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" class="h-4 w-4">
+              <path fill="currentColor" d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10s10-4.47 10-10S17.53 2 12 2zM17 15.59L15.59 17L12 13.41L8.41 17L7 15.59L10.59 12L7 8.41L8.41 7L12 10.59L15.59 7L17 8.41L13.41 12L17 15.59z"/>
+            </svg>
+          </button>
+        </div>
+        <button
+          @click="saveProject"
+          :disabled="isSaving"
+          class="inline-flex items-center px-2 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M20 7.423v10.962q0 .69-.462 1.153T18.384 20H5.616q-.691 0-1.153-.462T4 18.384V5.616q0-.691.463-1.153T5.616 4h10.961zm-8.004 9.115q.831 0 1.417-.582T14 14.543t-.582-1.418t-1.413-.586t-1.419.581T10 14.535t.582 1.418t1.414.587M6.769 9.77h7.423v-3H6.77z"/></svg>
+        </button>
+      </template>
       <template #actions>
         <!-- Run/Cancel Split Button -->
         <div class="inline-flex rounded-md shadow-sm">
@@ -2066,23 +2099,21 @@ const executeGraph = async () => {
 
     if (response.success) {
 
-      // Store the buildId from response and update WebSocket store immediately
-      if (response.buildId) {
-        currentBuildId = response.buildId
-
-        // Update WebSocket store with buildId for System log persistence
+      // Store the buildNumber from response and update WebSocket store immediately
+      if (response.buildNumber) {
+        // Update WebSocket store with buildNumber for System log persistence
         const currentJob = webSocketStore.getCurrentJob(project.value.id)
         if (currentJob) {
-          currentJob.buildId = currentBuildId
-          console.log(`📋 Updated current job with buildId from API: ${currentBuildId}`)
+          currentJob.buildNumber = response.buildNumber
+          console.log(`📋 Updated current job with buildNumber from API: ${response.buildNumber}`)
         } else {
           // Create a temporary job entry for log persistence
           webSocketStore.currentJobs.set(project.value.id, {
-            buildId: currentBuildId,
+            buildNumber: response.buildNumber,
             jobId: response.jobId,
             status: 'dispatched'
           })
-          console.log(`📋 Created job entry with buildId from API: ${currentBuildId}`)
+          console.log(`📋 Created job entry with buildNumber from API: ${response.buildNumber}`)
         }
       }
 
@@ -2117,7 +2148,7 @@ const cancelExecution = async () => {
     addExecutionResult('System', 'info', `Cancelling job ${currentProjectJob.value.jobId} on agent...`)
     
     try {
-      const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildId}/cancel`, {
+      const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildNumber}/cancel`, {
         method: 'POST',
         body: {
           reason: 'Cancelled by user from editor'
@@ -2155,7 +2186,7 @@ const cancelExecution = async () => {
     try {
       // If there's a current job, cancel it through the job system
       if (currentProjectJob.value) {
-        const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildId}/cancel`, {
+        const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildNumber}/cancel`, {
           method: 'POST',
           body: {
             reason: 'Cancelled by user from editor'
@@ -2317,7 +2348,7 @@ const checkCurrentBuildStatus = async () => {
       // Update WebSocket store with current job
       webSocketStore.currentJobs.set(project.value.id, {
         jobId: response.currentJob.jobId,
-        buildId: response.currentJob.buildId || response.currentJob.jobId,
+        buildNumber: response.currentJob.buildNumber,
         agentId: response.currentJob.agentId,
         status: response.currentJob.status,
         startTime: response.currentJob.startTime,
@@ -2330,8 +2361,8 @@ const checkCurrentBuildStatus = async () => {
 
       if (!existingMessages || existingMessages.length === 0) {
         // Load logs from build record (includes all parallel job outputs)
-        const buildId = response.currentJob.buildId || response.currentJob.jobId
-        const logsResponse = await $fetch(`/api/projects/${project.value.id}/builds/${buildId}/logs`)
+        const buildNumber = response.currentJob.buildNumber
+        const logsResponse = await $fetch(`/api/projects/${project.value.id}/builds/${buildNumber}/logs`)
 
         if (logsResponse.success && logsResponse.logs?.length > 0) {
           logsResponse.logs.forEach(logEntry => {

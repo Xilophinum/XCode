@@ -11,9 +11,13 @@ import { getCredentialResolver } from '../../utils/credentialResolver.js'
 import { getBuildStatsManager } from '../../utils/buildStatsManager.js'
 
 export default defineEventHandler(async (event) => {
+  let currentBuildNumber = null
+  let projectId = null
+  
   try {
     const body = await readBody(event)
-    const { projectId, nodes, edges, startTime } = body
+    const { projectId: bodyProjectId, nodes, edges, startTime } = body
+    projectId = bodyProjectId
 
     if (!projectId || !nodes || !edges) {
       throw createError({
@@ -59,33 +63,66 @@ export default defineEventHandler(async (event) => {
     // Generate unique job ID
     const jobId = `job_${uuidv4()}`
 
-    // Start build recording BEFORE creating job so we have buildNumber
-    let currentBuildNumber = null
-    let currentProjectName = project.name
+    // Convert graph to execution commands FIRST to validate
+    let executionCommands
     try {
-
-      const buildStatsManager = await getBuildStatsManager()
-
-      const buildResult = await buildStatsManager.startBuild({
-        projectId,
-        projectName: project.name,
-        agentId: availableAgent.agentId,
-        agentName: availableAgent.name || availableAgent.hostname,
-        jobId,
-        trigger: 'manual',
-        message: 'Manual execution',
-        nodeCount: nodes.length,
-        branch: null,
-        commit: null,
-        metadata: null
-      })
-
-      currentBuildNumber = buildResult.buildNumber
-
-      console.log(`✅ Build #${currentBuildNumber} started for manual execution of "${project.name}"`)
+      executionCommands = convertGraphToCommands(nodes, edges, null, body.executionOutputs)
+      console.log(`🔧 Generated ${executionCommands.length} commands`)
     } catch (error) {
-      console.warn('Failed to start build recording for manual execution:', error)
+      console.error('❌ Error converting graph to commands:', error.message)
+      throw createError({
+        statusCode: 400,
+        statusMessage: error.message
+      })
     }
+
+    // Filter to get only executable commands (including orchestrator commands)
+    const executableCommands = executionCommands.filter(cmd =>
+      ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator'].includes(cmd.type)
+    )
+
+    if (executableCommands.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'No executable commands found in graph. Please add at least one executable node (bash, powershell, cmd, python, or node).'
+      })
+    }
+
+    // Validate that all executable commands have agent selection
+    const missingAgentCommands = executableCommands.filter(cmd =>
+      !['parallel_branches_orchestrator', 'parallel_matrix_orchestrator'].includes(cmd.type) &&
+      (!cmd.requiredAgentId || cmd.requiredAgentId === '')
+    )
+
+    if (missingAgentCommands.length > 0) {
+      const errorMsg = `Execution blocked: The following nodes require agent selection: ${missingAgentCommands.map(cmd => `"${cmd.nodeLabel}"`).join(', ')}. Agent selection is mandatory for all executable nodes.`
+      console.error(`🚨 ${errorMsg}`)
+      throw createError({
+        statusCode: 400,
+        statusMessage: errorMsg
+      })
+    }
+
+    // Start build recording AFTER validation
+    let currentProjectName = project.name
+    
+    const buildStatsManager = await getBuildStatsManager()
+    const buildResult = await buildStatsManager.startBuild({
+      projectId,
+      projectName: project.name,
+      agentId: availableAgent.agentId,
+      agentName: availableAgent.name || availableAgent.hostname,
+      jobId,
+      trigger: 'manual',
+      message: 'Manual execution',
+      nodeCount: nodes.length,
+      branch: null,
+      commit: null,
+      metadata: null
+    })
+
+    currentBuildNumber = buildResult.buildNumber
+    console.log(`✅ Build #${currentBuildNumber} started for manual execution of "${project.name}"`)
 
     // Create job record WITH buildNumber
     const job = {
@@ -108,11 +145,6 @@ export default defineEventHandler(async (event) => {
     // Store job in job manager
     await jobManager.createJob(job)
 
-    // Convert graph to execution commands for the agent
-    const executionCommands = convertGraphToCommands(nodes, edges)
-
-    console.log(`🔧 Generated ${executionCommands.length} commands:`)
-
     // Resolve credentials and inject as environment variables
     const credentialResolver = await getCredentialResolver()
     const baseEnv = process.env
@@ -122,34 +154,6 @@ export default defineEventHandler(async (event) => {
     
     // Store credential resolver in job for log masking
     job.credentialResolver = credentialResolver
-
-    // Filter to get only executable commands (including orchestrator commands)
-    const executableCommands = executionCommands.filter(cmd =>
-      ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator'].includes(cmd.type)
-    )
-
-    if (executableCommands.length === 0) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'No executable commands found in graph'
-      })
-    }
-
-    // Validate that all executable commands have agent selection
-    // Skip orchestrator commands as they don't execute directly
-    const missingAgentCommands = executableCommands.filter(cmd =>
-      !['parallel_branches_orchestrator', 'parallel_matrix_orchestrator'].includes(cmd.type) &&
-      (!cmd.requiredAgentId || cmd.requiredAgentId === '')
-    )
-
-    if (missingAgentCommands.length > 0) {
-      const errorMsg = `Execution blocked: The following nodes require agent selection: ${missingAgentCommands.map(cmd => `"${cmd.nodeLabel}"`).join(', ')}. Agent selection is mandatory for all executable nodes.`
-      console.error(`🚨 ${errorMsg}`)
-      throw createError({
-        statusCode: 400,
-        statusMessage: errorMsg
-      })
-    }
 
     console.log(`🎯 Executing ${executableCommands.length} commands sequentially:`, executableCommands.map(cmd => ({
       type: cmd.type,
@@ -205,7 +209,7 @@ export default defineEventHandler(async (event) => {
         agentId: 'orchestrator',
         agentName: 'Parallel Branches Orchestrator',
         startTime: job.startTime,
-        message: `Parallel branches orchestrator started${currentBuildId ? ` (build #${currentBuildNumber})` : ''}`
+        message: `Parallel branches orchestrator started${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`
       }
     }
     
@@ -245,7 +249,7 @@ export default defineEventHandler(async (event) => {
         agentId: 'orchestrator',
         agentName: 'Parallel Matrix Orchestrator',
         startTime: job.startTime,
-        message: `Parallel matrix orchestrator started${currentBuildId ? ` (build: ${currentBuildId})` : ''}`
+        message: `Parallel matrix orchestrator started${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`
       }
     }
     
@@ -295,10 +299,10 @@ export default defineEventHandler(async (event) => {
       await jobManager.deleteJob(jobId)
 
       // Update build record with failure if build was started
-      if (currentBuildId) {
+      if (currentBuildNumber) {
         try {
           const buildStatsManager = await getBuildStatsManager()
-          await buildStatsManager.finishBuild(currentBuildId, {
+          await buildStatsManager.finishBuild(projectId, currentBuildNumber, {
             status: 'failure',
             message: 'Failed to dispatch job to agent',
             nodesExecuted: 0
@@ -324,7 +328,7 @@ export default defineEventHandler(async (event) => {
       buildNumber: currentBuildNumber
     })
 
-    console.log(`✅ Job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildId ? ` (build: ${currentBuildId})` : ''}`)
+    console.log(`✅ Job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`)
 
     // Broadcast job started event to WebSocket clients
     if (globalThis.broadcastToProject) {
@@ -348,11 +352,25 @@ export default defineEventHandler(async (event) => {
       agentId: selectedAgent.agentId,
       agentName: selectedAgent.name || selectedAgent.hostname,
       startTime: job.startTime,
-      message: `Job dispatched to agent ${selectedAgent.name || selectedAgent.hostname}${currentBuildId ? ` (build: ${currentBuildId})` : ''}`
+      message: `Job dispatched to agent ${selectedAgent.name || selectedAgent.hostname}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`
     }
 
   } catch (error) {
     console.error('❌ Error dispatching job:', error)
+    
+    // Clean up build record if it was created
+    if (currentBuildNumber) {
+      try {
+        const buildStatsManager = await getBuildStatsManager()
+        await buildStatsManager.finishBuild(projectId, currentBuildNumber, {
+          status: 'failure',
+          message: error.statusMessage || error.message || 'Failed to execute project',
+          nodesExecuted: 0
+        })
+      } catch (buildError) {
+        console.warn('Failed to update build record on error:', buildError)
+      }
+    }
     
     throw createError({
       statusCode: error.statusCode || 500,
@@ -414,12 +432,12 @@ function getCommandPlatformRequirements(command) {
  * This function analyzes the graph and compiles it into a sequence of executable commands,
  * resolving parameter values and skipping non-executable nodes.
  */
-export function convertGraphToCommands(nodes, edges, triggerContext = null) {
+export function convertGraphToCommands(nodes, edges, triggerContext = null, executionOutputs = null) {
   console.log(`🔧 Converting graph to commands...`)
   console.log(`📊 Graph has ${nodes.length} nodes and ${edges.length} edges`)
 
-  // Step 1: Build parameter value map from parameter nodes + trigger context
-  const parameterValues = buildParameterValueMap(nodes, edges, triggerContext)
+  // Step 1: Build parameter value map from parameter nodes + trigger context + execution outputs
+  const parameterValues = buildParameterValueMap(nodes, edges, triggerContext, executionOutputs)
   console.log(`📋 Built parameter value map:`, parameterValues)
 
   // Step 2: Find executable starting points (trigger nodes or nodes without execution inputs)
@@ -427,7 +445,7 @@ export function convertGraphToCommands(nodes, edges, triggerContext = null) {
   console.log(`🎯 Found ${startingNodes.length} starting nodes:`, startingNodes.map(n => n.data.label))
 
   if (startingNodes.length === 0) {
-    throw new Error('No starting nodes found in graph')
+    throw new Error('No executable nodes found in graph. Please add at least one executable node (bash, powershell, cmd, python, or node) to create a workflow.')
   }
 
   // Step 3: Build execution flow from starting nodes
@@ -446,8 +464,16 @@ export function convertGraphToCommands(nodes, edges, triggerContext = null) {
 /**
  * Build a map of parameter values from parameter nodes + webhook/trigger context
  */
-function buildParameterValueMap(nodes, edges, triggerContext = null) {
+function buildParameterValueMap(nodes, edges, triggerContext = null, executionOutputs = null) {
   const parameterValues = new Map()
+  
+  // Add execution outputs if provided
+  if (executionOutputs && executionOutputs instanceof Map) {
+    for (const [key, value] of executionOutputs) {
+      parameterValues.set(key, value)
+      console.log(`📤 Added execution output: ${key} = ${value.value}`)
+    }
+  }
 
   // Find all parameter nodes and extract their values
   const parameterNodes = nodes.filter(node => 
@@ -786,6 +812,15 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
           console.log(`🔧 Webhook parameter data:`, parameterData)
         }
         
+        // If still not found, check if it's an execution output connection
+        if (!parameterData && connection.sourceHandle === 'output') {
+          const executionOutputKey = `${connection.target}_${connection.targetHandle}`
+          parameterData = parameterValues.get(executionOutputKey)
+          if (parameterData) {
+            console.log(`🔧 Execution output data:`, parameterData)
+          }
+        }
+        
         if (parameterData) {
           // Handle socket label that may or may not start with $
           const cleanLabel = socket.label.startsWith('$') ? socket.label.substring(1) : socket.label
@@ -892,6 +927,8 @@ export function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameter
  * Handle execution node success/failure routing
  */
 function getExecutionResultConnectedNodes(executionNode, allNodes, allEdges, executionResult) {
+  const connectedNodes = []
+  
   // Determine which socket to use based on execution result
   const targetSocketId = (executionResult && executionResult.success) ? 'success' : 'failure'
   
@@ -904,11 +941,31 @@ function getExecutionResultConnectedNodes(executionNode, allNodes, allEdges, exe
   if (outputEdge) {
     const targetNode = allNodes.find(node => node.id === outputEdge.target)
     console.log(`🔀 Execution "${executionNode.data.label}" routing to ${targetSocketId} path: ${targetNode?.data.label || 'unknown'}`)
-    return targetNode ? [targetNode] : []
+    if (targetNode) {
+      connectedNodes.push(targetNode)
+    }
   }
   
-  console.log(`⚠️ No output edge found for execution "${executionNode.data.label}" ${targetSocketId} path`)
-  return []
+  // Also check for output socket connections (these should receive the execution output)
+  if (executionResult && executionResult.output) {
+    const outputSocketEdge = allEdges.find(edge => 
+      edge.source === executionNode.id && edge.sourceHandle === 'output'
+    )
+    
+    if (outputSocketEdge) {
+      const outputTargetNode = allNodes.find(node => node.id === outputSocketEdge.target)
+      console.log(`📤 Execution "${executionNode.data.label}" sending output to: ${outputTargetNode?.data.label || 'unknown'}`)
+      if (outputTargetNode && !connectedNodes.find(n => n.id === outputTargetNode.id)) {
+        connectedNodes.push(outputTargetNode)
+      }
+    }
+  }
+  
+  if (connectedNodes.length === 0) {
+    console.log(`⚠️ No output edges found for execution "${executionNode.data.label}" ${targetSocketId} path`)
+  }
+  
+  return connectedNodes
 }
 
 /**

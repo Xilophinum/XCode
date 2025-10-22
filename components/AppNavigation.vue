@@ -51,6 +51,48 @@
         
         <!-- Right side - Desktop navigation -->
         <div class="hidden md:flex items-center space-x-4">
+          <!-- Search -->
+          <div class="relative">
+            <input
+              v-model="searchQuery"
+              @input="handleSearch"
+              @focus="showSearchResults = true"
+              @blur="hideSearchResults"
+              type="text"
+              placeholder="Search projects and folders..."
+              class="w-64 px-3 py-2 pl-10 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+            <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            
+            <!-- Search Results Dropdown -->
+            <div
+              v-if="showSearchResults && searchResults.length > 0"
+              class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-50 max-h-64 overflow-y-auto"
+            >
+              <div
+                v-for="result in searchResults.slice(0, 8)"
+                :key="result.id"
+                @mousedown="navigateToResult(result)"
+                class="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+              >
+                <div class="flex items-center space-x-2">
+                  <svg v-if="result.type === 'folder'" class="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                  <svg v-else class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ result.name }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ getResultPath(result) }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <!-- Slot for additional buttons/content -->
           <slot name="actions" />
           
@@ -97,9 +139,22 @@
         </div>
 
         <!-- Mobile menu button -->
-        <div class="md:hidden flex items-center space-x-2">
-          <!-- Mobile actions slot -->
-          <slot name="actions" />
+        <div class="md:hidden flex items-center space-x-1">
+          <!-- Mobile Search Button -->
+          <button
+            @click="showMobileSearch = !showMobileSearch"
+            class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            title="Search"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
+          
+          <!-- Mobile actions slot - limited to essential buttons only -->
+          <div class="flex items-center space-x-1">
+            <slot name="mobile-actions" />
+          </div>
           
           <!-- Mobile hamburger menu -->
           <button
@@ -111,6 +166,43 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
           </button>
+        </div>
+      </div>
+
+      <!-- Mobile Search -->
+      <div v-if="showMobileSearch" class="md:hidden border-t border-gray-200 dark:border-gray-700 p-4">
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            @input="handleSearch"
+            type="text"
+            placeholder="Search projects and folders..."
+            class="w-full px-3 py-2 pl-10 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+          <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        
+        <!-- Mobile Search Results -->
+        <div v-if="searchResults.length > 0" class="mt-3 space-y-1">
+          <div
+            v-for="result in searchResults.slice(0, 5)"
+            :key="result.id"
+            @click="navigateToResult(result)"
+            class="flex items-center space-x-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md cursor-pointer"
+          >
+            <svg v-if="result.type === 'folder'" class="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <svg v-else class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ result.name }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ getResultPath(result) }}</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -199,10 +291,18 @@ const props = defineProps({
 })
 
 const authStore = useAuthStore()
+const projectsStore = useProjectsStore()
 const darkMode = useDarkMode()
+const router = useRouter()
 
 // Mobile menu state
 const showMobileMenu = ref(false)
+const showMobileSearch = ref(false)
+
+// Search state
+const searchQuery = ref('')
+const searchResults = ref([])
+const showSearchResults = ref(false)
 
 // Branding settings
 const brandName = ref('XCode')
@@ -262,6 +362,55 @@ const handleLogout = async () => {
 
 const toggleMobileMenu = () => {
   showMobileMenu.value = !showMobileMenu.value
+}
+
+// Search functionality
+const handleSearch = () => {
+  if (!searchQuery.value.trim()) {
+    searchResults.value = []
+    return
+  }
+  
+  const query = searchQuery.value.toLowerCase()
+  const allItems = projectsStore.allItems || []
+  
+  searchResults.value = allItems
+    .filter(item => item.name.toLowerCase().includes(query))
+    .sort((a, b) => {
+      // Prioritize exact matches, then projects, then folders
+      const aExact = a.name.toLowerCase() === query
+      const bExact = b.name.toLowerCase() === query
+      if (aExact && !bExact) return -1
+      if (!aExact && bExact) return 1
+      if (a.type !== b.type) return a.type === 'project' ? -1 : 1
+      return a.name.localeCompare(b.name)
+    })
+}
+
+const navigateToResult = (result) => {
+  searchQuery.value = ''
+  searchResults.value = []
+  showSearchResults.value = false
+  showMobileSearch.value = false
+  
+  if (result.type === 'project') {
+    const projectPath = [...result.path, result.name]
+    router.push(`/${projectPath.join('/')}/editor`)
+  } else {
+    const folderPath = [...result.path, result.name]
+    router.push(`/browse?path=${folderPath.join('/')}`)
+  }
+}
+
+const getResultPath = (result) => {
+  if (!result.path || result.path.length === 0) return 'Root'
+  return result.path.join(' / ')
+}
+
+const hideSearchResults = () => {
+  setTimeout(() => {
+    showSearchResults.value = false
+  }, 150)
 }
 
 const loadBrandingSettings = async () => {
