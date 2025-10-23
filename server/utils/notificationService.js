@@ -3,6 +3,9 @@
  * Handles sending notifications via Email, Slack, and Webhooks
  */
 
+import nodemailer from 'nodemailer'
+import { getDataService } from './dataService.js'
+
 export class NotificationService {
   constructor() {
     this.initialized = false
@@ -22,19 +25,23 @@ export class NotificationService {
     const { notificationType } = notificationCommand
 
     console.log(`📧 Sending ${notificationType} notification...`)
+    console.log(`📋 Context data:`, context)
+
+    // Resolve context variables in notification command
+    const resolvedCommand = this.resolveContextVariables(notificationCommand, context)
 
     try {
       let result
 
       switch (notificationType) {
         case 'email':
-          result = await this.sendEmail(notificationCommand, context)
+          result = await this.sendEmail(resolvedCommand, context)
           break
         case 'slack':
-          result = await this.sendSlack(notificationCommand, context)
+          result = await this.sendSlack(resolvedCommand, context)
           break
         case 'webhook':
-          result = await this.sendWebhook(notificationCommand, context)
+          result = await this.sendWebhook(resolvedCommand, context)
           break
         default:
           throw new Error(`Unknown notification type: ${notificationType}`)
@@ -46,6 +53,72 @@ export class NotificationService {
       console.error(`❌ Failed to send ${notificationType} notification:`, error.message)
       return { success: false, error: error.message }
     }
+  }
+
+  /**
+   * Resolve context variables in notification fields
+   * Supports: $BuildNumber, $JobId, $ProjectId, $ProjectName, $ExitCode, $Output, $Timestamp, $TimestampHuman, $FailedNodeLabel
+   * @param {Object} command - Notification command
+   * @param {Object} context - Context data
+   * @returns {Object} Command with resolved variables
+   */
+  resolveContextVariables(command, context) {
+    const resolved = { ...command }
+
+    const now = new Date()
+    const humanReadableTimestamp = now.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    })
+
+    // Build variable map
+    const variables = {
+      BuildNumber: context.buildNumber || 'N/A',
+      JobId: context.jobId || 'N/A',
+      ProjectId: context.projectId || 'N/A',
+      ProjectName: context.projectName || 'N/A',
+      ExitCode: context.exitCode !== undefined ? String(context.exitCode) : 'N/A',
+      Output: context.output || '',
+      Timestamp: now.toISOString(),
+      TimestampHuman: humanReadableTimestamp,
+      Status: context.exitCode === 0 ? 'Success' : 'Failed',
+      FailedNodeLabel: context.failedNodeLabel || (context.exitCode !== 0 ? 'Unknown' : 'N/A')
+    }
+
+    console.log(`🔧 Available context variables:`, variables)
+
+    // Helper function to replace variables in a string
+    const replaceVariables = (text) => {
+      if (!text || typeof text !== 'string') return text
+
+      let result = text
+
+      // Replace each variable (supports both ${VarName} and $VarName formats)
+      Object.entries(variables).forEach(([key, value]) => {
+        const bracedPattern = new RegExp(`\\$\\{${key}\\}`, 'g')
+        const unbracedPattern = new RegExp(`\\$${key}\\b`, 'g')
+
+        result = result.replace(bracedPattern, value)
+        result = result.replace(unbracedPattern, value)
+      })
+
+      return result
+    }
+
+    // Resolve variables in all relevant fields
+    if (resolved.emailSubject) resolved.emailSubject = replaceVariables(resolved.emailSubject)
+    if (resolved.emailBody) resolved.emailBody = replaceVariables(resolved.emailBody)
+    if (resolved.slackMessage) resolved.slackMessage = replaceVariables(resolved.slackMessage)
+    if (resolved.slackChannel) resolved.slackChannel = replaceVariables(resolved.slackChannel)
+    if (resolved.webhookBody) resolved.webhookBody = replaceVariables(resolved.webhookBody)
+    if (resolved.webhookUrl) resolved.webhookUrl = replaceVariables(resolved.webhookUrl)
+
+    return resolved
   }
 
   /**
@@ -73,35 +146,64 @@ export class NotificationService {
     console.log(`   To: ${recipients.join(', ')}`)
     console.log(`   Subject: ${emailSubject}`)
 
-    // TODO: Implement actual email sending logic
-    // Options:
-    // 1. Use nodemailer with SMTP configuration
-    // 2. Use a service like SendGrid, AWS SES, Mailgun, etc.
-    // 3. Use the built-in mail command on Linux/macOS
+    // Get SMTP configuration from database settings
+    const dataService = await getDataService()
+    const notificationSettings = await dataService.getSystemSettings('notifications')
 
-    // For now, log the email details
-    console.log('📧 Email notification (not sent - SMTP not configured):')
-    console.log({
-      from: emailFrom,
-      to: recipients,
-      subject: emailSubject,
-      body: emailBody,
-      html: emailHtml
-    })
+    // Helper to get setting value by key
+    const getSetting = (key) => {
+      const setting = notificationSettings.find(s => s.key === key)
+      return setting?.value || setting?.defaultValue || null
+    }
 
-    // Example using nodemailer (uncomment when SMTP is configured):
-    /*
-    const nodemailer = require('nodemailer')
+    let smtpHost = getSetting('smtp_server')
+    let smtpPort = getSetting('smtp_port')
+    let smtpUser = getSetting('smtp_username')
+    let smtpPass = getSetting('smtp_password')
+    let smtpSecure = getSetting('smtp_secure')
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: process.env.SMTP_PORT || 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
+    // Fallback to environment variables if not in database
+    smtpHost = smtpHost || process.env.SMTP_HOST
+    smtpPort = smtpPort || process.env.SMTP_PORT
+    smtpUser = smtpUser || process.env.SMTP_USER
+    smtpPass = smtpPass || process.env.SMTP_PASS
+    smtpSecure = smtpSecure || process.env.SMTP_SECURE
+
+    if (!smtpHost) {
+      console.warn('⚠️ SMTP_HOST not configured - email will not be sent')
+      console.log('📧 Email notification (not sent - SMTP not configured):')
+      console.log({
+        from: emailFrom,
+        to: recipients,
+        subject: emailSubject,
+        body: emailBody,
+        html: emailHtml
+      })
+      return {
+        recipients: recipients.length,
+        message: 'Email logged (SMTP not configured)'
       }
-    })
+    }
+
+    // Build transporter config
+    const transportConfig = {
+      host: smtpHost,
+      port: parseInt(smtpPort) || 25,
+      secure: smtpSecure === 'true' || smtpSecure === true || false
+    }
+
+    // Only add auth if user and pass are provided (MailHog doesn't need auth)
+    if (smtpUser && smtpPass) {
+      transportConfig.auth = {
+        user: smtpUser,
+        pass: smtpPass
+      }
+      console.log(`📧 Using authenticated SMTP: ${smtpHost}:${transportConfig.port}`)
+    } else {
+      console.log(`📧 Using unauthenticated SMTP: ${smtpHost}:${transportConfig.port} (e.g., MailHog)`)
+    }
+
+    const transporter = nodemailer.createTransport(transportConfig)
 
     const mailOptions = {
       from: emailFrom,
@@ -110,13 +212,14 @@ export class NotificationService {
       [emailHtml ? 'html' : 'text']: emailBody
     }
 
+    console.log(`📧 Sending email via ${smtpHost}:${transportConfig.port}...`)
     const info = await transporter.sendMail(mailOptions)
-    return { messageId: info.messageId }
-    */
+    console.log(`✅ Email sent! Message ID: ${info.messageId}`)
 
     return {
+      messageId: info.messageId,
       recipients: recipients.length,
-      message: 'Email logged (SMTP not configured)'
+      message: 'Email sent successfully'
     }
   }
 

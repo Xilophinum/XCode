@@ -1170,16 +1170,51 @@ export class DataService {
         id: 'smtp_port',
         category: 'notifications',
         key: 'smtp_port',
-        value: '587',
-        defaultValue: '587',
-        type: 'select',
-        options: JSON.stringify(['25', '587', '465', '2525']),
+        value: '25',
+        defaultValue: '25',
+        type: 'number',
         label: 'SMTP Port',
-        description: 'SMTP server port',
+        description: 'SMTP server port (common: 25, 587, 465, 1025 for MailHog)',
         required: 'false',
         readonly: 'false'
       },
-      
+      {
+        id: 'smtp_username',
+        category: 'notifications',
+        key: 'smtp_username',
+        value: null,
+        defaultValue: null,
+        type: 'text',
+        label: 'SMTP Username',
+        description: 'SMTP authentication username (leave empty for unauthenticated servers like MailHog)',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        id: 'smtp_password',
+        category: 'notifications',
+        key: 'smtp_password',
+        value: null,
+        defaultValue: null,
+        type: 'password',
+        label: 'SMTP Password',
+        description: 'SMTP authentication password (leave empty for unauthenticated servers like MailHog)',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        id: 'smtp_secure',
+        category: 'notifications',
+        key: 'smtp_secure',
+        value: 'false',
+        defaultValue: 'false',
+        type: 'boolean',
+        label: 'Use SSL/TLS',
+        description: 'Enable SSL/TLS encryption (use true for port 465, false for ports 25, 587, 1025)',
+        required: 'false',
+        readonly: 'false'
+      },
+
       // System Information (readonly)
       {
         id: 'system_version',

@@ -111,12 +111,23 @@ class AgentManager {
             console.log(`📧 Processing notification: ${nextCommand.nodeLabel}`)
 
             try {
+              // Get the failed node label if this is a failure notification
+              let failedNodeLabel = null
+              if (exitCode !== 0 && job.executionCommands && job.currentCommandIndex !== undefined) {
+                const failedCommand = job.executionCommands[job.currentCommandIndex]
+                if (failedCommand) {
+                  failedNodeLabel = failedCommand.nodeLabel
+                }
+              }
+
               const context = {
                 jobId: jobId,
                 projectId: job.projectId,
+                projectName: job.projectName,
                 buildNumber: job.buildNumber,
                 exitCode: exitCode || 0,
-                output: output
+                output: output,
+                failedNodeLabel: failedNodeLabel
               }
 
               const result = await notificationService.sendNotification(nextCommand, context)
@@ -330,7 +341,22 @@ class AgentManager {
       // Trigger failure handler nodes (if any) AFTER marking build as failed
       let hasNextNodes = false
       if (job) {
-        hasNextNodes = await this.triggerNextNodes(job, { success: false, exitCode: exitCode || 1, error: errorMessage, output: data.output })
+        // Get the failed node label if available
+        let failedNodeLabel = null
+        if (job.executionCommands && job.currentCommandIndex !== undefined) {
+          const currentCommand = job.executionCommands[job.currentCommandIndex]
+          if (currentCommand) {
+            failedNodeLabel = currentCommand.nodeLabel
+          }
+        }
+
+        hasNextNodes = await this.triggerNextNodes(job, {
+          success: false,
+          exitCode: exitCode || 1,
+          error: errorMessage,
+          output: data.output,
+          failedNodeLabel: failedNodeLabel
+        })
       }
 
       if (hasNextNodes) {
@@ -537,8 +563,13 @@ class AgentManager {
             
             if (outputConnection && outputConnection.targetHandle) {
               console.log(`📤 Passing execution output "${executionResult.output}" to node: ${nextNode.data.label}`)
+
+              // Find the actual socket label from the target node's input sockets
+              const targetSocket = nextNode.data.inputSockets?.find(s => s.id === outputConnection.targetHandle)
+              const socketLabel = targetSocket?.label || outputConnection.targetHandle
+
               parameterValues.set(`${nextNode.id}_${outputConnection.targetHandle}`, {
-                label: outputConnection.targetHandle,
+                label: socketLabel, // Use the actual socket label, not the socket ID
                 value: executionResult.output,
                 nodeType: 'execution-output'
               })
@@ -558,7 +589,8 @@ class AgentManager {
             executionOutputs: executionOutputsObj, // Pass the execution outputs as plain object
             buildNumber: job.buildNumber, // Reuse existing build
             projectName: job.projectName, // Pass project name to avoid lookup
-            triggeredByFailure: !executionResult.success // Track if this was triggered by a failure
+            triggeredByFailure: !executionResult.success, // Track if this was triggered by a failure
+            failedNodeLabel: executionResult.failedNodeLabel || null // Pass the failed node label for failure notifications
           }
           
           // Execute the next node

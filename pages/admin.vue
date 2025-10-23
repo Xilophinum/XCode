@@ -283,6 +283,78 @@
           </div>
         </div>
 
+        <!-- Notification Templates Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-950 dark:text-white">Notification Templates</h2>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Manage email, Slack, and webhook notification templates</p>
+              </div>
+              <button
+                @click="showTemplateModal = true; editingTemplate = null"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600"
+              >
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Create Template
+              </button>
+            </div>
+
+            <div v-if="loadingTemplates" class="text-center py-8">
+              <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+              <p class="text-gray-600 dark:text-gray-300 mt-2">Loading templates...</p>
+            </div>
+
+            <div v-else-if="notificationTemplates.length === 0" class="text-center py-8">
+              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+              </svg>
+              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No notification templates found</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Create your first template to get started</p>
+            </div>
+
+            <div v-else class="space-y-3">
+              <div v-for="template in notificationTemplates" :key="template.id" class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-purple-300 dark:hover:border-purple-600 transition-colors">
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                      <h3 class="text-md font-medium text-gray-950 dark:text-white">{{ template.name }}</h3>
+                      <span v-if="template.is_built_in" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                        Built-in
+                      </span>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" :class="{
+                        'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200': template.type === 'email',
+                        'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200': template.type === 'slack',
+                        'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200': template.type === 'webhook'
+                      }">
+                        {{ template.type }}
+                      </span>
+                    </div>
+                    <p v-if="template.description" class="text-sm text-gray-600 dark:text-gray-400">{{ template.description }}</p>
+                    <div class="mt-2 text-xs text-gray-500 dark:text-gray-500">
+                      Created {{ formatDate(template.created_at) }}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 ml-4">
+                    <button
+                      v-if="!template.is_built_in"
+                      @click="deleteTemplate(template)"
+                      class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50 rounded-md transition-colors"
+                      title="Delete template"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Environment Variables Section -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div class="p-6">
@@ -1135,6 +1207,175 @@
         </form>
       </div>
     </div>
+
+    <!-- Notification Template Modal -->
+    <div v-if="showTemplateModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div class="relative top-10 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-gray-950 dark:text-white">
+            {{ editingTemplate ? 'Edit' : 'Create' }} Notification Template
+          </h3>
+          <button @click="closeTemplateModal" class="text-gray-400 hover:text-gray-500">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <form @submit.prevent="saveTemplate" class="space-y-4">
+          <!-- Template Name -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Template Name *</label>
+            <input
+              v-model="templateForm.name"
+              type="text"
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="e.g., Production Deploy Success"
+            />
+          </div>
+
+          <!-- Description -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+            <input
+              v-model="templateForm.description"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Brief description of this template"
+            />
+          </div>
+
+          <!-- Template Type -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notification Type *</label>
+            <select
+              v-model="templateForm.type"
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
+              <option value="email">Email</option>
+              <option value="slack">Slack</option>
+              <option value="webhook">Webhook</option>
+            </select>
+          </div>
+
+          <!-- Email Fields -->
+          <div v-if="templateForm.type === 'email'" class="space-y-3 pt-2 border-t dark:border-gray-700">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Subject *</label>
+              <input
+                v-model="templateForm.email_subject"
+                type="text"
+                :required="templateForm.type === 'email'"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="e.g., [$ProjectName] Build #$BuildNumber - $Status"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Body *</label>
+              <textarea
+                v-model="templateForm.email_body"
+                :required="templateForm.type === 'email'"
+                rows="6"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                placeholder="Build $BuildNumber completed at $TimestampHuman"
+              ></textarea>
+            </div>
+            <div class="flex items-center">
+              <input
+                v-model="templateForm.email_html"
+                type="checkbox"
+                id="template-html"
+                class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+              />
+              <label for="template-html" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Send as HTML</label>
+            </div>
+          </div>
+
+          <!-- Slack Fields -->
+          <div v-if="templateForm.type === 'slack'" class="space-y-3 pt-2 border-t dark:border-gray-700">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slack Message *</label>
+              <textarea
+                v-model="templateForm.slack_message"
+                :required="templateForm.type === 'slack'"
+                rows="6"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                placeholder=":white_check_mark: *$ProjectName* - Build #$BuildNumber Success"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Webhook Fields -->
+          <div v-if="templateForm.type === 'webhook'" class="space-y-3 pt-2 border-t dark:border-gray-700">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">HTTP Method</label>
+              <select
+                v-model="templateForm.webhook_method"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="GET">GET</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Headers (JSON)</label>
+              <textarea
+                v-model="templateForm.webhook_headers"
+                rows="3"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                placeholder='{"Content-Type": "application/json"}'
+              ></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Body (JSON) *</label>
+              <textarea
+                v-model="templateForm.webhook_body"
+                :required="templateForm.type === 'webhook'"
+                rows="8"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                placeholder='{"project": "$ProjectName", "buildNumber": "$BuildNumber"}'
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Variable Reference -->
+          <div class="p-3 bg-purple-50 dark:bg-purple-950 rounded-lg text-xs">
+            <div class="font-medium text-purple-800 dark:text-purple-200 mb-2">Available Variables:</div>
+            <div class="text-purple-700 dark:text-purple-300 space-x-2">
+              <code>$ProjectName</code>
+              <code>$BuildNumber</code>
+              <code>$Status</code>
+              <code>$ExitCode</code>
+              <code>$FailedNodeLabel</code>
+              <code>$Output</code>
+              <code>$Timestamp</code>
+              <code>$TimestampHuman</code>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
+            <button
+              type="button"
+              @click="closeTemplateModal"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
+            >
+              {{ editingTemplate ? 'Update' : 'Create' }} Template
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1180,6 +1421,7 @@ const showCredentialViewModal = ref(false)
 const showSettingsModal = ref(false)
 const showGroupModal = ref(false)
 const showUserGroupsModal = ref(false)
+const showTemplateModal = ref(false)
 
 // Editing states
 const editingEnvVariable = ref(null)
@@ -1188,6 +1430,11 @@ const editingSystemSetting = ref(null)
 const viewingCredential = ref(null)
 const editingGroup = ref(null)
 const selectedUser = ref(null)
+const editingTemplate = ref(null)
+
+// Template data
+const notificationTemplates = ref([])
+const loadingTemplates = ref(false)
 
 // Form data
 const envForm = ref({
@@ -1228,6 +1475,19 @@ const groupForm = ref({
 
 const userGroupForm = ref({
   groups: []
+})
+
+const templateForm = ref({
+  name: '',
+  description: '',
+  type: 'email',
+  email_subject: '',
+  email_body: '',
+  email_html: false,
+  slack_message: '',
+  webhook_method: 'POST',
+  webhook_headers: '{"Content-Type": "application/json"}',
+  webhook_body: ''
 })
 
 const availableGroupsForUser = computed(() => {
@@ -1609,10 +1869,6 @@ const closeCredentialViewModal = () => {
   viewingCredential.value = null
 }
 
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString()
-}
-
 const toggleUserRole = async (user) => {
   const newRole = user.role === 'admin' ? 'user' : 'admin'
   
@@ -1791,7 +2047,86 @@ onMounted(async () => {
     loadEnvVariables(),
     loadCredentials(),
     loadUsers(),
-    loadGroups()
+    loadGroups(),
+    loadNotificationTemplates()
   ])
 })
+
+// Load notification templates
+async function loadNotificationTemplates() {
+  loadingTemplates.value = true
+  try {
+    const response = await $fetch('/api/notification-templates')
+    if (response.success) {
+      notificationTemplates.value = response.templates
+    }
+  } catch (error) {
+    console.error('Failed to load notification templates:', error)
+  } finally {
+    loadingTemplates.value = false
+  }
+}
+
+// Save notification template (create or update)
+async function saveTemplate() {
+  try {
+    const response = await $fetch('/api/notification-templates', {
+      method: 'POST',
+      body: templateForm.value
+    })
+
+    if (response.success) {
+      await loadNotificationTemplates()
+      closeTemplateModal()
+      alert('Template saved successfully!')
+    }
+  } catch (error) {
+    console.error('Failed to save template:', error)
+    alert('Failed to save template: ' + (error.data?.message || error.message))
+  }
+}
+
+// Delete notification template
+async function deleteTemplate(template) {
+  if (!confirm(`Are you sure you want to delete "${template.name}"?`)) {
+    return
+  }
+
+  try {
+    await $fetch(`/api/notification-templates/${template.id}`, {
+      method: 'DELETE'
+    })
+
+    await loadNotificationTemplates()
+    alert('Template deleted successfully!')
+  } catch (error) {
+    console.error('Failed to delete template:', error)
+    alert('Failed to delete template: ' + (error.data?.message || error.message))
+  }
+}
+
+// Close template modal and reset form
+function closeTemplateModal() {
+  showTemplateModal.value = false
+  editingTemplate.value = null
+  templateForm.value = {
+    name: '',
+    description: '',
+    type: 'email',
+    email_subject: '',
+    email_body: '',
+    email_html: false,
+    slack_message: '',
+    webhook_method: 'POST',
+    webhook_headers: '{"Content-Type": "application/json"}',
+    webhook_body: ''
+  }
+}
+
+// Format date helper
+function formatDate(dateString) {
+  if (!dateString) return 'N/A'
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
 </script>

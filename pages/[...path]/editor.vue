@@ -1061,6 +1061,7 @@ const parameterNodes = [
 
 const executionNodes = [
   { type: 'bash', name: 'Bash Script', description: 'Execute bash commands', placeholder: '#!/bin/bash\necho "Hello from bash"'},
+  { type: 'sh', name: 'Shell Script', description: 'Execute POSIX shell commands', placeholder: '#!/bin/sh\necho "Hello from shell"'},
   { type: 'powershell', name: 'PowerShell Script', description: 'Execute PowerShell commands', placeholder: 'Write-Host "Hello from PowerShell"'},
   { type: 'cmd', name: 'Command Prompt', description: 'Execute Windows CMD commands', placeholder: 'echo Hello from Command Prompt'},
   { type: 'python', name: 'Python Script', description: 'Execute Python code', placeholder: 'print("Hello from Python")'},
@@ -1084,14 +1085,14 @@ const controlNodes = [
 
 // Agent computed properties and helpers
 const availableAgents = computed(() => {
-  return agents.value.filter(agent => 
-    agent.capabilities.some(cap => ['bash', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl'].includes(cap))
+  return agents.value.filter(agent =>
+    agent.capabilities.some(cap => ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl'].includes(cap))
   )
 })
 
 const isExecutionNode = (nodeType) => {
   if (!nodeType) return false
-  return ['bash', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_execution'].includes(nodeType)
+  return ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_execution'].includes(nodeType)
 }
 
 
@@ -1291,7 +1292,7 @@ const CustomNode = defineComponent({
         let socketColor = '#8b5cf6' // Default purple for webhook data
         if (nodeData.nodeType === 'conditional') {
           socketColor = socket.id === 'true' ? '#10b981' : '#ef4444' // Green for true, red for false
-        } else if (['bash', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl'].includes(nodeData.nodeType)) {
+        } else if (['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl'].includes(nodeData.nodeType)) {
           if (socket.id === 'success') socketColor = '#10b981' // Green for success
           else if (socket.id === 'failure') socketColor = '#ef4444' // Red for failure
           else if (socket.id === 'output') socketColor = '#3b82f6' // Blue for output data
@@ -1601,7 +1602,7 @@ const getDefaultNodeData = (type) => {
       
     // Execution nodes
     case 'bash':
-      return { 
+      return {
         ...baseData,
         hasExecutionOutput: false,
         hasDataOutput: true,
@@ -1616,7 +1617,25 @@ const getDefaultNodeData = (type) => {
         retryEnabled: false,
         maxRetries: 3,
         retryDelay: 5,
-        executionNode: true 
+        executionNode: true
+      }
+    case 'sh':
+      return {
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
+        script: '#!/bin/sh\necho "Hello from shell"',
+        workingDirectory: '.',
+        timeout: 300,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5,
+        executionNode: true
       }
     case 'powershell':
       return { 
@@ -1637,7 +1656,7 @@ const getDefaultNodeData = (type) => {
         executionNode: true 
       }
     case 'cmd':
-      return { 
+      return {
         ...baseData,
         hasExecutionOutput: false,
         hasDataOutput: true,
@@ -1652,7 +1671,7 @@ const getDefaultNodeData = (type) => {
         retryEnabled: false,
         maxRetries: 3,
         retryDelay: 5,
-        executionNode: true 
+        executionNode: true
       }
     case 'python':
     case 'python3':

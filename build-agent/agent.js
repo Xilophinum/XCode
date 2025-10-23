@@ -812,6 +812,14 @@ class XCodeBuildAgent {
         commandSeparator: ' && ',
         capabilities: ['bash']
       },
+      'sh': {
+        name: 'Shell (POSIX)',
+        type: 'shell',
+        command: isWindows ? 'sh' : '/bin/sh',
+        args: ['-c'],
+        commandSeparator: ' && ',
+        capabilities: ['sh', 'posix-shell']
+      },
       'cmd': {
         name: 'Command Prompt',
         type: 'shell',

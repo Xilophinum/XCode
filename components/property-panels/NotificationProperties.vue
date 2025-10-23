@@ -12,6 +12,36 @@
       </p>
     </div>
 
+    <!-- Template Selector -->
+    <div class="mt-3 p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
+      <label class="block text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">
+        Use Template (Optional)
+      </label>
+      <div class="flex gap-2">
+        <select
+          v-model="selectedTemplateId"
+          class="flex-1 px-3 py-2 border border-purple-300 dark:border-purple-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm"
+        >
+          <option value="">-- Select a template --</option>
+          <optgroup v-if="filteredTemplates.length > 0" label="Available Templates">
+            <option v-for="template in filteredTemplates" :key="template.id" :value="template.id">
+              {{ template.name }}
+            </option>
+          </optgroup>
+        </select>
+        <button
+          @click="loadTemplate"
+          :disabled="!selectedTemplateId || isLoadingTemplate"
+          class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 dark:disabled:bg-purple-800 text-white rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed"
+        >
+          {{ isLoadingTemplate ? 'Loading...' : 'Load' }}
+        </button>
+      </div>
+      <p class="mt-2 text-xs text-purple-700 dark:text-purple-300">
+        Choose a pre-built or custom template to quickly configure your notification
+      </p>
+    </div>
+
     <!-- Notification Type Selection -->
     <div class="mt-3">
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
@@ -19,6 +49,7 @@
       </label>
       <select
         v-model="nodeData.data.notificationType"
+        @change="onNotificationTypeChange"
         class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
       >
         <option value="email">Email</option>
@@ -89,7 +120,7 @@
           :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.emailBody }"
         ></textarea>
         <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Use ${'{'}SocketName{'}'} to reference input socket values
+          Use $SocketName to reference input socket values
         </p>
       </div>
 
@@ -168,7 +199,7 @@
           :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.slackMessage }"
         ></textarea>
         <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Use ${'{'}SocketName{'}'} to reference input socket values. Supports Slack markdown.
+          Use $SocketName to reference input socket values. Supports Slack markdown.
         </p>
       </div>
     </div>
@@ -233,21 +264,41 @@
           :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.webhookBody }"
         ></textarea>
         <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Request body as JSON. Use ${'{'}SocketName{'}'} to reference input socket values.
+          Request body as JSON. Use $SocketName to reference input socket values.
         </p>
       </div>
     </div>
 
+    <!-- Available Variables Documentation -->
+    <div class="mt-4 p-3 bg-purple-50 dark:bg-purple-950 rounded text-xs">
+      <div class="font-medium text-purple-800 dark:text-purple-200 mb-2">Available Context Variables:</div>
+      <div class="text-purple-700 dark:text-purple-300 space-y-1">
+        <div class="font-mono">$ProjectName - Name of the project being executed</div>
+        <div class="font-mono">$ProjectId - The project identifier (UUID)</div>
+        <div class="font-mono">$BuildNumber - The current build number</div>
+        <div class="font-mono">$JobId - Unique identifier for this job execution</div>
+        <div class="font-mono">$Status - Status text based on exit code (Success/Failed)</div>
+        <div class="font-mono">$ExitCode - Exit code from previous execution (0 = success)</div>
+        <div class="font-mono">$FailedNodeLabel - Label of the node that failed (only on failure)</div>
+        <div class="font-mono">$Output - Output from the previous node</div>
+        <div class="font-mono">$Timestamp - ISO 8601 timestamp (e.g., 2025-10-23T14:30:00.000Z)</div>
+        <div class="font-mono">$TimestampHuman - Human-readable timestamp (e.g., Oct 23, 2025, 02:30:00 PM)</div>
+      </div>
+      <p class="mt-2 text-purple-700 dark:text-purple-300">
+        Use both ${'{VarName}'} or $VarName format in your notification messages
+      </p>
+    </div>
+
     <!-- Input Socket Variables Help -->
     <div v-if="nodeData.data.inputSockets && nodeData.data.inputSockets.length > 0" class="mt-4 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
-      <div class="font-medium text-green-800 dark:text-green-200 mb-2">Available Input Variables:</div>
+      <div class="font-medium text-green-800 dark:text-green-200 mb-2">Available Input Socket Variables:</div>
       <div class="text-green-700 dark:text-green-300 space-y-1">
         <div v-for="socket in nodeData.data.inputSockets" :key="socket.id" class="font-mono">
-          ${'{'}{{ socket.label }}{'}'}
+          ${{ socket.label }}
         </div>
       </div>
       <p class="mt-2 text-green-700 dark:text-green-300">
-        Use these variables in your messages to include data from previous nodes
+        Use these variables to include data passed from connected nodes
       </p>
     </div>
 
@@ -256,26 +307,36 @@
       <div class="font-medium text-amber-800 dark:text-amber-200 mb-2">Usage Examples:</div>
       <div class="text-amber-700 dark:text-amber-300 space-y-2">
         <div v-if="nodeData.data.notificationType === 'email'">
-          <div class="font-medium">Email Notification:</div>
-          <div class="pl-2 space-y-1">
-            <div>Subject: "Build ${'{'}BuildNumber{'}'} completed"</div>
-            <div>Body: "Build completed successfully at ${'{'}Timestamp{'}'}"</div>
+          <div class="font-medium mb-1">Email Notification (Success):</div>
+          <div class="pl-2 space-y-1 font-mono text-xs">
+            <div>Subject: "[$ProjectName] Build #$BuildNumber - $Status"</div>
+            <div>Body: "Build $BuildNumber completed at $TimestampHuman"</div>
+          </div>
+          <div class="font-medium mb-1 mt-2">Email Notification (Failure):</div>
+          <div class="pl-2 space-y-1 font-mono text-xs">
+            <div>Subject: "[$ProjectName] Build #$BuildNumber FAILED"</div>
+            <div>Body: "Node '$FailedNodeLabel' failed with exit code $ExitCode at $TimestampHuman"</div>
           </div>
         </div>
         <div v-if="nodeData.data.notificationType === 'slack'">
-          <div class="font-medium">Slack Notification:</div>
-          <div class="pl-2 space-y-1">
-            <div>":white_check_mark: Build ${'{'}BuildNumber{'}'} deployed to production"</div>
-            <div>"*Status:* Success | *Time:* ${'{'}Timestamp{'}'}"</div>
+          <div class="font-medium mb-1">Slack Notification:</div>
+          <div class="pl-2 space-y-1 font-mono text-xs">
+            <div>":x: *$ProjectName* - Build #$BuildNumber Failed"</div>
+            <div>"*Failed Node:* $FailedNodeLabel"</div>
+            <div>"*Time:* $TimestampHuman | *Exit Code:* $ExitCode"</div>
           </div>
         </div>
         <div v-if="nodeData.data.notificationType === 'webhook'">
-          <div class="font-medium">Webhook Payload:</div>
-          <div class="pl-2 font-mono bg-amber-100 dark:bg-amber-900 p-2 rounded mt-1">
+          <div class="font-medium mb-1">Webhook Payload:</div>
+          <div class="pl-2 font-mono bg-amber-100 dark:bg-amber-900 p-2 rounded mt-1 text-xs">
             {<br/>
-            &nbsp;&nbsp;"event": "build_complete",<br/>
-            &nbsp;&nbsp;"build": "${'{'}BuildNumber{'}'}",<br/>
-            &nbsp;&nbsp;"status": "${'{'}Status{'}'}"<br/>
+            &nbsp;&nbsp;"event": "build_failed",<br/>
+            &nbsp;&nbsp;"project": "$ProjectName",<br/>
+            &nbsp;&nbsp;"buildNumber": "$BuildNumber",<br/>
+            &nbsp;&nbsp;"failedNode": "$FailedNodeLabel",<br/>
+            &nbsp;&nbsp;"status": "$Status",<br/>
+            &nbsp;&nbsp;"exitCode": $ExitCode,<br/>
+            &nbsp;&nbsp;"timestamp": "$Timestamp"<br/>
             }
           </div>
         </div>
@@ -312,6 +373,11 @@ const props = defineProps({
   }
 })
 
+// Template management
+const templates = ref([])
+const selectedTemplateId = ref('')
+const isLoadingTemplate = ref(false)
+
 // Initialize default values if not set
 if (!props.nodeData.data.notificationType) {
   props.nodeData.data.notificationType = 'email'
@@ -321,5 +387,67 @@ if (!props.nodeData.data.webhookMethod) {
 }
 if (props.nodeData.data.emailHtml === undefined) {
   props.nodeData.data.emailHtml = false
+}
+
+// Fetch templates on mount
+onMounted(async () => {
+  await fetchTemplates()
+})
+
+// Computed: Filter templates by current notification type
+const filteredTemplates = computed(() => {
+  return templates.value.filter(t => t.type === props.nodeData.data.notificationType)
+})
+
+// Fetch all templates from API
+async function fetchTemplates() {
+  try {
+    const response = await $fetch('/api/notification-templates')
+    if (response.success) {
+      templates.value = response.templates
+    }
+  } catch (error) {
+    console.error('Failed to fetch notification templates:', error)
+  }
+}
+
+// When notification type changes, reset template selection
+function onNotificationTypeChange() {
+  selectedTemplateId.value = ''
+}
+
+// Load selected template and auto-fill fields
+async function loadTemplate() {
+  if (!selectedTemplateId.value) return
+
+  isLoadingTemplate.value = true
+
+  try {
+    const template = templates.value.find(t => t.id === selectedTemplateId.value)
+
+    if (!template) {
+      console.error('Template not found')
+      return
+    }
+
+    // Auto-fill fields based on template type
+    if (template.type === 'email') {
+      props.nodeData.data.emailSubject = template.email_subject || ''
+      props.nodeData.data.emailBody = template.email_body || ''
+      props.nodeData.data.emailHtml = template.email_html || false
+    } else if (template.type === 'slack') {
+      props.nodeData.data.slackMessage = template.slack_message || ''
+    } else if (template.type === 'webhook') {
+      props.nodeData.data.webhookMethod = template.webhook_method || 'POST'
+      props.nodeData.data.webhookHeaders = template.webhook_headers || '{}'
+      props.nodeData.data.webhookBody = template.webhook_body || ''
+    }
+
+    console.log(`✅ Template "${template.name}" loaded successfully`)
+  } catch (error) {
+    console.error('Failed to load template:', error)
+  } finally {
+    isLoadingTemplate.value = false
+  }
 }
 </script>

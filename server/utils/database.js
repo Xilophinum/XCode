@@ -80,21 +80,21 @@ export class DatabaseManager {
   }
 
   async runSQLiteMigrations() {
-    // Migration: Update builds table to use composite primary key
+    // Migration 1: Update builds table to use composite primary key
     try {
       // Check if builds table has old schema with id column
       const tableInfo = this.sqlite.prepare("PRAGMA table_info(builds)").all()
       const hasIdColumn = tableInfo.some(col => col.name === 'id')
-      
+
       if (hasIdColumn) {
         console.log('🔄 Migrating builds table to new schema...')
-        
+
         // Backup existing data
         const existingBuilds = this.sqlite.prepare("SELECT * FROM builds").all()
-        
+
         // Drop old table
         this.sqlite.exec("DROP TABLE builds")
-        
+
         // Recreate with new schema
         this.sqlite.exec(`
           CREATE TABLE builds (
@@ -168,6 +168,33 @@ export class DatabaseManager {
       }
     } catch (error) {
       console.error('Error migrating builds table:', error)
+    }
+
+    // Migration 2: Update smtp_port setting from select to number type
+    try {
+      const smtpPortSetting = this.sqlite.prepare(
+        "SELECT * FROM system_settings WHERE key = 'smtp_port'"
+      ).get()
+
+      if (smtpPortSetting && smtpPortSetting.type === 'select') {
+        console.log('🔄 Migrating smtp_port setting from select to number type...')
+
+        // Update the type and remove the options field
+        this.sqlite.prepare(`
+          UPDATE system_settings
+          SET type = 'number',
+              options = NULL,
+              value = '25',
+              default_value = '25',
+              description = 'SMTP server port (common: 25, 587, 465, 1025 for MailHog)',
+              updated_at = ?
+          WHERE key = 'smtp_port'
+        `).run(new Date().toISOString())
+
+        console.log('✅ Migrated smtp_port setting to number type')
+      }
+    } catch (error) {
+      console.error('Error migrating smtp_port setting:', error)
     }
   }
 
@@ -409,7 +436,26 @@ export class DatabaseManager {
         )
       `)
 
-
+      // Notification Templates table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS notification_templates (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          type TEXT NOT NULL,
+          is_built_in INTEGER DEFAULT 0,
+          email_subject TEXT,
+          email_body TEXT,
+          email_html INTEGER DEFAULT 0,
+          slack_message TEXT,
+          webhook_method TEXT,
+          webhook_headers TEXT,
+          webhook_body TEXT,
+          created_by TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
 
       // Create indexes for better performance
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_project_id ON builds(project_id)`)
@@ -428,9 +474,129 @@ export class DatabaseManager {
 
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_project_snapshots_project_id ON project_snapshots(project_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_project_snapshots_version ON project_snapshots(project_id, version)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_notification_templates_type ON notification_templates(type)`)
+
+      // Insert built-in notification templates if they don't exist
+      await this.insertBuiltInTemplates()
 
     } catch (error) {
       console.error('Error creating tables:', error)
+    }
+  }
+
+  async insertBuiltInTemplates() {
+    try {
+      const now = new Date().toISOString()
+
+      const builtInTemplates = [
+        {
+          id: 'template_email_success',
+          name: 'Email: Build Success',
+          description: 'Default template for successful build notifications via email',
+          type: 'email',
+          is_built_in: 1,
+          email_subject: '[$ProjectName] Build #$BuildNumber - Success',
+          email_body: 'Build #$BuildNumber of $ProjectName completed successfully at $TimestampHuman.\n\nStatus: $Status\nExit Code: $ExitCode\n\nJob ID: $JobId',
+          email_html: 0,
+          slack_message: null,
+          webhook_method: null,
+          webhook_headers: null,
+          webhook_body: null,
+          created_by: 'system',
+          created_at: now,
+          updated_at: now
+        },
+        {
+          id: 'template_email_failure',
+          name: 'Email: Build Failure',
+          description: 'Default template for failed build notifications via email',
+          type: 'email',
+          is_built_in: 1,
+          email_subject: '[$ProjectName] Build #$BuildNumber - FAILED',
+          email_body: 'Build #$BuildNumber of $ProjectName failed at $TimestampHuman.\n\nFailed Node: $FailedNodeLabel\nStatus: $Status\nExit Code: $ExitCode\n\nOutput:\n$Output\n\nJob ID: $JobId',
+          email_html: 0,
+          slack_message: null,
+          webhook_method: null,
+          webhook_headers: null,
+          webhook_body: null,
+          created_by: 'system',
+          created_at: now,
+          updated_at: now
+        },
+        {
+          id: 'template_slack_success',
+          name: 'Slack: Build Success',
+          description: 'Default template for successful build notifications via Slack',
+          type: 'slack',
+          is_built_in: 1,
+          email_subject: null,
+          email_body: null,
+          email_html: 0,
+          slack_message: ':white_check_mark: *$ProjectName* - Build #$BuildNumber Success\n*Time:* $TimestampHuman\n*Exit Code:* $ExitCode',
+          webhook_method: null,
+          webhook_headers: null,
+          webhook_body: null,
+          created_by: 'system',
+          created_at: now,
+          updated_at: now
+        },
+        {
+          id: 'template_slack_failure',
+          name: 'Slack: Build Failure',
+          description: 'Default template for failed build notifications via Slack',
+          type: 'slack',
+          is_built_in: 1,
+          email_subject: null,
+          email_body: null,
+          email_html: 0,
+          slack_message: ':x: *$ProjectName* - Build #$BuildNumber Failed\n*Failed Node:* $FailedNodeLabel\n*Time:* $TimestampHuman\n*Exit Code:* $ExitCode',
+          webhook_method: null,
+          webhook_headers: null,
+          webhook_body: null,
+          created_by: 'system',
+          created_at: now,
+          updated_at: now
+        },
+        {
+          id: 'template_webhook_generic',
+          name: 'Webhook: Generic',
+          description: 'Generic webhook template with all context variables',
+          type: 'webhook',
+          is_built_in: 1,
+          email_subject: null,
+          email_body: null,
+          email_html: 0,
+          slack_message: null,
+          webhook_method: 'POST',
+          webhook_headers: '{"Content-Type": "application/json"}',
+          webhook_body: '{\n  "event": "build_complete",\n  "project": "$ProjectName",\n  "projectId": "$ProjectId",\n  "buildNumber": "$BuildNumber",\n  "jobId": "$JobId",\n  "status": "$Status",\n  "exitCode": $ExitCode,\n  "failedNode": "$FailedNodeLabel",\n  "timestamp": "$Timestamp",\n  "timestampHuman": "$TimestampHuman"\n}',
+          created_by: 'system',
+          created_at: now,
+          updated_at: now
+        }
+      ]
+
+      // Insert templates only if they don't already exist
+      for (const template of builtInTemplates) {
+        const existing = this.sqlite.prepare('SELECT id FROM notification_templates WHERE id = ?').get(template.id)
+        if (!existing) {
+          this.sqlite.prepare(`
+            INSERT INTO notification_templates (
+              id, name, description, type, is_built_in, email_subject, email_body, email_html,
+              slack_message, webhook_method, webhook_headers, webhook_body, created_by, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            template.id, template.name, template.description, template.type, template.is_built_in,
+            template.email_subject, template.email_body, template.email_html, template.slack_message,
+            template.webhook_method, template.webhook_headers, template.webhook_body,
+            template.created_by, template.created_at, template.updated_at
+          )
+        }
+      }
+
+      console.log('✅ Built-in notification templates ensured')
+    } catch (error) {
+      console.error('Error inserting built-in templates:', error)
     }
   }
 
@@ -664,6 +830,26 @@ export class DatabaseManager {
         )
       `
 
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS notification_templates (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          description TEXT,
+          type VARCHAR(50) NOT NULL,
+          is_built_in BOOLEAN DEFAULT false,
+          email_subject TEXT,
+          email_body TEXT,
+          email_html BOOLEAN DEFAULT false,
+          slack_message TEXT,
+          webhook_method VARCHAR(10),
+          webhook_headers TEXT,
+          webhook_body TEXT,
+          created_by VARCHAR(255),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
       // Create indexes for better performance
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_project_id ON builds(project_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_status ON builds(status)`
@@ -780,6 +966,32 @@ export class DatabaseManager {
     } catch (error) {
       console.error('Error migrating builds table:', error)
     }
+
+    // Migration 2: Update smtp_port setting from select to number type
+    try {
+      const smtpPortCheck = await this.postgres`
+        SELECT * FROM system_settings WHERE key = 'smtp_port' AND type = 'select'
+      `
+
+      if (smtpPortCheck.length > 0) {
+        console.log('🔄 Migrating smtp_port setting from select to number type...')
+
+        await this.postgres`
+          UPDATE system_settings
+          SET type = 'number',
+              options = NULL,
+              value = '25',
+              default_value = '25',
+              description = 'SMTP server port (common: 25, 587, 465, 1025 for MailHog)',
+              updated_at = ${new Date().toISOString()}
+          WHERE key = 'smtp_port'
+        `
+
+        console.log('✅ Migrated smtp_port setting to number type')
+      }
+    } catch (error) {
+      console.error('Error migrating smtp_port setting:', error)
+    }
   }
 
   getDatabase() {
@@ -799,6 +1011,18 @@ export async function getDB() {
     await dbManager.initialize()
   }
   return dbManager.getDatabase()
+}
+
+// Export function to get raw database connection (SQLite or Postgres)
+export async function getRawDB() {
+  if (!dbManager) {
+    dbManager = new DatabaseManager()
+    await dbManager.initialize()
+  }
+  return {
+    db: dbManager.sqlite || dbManager.postgres,
+    type: dbManager.type
+  }
 }
 
 // Export schema tables for direct access

@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   
   try {
     const body = await readBody(event)
-    const { projectId: bodyProjectId, nodes, edges, startTime } = body
+    const { projectId: bodyProjectId, nodes, edges, startTime, failedNodeLabel } = body
     projectId = bodyProjectId
 
     if (!projectId || !nodes || !edges) {
@@ -79,13 +79,13 @@ export default defineEventHandler(async (event) => {
 
     // Filter to get only executable commands (including orchestrator commands and notifications)
     const executableCommands = executionCommands.filter(cmd =>
-      ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator', 'notification'].includes(cmd.type)
+      ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator', 'notification'].includes(cmd.type)
     )
 
     if (executableCommands.length === 0) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'No executable commands found in graph. Please add at least one executable node (bash, powershell, cmd, python, or node).'
+        statusMessage: 'No executable commands found in graph. Please add at least one executable node (bash, sh, powershell, cmd, python, or node).'
       })
     }
 
@@ -278,7 +278,9 @@ export default defineEventHandler(async (event) => {
       const context = {
         jobId,
         projectId,
-        buildNumber: currentBuildNumber
+        projectName: project.name,
+        buildNumber: currentBuildNumber,
+        failedNodeLabel: failedNodeLabel || null
       }
 
       const result = await notificationService.sendNotification(firstCommand, context)
@@ -517,7 +519,14 @@ function getCommandPlatformRequirements(command) {
       platform.macos = true
       platform.windows = true  // WSL/Git Bash support
       break
-    
+
+    case 'sh':
+      // POSIX shell is available on all Unix-like systems
+      platform.linux = true
+      platform.macos = true
+      platform.windows = true  // WSL/Git Bash support
+      break
+
     case 'python':
     case 'node':
       // Python and Node.js are cross-platform
@@ -554,7 +563,7 @@ export function convertGraphToCommands(nodes, edges, triggerContext = null, exec
   console.log(`🎯 Found ${startingNodes.length} starting nodes:`, startingNodes.map(n => n.data.label))
 
   if (startingNodes.length === 0) {
-    throw new Error('No executable nodes found in graph. Please add at least one executable node (bash, powershell, cmd, python, or node) to create a workflow.')
+    throw new Error('No executable nodes found in graph. Please add at least one executable node (bash, sh, powershell, cmd, python, or node) to create a workflow.')
   }
 
   // Step 3: Build execution flow from starting nodes
@@ -668,14 +677,25 @@ function findExecutionStartingNodes(nodes, edges) {
       return false
     }
 
+    // Skip conditional nodes - they need input data to evaluate conditions
+    if (node.data.nodeType === 'conditional') {
+      return false
+    }
+
+    // Skip notification nodes - they should be triggered by other nodes, not start execution
+    if (node.data.nodeType === 'notification') {
+      return false
+    }
+
     // Check if this node has incoming execution connections
-    const hasIncomingExecutionConnections = edges.some(edge => 
+    const hasIncomingExecutionConnections = edges.some(edge =>
       edge.target === node.id && (edge.targetHandle === 'execution' || !edge.targetHandle)
     )
 
-    // Trigger nodes and nodes without execution inputs can start execution
-    return !hasIncomingExecutionConnections && 
-           (node.data.hasExecutionInput === false || !node.data.hasExecutionInput)
+    // Any other node without incoming execution connections can be a starting node
+    // This includes trigger nodes (cron, webhook) and execution nodes (bash, cmd, powershell, python, node)
+    // and control nodes (parallel_branches, parallel_matrix, parallel_execution)
+    return !hasIncomingExecutionConnections
   })
 
   // If no starting nodes found (manual execution without triggers), find the first executable node
@@ -698,7 +718,7 @@ function findExecutionStartingNodes(nodes, edges) {
 
     // Fallback to regular execution nodes (including notifications)
     const executableNodes = nodes.filter(node =>
-      ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_execution', 'notification'].includes(node.data.nodeType)
+      ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'parallel_execution', 'notification'].includes(node.data.nodeType)
     )
 
     if (executableNodes.length > 0) {
@@ -728,7 +748,7 @@ function buildExecutionFlow(startNode, allNodes, allEdges, parameterValues, visi
   }
 
   // Check if this node has success/failure routing (branching point)
-  const isExecutionNode = ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(startNode.data.nodeType)
+  const isExecutionNode = ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(startNode.data.nodeType)
   const hasSuccessSocket = isExecutionNode && allEdges.some(edge => edge.source === startNode.id && edge.sourceHandle === 'success')
   const hasFailureSocket = isExecutionNode && allEdges.some(edge => edge.source === startNode.id && edge.sourceHandle === 'failure')
 
@@ -759,6 +779,7 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
 
   switch (nodeType) {
     case 'bash':
+    case 'sh':
     case 'powershell':
     case 'cmd':
     case 'python':
@@ -903,6 +924,7 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
         if (!text) return text
         // Create a temporary node with the text as script to reuse resolveScriptPlaceholders
         const tempNode = {
+          id: node.id, // Need the node ID for connection lookups
           data: {
             script: text,
             inputSockets: node.data.inputSockets
@@ -976,12 +998,14 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
       // Find the edge connected to this socket
       const connection = inputConnections.find(edge => edge.targetHandle === socket.id)
       console.log(`🔧 Connection found for socket ${socket.label}:`, connection)
-      
+
+      let parameterData = null
+
       if (connection) {
         // Check if the source is a parameter node
-        let parameterData = parameterValues.get(connection.source)
+        parameterData = parameterValues.get(connection.source)
         console.log(`🔧 Parameter data from source ${connection.source}:`, parameterData)
-        
+
         // If not found, check if it's a webhook output socket connection
         if (!parameterData && connection.sourceHandle) {
           const webhookSocketKey = `${connection.source}_${connection.sourceHandle}`
@@ -989,7 +1013,7 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
           parameterData = parameterValues.get(webhookSocketKey)
           console.log(`🔧 Webhook parameter data:`, parameterData)
         }
-        
+
         // If still not found, check if it's an execution output connection
         if (!parameterData && connection.sourceHandle === 'output') {
           const executionOutputKey = `${connection.target}_${connection.targetHandle}`
@@ -998,8 +1022,19 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
             console.log(`🔧 Execution output data:`, parameterData)
           }
         }
-        
+      }
+
+      // Even if no connection found, try to find parameter data by socket
+      // This handles cases where the node is executed separately (like notification after job failure)
+      if (!parameterData) {
+        const executionOutputKey = `${node.id}_${socket.id}`
+        parameterData = parameterValues.get(executionOutputKey)
         if (parameterData) {
+          console.log(`🔧 Found execution output by direct socket lookup: ${executionOutputKey}`)
+        }
+      }
+
+      if (parameterData) {
           // Handle socket label that may or may not start with $
           const cleanLabel = socket.label.startsWith('$') ? socket.label.substring(1) : socket.label
           
@@ -1060,7 +1095,6 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
           }
           
           console.log(`🔗 Resolved parameter "${parameterData.label}" for socket "${socket.label}" (object: ${isObjectValue})`)
-        }
       } else {
         console.log(`⚠️ No connection found for socket "${socket.label}"`)
       }
@@ -1084,7 +1118,7 @@ export function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameter
   
   // Handle execution nodes with success/failure routing
   // Note: parallel_execution nodes have no output sockets, so they don't need success/failure routing
-  if (sourceNode && ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(sourceNode.data.nodeType)) {
+  if (sourceNode && ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(sourceNode.data.nodeType)) {
     return getExecutionResultConnectedNodes(sourceNode, allNodes, allEdges, executionResult)
   }
   
