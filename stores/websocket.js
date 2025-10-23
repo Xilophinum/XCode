@@ -193,19 +193,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // Handle incoming WebSocket messages
   const handleWebSocketMessage = (message) => {
     try {
-      console.log('📨 WebSocket message received:', message.type, message)
-      
-      // Debug: Log message structure for troubleshooting
-      if (message.type?.includes('job') || message.type?.includes('cron')) {
-        console.log('🔍 Debug message structure:', {
-          type: message.type,
-          hasProjectId: !!message.projectId,
-          hasJobId: !!message.jobId,
-          hasData: !!message.data,
-          keys: Object.keys(message)
-        })
-      }
-      
       // Update internal state based on message type
       updateInternalState(message)
       
@@ -462,8 +449,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
       timestamp: timestamp ? new Date(timestamp) : new Date()
     })
 
-    console.log(`📝 Added message to UI [${nodeLabel}]: ${message} (Total: ${messages.length})`)
-
     // Persist System messages to database via API call
     if (nodeLabel === 'System') {
       persistSystemMessage(projectId, level, message, timestamp)
@@ -482,8 +467,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
       const currentJob = getCurrentJob(projectId)
 
       if (currentJob?.buildNumber) {
+        
         const buildNumber = currentJob.buildNumber
-
         await $fetch(`/api/projects/${projectId}/builds/${buildNumber}/logs`, {
           method: 'PATCH',
           body: {
@@ -495,7 +480,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
             timestamp: timestamp || new Date().toISOString()
           }
         })
-        console.log(`✅ Persisted System log to build #${buildNumber}`)
+
       } else {
         console.warn('⚠️ Cannot persist System message: No buildNumber available yet')
       }
