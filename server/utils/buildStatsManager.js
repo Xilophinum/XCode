@@ -172,6 +172,13 @@ export class BuildStatsManager {
       throw new Error(`Build #${buildNumber} for project ${projectId} not found`)
     }
 
+    // Don't allow changing status from "failure" to "success"
+    // Once a build fails, it stays failed even if failure handlers succeed
+    if (build.status === 'failure' && result.status === 'success') {
+      console.log(`⚠️ Prevented changing build #${buildNumber} status from "failure" to "success" - build remains failed`)
+      return
+    }
+
     const duration = new Date(now) - new Date(build.startedAt)
 
     // Update the build record

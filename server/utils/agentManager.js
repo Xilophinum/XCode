@@ -4,6 +4,7 @@ import { getBuildStatsManager } from './buildStatsManager.js'
 import { getExecutionConnectedNodes } from '../api/projects/execute.post.js'
 import { executeParallelBranches } from './orchestrators/parallelBranchesOrchestrator.js'
 import { executeParallelMatrix } from './orchestrators/parallelMatrixOrchestrator.js'
+import { notificationService } from './notificationService.js'
 
 class AgentManager {
   constructor() {
@@ -104,7 +105,41 @@ class AgentManager {
             await this.executeParallelMatrix(jobId, nextCommand, job)
             return // Don't continue with normal sequential flow
           }
-          
+
+          // Check if the next command is a notification
+          if (nextCommand.type === 'notification') {
+            console.log(`📧 Processing notification: ${nextCommand.nodeLabel}`)
+
+            try {
+              const context = {
+                jobId: jobId,
+                projectId: job.projectId,
+                buildNumber: job.buildNumber,
+                exitCode: exitCode || 0,
+                output: output
+              }
+
+              const result = await notificationService.sendNotification(nextCommand, context)
+
+              if (result.success) {
+                console.log(`✅ Notification sent successfully for: ${nextCommand.nodeLabel}`)
+              } else {
+                console.error(`❌ Notification failed for: ${nextCommand.nodeLabel}`, result.error)
+              }
+            } catch (notificationError) {
+              console.error(`❌ Notification error for: ${nextCommand.nodeLabel}`, notificationError)
+            }
+
+            // Update job to move to next command after notification
+            await jobManager.updateJob(jobId, {
+              currentCommandIndex: nextIndex
+            })
+
+            // Continue processing - trigger job complete again to move to next command
+            await this.handleJobComplete(agentId, { jobId, exitCode, output })
+            return
+          }
+
           // Find agent for the next command
           // Handle "any" as explicit choice for any available agent
           const nextRequiresSpecificAgent = nextCommand.requiredAgentId && nextCommand.requiredAgentId !== 'any'
@@ -218,10 +253,11 @@ class AgentManager {
       })
 
       // Trigger next nodes based on success
-      await this.triggerNextNodes(job, { success: true, exitCode: exitCode || 0, output: output })
+      const hasNextNodes = await this.triggerNextNodes(job, { success: true, exitCode: exitCode || 0, output: output })
 
-      // Update build status if this job is associated with a build
-      if (job.buildNumber) {
+      // Only mark build as complete if there are no more nodes to execute
+      // Don't finish the build as "success" if this was a failure handler node
+      if (job.buildNumber && !hasNextNodes && !job.triggeredByFailure) {
         try {
           const buildStatsManager = await getBuildStatsManager()
           await buildStatsManager.finishBuild(job.projectId, job.buildNumber, {
@@ -233,6 +269,10 @@ class AgentManager {
         } catch (buildError) {
           console.warn('Failed to update build record on job completion:', buildError)
         }
+      } else if (hasNextNodes) {
+        console.log(`🔄 Build #${job.buildNumber} continues - next nodes triggered, not finishing build yet`)
+      } else if (job.triggeredByFailure) {
+        console.log(`✅ Failure handler node completed successfully - build remains in failed state`)
       }
     }
   }
@@ -271,12 +311,8 @@ class AgentManager {
         exitCode: exitCode || 1
       })
 
-      // Trigger next nodes based on failure
-      if (job) {
-        await this.triggerNextNodes(job, { success: false, exitCode: exitCode || 1, error: errorMessage, output: data.output })
-      }
-
-      // Update build status if this job is associated with a build
+      // Mark build as failed IMMEDIATELY when a node fails
+      // This ensures the build status is "failure" even if there are failure handler nodes
       if (job && job.buildNumber) {
         try {
           const buildStatsManager = await getBuildStatsManager()
@@ -289,6 +325,16 @@ class AgentManager {
         } catch (buildError) {
           console.warn('Failed to update build record on job error:', buildError)
         }
+      }
+
+      // Trigger failure handler nodes (if any) AFTER marking build as failed
+      let hasNextNodes = false
+      if (job) {
+        hasNextNodes = await this.triggerNextNodes(job, { success: false, exitCode: exitCode || 1, error: errorMessage, output: data.output })
+      }
+
+      if (hasNextNodes) {
+        console.log(`🔄 Failure handler nodes triggered - build already marked as failed`)
       }
     }
   }
@@ -427,17 +473,18 @@ class AgentManager {
   }
   
   // Trigger next nodes based on execution result
+  // Returns true if nodes were triggered, false otherwise
   async triggerNextNodes(job, executionResult) {
     if (!job.nodes || !job.edges) {
       console.log(`⚠️ No graph data available for job ${job.jobId} to trigger next nodes`)
-      return
+      return false
     }
 
     try {
       // Parse nodes and edges if they are JSON strings
       const nodes = typeof job.nodes === 'string' ? JSON.parse(job.nodes) : job.nodes
       const edges = typeof job.edges === 'string' ? JSON.parse(job.edges) : job.edges
-      
+
       // Find the last executed node based on job execution commands
       let currentNode = null
       if (job.executionCommands && job.currentCommandIndex !== undefined) {
@@ -446,7 +493,7 @@ class AgentManager {
           currentNode = nodes.find(node => node.id === lastCommand.nodeId)
         }
       }
-      
+
       // Fallback: find any execution node if we can't determine the current one
       if (!currentNode) {
         currentNode = nodes.find(node =>
@@ -456,7 +503,7 @@ class AgentManager {
 
       if (!currentNode) {
         console.log(`⚠️ Could not find current execution node for job ${job.jobId}`)
-        return
+        return false
       }
 
       console.log(`🔍 Finding next nodes from: ${currentNode.data.label} (${currentNode.data.nodeType})`)
@@ -466,7 +513,7 @@ class AgentManager {
 
       if (nextNodes.length === 0) {
         console.log(`🏁 No next nodes to execute for job ${job.jobId}`)
-        return
+        return false
       }
 
       console.log(`🔄 Triggering ${nextNodes.length} next nodes for job ${job.jobId}`)
@@ -499,13 +546,19 @@ class AgentManager {
           }
           
           // Create execution data for the next node
+          // Convert Map to plain object for JSON serialization
+          const executionOutputsObj = Object.fromEntries(parameterValues)
+
           const executionData = {
             projectId: job.projectId,
             nodes: [nextNode], // Only execute this specific node
             edges: edges,
             startTime: new Date().toISOString(),
             trigger: 'node-completion',
-            executionOutputs: parameterValues // Pass the execution outputs
+            executionOutputs: executionOutputsObj, // Pass the execution outputs as plain object
+            buildNumber: job.buildNumber, // Reuse existing build
+            projectName: job.projectName, // Pass project name to avoid lookup
+            triggeredByFailure: !executionResult.success // Track if this was triggered by a failure
           }
           
           // Execute the next node
@@ -524,8 +577,12 @@ class AgentManager {
         }
       }
 
+      // Return true to indicate that nodes were triggered
+      return true
+
     } catch (error) {
       console.error(`❌ Error triggering next nodes for job ${job?.jobId || 'undefined'}:`, error)
+      return false
     }
   }
 

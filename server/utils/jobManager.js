@@ -201,7 +201,6 @@ class JobManager {
    */
   async addJobOutput(jobId, outputLine) {
     const job = this.jobs.get(jobId)
-    console.log(`job found to add job output: `, job)
     if (!job) {
       console.warn(`⚠️ Attempted to add output to non-existent job ${jobId}`)
       return false

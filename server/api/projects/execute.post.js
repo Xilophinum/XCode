@@ -9,6 +9,7 @@ import { getAgentManager } from '../../utils/agentManager.js'
 import { getDataService } from '../../utils/dataService.js'
 import { getCredentialResolver } from '../../utils/credentialResolver.js'
 import { getBuildStatsManager } from '../../utils/buildStatsManager.js'
+import { notificationService } from '../../utils/notificationService.js'
 
 export default defineEventHandler(async (event) => {
   let currentBuildNumber = null
@@ -76,9 +77,9 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Filter to get only executable commands (including orchestrator commands)
+    // Filter to get only executable commands (including orchestrator commands and notifications)
     const executableCommands = executionCommands.filter(cmd =>
-      ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator'].includes(cmd.type)
+      ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator', 'notification'].includes(cmd.type)
     )
 
     if (executableCommands.length === 0) {
@@ -88,9 +89,9 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Validate that all executable commands have agent selection
+    // Validate that all executable commands have agent selection (except orchestrators and notifications which run on the server)
     const missingAgentCommands = executableCommands.filter(cmd =>
-      !['parallel_branches_orchestrator', 'parallel_matrix_orchestrator'].includes(cmd.type) &&
+      !['parallel_branches_orchestrator', 'parallel_matrix_orchestrator', 'notification'].includes(cmd.type) &&
       (!cmd.requiredAgentId || cmd.requiredAgentId === '')
     )
 
@@ -103,26 +104,34 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Start build recording AFTER validation
-    let currentProjectName = project.name
-    
-    const buildStatsManager = await getBuildStatsManager()
-    const buildResult = await buildStatsManager.startBuild({
-      projectId,
-      projectName: project.name,
-      agentId: availableAgent.agentId,
-      agentName: availableAgent.name || availableAgent.hostname,
-      jobId,
-      trigger: 'manual',
-      message: 'Manual execution',
-      nodeCount: nodes.length,
-      branch: null,
-      commit: null,
-      metadata: null
-    })
+    // Start build recording AFTER validation (or reuse existing build if provided)
+    let currentProjectName = body.projectName || project.name
 
-    currentBuildNumber = buildResult.buildNumber
-    console.log(`✅ Build #${currentBuildNumber} started for manual execution of "${project.name}"`)
+    const buildStatsManager = await getBuildStatsManager()
+
+    // Check if this is a continuation of an existing build (from triggerNextNodes)
+    if (body.buildNumber) {
+      currentBuildNumber = body.buildNumber
+      console.log(`🔄 Continuing existing build #${currentBuildNumber} for "${currentProjectName}" (triggered by node completion)`)
+    } else {
+      // Create new build for initial execution
+      const buildResult = await buildStatsManager.startBuild({
+        projectId,
+        projectName: project.name,
+        agentId: availableAgent.agentId,
+        agentName: availableAgent.name || availableAgent.hostname,
+        jobId,
+        trigger: 'manual',
+        message: 'Manual execution',
+        nodeCount: nodes.length,
+        branch: null,
+        commit: null,
+        metadata: null
+      })
+
+      currentBuildNumber = buildResult.buildNumber
+      console.log(`✅ Build #${currentBuildNumber} started for manual execution of "${project.name}"`)
+    }
 
     // Create job record WITH buildNumber
     const job = {
@@ -139,7 +148,8 @@ export default defineEventHandler(async (event) => {
       createdAt: new Date().toISOString(),
       output: [],
       currentNodeId: null,
-      currentNodeLabel: null
+      currentNodeLabel: null,
+      triggeredByFailure: body.triggeredByFailure || false // Track if this was a failure handler
     }
 
     // Store job in job manager
@@ -252,7 +262,106 @@ export default defineEventHandler(async (event) => {
         message: `Parallel matrix orchestrator started${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`
       }
     }
-    
+
+    // Check if first command is a notification
+    if (firstCommand.type === 'notification') {
+      console.log(`📧 First command is notification - executing directly on backend`)
+
+      // Update job with notification execution
+      await jobManager.updateJob(jobId, {
+        status: 'running',
+        executionCommands: executableCommands,
+        currentCommandIndex: 0,
+        buildNumber: currentBuildNumber
+      })
+
+      const context = {
+        jobId,
+        projectId,
+        buildNumber: currentBuildNumber
+      }
+
+      const result = await notificationService.sendNotification(firstCommand, context)
+
+      if (result.success) {
+        console.log(`✅ Notification sent successfully`)
+
+        // Mark job as completed
+        await jobManager.updateJob(jobId, {
+          status: 'completed',
+          exitCode: 0,
+          completedAt: new Date().toISOString(),
+          message: 'Notification sent successfully'
+        })
+
+        // Broadcast notification sent event
+        if (globalThis.broadcastToProject) {
+          globalThis.broadcastToProject(projectId, {
+            type: 'job_completed',
+            jobId,
+            buildNumber: currentBuildNumber,
+            status: 'completed',
+            message: 'Notification sent successfully',
+            timestamp: new Date().toISOString()
+          })
+        }
+
+        // Mark build as complete if this was the only command
+        if (executableCommands.length === 1 && currentBuildNumber) {
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(projectId, currentBuildNumber, {
+            status: 'success',
+            message: 'Notification sent successfully',
+            nodesExecuted: 1
+          })
+        }
+      } else {
+        console.error(`❌ Notification failed:`, result.error)
+
+        // Mark job as failed
+        await jobManager.updateJob(jobId, {
+          status: 'failed',
+          error: result.error,
+          exitCode: 1,
+          failedAt: new Date().toISOString()
+        })
+
+        // Broadcast notification failed event
+        if (globalThis.broadcastToProject) {
+          globalThis.broadcastToProject(projectId, {
+            type: 'job_failed',
+            jobId,
+            buildNumber: currentBuildNumber,
+            status: 'failed',
+            error: result.error,
+            timestamp: new Date().toISOString()
+          })
+        }
+
+        // Mark build as failed if this was the only command
+        if (executableCommands.length === 1 && currentBuildNumber) {
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(projectId, currentBuildNumber, {
+            status: 'failure',
+            message: `Notification failed: ${result.error}`,
+            nodesExecuted: 1
+          })
+        }
+      }
+
+      return {
+        success: result.success,
+        jobId,
+        buildNumber: currentBuildNumber,
+        agentId: 'backend',
+        agentName: 'Notification Service',
+        startTime: job.startTime,
+        message: result.success
+          ? `Notification sent successfully${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`
+          : `Notification failed: ${result.error}`
+      }
+    }
+
     // Find agent for regular execution commands
     const requiresSpecificAgent = firstCommand.requiredAgentId && firstCommand.requiredAgentId !== 'any'
     const agentRequirements = requiresSpecificAgent ? { agentId: firstCommand.requiredAgentId } : {}
@@ -466,12 +575,21 @@ export function convertGraphToCommands(nodes, edges, triggerContext = null, exec
  */
 function buildParameterValueMap(nodes, edges, triggerContext = null, executionOutputs = null) {
   const parameterValues = new Map()
-  
+
   // Add execution outputs if provided
-  if (executionOutputs && executionOutputs instanceof Map) {
-    for (const [key, value] of executionOutputs) {
-      parameterValues.set(key, value)
-      console.log(`📤 Added execution output: ${key} = ${value.value}`)
+  if (executionOutputs) {
+    if (executionOutputs instanceof Map) {
+      // Handle Map (legacy)
+      for (const [key, value] of executionOutputs) {
+        parameterValues.set(key, value)
+        console.log(`📤 Added execution output: ${key} = ${value.value}`)
+      }
+    } else if (typeof executionOutputs === 'object') {
+      // Handle plain object (serialized from Map)
+      for (const [key, value] of Object.entries(executionOutputs)) {
+        parameterValues.set(key, value)
+        console.log(`📤 Added execution output: ${key} = ${value.value}`)
+      }
     }
   }
 
@@ -562,21 +680,27 @@ function findExecutionStartingNodes(nodes, edges) {
 
   // If no starting nodes found (manual execution without triggers), find the first executable node
   if (startingNodes.length === 0) {
+    // Special case: if there's only one node in the graph, it's the starting node (triggered individually)
+    if (nodes.length === 1 && !nodes[0].data.nodeType?.includes('-param')) {
+      console.log(`🎯 Single node execution - using: ${nodes[0].data.label}`)
+      return [nodes[0]]
+    }
+
     // Prioritize orchestrator nodes first (parallel_branches, parallel_matrix)
-    const orchestratorNodes = nodes.filter(node => 
+    const orchestratorNodes = nodes.filter(node =>
       ['parallel_branches', 'parallel_matrix'].includes(node.data.nodeType)
     )
-    
+
     if (orchestratorNodes.length > 0) {
       console.log(`🎯 No trigger nodes found - using orchestrator node for manual execution: ${orchestratorNodes[0].data.label}`)
       return [orchestratorNodes[0]]
     }
-    
-    // Fallback to regular execution nodes
-    const executableNodes = nodes.filter(node => 
-      ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_execution'].includes(node.data.nodeType)
+
+    // Fallback to regular execution nodes (including notifications)
+    const executableNodes = nodes.filter(node =>
+      ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_execution', 'notification'].includes(node.data.nodeType)
     )
-    
+
     if (executableNodes.length > 0) {
       console.log(`🎯 No trigger nodes found - using first executable node for manual execution: ${executableNodes[0].data.label}`)
       return [executableNodes[0]]
@@ -603,9 +727,21 @@ function buildExecutionFlow(startNode, allNodes, allEdges, parameterValues, visi
     commands.push(...nodeCommands)
   }
 
+  // Check if this node has success/failure routing (branching point)
+  const isExecutionNode = ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(startNode.data.nodeType)
+  const hasSuccessSocket = isExecutionNode && allEdges.some(edge => edge.source === startNode.id && edge.sourceHandle === 'success')
+  const hasFailureSocket = isExecutionNode && allEdges.some(edge => edge.source === startNode.id && edge.sourceHandle === 'failure')
+
+  // If this node has success/failure sockets, STOP building the sequential flow here
+  // Let runtime routing (triggerNextNodes) handle the branching
+  if (hasSuccessSocket || hasFailureSocket) {
+    console.log(`🔀 Node "${startNode.data.label}" has success/failure routing - stopping sequential compilation here`)
+    return commands
+  }
+
   // Find nodes connected via execution flow
   const connectedNodes = getExecutionConnectedNodes(startNode.id, allNodes, allEdges, parameterValues)
-  
+
   for (const connectedNode of connectedNodes) {
     const connectedCommands = buildExecutionFlow(connectedNode, allNodes, allEdges, parameterValues, visited)
     commands.push(...connectedCommands)
@@ -750,12 +886,54 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
 
     case 'parallel':
     case 'retry':
-    case 'notification':
       // Control nodes - for now just log them
       // TODO: Implement proper control flow logic
       commands.push({
         type: 'log',
         message: `Control node: ${node.data.label} (${nodeType})`,
+        nodeId: node.id,
+        nodeLabel: node.data.label
+      })
+      break
+
+    case 'notification':
+      // Notification node - send email, slack, or webhook
+      // Helper function to resolve placeholders in a text field
+      const resolvePlaceholders = (text) => {
+        if (!text) return text
+        // Create a temporary node with the text as script to reuse resolveScriptPlaceholders
+        const tempNode = {
+          data: {
+            script: text,
+            inputSockets: node.data.inputSockets
+          }
+        }
+        return resolveScriptPlaceholders(tempNode, allEdges, parameterValues)
+      }
+
+      commands.push({
+        type: 'notification',
+        notificationType: node.data.notificationType || 'email',
+
+        // Email properties
+        emailFrom: node.data.emailFrom,
+        emailTo: node.data.emailTo,
+        emailSubject: resolvePlaceholders(node.data.emailSubject || ''),
+        emailBody: resolvePlaceholders(node.data.emailBody || ''),
+        emailHtml: node.data.emailHtml || false,
+
+        // Slack properties
+        slackWebhookUrl: node.data.slackWebhookUrl,
+        slackChannel: node.data.slackChannel,
+        slackUsername: node.data.slackUsername,
+        slackMessage: resolvePlaceholders(node.data.slackMessage || ''),
+
+        // Webhook properties
+        webhookUrl: node.data.webhookUrl,
+        webhookMethod: node.data.webhookMethod || 'POST',
+        webhookHeaders: node.data.webhookHeaders || '{}',
+        webhookBody: resolvePlaceholders(node.data.webhookBody || '{}'),
+
         nodeId: node.id,
         nodeLabel: node.data.label
       })

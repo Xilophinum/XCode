@@ -752,6 +752,14 @@ async function handleAgentJobStatus(socket, msg, agentManager) {
 
       case 'failed':
         // Job failed on the agent
+        // Trigger failure routing (success/failure sockets)
+        await agentManager.handleJobError(socket.agentId, {
+          jobId,
+          error: error || message,
+          exitCode: exitCode || 1,
+          output: output || ''
+        })
+
         broadcastToProject(projectId, {
           type: 'job_error',
           jobId,

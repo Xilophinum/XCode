@@ -604,6 +604,12 @@
                 :nodeData="selectedNode"
               />
 
+              <!-- Notification Configuration for notification nodes -->
+              <NotificationProperties
+                v-if="selectedNode.data?.nodeType === 'notification'"
+                :nodeData="selectedNode"
+              />
+
               <!-- Parallel Branches Configuration -->
               <ParallelBranchesProperties
                 v-if="selectedNode.data?.nodeType === 'parallel_branches'"
@@ -756,6 +762,7 @@ import BooleanParamProperties from '@/components/property-panels/BooleanParamPro
 import TextParamProperties from '@/components/property-panels/TextParamProperties.vue'
 import StringParamProperties from '@/components/property-panels/StringParamProperties.vue'
 import ConditionalProperties from '@/components/property-panels/ConditionalProperties.vue'
+import NotificationProperties from '@/components/property-panels/NotificationProperties.vue'
 import ParallelBranchesProperties from '@/components/property-panels/ParallelBranchesProperties.vue'
 import ParallelMatrixProperties from '@/components/property-panels/ParallelMatrixProperties.vue'
 import ParallelExecutionProperties from '@/components/property-panels/ParallelExecutionProperties.vue'
@@ -1872,12 +1879,36 @@ const getDefaultNodeData = (type) => {
         description: 'Conditional execution'
       }
     case 'notification':
-      return { 
+      return {
         ...baseData,
+        hasExecutionInput: true, // Can receive input from other nodes
         hasExecutionOutput: false, // Notifications are terminal nodes
-        type: 'email',
-        recipients: '',
-        message: 'Job completed'
+        hasDataOutput: false,
+        inputSockets: [], // Can add input sockets for dynamic data
+
+        // Notification type and common settings
+        notificationType: 'email', // email, slack, webhook
+
+        // Email properties
+        emailFrom: '',
+        emailTo: '',
+        emailSubject: '',
+        emailBody: 'Job completed successfully',
+        emailHtml: false,
+
+        // Slack properties
+        slackWebhookUrl: '',
+        slackChannel: '',
+        slackUsername: '',
+        slackMessage: 'Job completed successfully',
+
+        // Webhook properties
+        webhookUrl: '',
+        webhookMethod: 'POST',
+        webhookHeaders: '{}',
+        webhookBody: '{"status": "completed", "message": "Job finished"}',
+
+        description: 'Send notification'
       }
       
     default:
