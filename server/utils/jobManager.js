@@ -522,10 +522,6 @@ export const jobManager = {
     const manager = await getJobManager()
     return manager.getJobsForProject(projectId)
   },
-  async getJobsByProject(projectId) {
-    const manager = await getJobManager()
-    return manager.getJobsForProject(projectId)
-  },
   async getRunningJobForProject(projectId) {
     const manager = await getJobManager()
     return manager.getRunningJobForProject(projectId)

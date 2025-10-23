@@ -27,10 +27,6 @@ export default defineNitroPlugin(async (nitroApp) => {
   // Handle any jobs that were running when server restarted
   await handleServerRestartOrphanedJobs(agentManager)
 
-  // Start heartbeat timeout checker (runs every 30 seconds)
-  const HEARTBEAT_TIMEOUT = 60000 // 60 seconds
-  const HEARTBEAT_CHECK_INTERVAL = 30000 // 30 seconds
-
   setInterval(async () => {
     try {
       const now = Date.now()
@@ -44,7 +40,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         const lastHeartbeatTime = new Date(agentInfo.lastHeartbeat).getTime()
         const timeSinceHeartbeat = now - lastHeartbeatTime
 
-        if (timeSinceHeartbeat > HEARTBEAT_TIMEOUT) {
+        if (timeSinceHeartbeat > process.env.WEBSOCKET_HEARTBEAT_TIMEOUT) {
           console.log(`⚠️ Agent ${agentId} (${agentInfo.name}) missed heartbeat (${Math.round(timeSinceHeartbeat / 1000)}s) - marking as offline`)
           timedOutAgents.push({ agentId, agentInfo })
         }
@@ -84,7 +80,7 @@ export default defineNitroPlugin(async (nitroApp) => {
     } catch (error) {
       console.error('❌ Error checking agent heartbeat timeouts:', error)
     }
-  }, HEARTBEAT_CHECK_INTERVAL)
+  }, process.env.WEBSOCKET_HEARTBEAT_CHECK_INTERVAL)
 
   // Store io instance globally for broadcasting from other modules
   globalThis.socketIO = io
