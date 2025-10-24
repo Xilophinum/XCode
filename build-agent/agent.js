@@ -495,7 +495,19 @@ class XCodeBuildAgent {
       
       attempt++;
       
-      // If no more attempts, fail the job
+      // Send job_failure message on EVERY failure (triggers failure handlers immediately)
+      this.sendMessage('job_failure', {
+        jobId,
+        error: error.message,
+        output: error.output || '',
+        exitCode: error.exitCode || 1,
+        isRetrying: attempt < maxAttempts,
+        currentAttempt: attempt,
+        maxAttempts: maxAttempts,
+        timestamp: new Date().toISOString()
+      });
+      
+      // If no more attempts, fail the job permanently
       if (attempt >= maxAttempts) {
         this.failJob(jobId, error, 'failed', `Job failed after ${attempt} attempts: ${error.message}`);
         return;

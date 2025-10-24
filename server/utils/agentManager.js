@@ -66,6 +66,38 @@ class AgentManager {
     }
   }
 
+  // Handle job failure (called on every failure, including during retries)
+  async handleJobFailure(agentId, data) {
+    const { jobId, error, exitCode, output, currentAttempt, maxAttempts, isRetrying } = data
+    
+    if (jobId) {
+      const job = await jobManager.getJob(jobId)
+      
+      if (job) {
+        // Get the failed node label if available
+        let failedNodeLabel = null
+        if (job.executionCommands && job.currentCommandIndex !== undefined) {
+          const currentCommand = job.executionCommands[job.currentCommandIndex]
+          if (currentCommand) {
+            failedNodeLabel = currentCommand.nodeLabel
+          }
+        }
+
+        console.log(`🔄 Triggering failure handlers for failure (attempt ${currentAttempt}/${maxAttempts})`)
+        await this.triggerNextNodes(job, {
+          success: false,
+          exitCode: exitCode || 1,
+          error: error,
+          output: output,
+          failedNodeLabel: failedNodeLabel,
+          currentAttempt: currentAttempt,
+          maxAttempts: maxAttempts,
+          isRetrying: isRetrying
+        })
+      }
+    }
+  }
+
   // Handle job completion from agent
   async handleJobComplete(agentId, data) {
     const { jobId, exitCode, output } = data
@@ -127,7 +159,10 @@ class AgentManager {
                 buildNumber: job.buildNumber,
                 exitCode: exitCode || 0,
                 output: output,
-                failedNodeLabel: failedNodeLabel
+                failedNodeLabel: failedNodeLabel,
+                currentAttempt: executionResult?.currentAttempt,
+                maxAttempts: executionResult?.maxAttempts,
+                isRetrying: executionResult?.isRetrying
               }
 
               const result = await notificationService.sendNotification(nextCommand, context)
@@ -255,6 +290,19 @@ class AgentManager {
         message: `Job completed successfully (exit code: ${exitCode || 0})`
       })
 
+      // Ensure UI receives final completion status
+      if (globalThis.broadcastToProject && job.projectId) {
+        globalThis.broadcastToProject(job.projectId, {
+          type: 'job_completed',
+          jobId: jobId,
+          projectId: job.projectId,
+          status: 'completed',
+          exitCode: exitCode || 0,
+          message: `Job completed successfully (exit code: ${exitCode || 0})`,
+          timestamp: new Date().toISOString()
+        })
+      }
+
       // Notify any waiting parallel orchestrators
       this.notifyJobCompletion(jobId, {
         jobId: jobId,
@@ -290,7 +338,7 @@ class AgentManager {
 
   // Handle job error from agent
   async handleJobError(agentId, data) {
-    const { jobId, error, exitCode } = data
+    const { jobId, error, exitCode, isRetrying } = data
     
     if (jobId) {
       // Get current job state to provide better error context
@@ -306,61 +354,80 @@ class AgentManager {
         console.log(`❌ Sequential execution failed at command ${currentIndex + 1}/${totalCommands}: ${currentCommand.nodeLabel}`)
       }
       
-      // Mark job as failed
-      await jobManager.updateJob(jobId, {
-        status: 'failed',
-        error: errorMessage,
-        exitCode: exitCode || 1,
-        failedAt: new Date().toISOString()
-      })
+      // Only mark job as permanently failed if this is NOT a retry attempt
+      if (!isRetrying) {
+        // Mark job as failed
+        await jobManager.updateJob(jobId, {
+          status: 'failed',
+          error: errorMessage,
+          exitCode: exitCode || 1,
+          failedAt: new Date().toISOString()
+        })
 
-      // Notify any waiting parallel orchestrators
-      this.notifyJobCompletion(jobId, {
-        jobId: jobId,
-        success: false,
-        error: errorMessage,
-        exitCode: exitCode || 1
-      })
+        // Notify any waiting parallel orchestrators
+        this.notifyJobCompletion(jobId, {
+          jobId: jobId,
+          success: false,
+          error: errorMessage,
+          exitCode: exitCode || 1
+        })
 
-      // Mark build as failed IMMEDIATELY when a node fails
-      // This ensures the build status is "failure" even if there are failure handler nodes
-      if (job && job.buildNumber) {
-        try {
-          const buildStatsManager = await getBuildStatsManager()
-          await buildStatsManager.finishBuild(job.projectId, job.buildNumber, {
-            status: 'failure',
-            message: errorMessage,
-            nodesExecuted: job.executionCommands ? (job.currentCommandIndex || 0) + 1 : 0
+        // Trigger failure handlers only for final failure (not during retries)
+        // Retries are handled by handleJobFailure which triggers handlers immediately
+        if (job) {
+          // Get the failed node label if available
+          let failedNodeLabel = null
+          if (job.executionCommands && job.currentCommandIndex !== undefined) {
+            const currentCommand = job.executionCommands[job.currentCommandIndex]
+            if (currentCommand) {
+              failedNodeLabel = currentCommand.nodeLabel
+            }
+          }
+
+          console.log(`🔄 Triggering failure handlers for final failure`)
+          await this.triggerNextNodes(job, {
+            success: false,
+            exitCode: exitCode || 1,
+            error: errorMessage,
+            output: data.output,
+            failedNodeLabel: failedNodeLabel,
+            currentAttempt: data.currentAttempt,
+            maxAttempts: data.maxAttempts,
+            isRetrying: false
           })
-          console.log(`📊 BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed`)
-        } catch (buildError) {
-          console.warn('Failed to update build record on job error:', buildError)
         }
-      }
 
-      // Trigger failure handler nodes (if any) AFTER marking build as failed
-      let hasNextNodes = false
-      if (job) {
-        // Get the failed node label if available
-        let failedNodeLabel = null
-        if (job.executionCommands && job.currentCommandIndex !== undefined) {
-          const currentCommand = job.executionCommands[job.currentCommandIndex]
-          if (currentCommand) {
-            failedNodeLabel = currentCommand.nodeLabel
+        // Mark build as failed IMMEDIATELY when a node fails
+        // This ensures the build status is "failure" even if there are failure handler nodes
+        if (job && job.buildNumber) {
+          try {
+            const buildStatsManager = await getBuildStatsManager()
+            await buildStatsManager.finishBuild(job.projectId, job.buildNumber, {
+              status: 'failure',
+              message: errorMessage,
+              nodesExecuted: job.executionCommands ? (job.currentCommandIndex || 0) + 1 : 0
+            })
+            console.log(`📊 BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed`)
+          } catch (buildError) {
+            console.warn('Failed to update build record on job error:', buildError)
           }
         }
 
-        hasNextNodes = await this.triggerNextNodes(job, {
-          success: false,
-          exitCode: exitCode || 1,
-          error: errorMessage,
-          output: data.output,
-          failedNodeLabel: failedNodeLabel
-        })
-      }
-
-      if (hasNextNodes) {
-        console.log(`🔄 Failure handler nodes triggered - build already marked as failed`)
+        // Ensure UI knows job is completely finished
+        if (globalThis.broadcastToProject && job.projectId) {
+          globalThis.broadcastToProject(job.projectId, {
+            type: 'job_completed',
+            jobId: jobId,
+            projectId: job.projectId,
+            status: 'failed',
+            exitCode: exitCode || 1,
+            error: errorMessage,
+            message: errorMessage,
+            timestamp: new Date().toISOString()
+          })
+        }
+      } else {
+        console.log(`🔄 Job ${jobId} failed but will retry - failure handlers already triggered by handleJobFailure`)
       }
     }
   }
@@ -590,7 +657,10 @@ class AgentManager {
             buildNumber: job.buildNumber, // Reuse existing build
             projectName: job.projectName, // Pass project name to avoid lookup
             triggeredByFailure: !executionResult.success, // Track if this was triggered by a failure
-            failedNodeLabel: executionResult.failedNodeLabel || null // Pass the failed node label for failure notifications
+            failedNodeLabel: executionResult.failedNodeLabel || null, // Pass the failed node label for failure notifications
+            currentAttempt: executionResult.currentAttempt,
+            maxAttempts: executionResult.maxAttempts,
+            isRetrying: executionResult.isRetrying
           }
           
           // Execute the next node

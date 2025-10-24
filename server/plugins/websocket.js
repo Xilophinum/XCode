@@ -190,6 +190,14 @@ export default defineNitroPlugin(async (nitroApp) => {
             }
             break
             
+          case 'job_failure':
+            if (socket.authenticated) {
+              await handleJobFailure(socket, msg, agentManager)
+            } else {
+              console.log(`❌ Job failure from unauthenticated socket: ${socket.id}`)
+            }
+            break
+            
           case 'agent:job_status':
             if (socket.authenticated) {
               await handleAgentJobStatus(socket, msg, agentManager)
@@ -698,6 +706,28 @@ async function handleJobError(socket, msg, agentManager) {
     
   } catch (error) {
     console.error('Job error handling error:', error)
+  }
+}
+
+async function handleJobFailure(socket, msg, agentManager) {
+  try {
+    // Handle job failure (called on every failure, including during retries)
+    agentManager.handleJobFailure(socket.agentId, msg)
+    
+    // Broadcast job failure to subscribed clients (but don't mark as permanently failed)
+    if (msg.projectId) {
+      broadcastToProject(msg.projectId, {
+        type: 'job_failure',
+        jobId: msg.jobId,
+        projectId: msg.projectId,
+        error: msg.error,
+        isRetrying: msg.isRetrying || false,
+        timestamp: msg.timestamp || new Date().toISOString()
+      })
+    }
+    
+  } catch (error) {
+    console.error('Job failure handling error:', error)
   }
 }
 

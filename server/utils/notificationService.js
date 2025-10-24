@@ -28,7 +28,7 @@ export class NotificationService {
     console.log(`📋 Context data:`, context)
 
     // Resolve context variables in notification command
-    const resolvedCommand = this.resolveContextVariables(notificationCommand, context)
+    const resolvedCommand = await this.resolveContextVariables(notificationCommand, context)
 
     try {
       let result
@@ -57,12 +57,12 @@ export class NotificationService {
 
   /**
    * Resolve context variables in notification fields
-   * Supports: $BuildNumber, $JobId, $ProjectId, $ProjectName, $ExitCode, $Output, $Timestamp, $TimestampHuman, $FailedNodeLabel
+   * Supports: $BuildNumber, $JobId, $ProjectId, $ProjectName, $ExitCode, $Output, $Timestamp, $TimestampHuman, $FailedNodeLabel, $DefaultEmailFrom, $DefaultEmailTo, $AdminEmail
    * @param {Object} command - Notification command
    * @param {Object} context - Context data
    * @returns {Object} Command with resolved variables
    */
-  resolveContextVariables(command, context) {
+  async resolveContextVariables(command, context) {
     const resolved = { ...command }
 
     const now = new Date()
@@ -76,6 +76,15 @@ export class NotificationService {
       hour12: true
     })
 
+    // Get default email settings from database
+    const dataService = await getDataService()
+    const notificationSettings = await dataService.getSystemSettings('notifications')
+    
+    const getSetting = (key) => {
+      const setting = notificationSettings.find(s => s.key === key)
+      return setting?.value || setting?.defaultValue || ''
+    }
+
     // Build variable map
     const variables = {
       BuildNumber: context.buildNumber || 'N/A',
@@ -87,7 +96,14 @@ export class NotificationService {
       Timestamp: now.toISOString(),
       TimestampHuman: humanReadableTimestamp,
       Status: context.exitCode === 0 ? 'Success' : 'Failed',
-      FailedNodeLabel: context.failedNodeLabel || (context.exitCode !== 0 ? 'Unknown' : 'N/A')
+      FailedNodeLabel: context.failedNodeLabel || (context.exitCode !== 0 ? 'Unknown' : 'N/A'),
+      DefaultEmailFrom: getSetting('default_email_from'),
+      DefaultEmailTo: getSetting('default_email_to'),
+      AdminEmail: getSetting('admin_email'),
+      CurrentAttempt: context.currentAttempt !== undefined ? String(context.currentAttempt) : 'N/A',
+      MaxAttempts: context.maxAttempts !== undefined ? String(context.maxAttempts) : 'N/A',
+      IsRetrying: context.isRetrying ? 'Yes' : 'No',
+      WillRetry: context.isRetrying ? 'Yes' : 'No'
     }
 
     console.log(`🔧 Available context variables:`, variables)
@@ -111,6 +127,8 @@ export class NotificationService {
     }
 
     // Resolve variables in all relevant fields
+    if (resolved.emailFrom) resolved.emailFrom = replaceVariables(resolved.emailFrom)
+    if (resolved.emailTo) resolved.emailTo = replaceVariables(resolved.emailTo)
     if (resolved.emailSubject) resolved.emailSubject = replaceVariables(resolved.emailSubject)
     if (resolved.emailBody) resolved.emailBody = replaceVariables(resolved.emailBody)
     if (resolved.slackMessage) resolved.slackMessage = replaceVariables(resolved.slackMessage)

@@ -1214,6 +1214,30 @@ export class DataService {
         required: 'false',
         readonly: 'false'
       },
+      {
+        id: 'default_email_from',
+        category: 'notifications',
+        key: 'default_email_from',
+        value: 'noreply@localhost',
+        defaultValue: 'noreply@localhost',
+        type: 'text',
+        label: 'Default From Address',
+        description: 'Default email address to send notifications from',
+        required: 'false',
+        readonly: 'false'
+      },
+      {
+        id: 'default_email_to',
+        category: 'notifications',
+        key: 'default_email_to',
+        value: 'admin@localhost',
+        defaultValue: 'admin@localhost',
+        type: 'text',
+        label: 'Default To Address',
+        description: 'Default email address to send notifications to (comma-separated for multiple)',
+        required: 'false',
+        readonly: 'false'
+      },
 
       // System Information (readonly)
       {

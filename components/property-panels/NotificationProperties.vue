@@ -17,28 +17,20 @@
       <label class="block text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">
         Use Template (Optional)
       </label>
-      <div class="flex gap-2">
-        <select
-          v-model="selectedTemplateId"
-          class="flex-1 px-3 py-2 border border-purple-300 dark:border-purple-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm"
-        >
-          <option value="">-- Select a template --</option>
-          <optgroup v-if="filteredTemplates.length > 0" label="Available Templates">
-            <option v-for="template in filteredTemplates" :key="template.id" :value="template.id">
-              {{ template.name }}
-            </option>
-          </optgroup>
-        </select>
-        <button
-          @click="loadTemplate"
-          :disabled="!selectedTemplateId || isLoadingTemplate"
-          class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 dark:disabled:bg-purple-800 text-white rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed"
-        >
-          {{ isLoadingTemplate ? 'Loading...' : 'Load' }}
-        </button>
-      </div>
+      <select
+        v-model="selectedTemplateId"
+        :disabled="isLoadingTemplate"
+        class="w-full px-3 py-2 border border-purple-300 dark:border-purple-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm disabled:opacity-50"
+      >
+        <option value="">-- Select a template --</option>
+        <optgroup v-if="filteredTemplates.length > 0" label="Available Templates">
+          <option v-for="template in filteredTemplates" :key="template.id" :value="template.id">
+            {{ template.name }}
+          </option>
+        </optgroup>
+      </select>
       <p class="mt-2 text-xs text-purple-700 dark:text-purple-300">
-        Choose a pre-built or custom template to quickly configure your notification
+        {{ isLoadingTemplate ? 'Loading template...' : 'Choose a template to automatically fill the form fields below' }}
       </p>
     </div>
 
@@ -280,9 +272,16 @@
         <div class="font-mono">$Status - Status text based on exit code (Success/Failed)</div>
         <div class="font-mono">$ExitCode - Exit code from previous execution (0 = success)</div>
         <div class="font-mono">$FailedNodeLabel - Label of the node that failed (only on failure)</div>
+        <div class="font-mono">$CurrentAttempt - Current failure attempt number (1, 2, 3, etc.)</div>
+        <div class="font-mono">$MaxAttempts - Maximum number of attempts configured</div>
+        <div class="font-mono">$IsRetrying - Whether the job will retry (Yes/No)</div>
+        <div class="font-mono">$WillRetry - Same as IsRetrying (Yes/No)</div>
         <div class="font-mono">$Output - Output from the previous node</div>
         <div class="font-mono">$Timestamp - ISO 8601 timestamp (e.g., 2025-10-23T14:30:00.000Z)</div>
         <div class="font-mono">$TimestampHuman - Human-readable timestamp (e.g., Oct 23, 2025, 02:30:00 PM)</div>
+        <div class="font-mono">$DefaultEmailFrom - Default from address from system settings</div>
+        <div class="font-mono">$DefaultEmailTo - Default to address from system settings</div>
+        <div class="font-mono">$AdminEmail - Administrator email from system settings</div>
       </div>
       <p class="mt-2 text-purple-700 dark:text-purple-300">
         Use both ${'{VarName}'} or $VarName format in your notification messages
@@ -312,10 +311,10 @@
             <div>Subject: "[$ProjectName] Build #$BuildNumber - $Status"</div>
             <div>Body: "Build $BuildNumber completed at $TimestampHuman"</div>
           </div>
-          <div class="font-medium mb-1 mt-2">Email Notification (Failure):</div>
+          <div class="font-medium mb-1 mt-2">Email Notification (Failure with Retry):</div>
           <div class="pl-2 space-y-1 font-mono text-xs">
-            <div>Subject: "[$ProjectName] Build #$BuildNumber FAILED"</div>
-            <div>Body: "Node '$FailedNodeLabel' failed with exit code $ExitCode at $TimestampHuman"</div>
+            <div>Subject: "[$ProjectName] Build #$BuildNumber - Attempt $CurrentAttempt Failed"</div>
+            <div>Body: "Node '$FailedNodeLabel' failed (attempt $CurrentAttempt/$MaxAttempts). Will retry: $WillRetry"</div>
           </div>
         </div>
         <div v-if="nodeData.data.notificationType === 'slack'">
@@ -389,6 +388,14 @@ if (props.nodeData.data.emailHtml === undefined) {
   props.nodeData.data.emailHtml = false
 }
 
+// Initialize email fields with default values if empty
+if (!props.nodeData.data.emailFrom) {
+  props.nodeData.data.emailFrom = '$DefaultEmailFrom'
+}
+if (!props.nodeData.data.emailTo) {
+  props.nodeData.data.emailTo = '$DefaultEmailTo'
+}
+
 // Fetch templates on mount
 onMounted(async () => {
   await fetchTemplates()
@@ -450,4 +457,11 @@ async function loadTemplate() {
     isLoadingTemplate.value = false
   }
 }
+
+// Watch for template selection changes and auto-load
+watch(selectedTemplateId, (newTemplateId) => {
+  if (newTemplateId) {
+    loadTemplate()
+  }
+})
 </script>
