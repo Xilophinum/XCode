@@ -8,7 +8,20 @@ import { getRawDB } from '../../utils/database.js'
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
-    const { name, description, type, email_subject, email_body, email_html, slack_message, webhook_method, webhook_headers, webhook_body } = body
+    const {
+      name,
+      description,
+      type,
+      email_subject,
+      email_body,
+      email_html,
+      slack_message,
+      slack_blocks,
+      slack_mode,
+      webhook_method,
+      webhook_headers,
+      webhook_body
+    } = body
 
     if (!name || !type) {
       throw createError({
@@ -36,6 +49,8 @@ export default defineEventHandler(async (event) => {
       email_body: email_body || null,
       email_html: email_html || false,
       slack_message: slack_message || null,
+      slack_blocks: slack_blocks || null,
+      slack_mode: slack_mode || 'simple',
       webhook_method: webhook_method || 'POST',
       webhook_headers: webhook_headers || null,
       webhook_body: webhook_body || null,
@@ -48,11 +63,13 @@ export default defineEventHandler(async (event) => {
       db.prepare(`
         INSERT INTO notification_templates (
           id, name, description, type, is_built_in, email_subject, email_body, email_html,
-          slack_message, webhook_method, webhook_headers, webhook_body, created_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          slack_message, slack_blocks, slack_mode, webhook_method, webhook_headers, webhook_body,
+          created_by, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         template.id, template.name, template.description, template.type, template.is_built_in ? 1 : 0,
         template.email_subject, template.email_body, template.email_html ? 1 : 0, template.slack_message,
+        template.slack_blocks, template.slack_mode,
         template.webhook_method, template.webhook_headers, template.webhook_body,
         template.created_by, template.created_at, template.updated_at
       )

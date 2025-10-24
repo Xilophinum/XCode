@@ -196,6 +196,7 @@ export class DatabaseManager {
     } catch (error) {
       console.error('Error migrating smtp_port setting:', error)
     }
+
   }
 
   async createSQLiteTables() {
@@ -448,6 +449,8 @@ export class DatabaseManager {
           email_body TEXT,
           email_html INTEGER DEFAULT 0,
           slack_message TEXT,
+          slack_blocks TEXT,
+          slack_mode TEXT DEFAULT 'simple',
           webhook_method TEXT,
           webhook_headers TEXT,
           webhook_body TEXT,
@@ -499,6 +502,8 @@ export class DatabaseManager {
           email_body: 'Build #$BuildNumber of $ProjectName completed successfully at $TimestampHuman.\n\nStatus: $Status\nExit Code: $ExitCode\n\nJob ID: $JobId',
           email_html: 0,
           slack_message: null,
+          slack_blocks: null,
+          slack_mode: null,
           webhook_method: null,
           webhook_headers: null,
           webhook_body: null,
@@ -516,6 +521,8 @@ export class DatabaseManager {
           email_body: 'Build #$BuildNumber of $ProjectName failed at $TimestampHuman.\n\nFailed Node: $FailedNodeLabel\nStatus: $Status\nExit Code: $ExitCode\n\nOutput:\n$Output\n\nJob ID: $JobId',
           email_html: 0,
           slack_message: null,
+          slack_blocks: null,
+          slack_mode: null,
           webhook_method: null,
           webhook_headers: null,
           webhook_body: null,
@@ -526,13 +533,39 @@ export class DatabaseManager {
         {
           id: 'template_slack_success',
           name: 'Slack: Build Success',
-          description: 'Default template for successful build notifications via Slack',
+          description: 'Default template for successful build notifications via Slack with Block Kit formatting',
           type: 'slack',
           is_built_in: 1,
           email_subject: null,
           email_body: null,
           email_html: 0,
           slack_message: ':white_check_mark: *$ProjectName* - Build #$BuildNumber Success\n*Time:* $TimestampHuman\n*Exit Code:* $ExitCode',
+          slack_blocks: JSON.stringify([
+            {
+              type: 'header',
+              text: {
+                type: 'plain_text',
+                text: '✅ Build #$BuildNumber Succeeded',
+                emoji: true
+              }
+            },
+            {
+              type: 'section',
+              fields: [
+                { type: 'mrkdwn', text: '*Project:*\n$ProjectName' },
+                { type: 'mrkdwn', text: '*Status:*\n$Status' },
+                { type: 'mrkdwn', text: '*Exit Code:*\n$ExitCode' },
+                { type: 'mrkdwn', text: '*Time:*\n$TimestampHuman' }
+              ]
+            },
+            {
+              type: 'context',
+              elements: [
+                { type: 'mrkdwn', text: 'Job ID: `$JobId`' }
+              ]
+            }
+          ]),
+          slack_mode: 'blocks',
           webhook_method: null,
           webhook_headers: null,
           webhook_body: null,
@@ -543,13 +576,46 @@ export class DatabaseManager {
         {
           id: 'template_slack_failure',
           name: 'Slack: Build Failure',
-          description: 'Default template for failed build notifications via Slack',
+          description: 'Default template for failed build notifications via Slack with Block Kit formatting',
           type: 'slack',
           is_built_in: 1,
           email_subject: null,
           email_body: null,
           email_html: 0,
           slack_message: ':x: *$ProjectName* - Build #$BuildNumber Failed\n*Failed Node:* $FailedNodeLabel\n*Time:* $TimestampHuman\n*Exit Code:* $ExitCode',
+          slack_blocks: JSON.stringify([
+            {
+              type: 'header',
+              text: {
+                type: 'plain_text',
+                text: '❌ Build #$BuildNumber Failed',
+                emoji: true
+              }
+            },
+            {
+              type: 'section',
+              fields: [
+                { type: 'mrkdwn', text: '*Project:*\n$ProjectName' },
+                { type: 'mrkdwn', text: '*Status:*\n$Status' },
+                { type: 'mrkdwn', text: '*Exit Code:*\n$ExitCode' },
+                { type: 'mrkdwn', text: '*Time:*\n$TimestampHuman' }
+              ]
+            },
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: '*Failed Node:* $FailedNodeLabel'
+              }
+            },
+            {
+              type: 'context',
+              elements: [
+                { type: 'mrkdwn', text: 'Job ID: `$JobId`' }
+              ]
+            }
+          ]),
+          slack_mode: 'blocks',
           webhook_method: null,
           webhook_headers: null,
           webhook_body: null,
@@ -567,6 +633,8 @@ export class DatabaseManager {
           email_body: null,
           email_html: 0,
           slack_message: null,
+          slack_blocks: null,
+          slack_mode: null,
           webhook_method: 'POST',
           webhook_headers: '{"Content-Type": "application/json"}',
           webhook_body: '{\n  "event": "build_complete",\n  "project": "$ProjectName",\n  "projectId": "$ProjectId",\n  "buildNumber": "$BuildNumber",\n  "jobId": "$JobId",\n  "status": "$Status",\n  "exitCode": $ExitCode,\n  "failedNode": "$FailedNodeLabel",\n  "timestamp": "$Timestamp",\n  "timestampHuman": "$TimestampHuman"\n}',
@@ -583,11 +651,13 @@ export class DatabaseManager {
           this.sqlite.prepare(`
             INSERT INTO notification_templates (
               id, name, description, type, is_built_in, email_subject, email_body, email_html,
-              slack_message, webhook_method, webhook_headers, webhook_body, created_by, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              slack_message, slack_blocks, slack_mode, webhook_method, webhook_headers, webhook_body,
+              created_by, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `).run(
             template.id, template.name, template.description, template.type, template.is_built_in,
             template.email_subject, template.email_body, template.email_html, template.slack_message,
+            template.slack_blocks, template.slack_mode,
             template.webhook_method, template.webhook_headers, template.webhook_body,
             template.created_by, template.created_at, template.updated_at
           )
@@ -841,6 +911,8 @@ export class DatabaseManager {
           email_body TEXT,
           email_html BOOLEAN DEFAULT false,
           slack_message TEXT,
+          slack_blocks TEXT,
+          slack_mode VARCHAR(20) DEFAULT 'simple',
           webhook_method VARCHAR(10),
           webhook_headers TEXT,
           webhook_body TEXT,

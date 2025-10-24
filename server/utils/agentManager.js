@@ -611,7 +611,7 @@ class AgentManager {
 
       console.log(`🔄 Triggering ${nextNodes.length} next nodes for job ${job.jobId}`)
 
-      // Execute next nodes by creating new jobs
+      // Execute next nodes by creating new jobs or sending notifications directly
       for (const nextNode of nextNodes) {
         console.log(`🚀 Executing next node: ${nextNode.data.label}`)
         

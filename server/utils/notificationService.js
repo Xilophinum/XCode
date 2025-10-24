@@ -242,56 +242,86 @@ export class NotificationService {
   }
 
   /**
-   * Send Slack notification
+   * Send Slack notification via OAuth (chat.postMessage API)
    * @param {Object} notification - Slack notification config
    * @param {Object} context - Context data
    */
   async sendSlack(notification, context) {
-    const { slackWebhookUrl, slackChannel, slackUsername, slackMessage } = notification
+    const {
+      slackChannel,
+      slackMessage,
+      slackBlocks,
+      slackMode = 'simple'
+    } = notification
 
-    // Validate required fields
-    if (!slackWebhookUrl || !slackMessage) {
-      throw new Error('Missing required Slack fields (webhookUrl, message)')
+    // Get Slack Bot Token from environment variables
+    const slackBotToken = process.env.SLACK_BOT_TOKEN
+    const defaultChannel = process.env.SLACK_DEFAULT_CHANNEL
+
+    // Validate configuration
+    if (!slackBotToken) {
+      throw new Error('Slack Bot Token not configured. Please set SLACK_BOT_TOKEN environment variable, or use the Webhook notification type for Slack Incoming Webhooks.')
     }
 
-    console.log(`💬 Sending Slack message...`)
-    console.log(`   Webhook: ${slackWebhookUrl.substring(0, 40)}...`)
-    if (slackChannel) console.log(`   Channel: ${slackChannel}`)
-    if (slackUsername) console.log(`   Username: ${slackUsername}`)
+    const channel = slackChannel || defaultChannel
+    if (!channel) {
+      throw new Error('Slack channel is required. Specify it in the notification or set SLACK_DEFAULT_CHANNEL environment variable.')
+    }
 
-    // Build Slack payload
+    if (!slackMessage && !slackBlocks) {
+      throw new Error('Missing required Slack content: Either message or blocks must be provided')
+    }
+
+    console.log(`💬 Sending Slack message via OAuth (Bot Token)...`)
+    console.log(`   Channel: ${channel}`)
+    console.log(`   Bot Token: ${slackBotToken.substring(0, 15)}...`)
+
+    // Build Slack API payload
     const payload = {
-      text: slackMessage
+      channel: channel
     }
 
-    if (slackChannel) {
-      payload.channel = slackChannel
+    // Add message text (required as fallback even with blocks)
+    if (slackMessage) {
+      payload.text = slackMessage
     }
 
-    if (slackUsername) {
-      payload.username = slackUsername
+    // Add blocks if using blocks mode
+    if (slackMode === 'blocks' && slackBlocks) {
+      try {
+        payload.blocks = typeof slackBlocks === 'string' ? JSON.parse(slackBlocks) : slackBlocks
+      } catch (error) {
+        console.warn('⚠️  Failed to parse Slack blocks, falling back to simple message:', error.message)
+      }
     }
 
-    // Send to Slack webhook
-    const response = await fetch(slackWebhookUrl, {
+    // Call Slack chat.postMessage API
+    const response = await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': `Bearer ${slackBotToken}`
       },
       body: JSON.stringify(payload)
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Slack webhook failed: ${response.status} ${errorText}`)
+      throw new Error(`Slack API request failed: ${response.status} ${response.statusText}`)
     }
 
-    const responseText = await response.text()
-    console.log(`✅ Slack response: ${responseText}`)
+    const result = await response.json()
+
+    if (!result.ok) {
+      throw new Error(`Slack API error: ${result.error}`)
+    }
+
+    console.log(`✅ Slack message sent to channel ${result.channel}`)
 
     return {
       status: response.status,
-      response: responseText
+      response: result,
+      messageTs: result.ts,
+      channel: result.channel
     }
   }
 

@@ -1296,14 +1296,46 @@
           <!-- Slack Fields -->
           <div v-if="templateForm.type === 'slack'" class="space-y-3 pt-2 border-t dark:border-gray-700">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slack Message *</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slack Message Mode</label>
+              <select
+                v-model="templateForm.slack_mode"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                <option value="simple">Simple Text Message</option>
+                <option value="blocks">Block Kit (Rich Formatting)</option>
+              </select>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Block Kit enables rich, interactive messages with buttons, images, and structured layouts
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Slack Message {{ templateForm.slack_mode === 'simple' ? '*' : '(Fallback Text)' }}
+              </label>
               <textarea
                 v-model="templateForm.slack_message"
                 :required="templateForm.type === 'slack'"
-                rows="6"
+                rows="4"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
                 placeholder=":white_check_mark: *$ProjectName* - Build #$BuildNumber Success"
               ></textarea>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ templateForm.slack_mode === 'blocks' ? 'Used as fallback text for notifications when blocks cannot be displayed' : 'Simple markdown-formatted text message' }}
+              </p>
+            </div>
+
+            <div v-if="templateForm.slack_mode === 'blocks'">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slack Blocks (JSON)</label>
+              <textarea
+                v-model="templateForm.slack_blocks"
+                rows="12"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-xs"
+                placeholder='[{"type":"header","text":{"type":"plain_text","text":"Build Complete"}}]'
+              ></textarea>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                JSON array of Slack Block Kit blocks. <a href="https://app.slack.com/block-kit-builder" target="_blank" class="text-purple-600 dark:text-purple-400 hover:underline">Use Block Kit Builder</a> to design your layout.
+              </p>
             </div>
           </div>
 
@@ -1485,6 +1517,8 @@ const templateForm = ref({
   email_body: '',
   email_html: false,
   slack_message: '',
+  slack_blocks: '',
+  slack_mode: 'simple',
   webhook_method: 'POST',
   webhook_headers: '{"Content-Type": "application/json"}',
   webhook_body: ''
@@ -2117,6 +2151,8 @@ function closeTemplateModal() {
     email_body: '',
     email_html: false,
     slack_message: '',
+    slack_blocks: '',
+    slack_mode: 'simple',
     webhook_method: 'POST',
     webhook_headers: '{"Content-Type": "application/json"}',
     webhook_body: ''

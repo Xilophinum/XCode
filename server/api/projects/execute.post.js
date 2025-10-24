@@ -949,6 +949,8 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
         slackChannel: node.data.slackChannel,
         slackUsername: node.data.slackUsername,
         slackMessage: resolvePlaceholders(node.data.slackMessage || ''),
+        slackBlocks: node.data.slackBlocks,  // JSON string or object for Block Kit
+        slackMode: node.data.slackMode || 'simple',  // 'simple' or 'blocks'
 
         // Webhook properties
         webhookUrl: node.data.webhookUrl,

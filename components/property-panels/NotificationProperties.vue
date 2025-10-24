@@ -133,65 +133,76 @@
 
     <!-- Slack Configuration -->
     <div v-if="nodeData.data.notificationType === 'slack'" class="mt-4 space-y-3">
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Webhook URL <span class="text-red-500">*</span>
-        </label>
-        <input
-          v-model="nodeData.data.slackWebhookUrl"
-          type="url"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
-          placeholder="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
-          :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.slackWebhookUrl }"
-        />
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Slack Incoming Webhook URL from your workspace settings
+      <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+        <p class="text-sm text-blue-800 dark:text-blue-200">
+          <strong>Slack App Integration:</strong> Set <code class="px-1 bg-blue-100 dark:bg-blue-800 rounded">SLACK_BOT_TOKEN</code> environment variable to enable Slack notifications.
+        </p>
+        <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+          💡 For Slack Incoming Webhooks, use the "Webhook" notification type instead.
         </p>
       </div>
 
       <div>
         <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Channel (Optional)
+          Channel <span class="text-red-500">*</span>
         </label>
         <input
           v-model="nodeData.data.slackChannel"
           type="text"
           class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-          placeholder="#general or @username"
+          placeholder="#general, @username, or C1234567890"
+          :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.slackChannel }"
         />
         <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Override default channel (use #channel or @user)
+          Specify the Slack channel (e.g., #general), user (e.g., @john), or channel ID
         </p>
       </div>
 
       <div>
         <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Username (Optional)
+          Message Mode
         </label>
-        <input
-          v-model="nodeData.data.slackUsername"
-          type="text"
+        <select
+          v-model="nodeData.data.slackMode"
           class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-          placeholder="Workflow Bot"
-        />
+        >
+          <option value="simple">Simple Text Message</option>
+          <option value="blocks">Block Kit (Rich Formatting)</option>
+        </select>
         <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Display name for the bot
+          Block Kit enables rich, interactive messages with formatted layouts
         </p>
       </div>
 
       <div>
         <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
           Message <span class="text-red-500">*</span>
+          <span v-if="nodeData.data.slackMode === 'blocks'" class="text-neutral-400 font-normal">(Fallback Text)</span>
         </label>
         <textarea
           v-model="nodeData.data.slackMessage"
-          rows="6"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-          placeholder="Enter Slack message..."
+          rows="4"
+          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+          placeholder=":white_check_mark: Build #$BuildNumber completed successfully!"
           :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.slackMessage }"
         ></textarea>
         <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Use $SocketName to reference input socket values. Supports Slack markdown.
+          {{ nodeData.data.slackMode === 'blocks' ? 'Fallback text when blocks cannot be displayed' : 'Markdown-formatted message with emoji support' }}
+        </p>
+      </div>
+
+      <div v-if="nodeData.data.slackMode === 'blocks'">
+        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+          Slack Blocks (JSON)
+        </label>
+        <textarea
+          v-model="nodeData.data.slackBlocks"
+          rows="10"
+          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-xs"
+          placeholder='[{"type":"header","text":{"type":"plain_text","text":"Build #$BuildNumber"}}]'
+        ></textarea>
+        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          JSON array of Slack Block Kit blocks. <a href="https://app.slack.com/block-kit-builder" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">Use Block Kit Builder →</a>
         </p>
       </div>
     </div>
@@ -444,6 +455,8 @@ async function loadTemplate() {
       props.nodeData.data.emailHtml = template.email_html || false
     } else if (template.type === 'slack') {
       props.nodeData.data.slackMessage = template.slack_message || ''
+      props.nodeData.data.slackBlocks = template.slack_blocks || ''
+      props.nodeData.data.slackMode = template.slack_mode || 'simple'
     } else if (template.type === 'webhook') {
       props.nodeData.data.webhookMethod = template.webhook_method || 'POST'
       props.nodeData.data.webhookHeaders = template.webhook_headers || '{}'
