@@ -1,6 +1,7 @@
 import { getDataService } from '../../../utils/dataService.js'
 import { getAuthenticatedUser } from '../../../utils/auth.js'
 import crypto from 'crypto'
+import logger from '~/server/utils/logger.js'
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-32-character-secret-key-here'
 const ALGORITHM = 'aes-256-cbc'
@@ -25,7 +26,7 @@ function decrypt(text) {
     decrypted += decipher.final('utf8')
     return decrypted
   } catch (error) {
-    console.error('Decryption error:', error)
+    logger.error('Decryption error:', error)
     return text // Return original if decryption fails
   }
 }
@@ -95,7 +96,7 @@ export default defineEventHandler(async (event) => {
     })
 
   } catch (error) {
-    console.error('Error handling credential operation:', error)
+    logger.error('Error handling credential operation:', error)
     if (error.statusCode) {
       throw error
     }

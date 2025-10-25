@@ -8,6 +8,7 @@ import { getAgentManager } from './agentManager.js'
 import { cronDbService } from './cronDbService.js'
 import { getDataService } from './dataService.js'
 import { executeProjectFromTrigger } from './triggerExecutor.js'
+import logger from './logger.js'
 
 class CronManager {
   constructor() {
@@ -24,7 +25,7 @@ class CronManager {
       const setting = await dataService.getSystemSettingByKey('cron_timezone')
       return setting?.value || 'America/New_York' // Default fallback
     } catch (error) {
-      console.warn('Failed to get cron timezone setting, using default:', error)
+      logger.warn('Failed to get cron timezone setting, using default:', error)
       return 'America/New_York'
     }
   }
@@ -34,13 +35,13 @@ class CronManager {
    * Called when timezone setting is changed in admin panel
    */
   async updateTimezoneForAllJobs() {
-    console.log(`🌍 Updating timezone for all existing cron jobs...`)
-    
+    logger.info('Updating timezone for all existing cron jobs...')
+
     const newTimezone = await this.getCronTimezone()
-    console.log(`🕐 New timezone: ${newTimezone}`)
-    
+    logger.info(`New timezone: ${newTimezone}`)
+
     if (this.scheduledJobs.size === 0) {
-      console.log(`📅 No active cron jobs to update`)
+      logger.info('No active cron jobs to update')
       return
     }
 
@@ -65,8 +66,8 @@ class CronManager {
     // Recreate all jobs with new timezone
     for (const jobConfig of jobsToRecreate) {
       const { jobId, projectId, nodes, edges, cronExpression, cronNodeId, cronNodeLabel } = jobConfig
-      
-      console.log(`⏰ Recreating cron job with new timezone: ${cronNodeLabel} (${cronExpression})`)
+
+      logger.info(`Recreating cron job with new timezone: ${cronNodeLabel} (${cronExpression})`)
 
       // Create the cron trigger node object
       const cronTriggerNode = {
@@ -88,8 +89,8 @@ class CronManager {
           cronNode: cronTriggerNode
         }
       }, async (self) => {
-        console.log(`🚀 Executing cron job: ${cronNodeLabel} (${cronExpression})`)
-        
+        logger.info(`Executing cron job: ${cronNodeLabel} (${cronExpression})`)
+
         // Update last run in database
         cronDbService.updateLastRun(jobId)
         
@@ -101,14 +102,14 @@ class CronManager {
       this.cronConfigs.set(jobId, jobConfig)
     }
 
-    console.log(`✅ Updated timezone for ${jobsToRecreate.length} cron jobs`)
+    logger.info(`Updated timezone for ${jobsToRecreate.length} cron jobs`)
   }
 
   /**
    * Schedule a cron job from project data
    */
   async scheduleCronJob(projectId, nodes, edges) {
-    console.log(`📅 Scheduling cron jobs for project ${projectId}`)
+    logger.info(`Scheduling cron jobs for project ${projectId}`)
     
     // Find all cron trigger nodes
     const cronTriggerNodes = nodes.filter(node => 
@@ -116,7 +117,7 @@ class CronManager {
     )
 
     if (cronTriggerNodes.length === 0) {
-      console.log(`📅 No cron triggers found in project ${projectId}`)
+      logger.info(`No cron triggers found in project ${projectId}`)
       return
     }
 
@@ -124,7 +125,7 @@ class CronManager {
       const cronExpression = cronNode.data.cronExpression.trim()
       
       if (!this.isValidCronExpression(cronExpression)) {
-        console.error(`❌ Invalid cron expression: ${cronExpression} for node ${cronNode.data.label}`)
+        logger.error(`Invalid cron expression: ${cronExpression} for node ${cronNode.data.label}`)
         continue
       }
 
@@ -133,7 +134,7 @@ class CronManager {
       // Cancel existing job if it exists
       this.cancelCronJob(jobId)
       
-      console.log(`⏰ Scheduling cron job: ${cronNode.data.label} (${cronExpression})`)
+      logger.info(`⏰ Scheduling cron job: ${cronNode.data.label} (${cronExpression})`)
       
       // Schedule the cron job using croner
       const scheduledJob = new Cron(cronExpression, {
@@ -146,7 +147,7 @@ class CronManager {
           cronNode
         }
       }, async (self) => {
-        console.log(`🚀 Executing cron job: ${cronNode.data.label} (${cronExpression})`)
+        logger.info(`Executing cron job: ${cronNode.data.label} (${cronExpression})`)
         await this.executeCronTriggeredJob(projectId, nodes, edges, cronNode)
       })
 
@@ -176,7 +177,7 @@ class CronManager {
         edges
       })
 
-      console.log(`✅ Cron job scheduled and saved: ${jobId}`)
+      logger.info(`Cron job scheduled and saved: ${jobId}`)
     }
   }
 
@@ -184,31 +185,31 @@ class CronManager {
    * Restore cron jobs from database on server startup
    */
   async restoreCronJobsFromDatabase() {
-    console.log(`📤 Restoring cron jobs from database...`)
+    logger.info(`Restoring cron jobs from database...`)
 
     try {
       const savedCronJobs = await cronDbService.getEnabledCronJobs()
 
       if (savedCronJobs.length === 0) {
-        console.log(`📅 No saved cron jobs found`)
+        logger.info(`No saved cron jobs found`)
         return
       }
 
-      console.log(`📋 Found ${savedCronJobs.length} saved cron jobs to restore`)
+      logger.info(`Found ${savedCronJobs.length} saved cron jobs to restore`)
 
       for (const savedJob of savedCronJobs) {
         try {
           await this.restoreSingleCronJob(savedJob)
         } catch (error) {
-          console.error(`❌ Failed to restore cron job ${savedJob.jobId}:`, error)
+          logger.error(`Failed to restore cron job ${savedJob.jobId}:`, error)
           // Disable the problematic job in database
           await cronDbService.disableCronJob(savedJob.jobId)
         }
       }
 
-      console.log(`✅ Cron jobs restoration complete`)
+      logger.info(`Cron jobs restoration complete`)
     } catch (error) {
-      console.error(`❌ Error restoring cron jobs from database:`, error)
+      logger.error(`Error restoring cron jobs from database:`, error)
     }
   }
 
@@ -222,7 +223,7 @@ class CronManager {
       throw new Error(`Invalid cron expression: ${cronExpression}`)
     }
 
-    console.log(`⏰ Restoring cron job: ${cronNodeLabel} (${cronExpression})`)
+    logger.info(`⏰ Restoring cron job: ${cronNodeLabel} (${cronExpression})`)
 
     // Create the cron trigger node object
     const cronTriggerNode = {
@@ -244,7 +245,7 @@ class CronManager {
         cronNode: cronTriggerNode
       }
     }, async (self) => {
-      console.log(`🚀 Executing restored cron job: ${cronNodeLabel} (${cronExpression})`)
+      logger.info(`Executing restored cron job: ${cronNodeLabel} (${cronExpression})`)
       
       // Update last run in database
       cronDbService.updateLastRun(jobId)
@@ -266,7 +267,7 @@ class CronManager {
       lastRun: savedJob.lastRun ? new Date(savedJob.lastRun) : null
     })
 
-    console.log(`✅ Restored cron job: ${jobId}`)
+    logger.info(`Restored cron job: ${jobId}`)
   }
 
   /**
@@ -274,7 +275,7 @@ class CronManager {
    */
   async executeCronTriggeredJob(projectId, nodes, edges, cronTriggerNode) {
     try {
-      console.log(`🎯 Cron trigger fired: ${cronTriggerNode.data.label}`)
+      logger.info(`Cron trigger fired: ${cronTriggerNode.data.label}`)
       
       // Broadcast cron trigger execution to subscribed clients
       if (globalThis.broadcastToProject) {
@@ -300,7 +301,7 @@ class CronManager {
       const connectedNodes = this.findConnectedExecutionNodes(cronTriggerNode.id, nodes, edges)
       
       if (connectedNodes.length === 0) {
-        console.log(`⚠️ No execution nodes connected to cron trigger: ${cronTriggerNode.data.label}`)
+        logger.info(`No execution nodes connected to cron trigger: ${cronTriggerNode.data.label}`)
         
         // Broadcast warning about no connected nodes
         if (globalThis.broadcastToProject) {
@@ -347,7 +348,7 @@ class CronManager {
       }
       
     } catch (error) {
-      console.error(`❌ Error executing cron job for ${cronTriggerNode.data.label}:`, error)
+      logger.error(`Error executing cron job for ${cronTriggerNode.data.label}:`, error)
       
       // Broadcast error to subscribed clients
       if (globalThis.broadcastToProject) {
@@ -399,7 +400,7 @@ class CronManager {
       // Remove from database
       cronDbService.disableCronJob(jobId)
       
-      console.log(`🛑 Cancelled cron job and removed from database: ${jobId}`)
+      logger.info(`🛑 Cancelled cron job and removed from database: ${jobId}`)
     }
   }
 
@@ -421,7 +422,7 @@ class CronManager {
     // Also clean up any orphaned database entries for this project
     cronDbService.deleteProjectCronJobs(projectId)
     
-    console.log(`🗑️ Cancelled ${jobsToCancel.length} cron jobs for project ${projectId}`)
+    logger.info(`🗑️ Cancelled ${jobsToCancel.length} cron jobs for project ${projectId}`)
   }
 
   /**
@@ -449,7 +450,7 @@ class CronManager {
       testCron.stop()
       return true
     } catch (error) {
-      console.log(`❌ Invalid cron expression: ${expression} - ${error.message}`)
+      logger.info(`Invalid cron expression: ${expression} - ${error.message}`)
       return false
     }
   }

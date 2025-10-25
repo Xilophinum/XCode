@@ -1,5 +1,6 @@
 import { Client } from 'ldapts'
 import { getDataService } from './dataService.js'
+import logger from './logger.js'
 
 export class LDAPAuthenticator {
   constructor(config) {
@@ -34,9 +35,9 @@ export class LDAPAuthenticator {
         await this.client.startTLS()
       }
       
-      console.log('🔗 LDAP client connected')
+      logger.info('🔗 LDAP client connected')
     } catch (error) {
-      console.error('❌ LDAP connection error:', error)
+      logger.error('LDAP connection error:', error)
       throw error
     }
   }
@@ -73,7 +74,7 @@ export class LDAPAuthenticator {
         }
       }
     } catch (error) {
-      console.error('LDAP authentication failed:', error)
+      logger.error('LDAP authentication failed:', error)
       return {
         success: false,
         error: error.message
@@ -182,7 +183,7 @@ export class LDAPAuthenticator {
 
       return new LDAPAuthenticator(config)
     } catch (error) {
-      console.error('Failed to create LDAP authenticator:', error)
+      logger.error('Failed to create LDAP authenticator:', error)
       return null
     }
   }

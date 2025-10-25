@@ -1,5 +1,5 @@
-import { getDataService } from '../../utils/dataService'
 import { cronManager } from '../../utils/cronManager'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
       message: 'Successfully updated timezone for all cron jobs'
     }
   } catch (error) {
-    console.error('Error updating cron job timezones:', error)
+    logger.error('Error updating cron job timezones:', error)
     
     throw createError({
       statusCode: 500,

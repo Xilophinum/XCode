@@ -1,5 +1,5 @@
 import { getRawDB } from '../../utils/database.js'
-
+import logger from '~/server/utils/logger.js'
 /**
  * GET /api/notification-templates
  * Get all notification templates (built-in and custom)
@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
       templates
     }
   } catch (error) {
-    console.error('Error fetching notification templates:', error)
+    logger.error('Error fetching notification templates:', error)
     throw createError({
       statusCode: 500,
       statusMessage: error.message || 'Failed to fetch notification templates'

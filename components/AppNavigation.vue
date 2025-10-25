@@ -294,7 +294,7 @@ const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const darkMode = useDarkMode()
 const router = useRouter()
-
+const logger = useLogger()
 // Mobile menu state
 const showMobileMenu = ref(false)
 const showMobileSearch = ref(false)
@@ -422,7 +422,7 @@ const loadBrandingSettings = async () => {
     }
   } catch (error) {
     // Ignore errors, use default branding
-    console.log('Using default branding settings')
+    logger.info('Using default branding settings')
   }
 
   try {
@@ -432,7 +432,7 @@ const loadBrandingSettings = async () => {
     }
   } catch (error) {
     // Ignore errors, no logo
-    console.log('No custom logo configured')
+    logger.info('No custom logo configured')
   }
 }
 

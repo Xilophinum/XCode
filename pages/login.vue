@@ -235,7 +235,7 @@ const loadUserRegistrationSetting = async () => {
     userRegistrationEnabled.value = response?.value === 'true' || response?.value === true
   } catch (error) {
     // If setting doesn't exist or there's an error, default to false for security
-    console.log('User registration setting not found, defaulting to disabled')
+    logger.info('User registration setting not found, defaulting to disabled')
     userRegistrationEnabled.value = false
   }
 }

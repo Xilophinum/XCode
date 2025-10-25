@@ -10,6 +10,7 @@
 import { getDataService } from './dataService.js'
 import crypto from 'crypto'
 import LogMasker from './logMasker.js'
+import logger from './logger.js'
 
 const ENCRYPTION_KEY = process.env.CREDENTIAL_ENCRYPTION_KEY || 'default-key-change-in-production'
 const ALGORITHM = 'aes-256-gcm'
@@ -52,13 +53,13 @@ export class CredentialResolver {
       try {
         const credential = await this.dataService.getCredentialById(credentialId)
         if (!credential || credential.isActive !== 'true') {
-          console.warn(`⚠️ Credential ${credentialId} not found or inactive`)
+          logger.warn(`Credential ${credentialId} not found or inactive`)
           continue
         }
 
         // Check expiration
         if (credential.expiresAt && new Date(credential.expiresAt) < new Date()) {
-          console.warn(`⚠️ Credential ${credentialId} has expired`)
+          logger.warn(`Credential ${credentialId} has expired`)
           continue
         }
 
@@ -72,7 +73,7 @@ export class CredentialResolver {
         await this.dataService.updateCredentialLastUsed(credentialId)
         
       } catch (error) {
-        console.error(`Error resolving credential ${credentialId}:`, error)
+        logger.error(`Error resolving credential ${credentialId}:`, error)
       }
     }
 
@@ -218,7 +219,7 @@ export class CredentialResolver {
       
       return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`
     } catch (error) {
-      console.error('Error encrypting credential:', error)
+      logger.error('Error encrypting credential:', error)
       return text // Return unencrypted for fallback
     }
   }
@@ -248,7 +249,7 @@ export class CredentialResolver {
       
       return decrypted
     } catch (error) {
-      console.error('Error decrypting credential:', error)
+      logger.error('Error decrypting credential:', error)
       // Return original for backward compatibility
       return encryptedText
     }

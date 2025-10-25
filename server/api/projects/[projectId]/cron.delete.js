@@ -4,6 +4,7 @@
  */
 
 import { cronManager } from '../../../utils/cronManager.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -16,7 +17,7 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    console.log(`🛑 Cancelling all cron jobs for project ${projectId}`)
+    logger.info(`🛑 Cancelling all cron jobs for project ${projectId}`)
 
     // Cancel all cron jobs for this project
     cronManager.cancelProjectCronJobs(projectId)
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error) {
-    console.error('❌ Error cancelling cron jobs:', error)
+    logger.error('Error cancelling cron jobs:', error)
     
     throw createError({
       statusCode: error.statusCode || 500,

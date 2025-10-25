@@ -1,4 +1,5 @@
 import { getDataService } from '../../../server/utils/dataService.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event) => {
       credentials: safeCredentials
     }
   } catch (error) {
-    console.error('Error fetching credentials:', error)
+    logger.error('Error fetching credentials:', error)
     throw createError({
       statusCode: 500,
       statusMessage: 'Failed to fetch credentials'

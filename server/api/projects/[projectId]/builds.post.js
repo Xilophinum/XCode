@@ -1,4 +1,5 @@
 import { getBuildStatsManager } from '../../../../server/utils/buildStatsManager.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   const { projectId } = getRouterParams(event)
@@ -35,7 +36,7 @@ export default defineEventHandler(async (event) => {
       buildNumber: buildResult.buildNumber
     }
   } catch (error) {
-    console.error('Error starting build:', error)
+    logger.error('Error starting build:', error)
     throw createError({
       statusCode: 500,
       statusMessage: 'Failed to start build'

@@ -11,6 +11,7 @@
 import { getAgentManager } from '../agentManager.js'
 import { jobManager } from '../jobManager.js'
 import { v4 as uuidv4 } from 'uuid'
+import logger from '../logger.js'
 
 /**
  * Execute parallel branches orchestrator
@@ -29,13 +30,13 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
     nodeLabel
   } = orchestratorCommand
 
-  console.log(`🔀 Starting parallel branches orchestrator: ${nodeLabel}`)
-  console.log(`📊 Branches: ${branches?.length || 0}, Targets: ${branchTargets?.length || 0}, Max Concurrency: ${maxConcurrency || 'unlimited'}, Fail Fast: ${failFast}`)
-  console.log(`📊 Branch details:`, branches)
-  console.log(`📊 Branch targets:`, branchTargets)
+  logger.info(`Starting parallel branches orchestrator: ${nodeLabel}`)
+  logger.info(`Branches: ${branches?.length || 0}, Targets: ${branchTargets?.length || 0}, Max Concurrency: ${maxConcurrency || 'unlimited'}, Fail Fast: ${failFast}`)
+  logger.info(`Branch details:`, branches)
+  logger.info(`Branch targets:`, branchTargets)
 
   if (branchTargets.length === 0) {
-    console.log(`⚠️  No branch targets found for orchestrator ${nodeLabel}`)
+    logger.warn(`No branch targets found for orchestrator ${nodeLabel}`)
     return {
       success: true,
       results: [],
@@ -52,7 +53,7 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
     const branchStartTime = new Date().toISOString()
 
     try {
-      console.log(`🌿 Branch "${target.branchName}": Starting execution of target node: ${target.targetNode.data.label}`)
+      logger.info(`Branch "${target.branchName}": Starting execution of target node: ${target.targetNode.data.label}`)
 
       // Generate sub-job ID for this branch
       const subJobId = `${parentJob.jobId}_branch_${target.branchId}_${uuidv4().split('-')[0]}`
@@ -127,7 +128,7 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
         throw new Error(errorMsg)
       }
 
-      console.log(`🎯 Branch "${target.branchName}": Dispatching to agent ${selectedAgent.agentId}`)
+      logger.info(`Branch "${target.branchName}": Dispatching to agent ${selectedAgent.agentId}`)
 
       // Dispatch job to agent
       const dispatchSuccess = await agentManager.dispatchJobToAgent(selectedAgent.agentId, {
@@ -158,12 +159,12 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
         agentName: selectedAgent.name || selectedAgent.hostname
       })
 
-      console.log(`✅ Branch "${target.branchName}": Dispatched successfully, waiting for completion...`)
+      logger.info(`Branch "${target.branchName}": Dispatched successfully, waiting for completion...`)
 
       // Wait for job completion (event-driven, not polling)
       const result = await agentManager.waitForJobCompletion(subJobId)
 
-      console.log(`${result.success ? '✅' : '❌'} Branch "${target.branchName}": ${result.success ? 'Completed successfully' : 'Failed'}`)
+      logger.info(`Branch "${target.branchName}": ${result.success ? 'Completed successfully' : 'Failed'}`)
 
       return {
         branchId: target.branchId,
@@ -176,7 +177,7 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
       }
 
     } catch (error) {
-      console.error(`❌ Branch "${target.branchName}": Execution error:`, error.message)
+      logger.error(`Branch "${target.branchName}": Execution error:`, error.message)
 
       return {
         branchId: target.branchId,
@@ -195,19 +196,19 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
 
   if (maxConcurrency && maxConcurrency > 0) {
     // Use concurrency limiting
-    console.log(`🔄 Executing branches with max concurrency: ${maxConcurrency}`)
+    logger.info(`Executing branches with max concurrency: ${maxConcurrency}`)
 
     // Simple concurrency control: execute in batches
     results = []
     for (let i = 0; i < branchPromises.length; i += maxConcurrency) {
       const batch = branchPromises.slice(i, i + maxConcurrency)
-      console.log(`📦 Executing batch ${Math.floor(i / maxConcurrency) + 1} (${batch.length} branches)`)
+      logger.info(`📦 Executing batch ${Math.floor(i / maxConcurrency) + 1} (${batch.length} branches)`)
       const batchResults = await Promise.allSettled(batch)
       results.push(...batchResults)
     }
   } else {
     // Unlimited parallelism
-    console.log(`🚀 Executing all ${branchPromises.length} branches in parallel (unlimited concurrency)`)
+    logger.info(`Executing all ${branchPromises.length} branches in parallel (unlimited concurrency)`)
 
     if (failFast) {
       // Use Promise.race logic - abort on first failure
@@ -216,11 +217,11 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
       // Check for failures
       for (const result of results) {
         if (result.status === 'fulfilled' && result.value && !result.value.success) {
-          console.log(`🚨 Fail-fast triggered: Branch "${result.value.branchName}" failed`)
+          logger.info(`🚨 Fail-fast triggered: Branch "${result.value.branchName}" failed`)
           break // Stop checking after first failure
         }
         if (result.status === 'rejected') {
-          console.log(`🚨 Fail-fast triggered: Branch execution threw error`)
+          logger.info(`🚨 Fail-fast triggered: Branch execution threw error`)
           break
         }
       }
@@ -259,12 +260,12 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
 
   const allSucceeded = failureCount === 0
 
-  console.log(`${allSucceeded ? '✅' : '⚠️'} Parallel branches complete: ${successCount} succeeded, ${failureCount} failed`)
+  logger.info(`${allSucceeded ? '✅' : '⚠️'} Parallel branches complete: ${successCount} succeeded, ${failureCount} failed`)
 
   // Log individual branch results
   for (const branch of branchResults) {
     const icon = branch.success ? '✅' : '❌'
-    console.log(`  ${icon} Branch "${branch.branchName}": ${branch.success ? 'Success' : `Failed - ${branch.error}`}`)
+    logger.info(`  ${icon} Branch "${branch.branchName}": ${branch.success ? 'Success' : `Failed - ${branch.error}`}`)
   }
 
   return {

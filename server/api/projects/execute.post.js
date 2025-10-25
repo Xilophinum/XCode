@@ -10,6 +10,7 @@ import { getDataService } from '../../utils/dataService.js'
 import { getCredentialResolver } from '../../utils/credentialResolver.js'
 import { getBuildStatsManager } from '../../utils/buildStatsManager.js'
 import { notificationService } from '../../utils/notificationService.js'
+import logger from '../../utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   let currentBuildNumber = null
@@ -48,13 +49,13 @@ export default defineEventHandler(async (event) => {
     // Get agent manager instance
     const agentManager = await getAgentManager()
 
-    console.log(`🔍 Execute API: Looking for available agent...`)
-    
+    logger.info(`Execute API: Looking for available agent...`)
+
     // Find an available agent for this job
     const availableAgent = await agentManager.findAvailableAgent()
-    
+
     if (!availableAgent) {
-      console.log(`❌ No agents available - connectedAgents size: ${agentManager.connectedAgents.size}, agentData size: ${agentManager.agentData.size}`)
+      logger.error(`No agents available - connectedAgents size: ${agentManager.connectedAgents.size}, agentData size: ${agentManager.agentData.size}`)
       throw createError({
         statusCode: 503,
         statusMessage: 'No agents available for job execution'
@@ -68,9 +69,9 @@ export default defineEventHandler(async (event) => {
     let executionCommands
     try {
       executionCommands = convertGraphToCommands(nodes, edges, null, body.executionOutputs)
-      console.log(`🔧 Generated ${executionCommands.length} commands`)
+      logger.info(`Generated ${executionCommands.length} commands`)
     } catch (error) {
-      console.error('❌ Error converting graph to commands:', error.message)
+      logger.error('Error converting graph to commands:', error.message)
       throw createError({
         statusCode: 400,
         statusMessage: error.message
@@ -97,7 +98,7 @@ export default defineEventHandler(async (event) => {
 
     if (missingAgentCommands.length > 0) {
       const errorMsg = `Execution blocked: The following nodes require agent selection: ${missingAgentCommands.map(cmd => `"${cmd.nodeLabel}"`).join(', ')}. Agent selection is mandatory for all executable nodes.`
-      console.error(`🚨 ${errorMsg}`)
+      logger.error(errorMsg)
       throw createError({
         statusCode: 400,
         statusMessage: errorMsg
@@ -112,7 +113,7 @@ export default defineEventHandler(async (event) => {
     // Check if this is a continuation of an existing build (from triggerNextNodes)
     if (body.buildNumber) {
       currentBuildNumber = body.buildNumber
-      console.log(`🔄 Continuing existing build #${currentBuildNumber} for "${currentProjectName}" (triggered by node completion)`)
+      logger.info(`Continuing existing build #${currentBuildNumber} for "${currentProjectName}" (triggered by node completion)`)
     } else {
       // Create new build for initial execution
       const buildResult = await buildStatsManager.startBuild({
@@ -130,7 +131,7 @@ export default defineEventHandler(async (event) => {
       })
 
       currentBuildNumber = buildResult.buildNumber
-      console.log(`✅ Build #${currentBuildNumber} started for manual execution of "${project.name}"`)
+      logger.info(`Build #${currentBuildNumber} started for manual execution of "${project.name}"`)
     }
 
     // Create job record WITH buildNumber
@@ -159,18 +160,11 @@ export default defineEventHandler(async (event) => {
     const credentialResolver = await getCredentialResolver()
     const baseEnv = process.env
     const resolvedEnv = await credentialResolver.resolveCredentials(nodes, baseEnv)
-    
-    console.log(`🔐 Resolved ${Object.keys(resolvedEnv).length - Object.keys(baseEnv).length} credential environment variables`)
-    
+
+    logger.info(`Resolved ${Object.keys(resolvedEnv).length - Object.keys(baseEnv).length} credential environment variables`)
+
     // Store credential resolver in job for log masking
     job.credentialResolver = credentialResolver
-
-    console.log(`🎯 Executing ${executableCommands.length} commands sequentially:`, executableCommands.map(cmd => ({
-      type: cmd.type,
-      label: cmd.nodeLabel,
-      requiredAgent: cmd.requiredAgentId || 'any',
-      scriptLength: cmd.script?.length || 0
-    })))
 
     // Store all commands in the job for sequential execution
     job.executionCommands = executableCommands
@@ -180,12 +174,10 @@ export default defineEventHandler(async (event) => {
 
     // Start with the first command
     const firstCommand = executableCommands[0]
-    console.log(`🚀 Starting sequential execution with command 1/${executableCommands.length}: ${firstCommand.nodeLabel}`)
-    
+    logger.info(`Starting sequential execution with command 1/${executableCommands.length}: ${firstCommand.nodeLabel}`)
+
     // Check if first command is an orchestrator
     if (firstCommand.type === 'parallel_branches_orchestrator') {
-      console.log(`🔀 First command is parallel branches orchestrator - executing directly`)
-      
       // Update job with orchestrator execution
       await jobManager.updateJob(jobId, {
         status: 'running',
@@ -224,8 +216,6 @@ export default defineEventHandler(async (event) => {
     }
     
     if (firstCommand.type === 'parallel_matrix_orchestrator') {
-      console.log(`🔀 First command is parallel matrix orchestrator - executing directly`)
-      
       // Update job with orchestrator execution
       await jobManager.updateJob(jobId, {
         status: 'running',
@@ -265,7 +255,7 @@ export default defineEventHandler(async (event) => {
 
     // Check if first command is a notification
     if (firstCommand.type === 'notification') {
-      console.log(`📧 First command is notification - executing directly on backend`)
+      logger.info(`First command is notification - executing directly on backend`)
 
       // Update job with notification execution
       await jobManager.updateJob(jobId, {
@@ -286,7 +276,7 @@ export default defineEventHandler(async (event) => {
       const result = await notificationService.sendNotification(firstCommand, context)
 
       if (result.success) {
-        console.log(`✅ Notification sent successfully`)
+        logger.info(`Notification sent successfully`)
 
         // Mark job as completed
         await jobManager.updateJob(jobId, {
@@ -318,7 +308,7 @@ export default defineEventHandler(async (event) => {
           })
         }
       } else {
-        console.error(`❌ Notification failed:`, result.error)
+        logger.error(`Notification failed:`, result.error)
 
         // Mark job as failed
         await jobManager.updateJob(jobId, {
@@ -371,20 +361,20 @@ export default defineEventHandler(async (event) => {
     
     if (!selectedAgent) {
       const errorMsg = requiresSpecificAgent
-        ? `🚨 CRITICAL: Required agent "${firstCommand.requiredAgentId}" not available for command: ${firstCommand.nodeLabel}. Execution BLOCKED to prevent running on wrong environment.`
+        ? `CRITICAL: Required agent "${firstCommand.requiredAgentId}" not available for command: ${firstCommand.nodeLabel}. Execution BLOCKED to prevent running on wrong environment.`
         : 'No agents available for job execution'
-      
-      console.error(errorMsg)
+
+      logger.error(errorMsg)
       throw createError({
         statusCode: 503,
         statusMessage: errorMsg
       })
     }
-    
+
     if (requiresSpecificAgent) {
-      console.log(`🔒 ENFORCING agent selection: ${selectedAgent.agentId} for command: ${firstCommand.nodeLabel}`)
+      logger.info(`ENFORCING agent selection: ${selectedAgent.agentId} for command: ${firstCommand.nodeLabel}`)
     } else {
-      console.log(`🎯 Selected agent ${selectedAgent.agentId} for first command: ${firstCommand.nodeLabel} (user chose "any available")`)
+      logger.info(`Selected agent ${selectedAgent.agentId} for first command: ${firstCommand.nodeLabel} (user chose "any available")`)
     }
 
     // Build recording already done above
@@ -419,7 +409,7 @@ export default defineEventHandler(async (event) => {
             nodesExecuted: 0
           })
         } catch (buildError) {
-          console.warn('Failed to update build record on dispatch failure:', buildError)
+          logger.warn('Failed to update build record on dispatch failure:', buildError)
         }
       }
 
@@ -439,7 +429,7 @@ export default defineEventHandler(async (event) => {
       buildNumber: currentBuildNumber
     })
 
-    console.log(`✅ Job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`)
+    logger.info(`Job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`)
 
     // Broadcast job started event to WebSocket clients
     if (globalThis.broadcastToProject) {
@@ -467,8 +457,8 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error) {
-    console.error('❌ Error dispatching job:', error)
-    
+    logger.error('Error dispatching job:', error)
+
     // Clean up build record if it was created
     if (currentBuildNumber) {
       try {
@@ -479,7 +469,7 @@ export default defineEventHandler(async (event) => {
           nodesExecuted: 0
         })
       } catch (buildError) {
-        console.warn('Failed to update build record on error:', buildError)
+        logger.warn('Failed to update build record on error:', buildError)
       }
     }
     
@@ -551,16 +541,15 @@ function getCommandPlatformRequirements(command) {
  * resolving parameter values and skipping non-executable nodes.
  */
 export function convertGraphToCommands(nodes, edges, triggerContext = null, executionOutputs = null) {
-  console.log(`🔧 Converting graph to commands...`)
-  console.log(`📊 Graph has ${nodes.length} nodes and ${edges.length} edges`)
+  logger.info(`Converting graph to commands...`)
+  logger.info(`Graph has ${nodes.length} nodes and ${edges.length} edges`)
 
   // Step 1: Build parameter value map from parameter nodes + trigger context + execution outputs
   const parameterValues = buildParameterValueMap(nodes, edges, triggerContext, executionOutputs)
-  console.log(`📋 Built parameter value map:`, parameterValues)
 
   // Step 2: Find executable starting points (trigger nodes or nodes without execution inputs)
   const startingNodes = findExecutionStartingNodes(nodes, edges)
-  console.log(`🎯 Found ${startingNodes.length} starting nodes:`, startingNodes.map(n => n.data.label))
+  logger.info(`Found ${startingNodes.length} starting nodes:`, startingNodes.map(n => n.data.label))
 
   if (startingNodes.length === 0) {
     throw new Error('No executable nodes found in graph. Please add at least one executable node (bash, sh, powershell, cmd, python, or node) to create a workflow.')
@@ -575,7 +564,7 @@ export function convertGraphToCommands(nodes, edges, triggerContext = null, exec
     commands.push(...nodeCommands)
   }
 
-  console.log(`✅ Generated ${commands.length} executable commands`)
+  logger.info(`Generated ${commands.length} executable commands`)
   return commands
 }
 
@@ -591,13 +580,13 @@ function buildParameterValueMap(nodes, edges, triggerContext = null, executionOu
       // Handle Map (legacy)
       for (const [key, value] of executionOutputs) {
         parameterValues.set(key, value)
-        console.log(`📤 Added execution output: ${key} = ${value.value}`)
+        logger.debug(`Added execution output: ${key} = ${value.value}`)
       }
     } else if (typeof executionOutputs === 'object') {
       // Handle plain object (serialized from Map)
       for (const [key, value] of Object.entries(executionOutputs)) {
         parameterValues.set(key, value)
-        console.log(`📤 Added execution output: ${key} = ${value.value}`)
+        logger.debug(`Added execution output: ${key} = ${value.value}`)
       }
     }
   }
@@ -702,7 +691,7 @@ function findExecutionStartingNodes(nodes, edges) {
   if (startingNodes.length === 0) {
     // Special case: if there's only one node in the graph, it's the starting node (triggered individually)
     if (nodes.length === 1 && !nodes[0].data.nodeType?.includes('-param')) {
-      console.log(`🎯 Single node execution - using: ${nodes[0].data.label}`)
+      logger.info(`Single node execution - using: ${nodes[0].data.label}`)
       return [nodes[0]]
     }
 
@@ -712,7 +701,7 @@ function findExecutionStartingNodes(nodes, edges) {
     )
 
     if (orchestratorNodes.length > 0) {
-      console.log(`🎯 No trigger nodes found - using orchestrator node for manual execution: ${orchestratorNodes[0].data.label}`)
+      logger.info(`No trigger nodes found - using orchestrator node for manual execution: ${orchestratorNodes[0].data.label}`)
       return [orchestratorNodes[0]]
     }
 
@@ -722,7 +711,7 @@ function findExecutionStartingNodes(nodes, edges) {
     )
 
     if (executableNodes.length > 0) {
-      console.log(`🎯 No trigger nodes found - using first executable node for manual execution: ${executableNodes[0].data.label}`)
+      logger.info(`No trigger nodes found - using first executable node for manual execution: ${executableNodes[0].data.label}`)
       return [executableNodes[0]]
     }
   }
@@ -755,7 +744,7 @@ function buildExecutionFlow(startNode, allNodes, allEdges, parameterValues, visi
   // If this node has success/failure sockets, STOP building the sequential flow here
   // Let runtime routing (triggerNextNodes) handle the branching
   if (hasSuccessSocket || hasFailureSocket) {
-    console.log(`🔀 Node "${startNode.data.label}" has success/failure routing - stopping sequential compilation here`)
+    logger.info(`Node "${startNode.data.label}" has success/failure routing - stopping sequential compilation here`)
     return commands
   }
 
@@ -829,7 +818,7 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
 
     case 'parallel_branches':
       // Parallel branches node - orchestrates parallel execution of multiple branches
-      console.log(`🔀 Parallel Branches node: ${node.data.label}`)
+      logger.info(`Parallel Branches node: ${node.data.label}`)
 
       // Create a parallel orchestration command
       commands.push({
@@ -849,7 +838,7 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
 
     case 'parallel_matrix':
       // Parallel matrix node - executes same job multiple times with JS-generated parameters
-      console.log(`🔀 Parallel Matrix node: ${node.data.label}`)
+      logger.info(`Parallel Matrix node: ${node.data.label}`)
 
       // Evaluate JavaScript to generate array
       let items = []
@@ -860,9 +849,9 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
         if (!Array.isArray(items)) {
           throw new Error('Script must return an array')
         }
-        console.log(`✅ Matrix generated ${items.length} items:`, items)
+        logger.info(`Matrix generated ${items.length} items:`, items)
       } catch (error) {
-        console.error(`❌ Failed to evaluate parallel_matrix script:`, error)
+        logger.error(`Failed to evaluate parallel_matrix script:`, error)
         throw error
       }
 
@@ -889,7 +878,7 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
     case 'job-trigger':
       // Trigger nodes don't generate executable commands during manual execution
       // They are only relevant for scheduling/triggering jobs
-      console.log(`⏭️ Skipping trigger node during execution: ${node.data.label}`)
+      logger.debug(`Skipping trigger node during execution: ${node.data.label}`)
       break
 
     // Parameter nodes are handled separately in parameter resolution
@@ -897,12 +886,12 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
     case 'text-param':
     case 'choice-param':
     case 'boolean-param':
-      console.log(`⏭️ Skipping parameter node during execution: ${node.data.label}`)
+      logger.debug(`Skipping parameter node during execution: ${node.data.label}`)
       break
 
     case 'conditional':
       // Conditional nodes are handled during execution flow, not as commands
-      console.log(`🔀 Conditional node found: ${node.data.label}`)
+      logger.info(`Conditional node found: ${node.data.label}`)
       break
 
     case 'parallel':
@@ -933,6 +922,22 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
         return resolveScriptPlaceholders(tempNode, allEdges, parameterValues)
       }
 
+      // Helper function to recursively resolve placeholders in a JSON object/array
+      const resolveObjectPlaceholders = (obj, node, edges, params) => {
+        if (typeof obj === 'string') {
+          return resolvePlaceholders(obj)
+        } else if (Array.isArray(obj)) {
+          return obj.map(item => resolveObjectPlaceholders(item, node, edges, params))
+        } else if (obj !== null && typeof obj === 'object') {
+          const result = {}
+          for (const [key, value] of Object.entries(obj)) {
+            result[key] = resolveObjectPlaceholders(value, node, edges, params)
+          }
+          return result
+        }
+        return obj
+      }
+
       commands.push({
         type: 'notification',
         notificationType: node.data.notificationType || 'email',
@@ -956,7 +961,20 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
         webhookUrl: node.data.webhookUrl,
         webhookMethod: node.data.webhookMethod || 'POST',
         webhookHeaders: node.data.webhookHeaders || '{}',
-        webhookBody: resolvePlaceholders(node.data.webhookBody || '{}'),
+        // Webhook body needs special handling for JSON - parse, resolve, re-stringify
+        webhookBody: (() => {
+          const rawBody = node.data.webhookBody || '{}'
+          try {
+            // Parse JSON, resolve placeholders in values, re-stringify
+            const parsed = JSON.parse(rawBody)
+            const resolved = resolveObjectPlaceholders(parsed, node, allEdges, parameterValues)
+            return JSON.stringify(resolved)
+          } catch (error) {
+            // Not JSON, use simple resolution
+            logger.warn('Webhook body is not JSON, using simple placeholder resolution')
+            return resolvePlaceholders(rawBody)
+          }
+        })(),
 
         nodeId: node.id,
         nodeLabel: node.data.label
@@ -964,7 +982,7 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
       break
 
     default:
-      console.log(`⚠️ Unknown node type during execution: ${nodeType} (${node.data.label})`)
+      logger.warn(`Unknown node type during execution: ${nodeType} (${node.data.label})`)
   }
 
   return commands
@@ -995,34 +1013,25 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
   // Process each input socket placeholder
   if (node.data.inputSockets && node.data.inputSockets.length > 0) {
     node.data.inputSockets.forEach((socket, index) => {
-      console.log(`🔧 Processing socket: ${socket.label} (id: ${socket.id})`)
       
       // Find the edge connected to this socket
       const connection = inputConnections.find(edge => edge.targetHandle === socket.id)
-      console.log(`🔧 Connection found for socket ${socket.label}:`, connection)
-
       let parameterData = null
 
       if (connection) {
         // Check if the source is a parameter node
         parameterData = parameterValues.get(connection.source)
-        console.log(`🔧 Parameter data from source ${connection.source}:`, parameterData)
 
         // If not found, check if it's a webhook output socket connection
         if (!parameterData && connection.sourceHandle) {
           const webhookSocketKey = `${connection.source}_${connection.sourceHandle}`
-          console.log(`🔧 Trying webhook socket key: ${webhookSocketKey}`)
           parameterData = parameterValues.get(webhookSocketKey)
-          console.log(`🔧 Webhook parameter data:`, parameterData)
         }
 
         // If still not found, check if it's an execution output connection
         if (!parameterData && connection.sourceHandle === 'output') {
           const executionOutputKey = `${connection.target}_${connection.targetHandle}`
           parameterData = parameterValues.get(executionOutputKey)
-          if (parameterData) {
-            console.log(`🔧 Execution output data:`, parameterData)
-          }
         }
       }
 
@@ -1032,7 +1041,7 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
         const executionOutputKey = `${node.id}_${socket.id}`
         parameterData = parameterValues.get(executionOutputKey)
         if (parameterData) {
-          console.log(`🔧 Found execution output by direct socket lookup: ${executionOutputKey}`)
+          logger.debug(`Found execution output by direct socket lookup: ${executionOutputKey}`)
         }
       }
 
@@ -1047,7 +1056,6 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
           const isObjectValue = typeof parameterData.value === 'object' && parameterData.value !== null
           
           if (isObjectValue) {
-            console.log(`🔧 Processing object value for ${cleanLabel}:`, parameterData.value)
             
             // Handle property access patterns FIRST, including patterns outside ${} like $INPUT_1.property
             // Pattern 1: ${INPUT_1.property.path} (preferred format)
@@ -1055,23 +1063,21 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
             script = script.replace(propertyAccessRegex1, (match, propertyPath) => {
               try {
                 const value = getNestedProperty(parameterData.value, propertyPath)
-                console.log(`🔗 Resolved ${match} -> ${value}`)
                 return value !== undefined ? String(value) : match
               } catch (error) {
-                console.warn(`⚠️ Failed to access property ${propertyPath} on ${cleanLabel}:`, error)
+                logger.warn(`Failed to access property ${propertyPath} on ${cleanLabel}:`, error)
                 return match
               }
             })
-            
+
             // Pattern 2: $INPUT_1.property.path (without braces - fallback)
             const propertyAccessRegex2 = new RegExp(`\\$${escapedLabel}\\.(\\S+?)(?=\\s|"|'|$)`, 'g')
             script = script.replace(propertyAccessRegex2, (match, propertyPath) => {
               try {
                 const value = getNestedProperty(parameterData.value, propertyPath)
-                console.log(`🔗 Resolved ${match} -> ${value} (propertyPath: ${propertyPath})`)
                 return value !== undefined ? String(value) : match
               } catch (error) {
-                console.warn(`⚠️ Failed to access property ${propertyPath} on ${cleanLabel}:`, error)
+                logger.warn(`Failed to access property ${propertyPath} on ${cleanLabel}:`, error)
                 return match
               }
             })
@@ -1095,15 +1101,14 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
               script = script.replace(new RegExp(fallbackPlaceholder, 'g'), String(parameterData.value))
             }
           }
-          
-          console.log(`🔗 Resolved parameter "${parameterData.label}" for socket "${socket.label}" (object: ${isObjectValue})`)
+
       } else {
-        console.log(`⚠️ No connection found for socket "${socket.label}"`)
+        logger.debug(`No connection found for socket "${socket.label}"`)
       }
     })
   }
 
-  console.log(`🔧 Final script: "${script}"`)
+  logger.debug(`Final script: "${script}"`)
   return script
 }
 
@@ -1146,15 +1151,12 @@ function getExecutionResultConnectedNodes(executionNode, allNodes, allEdges, exe
   // Determine which socket to use based on execution result
   const targetSocketId = (executionResult && executionResult.success) ? 'success' : 'failure'
   
-  console.log(`🔍 Looking for ${targetSocketId} socket from node "${executionNode.data.label}" (${executionNode.data.nodeType})`)
-  
   const outputEdge = allEdges.find(edge => 
     edge.source === executionNode.id && edge.sourceHandle === targetSocketId
   )
   
   if (outputEdge) {
     const targetNode = allNodes.find(node => node.id === outputEdge.target)
-    console.log(`🔀 Execution "${executionNode.data.label}" routing to ${targetSocketId} path: ${targetNode?.data.label || 'unknown'}`)
     if (targetNode) {
       connectedNodes.push(targetNode)
     }
@@ -1168,17 +1170,16 @@ function getExecutionResultConnectedNodes(executionNode, allNodes, allEdges, exe
     
     if (outputSocketEdge) {
       const outputTargetNode = allNodes.find(node => node.id === outputSocketEdge.target)
-      console.log(`📤 Execution "${executionNode.data.label}" sending output to: ${outputTargetNode?.data.label || 'unknown'}`)
       if (outputTargetNode && !connectedNodes.find(n => n.id === outputTargetNode.id)) {
         connectedNodes.push(outputTargetNode)
       }
     }
   }
-  
+
   if (connectedNodes.length === 0) {
-    console.log(`⚠️ No output edges found for execution "${executionNode.data.label}" ${targetSocketId} path`)
+    logger.debug(`No output edges found for execution "${executionNode.data.label}" ${targetSocketId} path`)
   }
-  
+
   return connectedNodes
 }
 
@@ -1227,27 +1228,23 @@ function getConditionalConnectedNodes(conditionalNode, allNodes, allEdges, param
     
     // Evaluate the condition using Function constructor (safer than eval)
     conditionResult = new Function('return ' + evaluableCondition)()
-    console.log(`🔀 Conditional "${conditionalNode.data.label}" evaluated: ${condition} -> ${conditionResult}`)
   } catch (error) {
-    console.error(`❌ Conditional evaluation error in "${conditionalNode.data.label}":`, error)
-    console.error(`❌ Condition: ${condition}`)
-    console.error(`❌ Parameter context:`, parameterContext)
+    logger.error(`Conditional evaluation error in "${conditionalNode.data.label}":`, error)
     conditionResult = false
   }
-  
+
   // Find the appropriate output edge based on condition result
   const targetSocketId = conditionResult ? 'true' : 'false'
-  const outputEdge = allEdges.find(edge => 
+  const outputEdge = allEdges.find(edge =>
     edge.source === conditionalNode.id && edge.sourceHandle === targetSocketId
   )
-  
+
   if (outputEdge) {
     const targetNode = allNodes.find(node => node.id === outputEdge.target)
-    console.log(`🔀 Conditional "${conditionalNode.data.label}" routing to ${targetSocketId} path: ${targetNode?.data.label || 'unknown'}`)
     return targetNode ? [targetNode] : []
   }
-  
-  console.log(`⚠️ No output edge found for conditional "${conditionalNode.data.label}" ${targetSocketId} path`)
+
+  logger.debug(`No output edge found for conditional "${conditionalNode.data.label}" ${targetSocketId} path`)
   return []
 }
 
@@ -1263,18 +1260,15 @@ function escapeRegex(string) {
  */
 function getBranchTargetNodes(parallelNode, allNodes, allEdges) {
   const targets = []
-  
-  console.log(`🔍 getBranchTargetNodes: Processing parallel node "${parallelNode.data.label}"`)
-  console.log(`🔍 Available branches:`, parallelNode.data.branches)
 
   if (!parallelNode.data.branches || parallelNode.data.branches.length === 0) {
-    console.log(`⚠️ No branches defined for parallel node "${parallelNode.data.label}"`)
+    logger.debug(`No branches defined for parallel node "${parallelNode.data.label}"`)
     return targets
   }
 
   for (const branch of parallelNode.data.branches) {
-    console.log(`🔍 Processing branch: ${branch.name} (${branch.id})`)
-    
+    logger.debug(`Processing branch: ${branch.name} (${branch.id})`)
+
     // Find edge connected to this branch socket
     const branchEdge = allEdges.find(edge =>
       edge.source === parallelNode.id && edge.sourceHandle === branch.id
@@ -1282,8 +1276,8 @@ function getBranchTargetNodes(parallelNode, allNodes, allEdges) {
 
     if (branchEdge) {
       const targetNode = allNodes.find(n => n.id === branchEdge.target)
-      console.log(`🔍 Target node found:`, targetNode?.data.label)
-      
+      logger.debug(`Target node found:`, targetNode?.data.label)
+
       if (targetNode) {
         targets.push({
           branchId: branch.id,
@@ -1292,11 +1286,11 @@ function getBranchTargetNodes(parallelNode, allNodes, allEdges) {
         })
       }
     } else {
-      console.log(`⚠️ No connection found for branch "${branch.name}" (${branch.id})`)
+      logger.debug(`No connection found for branch "${branch.name}" (${branch.id})`)
     }
   }
 
-  console.log(`🔀 Found ${targets.length} branch targets for parallel node "${parallelNode.data.label}"`)
+  logger.debug(`Found ${targets.length} branch targets for parallel node "${parallelNode.data.label}"`)
   return targets
 }
 
@@ -1312,11 +1306,11 @@ function getIterationTargetNode(matrixNode, allNodes, allEdges) {
   if (iterationEdge) {
     const targetNode = allNodes.find(n => n.id === iterationEdge.target)
     if (targetNode) {
-      console.log(`🔀 Found iteration target for matrix node "${matrixNode.data.label}": ${targetNode.data.label}`)
+      logger.debug(`Found iteration target for matrix node "${matrixNode.data.label}": ${targetNode.data.label}`)
       return targetNode
     }
   }
 
-  console.log(`⚠️ No iteration target found for matrix node "${matrixNode.data.label}"`)
+  logger.debug(`No iteration target found for matrix node "${matrixNode.data.label}"`)
   return null
 }

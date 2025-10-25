@@ -4,6 +4,7 @@
  */
 
 import { cronManager } from '../../utils/cronManager.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error) {
-    console.error('❌ Error retrieving all cron jobs:', error)
+    logger.error('Error retrieving all cron jobs:', error)
     
     throw createError({
       statusCode: error.statusCode || 500,

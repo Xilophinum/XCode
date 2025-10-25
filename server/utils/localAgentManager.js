@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto'
 import XCodeBuildAgent from '../../build-agent/agent.js'
 import { getDataService } from './dataService.js'
+import logger from './logger.js'
 
 class LocalAgentManager {
   constructor() {
@@ -11,13 +12,13 @@ class LocalAgentManager {
 
   async start(serverUrl = 'ws://localhost:3000') {
     if (this.isStarted) {
-      console.log('🔧 Local agent already started')
+      logger.info('Local agent already started')
       return
     }
 
     try {
-      console.log('🚀 Starting local build agent...')
-      
+      logger.info('Starting local build agent...')
+
       // Generate or retrieve local agent token
       await this.ensureLocalAgentToken()
       
@@ -29,14 +30,14 @@ class LocalAgentManager {
 
       // Start the agent (non-blocking)
       this.localAgent.start().catch(error => {
-        console.error('❌ Local agent startup error:', error.message)
+        logger.error('Local agent startup error:', error.message)
       })
       
       this.isStarted = true
-      console.log('✅ Local build agent started successfully')
-      
+      logger.info('Local build agent started successfully')
+
     } catch (error) {
-      console.error('❌ Failed to start local agent:', error.message)
+      logger.error('Failed to start local agent:', error.message)
       throw error
     }
   }
@@ -50,7 +51,7 @@ class LocalAgentManager {
       
       if (existingAgent) {
         this.localAgentToken = existingAgent.token
-        console.log('🔧 Using existing local agent token')
+        logger.info('Using existing local agent token')
         return
       }
 
@@ -66,11 +67,11 @@ class LocalAgentManager {
 
       const createdAgent = await dataService.createAgent(agentData)
       this.localAgentToken = token
-      
-      console.log('✅ Created new local agent with token')
-      
+
+      logger.info('Created new local agent with token')
+
     } catch (error) {
-      console.error('❌ Error ensuring local agent token:', error)
+      logger.error('Error ensuring local agent token:', error)
       throw error
     }
   }
@@ -81,11 +82,11 @@ class LocalAgentManager {
 
   async stop() {
     if (this.localAgent) {
-      console.log('🛑 Stopping local build agent...')
+      logger.info('Stopping local build agent...')
       this.localAgent.shutdown()
       this.localAgent = null
       this.isStarted = false
-      console.log('✅ Local build agent stopped')
+      logger.info('Local build agent stopped')
     }
   }
 

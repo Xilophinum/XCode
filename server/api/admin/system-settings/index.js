@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from '../../../utils/auth'
 import { DataService } from '../../../utils/dataService'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   // Check authentication and admin role
@@ -37,7 +38,7 @@ export default defineEventHandler(async (event) => {
       return { success: true, settings }
     }
   } catch (error) {
-    console.error('System settings API error:', error)
+    logger.error('System settings API error:', error)
     throw createError({
       statusCode: 500,
       statusMessage: 'Internal server error'

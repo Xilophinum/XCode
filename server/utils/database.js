@@ -5,6 +5,7 @@ import postgres from 'postgres'
 import { createSchema } from './schema.js'
 import { resolve } from 'path'
 import { existsSync, mkdirSync } from 'fs'
+import logger from './logger.js'
 
 export class DatabaseManager {
   constructor() {
@@ -57,11 +58,11 @@ export class DatabaseManager {
       throw new Error('Invalid PostgreSQL connection string. Must start with postgres:// or postgresql://')
     }
 
-    console.log('🔄 Connecting to PostgreSQL database...')
+    logger.info('Connecting to PostgreSQL database...')
     this.postgres = postgres(connectionString)
     const schema = createSchema('postgres')
     this.db = drizzlePostgres(this.postgres, { schema })
-    console.log('✅ PostgreSQL database connected successfully')
+    logger.info('PostgreSQL database connected successfully')
     await this.postgres`SET client_min_messages TO warning;`
     await this.postgres`SET log_min_messages TO warning;`
     await this.postgres`SET log_min_error_statement TO error;`
@@ -87,7 +88,7 @@ export class DatabaseManager {
       const hasIdColumn = tableInfo.some(col => col.name === 'id')
 
       if (hasIdColumn) {
-        console.log('🔄 Migrating builds table to new schema...')
+        logger.info('Migrating builds table to new schema...')
 
         // Backup existing data
         const existingBuilds = this.sqlite.prepare("SELECT * FROM builds").all()
@@ -163,11 +164,11 @@ export class DatabaseManager {
             )
           }
         }
-        
-        console.log(`✅ Migrated builds table with ${existingBuilds.length} records`)
+
+        logger.info(`Migrated builds table with ${existingBuilds.length} records`)
       }
     } catch (error) {
-      console.error('Error migrating builds table:', error)
+      logger.error('Error migrating builds table:', error)
     }
 
     // Migration 2: Update smtp_port setting from select to number type
@@ -177,7 +178,7 @@ export class DatabaseManager {
       ).get()
 
       if (smtpPortSetting && smtpPortSetting.type === 'select') {
-        console.log('🔄 Migrating smtp_port setting from select to number type...')
+        logger.info('Migrating smtp_port setting from select to number type...')
 
         // Update the type and remove the options field
         this.sqlite.prepare(`
@@ -191,10 +192,10 @@ export class DatabaseManager {
           WHERE key = 'smtp_port'
         `).run(new Date().toISOString())
 
-        console.log('✅ Migrated smtp_port setting to number type')
+        logger.info('Migrated smtp_port setting to number type')
       }
     } catch (error) {
-      console.error('Error migrating smtp_port setting:', error)
+      logger.error('Error migrating smtp_port setting:', error)
     }
 
   }
@@ -483,7 +484,7 @@ export class DatabaseManager {
       await this.insertBuiltInTemplates()
 
     } catch (error) {
-      console.error('Error creating tables:', error)
+      logger.error('Error creating tables:', error)
     }
   }
 
@@ -545,7 +546,7 @@ export class DatabaseManager {
               type: 'header',
               text: {
                 type: 'plain_text',
-                text: '✅ Build #$BuildNumber Succeeded',
+                text: 'Build #$BuildNumber Succeeded',
                 emoji: true
               }
             },
@@ -588,7 +589,7 @@ export class DatabaseManager {
               type: 'header',
               text: {
                 type: 'plain_text',
-                text: '❌ Build #$BuildNumber Failed',
+                text: 'Build #$BuildNumber Failed',
                 emoji: true
               }
             },
@@ -664,9 +665,9 @@ export class DatabaseManager {
         }
       }
 
-      console.log('✅ Built-in notification templates ensured')
+      logger.info('Built-in notification templates ensured')
     } catch (error) {
-      console.error('Error inserting built-in templates:', error)
+      logger.error('Error inserting built-in templates:', error)
     }
   }
 
@@ -674,7 +675,7 @@ export class DatabaseManager {
 
   async createPostgresTables() {
     try {
-      console.log('🔄 Creating PostgreSQL tables...')
+      logger.info('🔄 Creating PostgreSQL tables...')
       // Create tables using raw SQL for PostgreSQL
       await this.postgres`
         CREATE TABLE IF NOT EXISTS users (
@@ -941,9 +942,9 @@ export class DatabaseManager {
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_snapshots_project_id ON project_snapshots(project_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_snapshots_version ON project_snapshots(project_id, version)`
 
-      console.log('✅ PostgreSQL tables created successfully')
+      logger.info('PostgreSQL tables created successfully')
     } catch (error) {
-      console.error('Error creating PostgreSQL tables:', error)
+      logger.error('Error creating PostgreSQL tables:', error)
     }
   }
 
@@ -958,7 +959,7 @@ export class DatabaseManager {
       `
       
       if (idColumnCheck.length > 0) {
-        console.log('🔄 Migrating builds table to new schema...')
+        logger.info('🔄 Migrating builds table to new schema...')
         
         // Backup existing data
         const existingBuilds = await this.postgres`SELECT * FROM builds`
@@ -1033,10 +1034,10 @@ export class DatabaseManager {
           }
         }
         
-        console.log(`✅ Migrated builds table with ${existingBuilds.length} records`)
+        logger.info(`Migrated builds table with ${existingBuilds.length} records`)
       }
     } catch (error) {
-      console.error('Error migrating builds table:', error)
+      logger.error('Error migrating builds table:', error)
     }
 
     // Migration 2: Update smtp_port setting from select to number type
@@ -1046,7 +1047,7 @@ export class DatabaseManager {
       `
 
       if (smtpPortCheck.length > 0) {
-        console.log('🔄 Migrating smtp_port setting from select to number type...')
+        logger.info('🔄 Migrating smtp_port setting from select to number type...')
 
         await this.postgres`
           UPDATE system_settings
@@ -1059,10 +1060,10 @@ export class DatabaseManager {
           WHERE key = 'smtp_port'
         `
 
-        console.log('✅ Migrated smtp_port setting to number type')
+        logger.info('Migrated smtp_port setting to number type')
       }
     } catch (error) {
-      console.error('Error migrating smtp_port setting:', error)
+      logger.error('Error migrating smtp_port setting:', error)
     }
   }
 

@@ -6,6 +6,7 @@
 import { getAgentManager } from '~/server/utils/agentManager.js'
 import { jobManager } from '~/server/utils/jobManager.js'
 import { getBuildStatsManager } from '~/server/utils/buildStatsManager.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -19,7 +20,7 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    console.log(`🛑 Cancelling build #${buildNumber} for project ${projectId}`)
+    logger.info(`🛑 Cancelling build #${buildNumber} for project ${projectId}`)
 
     // Get all jobs associated with this build (for parallel builds)
     const allJobs = Array.from(jobManager.jobs.values())
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event) => {
       j.projectId === projectId && j.buildNumber === buildNumber
     )
 
-    console.log(`🔍 Found ${jobsToCancel.length} jobs for build #${buildNumber}`)
+    logger.info(`🔍 Found ${jobsToCancel.length} jobs for build #${buildNumber}`)
 
     if (jobsToCancel.length === 0) {
       throw createError({
@@ -41,7 +42,7 @@ export default defineEventHandler(async (event) => {
       ['queued', 'dispatched', 'running'].includes(j.status)
     )
 
-    console.log(`🔍 Found ${cancellableJobs.length} cancellable jobs`)
+    logger.info(`🔍 Found ${cancellableJobs.length} cancellable jobs`)
 
     if (cancellableJobs.length === 0) {
       throw createError({
@@ -58,7 +59,7 @@ export default defineEventHandler(async (event) => {
       try {
         const jobId = job.jobId || job.id
 
-        console.log(`🛑 Cancelling job ${jobId} on agent ${job.agentId}`)
+        logger.info(`🛑 Cancelling job ${jobId} on agent ${job.agentId}`)
 
         // Cancel via agent manager
         const success = await agentManager.cancelJobOnAgent(job.agentId, jobId)
@@ -83,7 +84,7 @@ export default defineEventHandler(async (event) => {
           })
         }
       } catch (error) {
-        console.error(`❌ Error cancelling job ${job.jobId || job.id}:`, error)
+        logger.error(`Error cancelling job ${job.jobId || job.id}:`, error)
         cancelResults.push({
           jobId: job.jobId || job.id,
           success: false,
@@ -104,13 +105,13 @@ export default defineEventHandler(async (event) => {
           message: 'Build cancelled by user',
           nodesExecuted: 0
         })
-        console.log(`✅ Updated build #${buildNumber} status to cancelled`)
+        logger.info(`Updated build #${buildNumber} status to cancelled`)
       } catch (buildError) {
-        console.warn('Failed to update build record on cancellation:', buildError)
+        logger.warn('Failed to update build record on cancellation:', buildError)
       }
     }
 
-    console.log(`✅ Cancelled ${successCount} of ${cancellableJobs.length} jobs for build #${buildNumber}`)
+    logger.info(`Cancelled ${successCount} of ${cancellableJobs.length} jobs for build #${buildNumber}`)
 
     return {
       success: successCount > 0,
@@ -124,7 +125,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error) {
-    console.error('❌ Error cancelling build:', error)
+    logger.error('Error cancelling build:', error)
     throw createError({
       statusCode: error.statusCode || 500,
       statusMessage: error.statusMessage || 'Failed to cancel build'

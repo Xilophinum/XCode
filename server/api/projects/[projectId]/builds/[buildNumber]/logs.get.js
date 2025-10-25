@@ -6,6 +6,7 @@
 import { getDB, builds } from '~/server/utils/database.js'
 import { jobManager } from '~/server/utils/jobManager.js'
 import { eq, and } from 'drizzle-orm'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -20,7 +21,7 @@ export default defineEventHandler(async (event) => {
     }
 
     let logs = []
-    console.log(`📋 Getting logs for project ${projectId}, build #${buildNumber}`)
+    logger.info(`Getting logs for project ${projectId}, build #${buildNumber}`)
 
     // Get from database using composite key
     const db = await getDB()
@@ -31,12 +32,12 @@ export default defineEventHandler(async (event) => {
         eq(builds.buildNumber, buildNumber)
       ))
 
-    console.log(`📋 Database query results for build #${buildNumber}:`, buildResults.length > 0 ? 'found' : 'not found')
+    logger.info(`Database query results for build #${buildNumber}:`, buildResults.length > 0 ? 'found' : 'not found')
 
     if (buildResults[0]?.outputLog) {
       try {
         const dbLogs = JSON.parse(buildResults[0].outputLog)
-        console.log(`📋 Found ${dbLogs.length} logs in database`)
+        logger.info(`Found ${dbLogs.length} logs in database`)
         // Convert database format to normalized format
         logs = dbLogs.map(logEntry => ({
           type: logEntry.type || 'info',
@@ -48,14 +49,14 @@ export default defineEventHandler(async (event) => {
           value: logEntry.value
         }))
       } catch (e) {
-        console.log(`📋 Error parsing database logs:`, e)
+        logger.info(`Error parsing database logs:`, e)
         logs = []
       }
     } else {
-      console.log(`📋 No logs found in database for build #${buildNumber}`)
+      logger.info(`No logs found in database for build #${buildNumber}`)
     }
 
-    console.log(`📋 Returning ${logs.length} logs`)
+    logger.info(`Returning ${logs.length} logs`)
 
     const result = {
       success: true,

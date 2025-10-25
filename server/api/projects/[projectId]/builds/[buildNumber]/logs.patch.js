@@ -1,4 +1,5 @@
 import { getBuildStatsManager } from '~/server/utils/buildStatsManager.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   const { projectId, buildNumber: buildNumberStr } = getRouterParams(event)
@@ -23,7 +24,6 @@ export default defineEventHandler(async (event) => {
         nodesExecuted: body.nodesExecuted
       })
     } else if (body.type === 'log') {
-      console.log(`Logs sent to logs.patch for build #${buildNumber}`, body.message)
       // Add a log entry
       await buildStatsManager.addBuildLog(projectId, buildNumber, {
         nodeId: body.nodeId,
@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
       success: true
     }
   } catch (error) {
-    console.error('Error updating build:', error)
+    logger.error('Error updating build:', error)
     throw createError({
       statusCode: 500,
       statusMessage: 'Failed to update build'

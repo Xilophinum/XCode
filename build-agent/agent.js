@@ -50,16 +50,16 @@ class XCodeBuildAgent {
 
   validateConfig() {
     if (!this.token) {
-      console.error('❌ Error: Agent token is required');
-      console.log('Usage: node agent.js --token <token> --server <server-url>');
-      console.log('Or set XCODE_AGENT_TOKEN environment variable');
+      logger.error('Error: Agent token is required');
+      logger.info('Usage: node agent.js --token <token> --server <server-url>');
+      logger.info('Or set XCODE_AGENT_TOKEN environment variable');
       process.exit(1);
     }
 
     if (!this.serverUrl) {
-      console.error('❌ Error: Server URL is required');
-      console.log('Usage: node agent.js --token <token> --server <server-url>');
-      console.log('Or set XCODE_SERVER_URL environment variable');
+      logger.error('Error: Server URL is required');
+      logger.info('Usage: node agent.js --token <token> --server <server-url>');
+      logger.info('Or set XCODE_SERVER_URL environment variable');
       process.exit(1);
     }
 
@@ -279,16 +279,16 @@ class XCodeBuildAgent {
   }
 
   async connect() {
-    console.log(`🔌 Connecting to XCode server: ${this.serverUrl}`);
-    console.log(`🎯 Agent Token: ${this.token.substring(0, 8)}...`);
-    console.log(`💻 Platform: ${this.agentInfo.platform} (${this.agentInfo.architecture})`);
-    console.log(`🏠 Hostname: ${this.agentInfo.hostname}`);
+    logger.info(`Connecting to XCode server: ${this.serverUrl}`);
+    logger.info(`Agent Token: ${this.token.substring(0, 8)}...`);
+    logger.info(`Platform: ${this.agentInfo.platform} (${this.agentInfo.architecture})`);
+    logger.info(`Hostname: ${this.agentInfo.hostname}`);
 
     try {
       this.socket = io(this.serverUrl);
 
       this.socket.on('connect', () => {
-        console.log('✅ Connected to XCode server');
+        logger.info('Connected to XCode server');
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.reconnectDelay = 5000;
@@ -300,39 +300,39 @@ class XCodeBuildAgent {
       });
 
       this.socket.on('close', () => {
-        console.log('🔌 Connection closed');
+        logger.info('Connection closed');
         this.isConnected = false;
         this.stopHeartbeat();
         this.attemptReconnect();
       });
 
       this.socket.on('disconnect', () => {
-        console.log('🔌 Connection disconnected');
+        logger.info('Connection disconnected');
         this.isConnected = false;
         this.stopHeartbeat();
         this.attemptReconnect();
       });
 
       this.socket.on('error', (error) => {
-        console.error('❌ WebSocket error:', error.message);
+        logger.error('WebSocket error:', error.message);
         this.isConnected = false;
         this.stopHeartbeat();
         this.attemptReconnect();
       });
 
     } catch (error) {
-      console.error('❌ Failed to connect:', error.message);
+      logger.error('Failed to connect:', error.message);
       this.attemptReconnect();
     }
   }
 
   authenticate() {
-    console.log('🔐 Authenticating with server...');
+    logger.info('Authenticating with server...');
     this.sendMessage('authenticate', { token: this.token });
   }
 
   async registerAgent() {
-    console.log('📝 Registering agent with server...');
+    logger.info('Registering agent with server...');
     this.sendMessage('register', this.agentInfo);
   }
 
@@ -357,17 +357,17 @@ class XCodeBuildAgent {
     try {
       switch (message.type) {
         case 'welcome':
-          console.log('✅ Received welcome from server');
+          logger.info('Received welcome from server');
           break;
 
         case 'authenticated':
-          console.log('✅ Authentication successful');
+          logger.info('Authentication successful');
           this.agentId = message.agentId;
           this.registerAgent();
           break;
 
         case 'registered':
-          console.log('✅ Agent registered successfully');
+          logger.info('Agent registered successfully');
           this.startHeartbeat();
           break;
 
@@ -384,15 +384,15 @@ class XCodeBuildAgent {
           break;
 
         case 'error':
-          console.error('❌ Server error:', message.message);
+          logger.error('Server error:', message.message);
           break;
 
         default:
-          console.log('📨 Unknown message type:', message.type);
+          logger.info('📨 Unknown message type:', message.type);
           break;
       }
     } catch (error) {
-      console.error('❌ Failed to parse message:', error);
+      logger.error('Failed to parse message:', error);
     }
   }
 
@@ -416,10 +416,10 @@ class XCodeBuildAgent {
   async handleJobExecution(jobData) {
     const { jobId, retryEnabled, maxRetries } = jobData;
     
-    console.log(`🚀 Starting job: ${jobId}`);
+    logger.info(`Starting job: ${jobId}`);
     
     if (retryEnabled && maxRetries > 0) {
-      console.log(`🔄 Retry policy enabled: ${maxRetries} retries`);
+      logger.info(`🔄 Retry policy enabled: ${maxRetries} retries`);
     }
     
     this.currentJobs.set(jobId, { 
@@ -446,7 +446,7 @@ class XCodeBuildAgent {
     
     try {
       if (attempt > 0) {
-        console.log(`🔄 Retry attempt ${attempt}/${maxRetries} for job: ${jobId}`);
+        logger.info(`🔄 Retry attempt ${attempt}/${maxRetries} for job: ${jobId}`);
         this.sendJobOutput(jobId, {
           type: 'info',
           level: 'info',
@@ -464,7 +464,7 @@ class XCodeBuildAgent {
       // Success - complete the job
       const job = this.currentJobs.get(jobId);
       this.currentJobs.delete(jobId);
-      console.log(`✅ Job completed: ${jobId}`);
+      logger.info(`Job completed: ${jobId}`);
       
       this.sendMessage('job_complete', {
           jobId,
@@ -514,11 +514,11 @@ class XCodeBuildAgent {
       }
       
       // Schedule retry (non-blocking)
-      console.log(`⏳ Scheduling retry in ${retryDelay}s...`);
+      logger.info(`⏳ Scheduling retry in ${retryDelay}s...`);
       this.sendJobOutput(jobId, {
         type: 'warning',
         level: 'warning',
-        message: `❌ Attempt ${attempt} failed: ${error.message}. Retrying in ${retryDelay}s...`,
+        message: `Attempt ${attempt} failed: ${error.message}. Retrying in ${retryDelay}s...`,
         timestamp: new Date().toISOString(),
         source: 'Agent'
       });
@@ -533,7 +533,7 @@ class XCodeBuildAgent {
     const job = this.currentJobs.get(jobId);
     this.currentJobs.delete(jobId);
     
-    console.error(`❌ Job ${status}: ${jobId}`, error.message);
+    logger.error(`Job ${status}: ${jobId}`, error.message);
     
     this.sendMessage('agent:job_status', {
         jobId,
@@ -556,10 +556,10 @@ class XCodeBuildAgent {
   async handleJobCancellation(cancellationData) {
     const { jobId } = cancellationData;
     
-    console.log(`🛑 Received cancellation request for job: ${jobId}`);
+    logger.info(`🛑 Received cancellation request for job: ${jobId}`);
     
     if (!this.currentJobs.has(jobId)) {
-      console.warn(`⚠️ Cannot cancel job ${jobId}: Job not found or already completed`);
+      logger.warn(`Cannot cancel job ${jobId}: Job not found or already completed`);
       this.sendMessage('agent:job_status', {
         jobId,
         status: 'cancel_failed',
@@ -572,7 +572,7 @@ class XCodeBuildAgent {
     const job = this.currentJobs.get(jobId);
     
     if (!job.process) {
-      console.warn(`⚠️ Cannot cancel job ${jobId}: No active process found`);
+      logger.warn(`Cannot cancel job ${jobId}: No active process found`);
       this.sendMessage('agent:job_status', {
         jobId,
         status: 'cancel_failed', 
@@ -583,7 +583,7 @@ class XCodeBuildAgent {
     }
 
     try {
-      console.log(`🔪 Terminating job ${jobId} process (PID: ${job.process.pid})`);
+      logger.info(`🔪 Terminating job ${jobId} process (PID: ${job.process.pid})`);
       
       // First try graceful termination
       job.process.kill('SIGTERM');
@@ -591,7 +591,7 @@ class XCodeBuildAgent {
       // Set a timeout to force kill if graceful termination doesn't work
       setTimeout(() => {
         if (job.process && !job.process.killed) {
-          console.log(`🔪 Force killing job ${jobId} process (PID: ${job.process.pid})`);
+          logger.info(`🔪 Force killing job ${jobId} process (PID: ${job.process.pid})`);
           job.process.kill('SIGKILL');
         }
       }, 5000);
@@ -604,7 +604,7 @@ class XCodeBuildAgent {
       });
 
     } catch (error) {
-      console.error(`❌ Error cancelling job ${jobId}:`, error.message);
+      logger.error(`Error cancelling job ${jobId}:`, error.message);
       this.sendMessage('agent:job_status', {
         jobId,
         status: 'cancel_failed',
@@ -626,7 +626,7 @@ class XCodeBuildAgent {
         return;
       }
 
-      console.log(`🔧 Using executor: ${executorConfig.name} (${executorConfig.command})`);
+      logger.info(`Using executor: ${executorConfig.name} (${executorConfig.command})`);
       
       // Prepare script/commands based on executor type
       let script;
@@ -659,7 +659,7 @@ class XCodeBuildAgent {
         finalArgs.push(script);
       }
 
-      console.log(`📝 Executing: ${executorConfig.command} ${finalArgs.join(' ')}`);
+      logger.info(`Executing: ${executorConfig.command} ${finalArgs.join(' ')}`);
       
       const child = spawn(executorConfig.command, finalArgs, {
         cwd: workingDirectory || process.cwd(),
@@ -706,7 +706,7 @@ class XCodeBuildAgent {
           });
         }
         
-        console.log(chunk.trim());
+        logger.info(chunk.trim());
       });
 
       child.stderr.on('data', (data) => {
@@ -738,19 +738,19 @@ class XCodeBuildAgent {
           });
         }
         
-        console.error(chunk.trim());
+        logger.error(chunk.trim());
       });
 
       // Only set timeout if explicitly provided
       if (timeout !== null && timeout !== undefined && timeout > 0) {
         timeoutId = setTimeout(() => {
-          console.log(`⏱️ Job ${jobId} timed out after ${timeout}ms, terminating...`);
+          logger.info(`⏱️ Job ${jobId} timed out after ${timeout}ms, terminating...`);
           child.kill('SIGTERM');
           
           // Force kill after 5 seconds if SIGTERM doesn't work
           setTimeout(() => {
             if (!child.killed) {
-              console.log(`🔪 Force killing job ${jobId} process...`);
+              logger.info(`🔪 Force killing job ${jobId} process...`);
               child.kill('SIGKILL');
             }
           }, 5000);
@@ -777,7 +777,7 @@ class XCodeBuildAgent {
           try {
             fs.unlinkSync(tempFile)
           } catch (error) {
-            console.warn(`Failed to clean up temporary file: ${tempFile}`)
+            logger.warn(`Failed to clean up temporary file: ${tempFile}`)
           }
         }
       };
@@ -947,7 +947,7 @@ class XCodeBuildAgent {
         this.agentInfo.capabilities.includes(cap)
       );
       if (!hasCapability) {
-        console.warn(`⚠️ Agent missing required capability for ${jobType}: ${executor.capabilities.join(', ')}`);
+        logger.warn(`Agent missing required capability for ${jobType}: ${executor.capabilities.join(', ')}`);
         return null;
       }
     }
@@ -962,12 +962,12 @@ class XCodeBuildAgent {
     }
 
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('❌ Max reconnection attempts reached. Exiting.');
+      logger.error('Max reconnection attempts reached. Exiting.');
       process.exit(1);
     }
 
     this.reconnectAttempts++;
-    console.log(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${this.reconnectDelay / 1000}s...`);
+    logger.info(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${this.reconnectDelay / 1000}s...`);
 
     this.reconnectTimeout = setTimeout(() => {
       this.reconnectTimeout = null;
@@ -979,17 +979,17 @@ class XCodeBuildAgent {
   }
 
   async start() {
-    console.log('🚀 Starting XCode Build Agent...');
-    console.log('════════════════════════════════════════');
+    logger.info('Starting XCode Build Agent...');
+    logger.info('════════════════════════════════════════');
     
     // Handle graceful shutdown
     process.on('SIGINT', () => {
-      console.log('\n🛑 Received SIGINT, shutting down gracefully...');
+      logger.info('\n🛑 Received SIGINT, shutting down gracefully...');
       this.shutdown();
     });
 
     process.on('SIGTERM', () => {
-      console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
+      logger.info('\n🛑 Received SIGTERM, shutting down gracefully...');
       this.shutdown();
     });
 
@@ -997,7 +997,7 @@ class XCodeBuildAgent {
   }
 
   shutdown() {
-    console.log('🛑 Shutting down agent...');
+    logger.info('🛑 Shutting down agent...');
     this.stopHeartbeat();
     
     // Clear reconnection timeout
@@ -1012,10 +1012,10 @@ class XCodeBuildAgent {
     
     // Cancel any running jobs
     for (const [jobId] of this.currentJobs) {
-      console.log(`🚫 Cancelling job: ${jobId}`);
+      logger.info(`🚫 Cancelling job: ${jobId}`);
     }
     
-    console.log('👋 Agent stopped');
+    logger.info('👋 Agent stopped');
     process.exit(0);
   }
 }
@@ -1040,7 +1040,7 @@ function parseArgs() {
         break;
       case '--help':
       case '-h':
-        console.log(`
+        logger.info(`
 XCode Build Agent v1.0.0
 
 Usage:
@@ -1073,7 +1073,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const options = parseArgs()
   const agent = new XCodeBuildAgent(options)
   agent.start().catch(error => {
-    console.error('❌ Failed to start agent:', error.message)
+    logger.error('Failed to start agent:', error.message)
     process.exit(1)
   })
 }

@@ -5,6 +5,7 @@
 
 import { cronManager } from '../../../utils/cronManager.js'
 import { getDataService } from '../../../utils/dataService.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -19,7 +20,7 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    console.log(`🔄 Updating cron jobs for project ${projectId}`)
+    logger.info(`🔄 Updating cron jobs for project ${projectId}`)
 
     // Check project status before updating cron jobs
     const dataService = await getDataService()
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event) => {
 
     // If project is disabled, skip cron job scheduling and clean up existing jobs
     if (project.status === 'disabled') {
-      console.log(`🚫 Project ${projectId} is disabled, cancelling existing cron jobs...`)
+      logger.info(`🚫 Project ${projectId} is disabled, cancelling existing cron jobs...`)
       cronManager.cancelProjectCronJobs(projectId)
       
       return {
@@ -51,7 +52,7 @@ export default defineEventHandler(async (event) => {
     const scheduledJobs = cronManager.getScheduledJobs()
     const projectJobs = scheduledJobs.filter(job => job.projectId === projectId)
 
-    console.log(`✅ Updated ${projectJobs.length} cron jobs for project ${projectId}`)
+    logger.info(`Updated ${projectJobs.length} cron jobs for project ${projectId}`)
 
     return {
       success: true,
@@ -60,7 +61,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error) {
-    console.error('❌ Error updating cron jobs:', error)
+    logger.error('Error updating cron jobs:', error)
     
     throw createError({
       statusCode: error.statusCode || 500,

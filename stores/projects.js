@@ -14,7 +14,7 @@ export const useProjectsStore = defineStore('projects', {
     // Get all items at a specific path (folder path)
     getItemsAtPath: (state) => (pathArray = []) => {
       if (!Array.isArray(state.items)) {
-        console.warn('Items is not an array:', state.items)
+        logger.warn('Items is not an array:', state.items)
         return []
       }
       return state.items.filter(item => {
@@ -29,7 +29,7 @@ export const useProjectsStore = defineStore('projects', {
     // Get folders only at a specific path
     getFoldersAtPath: (state) => (pathArray = []) => {
       if (!Array.isArray(state.items)) {
-        console.warn('Items is not an array:', state.items)
+        logger.warn('Items is not an array:', state.items)
         return []
       }
       return state.items.filter(item => 
@@ -43,7 +43,7 @@ export const useProjectsStore = defineStore('projects', {
     // Get projects only at a specific path
     getProjectsAtPath: (state) => (pathArray = []) => {
       if (!Array.isArray(state.items)) {
-        console.warn('Items is not an array:', state.items)
+        logger.warn('Items is not an array:', state.items)
         return []
       }
       return state.items.filter(item => 
@@ -57,7 +57,7 @@ export const useProjectsStore = defineStore('projects', {
     // Get a specific item by its complete path including name
     getItemByFullPath: (state) => (fullPath) => {
       if (!Array.isArray(state.items)) {
-        console.warn('Items is not an array:', state.items)
+        logger.warn('Items is not an array:', state.items)
         return null
       }
       
@@ -88,7 +88,7 @@ export const useProjectsStore = defineStore('projects', {
     // Get project by ID (for backward compatibility)
     getProjectById: (state) => (id) => {
       if (!Array.isArray(state.items)) {
-        console.warn('Items is not an array:', state.items)
+        logger.warn('Items is not an array:', state.items)
         return null
       }
       return state.items.find(item => item.type === 'project' && item.id === id)
@@ -110,7 +110,7 @@ export const useProjectsStore = defineStore('projects', {
     // Get projects at path with status filtering
     getActiveProjectsAtPath: (state) => (pathArray = []) => {
       if (!Array.isArray(state.items)) {
-        console.warn('Items is not an array:', state.items)
+        logger.warn('Items is not an array:', state.items)
         return []
       }
       return state.items.filter(item => 
@@ -132,7 +132,7 @@ export const useProjectsStore = defineStore('projects', {
       try {
         const authStore = useAuthStore()
         if (!authStore.user) {
-          console.warn('No authenticated user, cannot load data')
+          logger.warn('No authenticated user, cannot load data')
           this.items = [] // Ensure items is always an array
           this.isLoading = false
           return
@@ -147,7 +147,7 @@ export const useProjectsStore = defineStore('projects', {
         const rawItems = Array.isArray(items) ? items : []
         this.items = rawItems.map(item => this.parseItemDates(item))
       } catch (error) {
-        console.error('Failed to load data:', error)
+        logger.error('Failed to load data:', error)
         this.items = [] // Ensure items is always an array even on error
       } finally {
         this.isLoading = false
@@ -177,7 +177,7 @@ export const useProjectsStore = defineStore('projects', {
         this.items.push(parsedFolder)
         return { success: true, folder: parsedFolder }
       } catch (error) {
-        console.error('Error creating folder:', error)
+        logger.error('Error creating folder:', error)
         return { success: false, error: error.message }
       }
     },
@@ -201,7 +201,7 @@ export const useProjectsStore = defineStore('projects', {
         
         return { success: true, folder: updatedFolder }
       } catch (error) {
-        console.error('Error editing folder:', error)
+        logger.error('Error editing folder:', error)
         return { success: false, error: error.message }
       }
     },
@@ -220,7 +220,7 @@ export const useProjectsStore = defineStore('projects', {
         
         return { success: true }
       } catch (error) {
-        console.error('Error deleting folder:', error)
+        logger.error('Error deleting folder:', error)
         return { success: false, error: error.message }
       }
     },
@@ -247,7 +247,7 @@ export const useProjectsStore = defineStore('projects', {
         this.items.push(newProject)
         return { success: true, project: newProject }
       } catch (error) {
-        console.error('Error creating project:', error)
+        logger.error('Error creating project:', error)
         return { success: false, error: error instanceof Error ? error.message : 'Failed to create project' }
       }
     },
@@ -273,7 +273,7 @@ export const useProjectsStore = defineStore('projects', {
         
         return { success: true, project: updatedProject }
       } catch (error) {
-        console.error('Error updating project:', error)
+        logger.error('Error updating project:', error)
         return { success: false, error: error instanceof Error ? error.message : 'Failed to update project' }
       }
     },
@@ -294,7 +294,7 @@ export const useProjectsStore = defineStore('projects', {
         
         return { success: true, item: updatedItem }
       } catch (error) {
-        console.error('Error updating item:', error)
+        logger.error('Error updating item:', error)
         return { success: false, error: error instanceof Error ? error.message : 'Failed to update item' }
       }
     },
@@ -330,7 +330,7 @@ export const useProjectsStore = defineStore('projects', {
         
         return { success: true }
       } catch (error) {
-        console.error('Error deleting item:', error)
+        logger.error('Error deleting item:', error)
         return { success: false, error: error.message }
       }
     },
@@ -387,7 +387,7 @@ export const useProjectsStore = defineStore('projects', {
         
         return { success: true }
       } catch (error) {
-        console.error('Error moving item:', error)
+        logger.error('Error moving item:', error)
         return { success: false, error: error.message }
       }
     },
@@ -417,9 +417,9 @@ export const useProjectsStore = defineStore('projects', {
             await $fetch(`/api/projects/${projectId}/cron`, {
               method: 'DELETE'
             })
-            console.log(`🛑 Disabled cron jobs for project ${project.name}`)
+            logger.info(`🛑 Disabled cron jobs for project ${project.name}`)
           } catch (cronError) {
-            console.warn('⚠️ Failed to disable cron jobs:', cronError)
+            logger.warn('Failed to disable cron jobs:', cronError)
           }
         }
         
@@ -429,7 +429,7 @@ export const useProjectsStore = defineStore('projects', {
           message: `Project ${newStatus === 'disabled' ? 'disabled' : 'enabled'} successfully`
         }
       } catch (error) {
-        console.error('Error toggling project status:', error)
+        logger.error('Error toggling project status:', error)
         return { success: false, error: error.message }
       }
     },

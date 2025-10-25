@@ -1,7 +1,8 @@
 import { getLocalAgentManager } from '../utils/localAgentManager.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineNitroPlugin(async (nitroApp) => {
-  console.log('🔧 Local Agent Plugin initializing...')
+  logger.info('Local Agent Plugin initializing...')
   
   // Add a small delay to ensure websocket server is ready
   setTimeout(async () => {
@@ -17,13 +18,13 @@ export default defineNitroPlugin(async (nitroApp) => {
       // Start the local agent
       await localAgentManager.start(serverUrl)
       
-      console.log('✅ Local Agent Plugin initialized successfully')
+      logger.info('Local Agent Plugin initialized successfully')
       
       // Store reference globally for cleanup
       globalThis.localAgentManager = localAgentManager
       
     } catch (error) {
-      console.error('❌ Failed to initialize Local Agent Plugin:', error.message)
+      logger.error('Failed to initialize Local Agent Plugin:', error.message)
       // Don't throw - let the server continue without local agent
     }
   }, 2000) // 2 second delay

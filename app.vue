@@ -9,7 +9,7 @@
 // Initialize WebSocket store globally for the entire app
 const webSocketStore = useWebSocketStore()
 const authStore = useAuthStore()
-
+const logger = useLogger()
 // Initialize WebSocket connection when app loads
 onMounted(async () => {
   try {
@@ -23,7 +23,7 @@ onMounted(async () => {
       await webSocketStore.connect()
     }
   } catch (error) {
-    console.error('❌ Failed to initialize global WebSocket:', error)
+    logger.error('Failed to initialize global WebSocket:', error)
   }
 })
 

@@ -1,6 +1,6 @@
 import { getDataService } from '../../../utils/dataService.js'
 import { getAuthenticatedUser } from '../../../utils/auth.js'
-
+import logger from '~/server/utils/logger.js'
 /**
  * Revert a project to a specific snapshot version
  * POST /api/projects/:projectId/revert
@@ -87,7 +87,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (error) {
-    console.error('Error reverting project:', error)
+    logger.error('Error reverting project:', error)
     throw createError({
       statusCode: error.statusCode || 500,
       statusMessage: error.statusMessage || 'Failed to revert project'

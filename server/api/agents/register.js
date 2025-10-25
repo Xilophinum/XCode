@@ -1,4 +1,5 @@
 import { DataService } from '../../utils/dataService.js'
+import logger from '~/server/utils/logger.js'
 
 const dataService = new DataService()
 
@@ -36,7 +37,7 @@ export default defineEventHandler(async (event) => {
       statusMessage: 'Method not allowed'
     })
   } catch (error) {
-    console.error('Agent register API error:', error)
+    logger.error('Agent register API error:', error)
     throw createError({
       statusCode: error.statusCode || 500,
       statusMessage: error.statusMessage || 'Failed to register agent'

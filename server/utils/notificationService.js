@@ -5,6 +5,7 @@
 
 import nodemailer from 'nodemailer'
 import { getDataService } from './dataService.js'
+import logger from './logger.js'
 
 export class NotificationService {
   constructor() {
@@ -18,14 +19,14 @@ export class NotificationService {
    */
   async sendNotification(notificationCommand, context = {}) {
     if (!notificationCommand) {
-      console.error('❌ No notification command provided')
+      logger.error('No notification command provided')
       return { success: false, error: 'No notification command' }
     }
 
     const { notificationType } = notificationCommand
 
-    console.log(`📧 Sending ${notificationType} notification...`)
-    console.log(`📋 Context data:`, context)
+    logger.info(`Sending ${notificationType} notification...`)
+    logger.info(`Context data:`, context)
 
     // Resolve context variables in notification command
     const resolvedCommand = await this.resolveContextVariables(notificationCommand, context)
@@ -47,10 +48,10 @@ export class NotificationService {
           throw new Error(`Unknown notification type: ${notificationType}`)
       }
 
-      console.log(`✅ ${notificationType} notification sent successfully`)
+      logger.info(`${notificationType} notification sent successfully`)
       return { success: true, ...result }
     } catch (error) {
-      console.error(`❌ Failed to send ${notificationType} notification:`, error.message)
+      logger.error(`Failed to send ${notificationType} notification:`, error.message)
       return { success: false, error: error.message }
     }
   }
@@ -105,11 +106,21 @@ export class NotificationService {
       IsRetrying: context.isRetrying ? 'Yes' : 'No',
       WillRetry: context.isRetrying ? 'Yes' : 'No'
     }
-
-    console.log(`🔧 Available context variables:`, variables)
+    
+    // Helper function to escape a value for safe inclusion in JSON strings
+    const escapeJsonValue = (value) => {
+      if (value === null || value === undefined) return ''
+      const str = String(value)
+      return str
+        .replace(/\\/g, '\\\\')   // Escape backslashes
+        .replace(/"/g, '\\"')     // Escape double quotes
+        .replace(/\n/g, '\\n')    // Escape newlines
+        .replace(/\r/g, '\\r')    // Escape carriage returns
+        .replace(/\t/g, '\\t')    // Escape tabs
+    }
 
     // Helper function to replace variables in a string
-    const replaceVariables = (text) => {
+    const replaceVariables = (text, escapeForJson = false) => {
       if (!text || typeof text !== 'string') return text
 
       let result = text
@@ -119,11 +130,29 @@ export class NotificationService {
         const bracedPattern = new RegExp(`\\$\\{${key}\\}`, 'g')
         const unbracedPattern = new RegExp(`\\$${key}\\b`, 'g')
 
-        result = result.replace(bracedPattern, value)
-        result = result.replace(unbracedPattern, value)
+        const replacementValue = escapeForJson ? escapeJsonValue(value) : value
+
+        result = result.replace(bracedPattern, replacementValue)
+        result = result.replace(unbracedPattern, replacementValue)
       })
 
       return result
+    }
+
+    // Helper function to recursively replace variables in a JSON object/array
+    const replaceVariablesInObject = (obj) => {
+      if (typeof obj === 'string') {
+        return replaceVariables(obj)
+      } else if (Array.isArray(obj)) {
+        return obj.map(replaceVariablesInObject)
+      } else if (obj !== null && typeof obj === 'object') {
+        const result = {}
+        for (const [key, value] of Object.entries(obj)) {
+          result[key] = replaceVariablesInObject(value)
+        }
+        return result
+      }
+      return obj
     }
 
     // Resolve variables in all relevant fields
@@ -133,7 +162,25 @@ export class NotificationService {
     if (resolved.emailBody) resolved.emailBody = replaceVariables(resolved.emailBody)
     if (resolved.slackMessage) resolved.slackMessage = replaceVariables(resolved.slackMessage)
     if (resolved.slackChannel) resolved.slackChannel = replaceVariables(resolved.slackChannel)
-    if (resolved.webhookBody) resolved.webhookBody = replaceVariables(resolved.webhookBody)
+
+    // Webhook body - parse JSON, replace context variables in object structure, re-stringify
+    // Note: Input placeholders ($Input_1, etc.) are already resolved in execute.post.js
+    // This handles context variables ($BuildNumber, $ProjectName, etc.)
+    if (resolved.webhookBody) {
+      try {
+        // Try to parse as JSON
+        const parsedBody = JSON.parse(resolved.webhookBody)
+        // Replace context variables in the parsed object structure
+        const resolvedBody = replaceVariablesInObject(parsedBody)
+        // Re-stringify to ensure valid JSON
+        resolved.webhookBody = JSON.stringify(resolvedBody)
+      } catch (error) {
+        // Not valid JSON, fall back to simple string replacement with escaping
+        logger.warn('Webhook body is not JSON, using simple string replacement:', error.message)
+        resolved.webhookBody = replaceVariables(resolved.webhookBody, true)
+      }
+    }
+
     if (resolved.webhookUrl) resolved.webhookUrl = replaceVariables(resolved.webhookUrl)
 
     return resolved
@@ -159,10 +206,10 @@ export class NotificationService {
       throw new Error('No valid email recipients found')
     }
 
-    console.log(`📧 Sending email to ${recipients.length} recipient(s)...`)
-    console.log(`   From: ${emailFrom}`)
-    console.log(`   To: ${recipients.join(', ')}`)
-    console.log(`   Subject: ${emailSubject}`)
+    logger.info(`Sending email to ${recipients.length} recipient(s)...`)
+    logger.info(`   From: ${emailFrom}`)
+    logger.info(`   To: ${recipients.join(', ')}`)
+    logger.info(`   Subject: ${emailSubject}`)
 
     // Get SMTP configuration from database settings
     const dataService = await getDataService()
@@ -188,9 +235,9 @@ export class NotificationService {
     smtpSecure = smtpSecure || process.env.SMTP_SECURE
 
     if (!smtpHost) {
-      console.warn('⚠️ SMTP_HOST not configured - email will not be sent')
-      console.log('📧 Email notification (not sent - SMTP not configured):')
-      console.log({
+      logger.warn('SMTP_HOST not configured - email will not be sent')
+      logger.info('Email notification (not sent - SMTP not configured):')
+      logger.info({
         from: emailFrom,
         to: recipients,
         subject: emailSubject,
@@ -216,9 +263,9 @@ export class NotificationService {
         user: smtpUser,
         pass: smtpPass
       }
-      console.log(`📧 Using authenticated SMTP: ${smtpHost}:${transportConfig.port}`)
+      logger.info(`Using authenticated SMTP: ${smtpHost}:${transportConfig.port}`)
     } else {
-      console.log(`📧 Using unauthenticated SMTP: ${smtpHost}:${transportConfig.port} (e.g., MailHog)`)
+      logger.info(`Using unauthenticated SMTP: ${smtpHost}:${transportConfig.port} (e.g., MailHog)`)
     }
 
     const transporter = nodemailer.createTransport(transportConfig)
@@ -230,9 +277,9 @@ export class NotificationService {
       [emailHtml ? 'html' : 'text']: emailBody
     }
 
-    console.log(`📧 Sending email via ${smtpHost}:${transportConfig.port}...`)
+    logger.info(`Sending email via ${smtpHost}:${transportConfig.port}...`)
     const info = await transporter.sendMail(mailOptions)
-    console.log(`✅ Email sent! Message ID: ${info.messageId}`)
+    logger.info(`Email sent! Message ID: ${info.messageId}`)
 
     return {
       messageId: info.messageId,
@@ -272,9 +319,9 @@ export class NotificationService {
       throw new Error('Missing required Slack content: Either message or blocks must be provided')
     }
 
-    console.log(`💬 Sending Slack message via OAuth (Bot Token)...`)
-    console.log(`   Channel: ${channel}`)
-    console.log(`   Bot Token: ${slackBotToken.substring(0, 15)}...`)
+    logger.info(`Sending Slack message via OAuth (Bot Token)...`)
+    logger.info(`Channel: ${channel}`)
+    logger.info(`Bot Token: ${slackBotToken.substring(0, 15)}...`)
 
     // Build Slack API payload
     const payload = {
@@ -291,7 +338,7 @@ export class NotificationService {
       try {
         payload.blocks = typeof slackBlocks === 'string' ? JSON.parse(slackBlocks) : slackBlocks
       } catch (error) {
-        console.warn('⚠️  Failed to parse Slack blocks, falling back to simple message:', error.message)
+        logger.warn('Failed to parse Slack blocks, falling back to simple message:', error.message)
       }
     }
 
@@ -315,7 +362,7 @@ export class NotificationService {
       throw new Error(`Slack API error: ${result.error}`)
     }
 
-    console.log(`✅ Slack message sent to channel ${result.channel}`)
+    logger.info(`Slack message sent to channel ${result.channel}`)
 
     return {
       status: response.status,
@@ -331,18 +378,24 @@ export class NotificationService {
    * @param {Object} context - Context data
    */
   async sendWebhook(notification, context) {
-    const { webhookUrl, webhookMethod, webhookHeaders, webhookBody } = notification
+    let { webhookUrl, webhookMethod, webhookHeaders, webhookBody } = notification
+
+    // Use DISCORD_WEBHOOK_URL environment variable as fallback if no URL provided
+    if (!webhookUrl && process.env.DISCORD_WEBHOOK_URL) {
+      webhookUrl = process.env.DISCORD_WEBHOOK_URL
+      logger.info(`Using DISCORD_WEBHOOK_URL from environment variable`)
+    }
 
     // Validate required fields
     if (!webhookUrl || !webhookBody) {
-      throw new Error('Missing required webhook fields (url, body)')
+      throw new Error('Missing required webhook fields (url, body). Provide a webhook URL in the notification node or set DISCORD_WEBHOOK_URL environment variable.')
     }
 
     const method = webhookMethod || 'POST'
 
-    console.log(`🔗 Sending webhook...`)
-    console.log(`   URL: ${webhookUrl}`)
-    console.log(`   Method: ${method}`)
+    logger.info(`Sending webhook...`)
+    logger.info(`URL: ${webhookUrl}`)
+    logger.info(`Method: ${method}`)
 
     // Parse headers
     let headers = { 'Content-Type': 'application/json' }
@@ -354,26 +407,24 @@ export class NotificationService {
           : webhookHeaders
         headers = { ...headers, ...customHeaders }
       } catch (error) {
-        console.warn('⚠️ Failed to parse webhook headers, using default:', error.message)
+        logger.warn('Failed to parse webhook headers, using default:', error.message)
       }
     }
 
-    // Parse body
+    // Parse body and ensure valid JSON
     let body = webhookBody
     if (typeof body === 'string') {
       try {
-        // Validate it's valid JSON
-        JSON.parse(body)
+        // Parse and re-stringify to ensure valid JSON
+        const parsed = JSON.parse(body)
+        body = JSON.stringify(parsed)
       } catch (error) {
-        console.warn('⚠️ Webhook body is not valid JSON, sending as-is')
+        logger.warn('Webhook body is not valid JSON:', error.message)
       }
     } else {
       body = JSON.stringify(body)
     }
-
-    console.log(`   Headers:`, headers)
-    console.log(`   Body:`, body)
-
+    
     // Send webhook
     const fetchOptions = {
       method,
@@ -401,7 +452,7 @@ export class NotificationService {
       responseData = await response.text()
     }
 
-    console.log(`✅ Webhook response:`, responseData)
+    logger.info(`Webhook response:`, responseData)
 
     return {
       status: response.status,

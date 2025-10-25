@@ -4,6 +4,7 @@
  */
 
 import { getDataService } from '../../../utils/dataService.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -39,7 +40,7 @@ export default defineEventHandler(async (event) => {
       agent: updatedAgent
     }
   } catch (error) {
-    console.error('Error updating agent:', error)
+    logger.error('Error updating agent:', error)
     
     throw createError({
       statusCode: error.statusCode || 500,

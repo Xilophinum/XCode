@@ -1,5 +1,5 @@
 import { getDataService } from '../../utils/dataService.js'
-
+import logger from '~/server/utils/logger.js'
 /**
  * DELETE /api/notification-templates/:id
  * Delete a custom notification template (built-in templates cannot be deleted)
@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
       message: 'Template deleted successfully'
     }
   } catch (error) {
-    console.error('Error deleting notification template:', error)
+    logger.error('Error deleting notification template:', error)
     throw createError({
       statusCode: error.statusCode || 500,
       statusMessage: error.statusMessage || error.message || 'Failed to delete notification template'

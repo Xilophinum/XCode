@@ -6,6 +6,7 @@
 import { executeProjectFromTrigger } from '../../../server/utils/triggerExecutor.js'
 import { getDataService } from '../../../server/utils/dataService.js'
 import crypto from 'crypto'
+import logger from '~/server/utils/logger.js'
 
 /**
  * Validate webhook authentication using multiple methods:
@@ -22,7 +23,7 @@ async function validateWebhookAuthentication(event, webhookNode, body) {
   if (webhookNode.data.secretToken) {
     const providedToken = headers['x-webhook-token'] || body?.token || query.token
     if (providedToken === webhookNode.data.secretToken) {
-      console.log(`✅ Custom token authentication successful`)
+      logger.info(`Custom token authentication successful`)
       return true
     }
   }
@@ -37,18 +38,18 @@ async function validateWebhookAuthentication(event, webhookNode, body) {
         .digest('hex')
       
       if (crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
-        console.log(`✅ GitHub signature authentication successful`)
+        logger.info(`GitHub signature authentication successful`)
         return true
       }
     } catch (error) {
-      console.log(`❌ GitHub signature validation failed:`, error.message)
+      logger.info(`GitHub signature validation failed:`, error.message)
     }
   }
   
   // Method 3: GitLab token validation
   if (headers['x-gitlab-token'] && webhookNode.data.secretToken) {
     if (headers['x-gitlab-token'] === webhookNode.data.secretToken) {
-      console.log(`✅ GitLab token authentication successful`)
+      logger.info(`GitLab token authentication successful`)
       return true
     }
   }
@@ -63,11 +64,11 @@ async function validateWebhookAuthentication(event, webhookNode, body) {
         .digest('hex')
       
       if (crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
-        console.log(`✅ Bitbucket signature authentication successful`)
+        logger.info(`Bitbucket signature authentication successful`)
         return true
       }
     } catch (error) {
-      console.log(`❌ Bitbucket signature validation failed:`, error.message)
+      logger.info(`Bitbucket signature validation failed:`, error.message)
     }
   }
   
@@ -76,12 +77,12 @@ async function validateWebhookAuthentication(event, webhookNode, body) {
     // Azure DevOps can send Basic auth or Bearer token
     const auth = headers['authorization']
     if (auth.includes(webhookNode.data.secretToken)) {
-      console.log(`✅ Azure DevOps authentication successful`)
+      logger.info(`Azure DevOps authentication successful`)
       return true
     }
   }
   
-  console.log(`❌ All authentication methods failed`)
+  logger.info(`All authentication methods failed`)
   return false
 }
 
@@ -99,8 +100,8 @@ export default defineEventHandler(async (event) => {
       })
     }
     
-    console.log(`🎣 Webhook triggered: POST /api/webhook/${endpoint}`)
-    console.log(`🔍 Looking for webhook nodes with endpoint: ${endpoint}`)
+    logger.info(`🎣 Webhook triggered: POST /api/webhook/${endpoint}`)
+    logger.info(`🔍 Looking for webhook nodes with endpoint: ${endpoint}`)
     
     if (!endpoint) {
       throw createError({
@@ -113,15 +114,15 @@ export default defineEventHandler(async (event) => {
     const dataService = await getDataService()
     const allProjects = await dataService.getAllItems()
     
-    console.log(`🔍 Found ${allProjects.length} total projects`)
+    logger.info(`🔍 Found ${allProjects.length} total projects`)
     
     const matchingProjects = []
     
     for (const project of allProjects) {
-      console.log(`🔍 Checking project: ${project.name} (status: ${project.status})`)
+      logger.info(`🔍 Checking project: ${project.name} (status: ${project.status})`)
       
       if (project.status === 'disabled') {
-        console.log(`⏭️ Skipping disabled project: ${project.name}`)
+        logger.info(`⏭️ Skipping disabled project: ${project.name}`)
         continue // Skip disabled projects
       }
       
@@ -129,7 +130,7 @@ export default defineEventHandler(async (event) => {
         const projectData = project.diagramData || { nodes: [], edges: [] }
         const { nodes = [], edges = [] } = projectData
         
-        console.log(`🔍 Project ${project.name} has ${nodes.length} nodes`)
+        logger.info(`🔍 Project ${project.name} has ${nodes.length} nodes`)
         
         // Find webhook trigger nodes that match this endpoint
         const webhookNodes = nodes.filter(node => 
@@ -138,11 +139,11 @@ export default defineEventHandler(async (event) => {
           node.data.active !== false
         )
         
-        console.log(`🔍 Found ${webhookNodes.length} webhook nodes matching endpoint "${endpoint}" in project ${project.name}`)
+        logger.info(`🔍 Found ${webhookNodes.length} webhook nodes matching endpoint "${endpoint}" in project ${project.name}`)
         
         if (webhookNodes.length > 0) {
           webhookNodes.forEach(node => {
-            console.log(`🎯 Webhook node: ${node.data.label}, endpoint: ${node.data.customEndpoint}, active: ${node.data.active}, hasToken: ${!!node.data.secretToken}`)
+            logger.info(`Webhook node: ${node.data.label}, endpoint: ${node.data.customEndpoint}, active: ${node.data.active}, hasToken: ${!!node.data.secretToken}`)
           })
         }
         
@@ -151,7 +152,7 @@ export default defineEventHandler(async (event) => {
           const isAuthenticated = await validateWebhookAuthentication(event, webhookNode, body)
           
           if (!isAuthenticated) {
-            console.log(`❌ Authentication failed for ${project.name}/${webhookNode.data.label}`)
+            logger.info(`Authentication failed for ${project.name}/${webhookNode.data.label}`)
             continue
           }
           
@@ -163,7 +164,7 @@ export default defineEventHandler(async (event) => {
           })
         }
       } catch (error) {
-        console.error(`❌ Error parsing project data for ${project.name}:`, error)
+        logger.error(`Error parsing project data for ${project.name}:`, error)
       }
     }
     
@@ -179,7 +180,7 @@ export default defineEventHandler(async (event) => {
     
     for (const { project, webhookNode, nodes, edges } of matchingProjects) {
       try {
-        console.log(`🚀 Executing webhook trigger: ${project.name}/${webhookNode.data.label}`)
+        logger.info(`Executing webhook trigger: ${project.name}/${webhookNode.data.label}`)
         
         // Broadcast webhook trigger to subscribed clients
         if (globalThis.broadcastToProject) {
@@ -237,7 +238,7 @@ export default defineEventHandler(async (event) => {
         })
         
       } catch (error) {
-        console.error(`❌ Error executing webhook for ${project.name}:`, error)
+        logger.error(`Error executing webhook for ${project.name}:`, error)
         
         // Broadcast webhook error
         if (globalThis.broadcastToProject) {
@@ -266,7 +267,7 @@ export default defineEventHandler(async (event) => {
     const successCount = results.filter(r => r.success).length
     const failureCount = results.length - successCount
     
-    console.log(`✅ Webhook execution completed: ${successCount} success, ${failureCount} failed`)
+    logger.info(`Webhook execution completed: ${successCount} success, ${failureCount} failed`)
     
     return {
       success: true,
@@ -279,7 +280,7 @@ export default defineEventHandler(async (event) => {
     }
     
   } catch (error) {
-    console.error(`❌ Webhook handler error:`, error)
+    logger.error(`Webhook handler error:`, error)
     
     if (error.statusCode) {
       throw error

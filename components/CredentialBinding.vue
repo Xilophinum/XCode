@@ -108,7 +108,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
-
+const logger = useLogger()
 const credentials = computed({
   get: () => props.modelValue || [],
   set: (value) => emit('update:modelValue', value)
@@ -122,7 +122,7 @@ onMounted(async () => {
     const response = await $fetch('/api/admin/credentials')
     availableCredentials.value = response.credentials || []
   } catch (error) {
-    console.error('Failed to load credentials:', error)
+    logger.error('Failed to load credentials:', error)
   }
 })
 

@@ -435,7 +435,7 @@ const loadBuilds = async (page = 1) => {
     loading.value = true
     
     if (!projectId.value) {
-      console.error('No project ID available for builds API call')
+      logger.error('No project ID available for builds API call')
       builds.value = []
       pagination.value = null
       return
@@ -450,14 +450,14 @@ const loadBuilds = async (page = 1) => {
     if (filters.value.startDate) params.append('startDate', filters.value.startDate + 'T00:00:00.000Z')
     if (filters.value.endDate) params.append('endDate', filters.value.endDate + 'T23:59:59.999Z')
     
-    console.log(`🔍 Loading builds for project ID: ${projectId.value}`)
+    logger.info(`🔍 Loading builds for project ID: ${projectId.value}`)
     const response = await $fetch(`/api/projects/${projectId.value}/builds?${params}`)
     
     builds.value = response.builds
     pagination.value = response.pagination
     currentPage.value = page
   } catch (error) {
-    console.error('Error loading builds:', error)
+    logger.error('Error loading builds:', error)
     builds.value = []
     pagination.value = null
   } finally {
@@ -496,7 +496,7 @@ const loadBuildStats = async () => {
       averageDuration
     }
   } catch (error) {
-    console.error('Error loading build stats:', error)
+    logger.error('Error loading build stats:', error)
     buildStats.value = { totalBuilds: 0, successfulBuilds: 0, failedBuilds: 0, successRate: 0 }
   }
 }
@@ -537,7 +537,7 @@ const viewBuildLogs = async (build) => {
     const response = await $fetch(`/api/projects/${projectId.value}/builds/${build.id}/logs`)
     buildLogs.value = response.logs
   } catch (error) {
-    console.error('Error loading build logs:', error)
+    logger.error('Error loading build logs:', error)
     buildLogs.value = []
   } finally {
     loadingLogs.value = false
@@ -632,12 +632,12 @@ onMounted(async () => {
     
     // Check if project exists
     if (!project.value) {
-      console.error('Project not found for path:', pathSegments.value)
+      logger.error('Project not found for path:', pathSegments.value)
       await navigateTo('/')
       return
     }
     
-    console.log(`📊 Loading builds for project: ${project.value.name} (ID: ${project.value.id})`)
+    logger.info(`Loading builds for project: ${project.value.name} (ID: ${project.value.id})`)
     await refreshBuilds()
   }
 })

@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
     const result = Array.isArray(items) ? items : []
     return result
   } catch (error) {
-    console.error('Error in /api/items:', error)
+    logger.error('Error in /api/items:', error)
     throw createError({
       statusCode: error.statusCode || 500,
       statusMessage: error.statusMessage || 'Failed to fetch items: ' + error.message

@@ -1,5 +1,6 @@
 import { getDataService } from '../../utils/dataService.js'
 import { getAuthenticatedUser } from '../../utils/auth.js'
+import logger from '~/server/utils/logger.js'
 
 /**
  * Get audit logs for a specific entity (folder or project)
@@ -24,7 +25,7 @@ export default defineEventHandler(async (event) => {
       total: logs.length
     }
   } catch (error) {
-    console.error('Error fetching audit logs:', error)
+    logger.error('Error fetching audit logs:', error)
     throw createError({
       statusCode: error.statusCode || 500,
       statusMessage: error.statusMessage || 'Failed to fetch audit logs'

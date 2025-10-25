@@ -1,6 +1,7 @@
 import { getDataService } from '../../utils/dataService.js'
 import { getAuthenticatedUser } from '../../utils/auth.js'
 import crypto from 'crypto'
+import logger from '~/server/utils/logger.js'
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-32-character-secret-key-here' // Should be 32 chars
 const ALGORITHM = 'aes-256-cbc'
@@ -86,7 +87,7 @@ export default defineEventHandler(async (event) => {
 
     return { success: true, credential }
   } catch (error) {
-    console.error('Error creating credential:', error)
+    logger.error('Error creating credential:', error)
     if (error.statusCode) {
       throw error
     }

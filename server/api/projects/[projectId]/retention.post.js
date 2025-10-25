@@ -1,4 +1,5 @@
 import { getBuildStatsManager } from '../../../../server/utils/buildStatsManager.js'
+import logger from '~/server/utils/logger.js'
 
 /**
  * POST /api/projects/[projectId]/retention
@@ -66,7 +67,7 @@ export default defineEventHandler(async (event) => {
       throw error // Re-throw validation errors
     }
     
-    console.error('Error updating project retention settings:', error)
+    logger.error('Error updating project retention settings:', error)
     throw createError({
       statusCode: 500,
       statusMessage: 'Failed to update retention settings'

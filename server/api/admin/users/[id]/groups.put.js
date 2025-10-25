@@ -1,5 +1,6 @@
 import { getDataService } from '../../../../utils/dataService.js'
 import { getAuthenticatedUser } from '../../../../utils/auth.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -35,7 +36,7 @@ export default defineEventHandler(async (event) => {
       message: 'User groups updated successfully' 
     }
   } catch (error) {
-    console.error('Failed to update user groups:', error)
+    logger.error('Failed to update user groups:', error)
     if (error.statusCode) throw error
     throw createError({
       statusCode: 500,

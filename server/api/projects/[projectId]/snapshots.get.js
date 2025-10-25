@@ -1,6 +1,6 @@
 import { getDataService } from '../../../utils/dataService.js'
 import { getAuthenticatedUser } from '../../../utils/auth.js'
-
+import logger from '~/server/utils/logger.js'
 /**
  * Get all snapshots for a project
  * GET /api/projects/:projectId/snapshots?limit=20
@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
       total: snapshots.length
     }
   } catch (error) {
-    console.error('Error fetching project snapshots:', error)
+    logger.error('Error fetching project snapshots:', error)
     throw createError({
       statusCode: error.statusCode || 500,
       statusMessage: error.statusMessage || 'Failed to fetch project snapshots'

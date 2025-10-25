@@ -211,17 +211,16 @@
     <div v-if="nodeData.data.notificationType === 'webhook'" class="mt-4 space-y-3">
       <div>
         <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Webhook URL <span class="text-red-500">*</span>
+          Webhook URL
         </label>
         <input
           v-model="nodeData.data.webhookUrl"
           type="url"
           class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
-          placeholder="https://api.example.com/notify"
-          :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.webhookUrl }"
+          placeholder="https://discord.com/api/webhooks/... (or leave empty to use DISCORD_WEBHOOK_URL)"
         />
         <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          The HTTP endpoint to send the webhook to
+          Optional: Specify webhook URL here, or leave empty to use <code class="px-1 bg-neutral-200 dark:bg-neutral-800 rounded">DISCORD_WEBHOOK_URL</code> environment variable
         </p>
       </div>
 
@@ -387,6 +386,7 @@ const props = defineProps({
 const templates = ref([])
 const selectedTemplateId = ref('')
 const isLoadingTemplate = ref(false)
+const logger = useLogger()
 
 // Initialize default values if not set
 if (!props.nodeData.data.notificationType) {
@@ -425,7 +425,7 @@ async function fetchTemplates() {
       templates.value = response.templates
     }
   } catch (error) {
-    console.error('Failed to fetch notification templates:', error)
+    logger.error('Failed to fetch notification templates:', error)
   }
 }
 
@@ -444,7 +444,7 @@ async function loadTemplate() {
     const template = templates.value.find(t => t.id === selectedTemplateId.value)
 
     if (!template) {
-      console.error('Template not found')
+      logger.error('Template not found')
       return
     }
 
@@ -463,9 +463,9 @@ async function loadTemplate() {
       props.nodeData.data.webhookBody = template.webhook_body || ''
     }
 
-    console.log(`✅ Template "${template.name}" loaded successfully`)
+    logger.info(`Template "${template.name}" loaded successfully`)
   } catch (error) {
-    console.error('Failed to load template:', error)
+    logger.error('Failed to load template:', error)
   } finally {
     isLoadingTemplate.value = false
   }

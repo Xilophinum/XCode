@@ -1,4 +1,5 @@
 import { getBuildStatsManager } from '../../../../server/utils/buildStatsManager.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   const { projectId } = getRouterParams(event)
@@ -29,7 +30,7 @@ export default defineEventHandler(async (event) => {
       ...result
     }
   } catch (error) {
-    console.error('Error getting project builds:', error)
+    logger.error('Error getting project builds:', error)
     throw createError({
       statusCode: 500,
       statusMessage: 'Failed to get builds'

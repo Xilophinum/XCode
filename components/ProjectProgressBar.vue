@@ -28,7 +28,7 @@ const props = defineProps({
     default: null
   }
 })
-
+const logger = useLogger()
 const webSocketStore = useWebSocketStore()
 const elapsedTime = ref(0)
 const intervalId = ref(null)
@@ -97,7 +97,7 @@ const updateElapsedTime = () => {
     const startTime = new Date(currentJob.value.startTime).getTime()
     elapsedTime.value = Date.now() - startTime
   } else {
-    console.warn(`⚠️ [${props.projectId}] Cannot update elapsed time - no startTime available`, currentJob.value)
+    logger.warn(`[${props.projectId}] Cannot update elapsed time - no startTime available`, currentJob.value)
   }
 }
 

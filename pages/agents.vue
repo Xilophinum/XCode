@@ -470,7 +470,7 @@ const loadAgents = async (isInitialLoad = false) => {
     const data = await $fetch('/api/admin/agents')
     agents.value = data
   } catch (error) {
-    console.error('Error loading agents:', error)
+    logger.error('Error loading agents:', error)
   } finally {
     if (isInitialLoad) {
       initialLoading.value = false
@@ -511,7 +511,7 @@ const createAgent = async () => {
     // Immediately refresh to show the new agent
     await loadAgents(false) // Pass false since this is not initial load
   } catch (error) {
-    console.error('Error creating agent:', error)
+    logger.error('Error creating agent:', error)
     alert('Failed to create agent. Please try again.')
   } finally {
     creating.value = false
@@ -524,7 +524,7 @@ const copyToken = async () => {
     await navigator.clipboard.writeText(createdAgentToken.value)
     // You could add a toast notification here
   } catch (error) {
-    console.error('Failed to copy token:', error)
+    logger.error('Failed to copy token:', error)
   }
 }
 
@@ -568,7 +568,7 @@ const updateAgent = async () => {
     showEditAgentModal.value = false
     await loadAgents(false)
   } catch (error) {
-    console.error('Error updating agent:', error)
+    logger.error('Error updating agent:', error)
     alert('Failed to update agent. Please try again.')
   }
 }
@@ -584,9 +584,9 @@ const deleteAgent = async (agent) => {
     })
     
     // No need to refresh - WebSocket updates will handle removal
-    console.log(`🗑️ Agent ${agent.name} deleted successfully`)
+    logger.info(`🗑️ Agent ${agent.name} deleted successfully`)
   } catch (error) {
-    console.error('Error deleting agent:', error)
+    logger.error('Error deleting agent:', error)
   }
 }
 
@@ -667,9 +667,9 @@ const handleAgentStatusUpdate = (event) => {
     if (version) agent.version = version
     
     agents.value[agentIndex] = { ...agent } // Trigger reactivity
-    console.log(`🔄 Updated agent ${agentId} status: ${status}`)
+    logger.info(`🔄 Updated agent ${agentId} status: ${status}`)
   } else {
-    console.log(`⚠️ Agent ${agentId} not found in local array - refreshing agent list`)
+    logger.info(`Agent ${agentId} not found in local array - refreshing agent list`)
     loadAgents(false) // Reload if agent not found (new agent connected)
   }
 }

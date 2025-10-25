@@ -2,6 +2,7 @@ import { getDB, users, items, envVariables, credentialVault, systemSettings, age
 import { eq } from 'drizzle-orm'
 import crypto from 'crypto'
 import { AuditLogger, generateChangesSummary, analyzeDiagramChanges } from './audit-logger.js'
+import logger from './logger.js'
 
 export class DataService {
   constructor() {
@@ -988,7 +989,7 @@ export class DataService {
       })
       .where(eq(agents.id, id))
 
-    console.log(`📊 Agent ${id} status updated to: ${status}`)
+    logger.info(`Agent ${id} status updated to: ${status}`)
     return await this.getAgentById(id)
   }
 
@@ -1003,7 +1004,7 @@ export class DataService {
         updatedAt: new Date().toISOString(),
       })
 
-    console.log(`📊 Marked all agents as offline on server startup`)
+    logger.info('Marked all agents as offline on server startup')
     return result
   }
 
@@ -1138,7 +1139,20 @@ export class DataService {
         required: 'true',
         readonly: 'false'
       },
-      
+      {
+        id: 'log_level',
+        category: 'general',
+        key: 'log_level',
+        value: 'info',
+        defaultValue: 'info',
+        type: 'select',
+        options: JSON.stringify(['error', 'warn', 'info', 'debug']),
+        label: 'Log Level',
+        description: 'Console logging verbosity level (error = least verbose, debug = most verbose)',
+        required: 'true',
+        readonly: 'false'
+      },
+
       // Security Settings
       {
         id: 'enable_registration',

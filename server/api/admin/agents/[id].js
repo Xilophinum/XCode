@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from '../../../utils/auth'
 import { DataService } from '../../../utils/dataService'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   // Check authentication
@@ -64,7 +65,7 @@ export default defineEventHandler(async (event) => {
       return { success: true }
     }
   } catch (error) {
-    console.error('Agent API error:', error)
+    logger.error('Agent API error:', error)
     throw createError({
       statusCode: 500,
       statusMessage: 'Internal server error'

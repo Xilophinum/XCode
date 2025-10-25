@@ -5,6 +5,7 @@
 
 import { getDB, cronJobs } from './database.js'
 import { eq, and } from 'drizzle-orm'
+import logger from './logger.js'
 
 class CronDatabaseService {
   constructor() {
@@ -14,7 +15,7 @@ class CronDatabaseService {
   async ensureInitialized() {
     if (!this.db) {
       this.db = await getDB()
-      console.log('📊 Cron database service initialized (using main database)')
+      logger.info('Cron database service initialized (using main database)')
     }
   }
 
@@ -65,7 +66,7 @@ class CronDatabaseService {
       await this.db.insert(cronJobs).values(cronJob)
     }
 
-    console.log(`💾 Cron job saved to database: ${jobConfig.jobId}`)
+    logger.info(`💾 Cron job saved to database: ${jobConfig.jobId}`)
     return cronJob
   }
 
@@ -81,7 +82,7 @@ class CronDatabaseService {
         .from(cronJobs)
         .where(eq(cronJobs.enabled, 'true'))
 
-      console.log(`📋 Found ${results.length} enabled cron jobs in database`)
+      logger.info(`Found ${results.length} enabled cron jobs in database`)
 
       return results.map(row => ({
         jobId: row.id,
@@ -97,7 +98,7 @@ class CronDatabaseService {
         edges: JSON.parse(row.edges)
       }))
     } catch (error) {
-      console.error('❌ Error getting enabled cron jobs:', error)
+      logger.error('Error getting enabled cron jobs:', error)
       return [] // Return empty array on error
     }
   }
@@ -203,10 +204,10 @@ class CronDatabaseService {
         .delete(cronJobs)
         .where(eq(cronJobs.projectId, projectId))
 
-      console.log(`🗑️ Deleted cron jobs for project ${projectId}`)
+      logger.info(`🗑️ Deleted cron jobs for project ${projectId}`)
       return result
     } catch (error) {
-      console.error('❌ Error deleting project cron jobs:', error)
+      logger.error('Error deleting project cron jobs:', error)
       throw error
     }
   }
@@ -224,7 +225,7 @@ class CronDatabaseService {
 
       return { total, enabled, disabled: total - enabled }
     } catch (error) {
-      console.error('❌ Error getting database stats:', error)
+      logger.error('Error getting database stats:', error)
       return { total: 0, enabled: 0, disabled: 0 }
     }
   }

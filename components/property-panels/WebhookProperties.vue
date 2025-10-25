@@ -61,7 +61,7 @@
             Required for security. Include this token in the 'X-Webhook-Token' header when calling the webhook. Use the Generate button for a cryptographically secure 64-character token.
             </p>
             <p v-if="!nodeData.data.secretToken" class="mt-1 text-xs text-red-500 dark:text-red-400">
-            ⚠️ Secret token is required for webhook security
+            Secret token is required for webhook security
             </p>
         </div>
         
@@ -99,7 +99,7 @@
             <div class="space-y-1">
                 <div><strong>Method:</strong> POST</div>
                 <div><strong>Auth:</strong> Required (secret token)</div>
-                <div><strong>Status:</strong> {{ nodeData.data.active ? '✅ Active' : '❌ Inactive' }}</div>
+                <div><strong>Status:</strong> {{ nodeData.data.active ? 'Active' : 'Inactive' }}</div>
             </div>
             <div class="text-xs opacity-75 mt-2">
                 <div><strong>Example curl:</strong></div>
@@ -122,10 +122,10 @@
             </div>
             <div class="space-y-1">
                 <div class="font-medium">Git Platforms (Automatic):</div>
-                <div class="pl-2 text-xs opacity-90">✅ GitHub: X-Hub-Signature-256 (SHA256 HMAC)</div>
-                <div class="pl-2 text-xs opacity-90">✅ GitLab: X-Gitlab-Token header</div>
-                <div class="pl-2 text-xs opacity-90">✅ Bitbucket: X-Hub-Signature (SHA1 HMAC)</div>
-                <div class="pl-2 text-xs opacity-90">✅ Azure DevOps: Authorization header</div>
+                <div class="pl-2 text-xs opacity-90">GitHub: X-Hub-Signature-256 (SHA256 HMAC)</div>
+                <div class="pl-2 text-xs opacity-90">GitLab: X-Gitlab-Token header</div>
+                <div class="pl-2 text-xs opacity-90">Bitbucket: X-Hub-Signature (SHA1 HMAC)</div>
+                <div class="pl-2 text-xs opacity-90">Azure DevOps: Authorization header</div>
             </div>
             <div class="pt-1 border-t border-green-200 dark:border-green-800">
                 <div class="font-medium">Security Note:</div>
@@ -147,7 +147,7 @@
 
         <!-- Git Integration Examples -->
         <div class="mt-3 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
-            <div class="font-medium text-green-800 dark:text-green-200 mb-2">🔧 Git Platform Setup:</div>
+            <div class="font-medium text-green-800 dark:text-green-200 mb-2">Git Platform Setup:</div>
             <div class="text-green-700 dark:text-green-300 space-y-2">
             <div class="space-y-1">
                 <div class="font-medium">GitHub:</div>
@@ -235,7 +235,7 @@
 
         <!-- Payload Parsing Guide -->
         <div class="mt-3 p-3 bg-purple-50 dark:bg-purple-950 rounded text-xs">
-            <div class="font-medium text-purple-800 dark:text-purple-200 mb-2">📊 Webhook Data Access:</div>
+            <div class="font-medium text-purple-800 dark:text-purple-200 mb-2">Webhook Data Access:</div>
             <div class="text-purple-700 dark:text-purple-300 space-y-2">
             <div class="space-y-1">
                 <div class="font-medium">Output Socket:</div>
@@ -274,7 +274,7 @@
 
 <script setup>
 import { computed } from 'vue'
-
+const logger = useLogger()
 const props = defineProps({
   nodeData: {
     type: Object,

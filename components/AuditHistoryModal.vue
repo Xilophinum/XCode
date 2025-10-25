@@ -126,13 +126,13 @@
                         <!-- Show diagram changes if available -->
                         <div v-if="log.previousData?.diagramChanges" class="rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3">
                           <p class="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-2">
-                            📊 Diagram Changes
+                            Diagram Changes
                           </p>
 
                           <!-- Nodes Added -->
                           <div v-if="log.previousData.diagramChanges.nodesAdded?.length > 0" class="mb-3">
                             <p class="text-xs font-medium text-green-700 dark:text-green-400 mb-1">
-                              ✅ Added Nodes ({{ log.previousData.diagramChanges.nodesAdded.length }}):
+                              Added Nodes ({{ log.previousData.diagramChanges.nodesAdded.length }}):
                             </p>
                             <ul class="list-disc list-inside space-y-1">
                               <li v-for="node in log.previousData.diagramChanges.nodesAdded" :key="node.id"
@@ -146,7 +146,7 @@
                           <!-- Nodes Deleted -->
                           <div v-if="log.previousData.diagramChanges.nodesDeleted?.length > 0" class="mb-3">
                             <p class="text-xs font-medium text-red-700 dark:text-red-400 mb-1">
-                              ❌ Deleted Nodes ({{ log.previousData.diagramChanges.nodesDeleted.length }}):
+                              Deleted Nodes ({{ log.previousData.diagramChanges.nodesDeleted.length }}):
                             </p>
                             <ul class="list-disc list-inside space-y-1">
                               <li v-for="node in log.previousData.diagramChanges.nodesDeleted" :key="node.id"
@@ -322,6 +322,7 @@ const loading = ref(false)
 const loadingSnapshots = ref(false)
 const reverting = ref(false)
 const expandedLogs = ref(new Set())
+const logger = useLogger()
 
 // Watch for modal open to fetch data
 watch(() => props.isOpen, async (isOpen) => {
@@ -342,7 +343,7 @@ const fetchAuditLogs = async () => {
     })
     auditLogs.value = response.logs || []
   } catch (error) {
-    console.error('Error fetching audit logs:', error)
+    logger.error('Error fetching audit logs:', error)
   } finally {
     loading.value = false
   }
@@ -356,7 +357,7 @@ const fetchSnapshots = async () => {
     })
     snapshots.value = response.snapshots || []
   } catch (error) {
-    console.error('Error fetching snapshots:', error)
+    logger.error('Error fetching snapshots:', error)
   } finally {
     loadingSnapshots.value = false
   }
@@ -381,7 +382,7 @@ const revertToVersion = async (version) => {
     await fetchAuditLogs()
     await fetchSnapshots()
   } catch (error) {
-    console.error('Error reverting:', error)
+    logger.error('Error reverting:', error)
     alert('Failed to revert to version: ' + (error.data?.message || error.message))
   } finally {
     reverting.value = false

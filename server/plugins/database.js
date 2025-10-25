@@ -1,12 +1,17 @@
 import { DatabaseManager } from '../utils/database.js'
+import { initializeLogger } from '../utils/logger.js'
+import logger from '../utils/logger.js'
 
 let dbManager = null
 
 export default async function () {
   if (!dbManager) {
-    console.log('🔄 Initializing database...')
+    logger.info('Initializing database...')
     dbManager = new DatabaseManager()
     await dbManager.initialize()
-    console.log('✅ Database initialized successfully')
+    logger.info('Database initialized successfully')
+
+    // Initialize logger with system settings
+    await initializeLogger()
   }
 }

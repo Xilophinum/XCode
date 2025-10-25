@@ -5,8 +5,7 @@
 
 import { jobManager } from '../../../utils/jobManager.js'
 import { getBuildStatsManager } from '../../../utils/buildStatsManager.js'
-import { getDB, builds } from '../../../utils/database.js'
-import { eq } from 'drizzle-orm'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -34,7 +33,7 @@ export default defineEventHandler(async (event) => {
       const buildStatsManager = await getBuildStatsManager()
       buildStats = await buildStatsManager.getProjectStats(projectId)
     } catch (error) {
-      console.warn('Failed to get build stats:', error)
+      logger.warn('Failed to get build stats:', error)
     }
 
     return {
@@ -54,7 +53,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error) {
-    console.error('❌ Error getting project status:', error)
+    logger.error('Error getting project status:', error)
     
     throw createError({
       statusCode: error.statusCode || 500,

@@ -5,6 +5,7 @@ import { getAgentManager } from '../utils/agentManager.js'
 import { getDataService } from '../utils/dataService.js'
 import { jobManager } from '../utils/jobManager.js'
 import { getBuildStatsManager } from '../utils/buildStatsManager.js'
+import logger from '../utils/logger.js'
 // Store client connections for broadcasting
 const clientConnections = new Map() // clientId -> socket
 const projectSubscriptions = new Map() // projectId -> Set of clientIds
@@ -17,12 +18,12 @@ export default defineNitroPlugin(async (nitroApp) => {
 
   // Get the persistent agent manager
   const agentManager = await getAgentManager()
-  console.log(`🔧 WebSocket plugin initialized - existing agents: ${agentManager.agentData.size}, connections: ${agentManager.connectedAgents.size}`)
+  logger.info(`WebSocket plugin initialized - existing agents: ${agentManager.agentData.size}, connections: ${agentManager.connectedAgents.size}`)
 
   // Mark all agents as offline on server startup and handle orphaned jobs
   const dataService = await getDataService()
   await dataService.markAllAgentsOffline()
-  console.log(`🔧 All agents marked as offline on server startup - agents must reconnect`)
+  logger.info('All agents marked as offline on server startup - agents must reconnect')
   
   // Handle any jobs that were running when server restarted
   await handleServerRestartOrphanedJobs(agentManager)
@@ -41,7 +42,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         const timeSinceHeartbeat = now - lastHeartbeatTime
 
         if (timeSinceHeartbeat > process.env.WEBSOCKET_HEARTBEAT_TIMEOUT) {
-          console.log(`⚠️ Agent ${agentId} (${agentInfo.name}) missed heartbeat (${Math.round(timeSinceHeartbeat / 1000)}s) - marking as offline`)
+          logger.warn(`Agent ${agentId} (${agentInfo.name}) missed heartbeat (${Math.round(timeSinceHeartbeat / 1000)}s) - marking as offline`)
           timedOutAgents.push({ agentId, agentInfo })
         }
       }
@@ -75,10 +76,10 @@ export default defineNitroPlugin(async (nitroApp) => {
       }
 
       if (timedOutAgents.length > 0) {
-        console.log(`🔄 Processed ${timedOutAgents.length} timed-out agents (in-memory check)`)
+        logger.info(`Processed ${timedOutAgents.length} timed-out agents (in-memory check)`)
       }
     } catch (error) {
-      console.error('❌ Error checking agent heartbeat timeouts:', error)
+      logger.error('Error checking agent heartbeat timeouts:', error)
     }
   }, process.env.WEBSOCKET_HEARTBEAT_CHECK_INTERVAL)
 
@@ -99,7 +100,7 @@ export default defineNitroPlugin(async (nitroApp) => {
           await handleAuthentication(socket, msg, agentManager)
         }
       } catch (error) {
-        console.error('❌ Error handling authenticate event:', error)
+        logger.error('Error handling authenticate event:', error)
       }
     })
     
@@ -108,10 +109,10 @@ export default defineNitroPlugin(async (nitroApp) => {
         if (socket.clientAuthenticated) {
           await handleProjectSubscription(socket, msg)
         } else {
-          console.log(`❌ Project subscription attempted by unauthenticated client: ${socket.id}`)
+          logger.info(`Project subscription attempted by unauthenticated client: ${socket.id}`)
         }
       } catch (error) {
-        console.error('❌ Error handling subscribe_project event:', error)
+        logger.error('Error handling subscribe_project event:', error)
       }
     })
     
@@ -120,10 +121,10 @@ export default defineNitroPlugin(async (nitroApp) => {
         if (socket.clientAuthenticated) {
           await handleProjectUnsubscription(socket, msg)
         } else {
-          console.log(`❌ Project unsubscription attempted by unauthenticated client: ${socket.id}`)
+          logger.info(`Project unsubscription attempted by unauthenticated client: ${socket.id}`)
         }
       } catch (error) {
-        console.error('❌ Error handling unsubscribe_project event:', error)
+        logger.error('Error handling unsubscribe_project event:', error)
       }
     })
     
@@ -140,7 +141,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             if (socket.authenticated) {
               await handleAgentRegistration(socket, msg, agentManager)
             } else {
-              console.log(`❌ Registration attempted by unauthenticated socket: ${socket.id}`)
+              logger.info(`Registration attempted by unauthenticated socket: ${socket.id}`)
             }
             break
             
@@ -153,7 +154,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             if (socket.clientAuthenticated) {
               await handleProjectSubscription(socket, msg)
             } else {
-              console.log(`❌ Project subscription attempted by unauthenticated client: ${socket.id}`)
+              logger.info(`Project subscription attempted by unauthenticated client: ${socket.id}`)
             }
             break
             
@@ -161,7 +162,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             if (socket.clientAuthenticated) {
               await handleProjectUnsubscription(socket, msg)
             } else {
-              console.log(`❌ Project unsubscription attempted by unauthenticated client: ${socket.id}`)
+              logger.info(`Project unsubscription attempted by unauthenticated client: ${socket.id}`)
             }
             break
             
@@ -170,7 +171,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             if (socket.authenticated) {
               await handleJobOutput(socket, msg, agentManager)
             } else {
-              console.log(`❌ Job output from unauthenticated socket: ${socket.id}`)
+              logger.info(`Job output from unauthenticated socket: ${socket.id}`)
             }
             break
             
@@ -178,7 +179,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             if (socket.authenticated) {
               await handleJobComplete(socket, msg, agentManager)
             } else {
-              console.log(`❌ Job complete from unauthenticated socket: ${socket.id}`)
+              logger.info(`Job complete from unauthenticated socket: ${socket.id}`)
             }
             break
             
@@ -186,7 +187,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             if (socket.authenticated) {
               await handleJobError(socket, msg, agentManager)
             } else {
-              console.log(`❌ Job error from unauthenticated socket: ${socket.id}`)
+              logger.info(`Job error from unauthenticated socket: ${socket.id}`)
             }
             break
             
@@ -194,7 +195,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             if (socket.authenticated) {
               await handleJobFailure(socket, msg, agentManager)
             } else {
-              console.log(`❌ Job failure from unauthenticated socket: ${socket.id}`)
+              logger.info(`Job failure from unauthenticated socket: ${socket.id}`)
             }
             break
             
@@ -202,7 +203,7 @@ export default defineNitroPlugin(async (nitroApp) => {
             if (socket.authenticated) {
               await handleAgentJobStatus(socket, msg, agentManager)
             } else {
-              console.log(`❌ Job status from unauthenticated socket: ${socket.id}`)
+              logger.info(`Job status from unauthenticated socket: ${socket.id}`)
             }
             break
             
@@ -211,17 +212,17 @@ export default defineNitroPlugin(async (nitroApp) => {
             if (socket.authenticated) {
               await handleHeartbeat(socket, msg, agentManager)
             } else {
-              console.log(`❌ Heartbeat from unauthenticated socket: ${socket.id} - agentId: ${socket.agentId}`)
+              logger.info(`Heartbeat from unauthenticated socket: ${socket.id} - agentId: ${socket.agentId}`)
             }
             break
             
           default:
-            console.log('Unknown message type:', msg.type)
+            logger.info('Unknown message type:', msg.type)
         }
       } catch (error) {
-        console.error('❌ Error handling WebSocket message:', error)
-        console.error('❌ Original message:', typeof msg, JSON.stringify(msg, null, 2))
-        console.error('❌ Error details:', error.message, error.stack)
+        logger.error('Error handling WebSocket message:', error)
+        logger.error('Original message:', typeof msg, JSON.stringify(msg, null, 2))
+        logger.error('Error details:', error.message, error.stack)
         socket.emit('message', {
           type: 'error',
           message: 'Invalid message format'
@@ -237,7 +238,7 @@ export default defineNitroPlugin(async (nitroApp) => {
           const dataService = agentManager.dataService || await getDataService()
           await dataService.updateAgentStatus(socket.agentId, 'offline')
         } catch (error) {
-          console.error('Error updating agent status to offline:', error)
+          logger.error('Error updating agent status to offline:', error)
         }
         
         // Broadcast agent disconnection to all connected clients
@@ -251,7 +252,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         })
         
         agentManager.unregisterAgent(socket.agentId)
-        console.log(`🔌 Agent ${socket.agentId} disconnected and marked offline`)
+        logger.info(`Agent ${socket.agentId} disconnected and marked offline`)
       }
       
       // Clean up client connections and subscriptions
@@ -273,7 +274,7 @@ export default defineNitroPlugin(async (nitroApp) => {
           })
         }
         
-        console.log(`🔌 Client ${socket.clientId} disconnected and cleaned up`)
+        logger.info(`Client ${socket.clientId} disconnected and cleaned up`)
       }
     });
   });
@@ -294,7 +295,7 @@ export default defineNitroPlugin(async (nitroApp) => {
 
 async function handleAuthentication(socket, msg, agentManager) {
   try {
-    console.log('Agent authenticating with token')
+    logger.info('Agent authenticating with token')
     
     // Validate token
     if (!msg.token) {
@@ -328,7 +329,7 @@ async function handleAuthentication(socket, msg, agentManager) {
     // Register this connection with agent manager
     agentManager.connectedAgents.set(agentId, socket)
 
-    console.log(`✅ Agent ${agentId} (${agentRecord.name}) authenticated successfully`)
+    logger.info(`Agent ${agentId} (${agentRecord.name}) authenticated successfully`)
     
     // Send authentication success
     socket.emit('message', {
@@ -338,7 +339,7 @@ async function handleAuthentication(socket, msg, agentManager) {
     })
     
   } catch (error) {
-    console.error('Authentication error:', error)
+    logger.error('Authentication error:', error)
     socket.emit('message', {
       type: 'error',
       message: 'Authentication failed'
@@ -388,12 +389,12 @@ async function handleAgentRegistration(socket, msg, agentManager) {
     // Check for jobs that can retry on this agent reconnection
     await checkRetryableJobsOnReconnect(socket.agentId, agentManager)
     
-    console.log(`✅ Agent ${updatedAgent.name} registered successfully`)
-    console.log(`📊 Platform: ${agentInfo.platform} (${agentInfo.architecture})`)
-    console.log(`🏠 Hostname: ${agentInfo.hostname}`)
+    logger.info(`Agent ${updatedAgent.name} registered successfully`)
+    logger.info(`Platform: ${agentInfo.platform} (${agentInfo.architecture})`)
+    logger.info(`Hostname: ${agentInfo.hostname}`)
     
     // Broadcast agent registration to all admin connections
-    console.log(`📡 Broadcasting agent registration update for ${updatedAgent.name}`)
+    logger.info(`Broadcasting agent registration update for ${updatedAgent.name}`)
     broadcastToClients({
       type: 'agent_status_update',
       agentId: socket.agentId,
@@ -419,7 +420,7 @@ async function handleAgentRegistration(socket, msg, agentManager) {
     })
     
   } catch (error) {
-    console.error('Registration error:', error)
+    logger.error('Registration error:', error)
     socket.emit('message', {
       type: 'error',
       message: 'Registration failed'
@@ -445,7 +446,7 @@ async function handleHeartbeat(socket, msg, agentManager) {
       agentInfo.lastHeartbeat = new Date()
       agentManager.agentData.set(agentId, agentInfo)
     } else {
-      console.log(`⚠️ Agent ${agentId} not found in agentData during heartbeat - recreating entry`)
+      logger.info(`Agent ${agentId} not found in agentData during heartbeat - recreating entry`)
       // Recreate the agent data from heartbeat if it's missing
       agentManager.agentData.set(agentId, {
         agentId: agentId,
@@ -462,7 +463,7 @@ async function handleHeartbeat(socket, msg, agentManager) {
     
     // Make sure agent is in connectedAgents
     if (!agentManager.connectedAgents.has(agentId)) {
-      console.log(`🔧 Re-adding agent ${agentId} to connectedAgents`)
+      logger.info(`Re-adding agent ${agentId} to connectedAgents`)
       agentManager.connectedAgents.set(agentId, socket)
     }
     
@@ -474,7 +475,7 @@ async function handleHeartbeat(socket, msg, agentManager) {
     })
     
   } catch (error) {
-    console.error('Heartbeat error:', error)
+    logger.error('Heartbeat error:', error)
     socket.emit('message', {
       type: 'error',
       message: 'Heartbeat processing failed'
@@ -521,7 +522,7 @@ async function handleClientAuthentication(socket, msg) {
     try {
       decoded = jwt.verify(authToken, config.jwtSecret)
     } catch (jwtError) {
-      console.error('JWT verification failed:', jwtError.message)
+      logger.error('JWT verification failed:', jwtError.message)
       socket.emit('client_auth_error', {
         message: 'Invalid authentication token'
       })
@@ -558,7 +559,7 @@ async function handleClientAuthentication(socket, msg) {
     })
     
   } catch (error) {
-    console.error('Client authentication error:', error)
+    logger.error('Client authentication error:', error)
     socket.emit('client_auth_error', {
       message: 'Authentication failed: ' + error.message
     })
@@ -594,7 +595,7 @@ async function handleProjectSubscription(socket, msg) {
     })
     
   } catch (error) {
-    console.error('Project subscription error:', error)
+    logger.error('Project subscription error:', error)
     socket.emit('subscription_error', {
       message: 'Failed to subscribe to project'
     })
@@ -633,7 +634,7 @@ async function handleProjectUnsubscription(socket, msg) {
     })
     
   } catch (error) {
-    console.error('Project unsubscription error:', error)
+    logger.error('Project unsubscription error:', error)
     socket.emit('subscription_error', {
       message: 'Failed to unsubscribe from project'
     })
@@ -659,7 +660,7 @@ async function handleJobOutput(socket, msg, agentManager) {
     }
 
   } catch (error) {
-    console.error('Job output handling error:', error)
+    logger.error('Job output handling error:', error)
   }
 }
 
@@ -683,7 +684,7 @@ async function handleJobComplete(socket, msg, agentManager) {
     }
     
   } catch (error) {
-    console.error('Job completion handling error:', error)
+    logger.error('Job completion handling error:', error)
   }
 }
 
@@ -705,7 +706,7 @@ async function handleJobError(socket, msg, agentManager) {
     }
     
   } catch (error) {
-    console.error('Job error handling error:', error)
+    logger.error('Job error handling error:', error)
   }
 }
 
@@ -727,7 +728,7 @@ async function handleJobFailure(socket, msg, agentManager) {
     }
     
   } catch (error) {
-    console.error('Job failure handling error:', error)
+    logger.error('Job failure handling error:', error)
   }
 }
 
@@ -735,7 +736,7 @@ async function handleAgentJobStatus(socket, msg, agentManager) {
   try {
     const { jobId, status, error, output, outputLines, exitCode, currentJobs, message } = msg
 
-    console.log(`📊 Agent job status update: ${jobId} -> ${status}`)
+    logger.info(`Agent job status update: ${jobId} -> ${status}`)
 
     // Update agent status based on current jobs
     if (currentJobs !== undefined) {
@@ -751,7 +752,7 @@ async function handleAgentJobStatus(socket, msg, agentManager) {
     const job = await jobManager.getJob(jobId)
     
     if (!job) {
-      console.error(`❌ Job ${jobId} not found for status update`)
+      logger.error(`Job ${jobId} not found for status update`)
       return
     }
 
@@ -836,12 +837,12 @@ async function handleAgentJobStatus(socket, msg, agentManager) {
         break
 
       default:
-        console.warn(`⚠️ Unknown job status: ${status} for job ${jobId}`)
+        logger.warn(`Unknown job status: ${status} for job ${jobId}`)
         break
     }
 
   } catch (error) {
-    console.error('Agent job status handling error:', error)
+    logger.error('Agent job status handling error:', error)
   }
 }
 
@@ -856,7 +857,7 @@ function broadcastToClients(message) {
       }
     })
   } catch (error) {
-    console.error('Error broadcasting to clients:', error)
+    logger.error('Error broadcasting to clients:', error)
   }
 }
 
@@ -864,7 +865,7 @@ function broadcastToProject(projectId, message) {
   try {
     const subscribedClients = projectSubscriptions.get(projectId)
     if (!subscribedClients) {
-      console.log(`📡 No subscribers for project ${projectId}`)
+      logger.info(`No subscribers for project ${projectId}`)
       return
     }
     
@@ -877,7 +878,7 @@ function broadcastToProject(projectId, message) {
       }
     })
   } catch (error) {
-    console.error('Error broadcasting to project:', error)
+    logger.error('Error broadcasting to project:', error)
   }
 }
 
@@ -889,11 +890,11 @@ async function handleOrphanedJobs(agentId, agentManager) {
     const orphanedJobs = activeJobs.filter(job => job.agentId === agentId)
     
     if (orphanedJobs.length === 0) {
-      console.log(`✅ No orphaned jobs for disconnected agent ${agentId}`)
+      logger.info(`No orphaned jobs for disconnected agent ${agentId}`)
       return
     }
     
-    console.log(`🚨 Found ${orphanedJobs.length} orphaned jobs for agent ${agentId}`)
+    logger.info(`🚨 Found ${orphanedJobs.length} orphaned jobs for agent ${agentId}`)
     
     for (const job of orphanedJobs) {
       const errorMsg = `Agent ${agentId} disconnected during job execution`
@@ -906,7 +907,7 @@ async function handleOrphanedJobs(agentId, agentManager) {
       
       if (requiresSpecificAgent) {
         // Job requires specific agent - mark as failed and wait for reconnection
-        console.log(`⏸️ Job ${job.jobId} requires specific agent ${agentId} - marking as failed (will retry on reconnection)`)
+        logger.info(`⏸️ Job ${job.jobId} requires specific agent ${agentId} - marking as failed (will retry on reconnection)`)
         
         await jobManager.updateJob(job.jobId, {
           status: 'failed',
@@ -916,12 +917,12 @@ async function handleOrphanedJobs(agentId, agentManager) {
         })
       } else {
         // Job can run on any agent - attempt reassignment
-        console.log(`🔄 Attempting to reassign job ${job.jobId} to another agent`)
+        logger.info(`🔄 Attempting to reassign job ${job.jobId} to another agent`)
         
         const availableAgent = await agentManager.findAvailableAgent()
         
         if (availableAgent) {
-          console.log(`✅ Reassigning job ${job.jobId} to agent ${availableAgent.agentId}`)
+          logger.info(`Reassigning job ${job.jobId} to agent ${availableAgent.agentId}`)
           
           // Get current command to retry
           const currentCommand = job.executionCommands?.[job.currentCommandIndex || 0]
@@ -954,7 +955,7 @@ async function handleOrphanedJobs(agentId, agentManager) {
             })
             
             if (!dispatchSuccess) {
-              console.error(`❌ Failed to reassign job ${job.jobId} - marking as failed`)
+              logger.error(`Failed to reassign job ${job.jobId} - marking as failed`)
               await jobManager.updateJob(job.jobId, {
                 status: 'failed',
                 error: `${errorMsg}. Failed to reassign to available agent.`,
@@ -962,7 +963,7 @@ async function handleOrphanedJobs(agentId, agentManager) {
               })
             }
           } else {
-            console.error(`❌ No current command found for job ${job.jobId} - marking as failed`)
+            logger.error(`No current command found for job ${job.jobId} - marking as failed`)
             await jobManager.updateJob(job.jobId, {
               status: 'failed',
               error: `${errorMsg}. No command to retry.`,
@@ -971,7 +972,7 @@ async function handleOrphanedJobs(agentId, agentManager) {
           }
         } else {
           // No available agents - mark as failed
-          console.log(`❌ No available agents for reassignment - marking job ${job.jobId} as failed`)
+          logger.info(`No available agents for reassignment - marking job ${job.jobId} as failed`)
           await jobManager.updateJob(job.jobId, {
             status: 'failed',
             error: `${errorMsg}. No available agents for reassignment.`,
@@ -992,16 +993,16 @@ async function handleOrphanedJobs(agentId, agentManager) {
               message: updatedJob.error,
               nodesExecuted: (job.currentCommandIndex || 0) + 1
             })
-            console.log(`📊 BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed due to agent disconnect`)
+            logger.info(`BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed due to agent disconnect`)
           }
         } catch (buildError) {
-          console.warn('Failed to update build record for orphaned job:', buildError)
+          logger.warn('Failed to update build record for orphaned job:', buildError)
         }
       }
     }
     
   } catch (error) {
-    console.error('Error handling orphaned jobs:', error)
+    logger.error('Error handling orphaned jobs:', error)
   }
 }
 
@@ -1017,14 +1018,14 @@ async function checkRetryableJobsOnReconnect(agentId, agentManager) {
     )
     
     if (retryableJobs.length === 0) {
-      console.log(`✅ No retryable jobs for reconnected agent ${agentId}`)
+      logger.info(`No retryable jobs for reconnected agent ${agentId}`)
       return
     }
     
-    console.log(`🔄 Found ${retryableJobs.length} retryable jobs for agent ${agentId}`)
+    logger.info(`🔄 Found ${retryableJobs.length} retryable jobs for agent ${agentId}`)
     
     for (const job of retryableJobs) {
-      console.log(`🔄 Retrying job ${job.jobId} on reconnected agent ${agentId}`)
+      logger.info(`🔄 Retrying job ${job.jobId} on reconnected agent ${agentId}`)
       
       // Get current command to retry
       const currentCommand = job.executionCommands?.[job.currentCommandIndex || 0]
@@ -1057,20 +1058,20 @@ async function checkRetryableJobsOnReconnect(agentId, agentManager) {
         })
         
         if (!dispatchSuccess) {
-          console.error(`❌ Failed to retry job ${job.jobId} on reconnected agent`)
+          logger.error(`Failed to retry job ${job.jobId} on reconnected agent`)
           await jobManager.updateJob(job.jobId, {
             status: 'failed',
             error: 'Failed to retry job on agent reconnection',
             failedAt: new Date()
           })
         } else {
-          console.log(`✅ Successfully retried job ${job.jobId} on reconnected agent ${agentId}`)
+          logger.info(`Successfully retried job ${job.jobId} on reconnected agent ${agentId}`)
         }
       }
     }
     
   } catch (error) {
-    console.error('Error checking retryable jobs on reconnect:', error)
+    logger.error('Error checking retryable jobs on reconnect:', error)
   }
 }
 
@@ -1080,16 +1081,16 @@ async function handleServerRestartOrphanedJobs(agentManager) {
     const activeJobs = await jobManager.getActiveJobs()
     
     if (activeJobs.length === 0) {
-      console.log(`✅ No orphaned jobs found on server restart`)
+      logger.info(`No orphaned jobs found on server restart`)
       return
     }
     
-    console.log(`🚨 Found ${activeJobs.length} orphaned jobs on server restart`)
+    logger.info(`🚨 Found ${activeJobs.length} orphaned jobs on server restart`)
     
     for (const job of activeJobs) {
       const errorMsg = 'Server restarted during job execution'
       
-      console.log(`❌ Marking job ${job.jobId} as failed due to server restart`)
+      logger.info(`Marking job ${job.jobId} as failed due to server restart`)
       
       await jobManager.updateJob(job.jobId, {
         status: 'failed',
@@ -1107,24 +1108,24 @@ async function handleServerRestartOrphanedJobs(agentManager) {
             message: errorMsg,
             nodesExecuted: (job.currentCommandIndex || 0) + 1
           })
-          console.log(`📊 BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed due to server restart`)
+          logger.info(`BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed due to server restart`)
         } catch (buildError) {
-          console.warn('Failed to update build record for restart orphaned job:', buildError)
+          logger.warn('Failed to update build record for restart orphaned job:', buildError)
         }
       }
     }
     
   } catch (error) {
-    console.error('Error handling server restart orphaned jobs:', error)
+    logger.error('Error handling server restart orphaned jobs:', error)
   }
 }
 
 export async function broadcastBuildCompletion(buildEvent) {
   try {
-    console.log(`🎯 Processing build completion for job triggers:\nType: ${buildEvent.type}\nStatus: ${buildEvent.status}\nSource Project ID: ${buildEvent.sourceProjectId}`)
+    logger.info(`Processing build completion for job triggers:\nType: ${buildEvent.type}\nStatus: ${buildEvent.status}\nSource Project ID: ${buildEvent.sourceProjectId}`)
     await checkAndTriggerJobs(buildEvent)
   } catch (error) {
-    console.error('Error broadcasting build completion:', error)
+    logger.error('Error broadcasting build completion:', error)
   }
 }
 
@@ -1148,13 +1149,13 @@ async function checkAndTriggerJobs(buildEvent) {
         const shouldTrigger = checkTriggerCondition(triggerNode.data.triggerOn, buildEvent.status)
         
         if (shouldTrigger) {
-          console.log(`🚀 Triggering project ${project.name} due to ${buildEvent.sourceProjectId} completion`)
+          logger.info(`Triggering project ${project.name} due to ${buildEvent.sourceProjectId} completion`)
           await executeTriggeredProject(project, triggerNode, buildEvent)
         }
       }
     }
   } catch (error) {
-    console.error('Error checking job triggers:', error)
+    logger.error('Error checking job triggers:', error)
   }
 }
 
@@ -1170,7 +1171,7 @@ function checkTriggerCondition(triggerOn, buildStatus) {
 async function executeTriggeredProject(project, triggerNode, buildEvent) {
   try {
     if (project.status === 'disabled') {
-      console.log(`⚠️ Skipping disabled project: ${project.name}`)
+      logger.info(`Skipping disabled project: ${project.name}`)
       return
     }
     
@@ -1188,7 +1189,7 @@ async function executeTriggeredProject(project, triggerNode, buildEvent) {
     })
     
     if (response.success) {
-      console.log(`✅ Successfully triggered project ${project.name} on agent ${response.agentName}`)
+      logger.info(`Successfully triggered project ${project.name} on agent ${response.agentName}`)
       broadcastToProject(project.id, {
         type: 'job_triggered',
         projectId: project.id,
@@ -1201,6 +1202,6 @@ async function executeTriggeredProject(project, triggerNode, buildEvent) {
       })
     }
   } catch (error) {
-    console.error(`❌ Error executing triggered project ${project.name}:`, error)
+    logger.error(`Error executing triggered project ${project.name}:`, error)
   }
 }

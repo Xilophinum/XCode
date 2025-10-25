@@ -1,5 +1,6 @@
 import { getDataService } from '../../utils/dataService.js'
 import { getAuthenticatedUser } from '../../utils/auth.js'
+import logger from '~/server/utils/logger.js'
 
 /**
  * Get recent audit logs across all entities
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (error) {
-    console.error('Error fetching recent audit logs:', error)
+    logger.error('Error fetching recent audit logs:', error)
     throw createError({
       statusCode: error.statusCode || 500,
       statusMessage: error.statusMessage || 'Failed to fetch recent audit logs'

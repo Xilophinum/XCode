@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from '../../../utils/auth.js'
 import { LDAPAuthenticator } from '../../../utils/ldapAuth.js'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   // Check authentication and admin role
@@ -55,7 +56,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (error) {
-    console.error('LDAP test error:', error)
+    logger.error('LDAP test error:', error)
     return {
       success: false,
       message: 'LDAP test failed',

@@ -9,6 +9,7 @@ import { getAgentManager } from './agentManager.js'
 import { getBuildStatsManager } from './buildStatsManager.js'
 import { getDataService } from './dataService.js'
 import { convertGraphToCommands }  from '../api/projects/execute.post.js'
+import logger from './logger.js'
 /**
  * Execute project from trigger (for cron or other triggers)
  */
@@ -23,27 +24,27 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
     const project = await dataService.getItemById(projectId)
 
     if (!project) {
-      console.log(`❌ Project ${projectId} not found`)
+      logger.info(`Project ${projectId} not found`)
       return { success: false, message: 'Project not found' }
     }
 
     projectName = project.name
-    console.log(`🎯 Executing project "${projectName}" from trigger ${triggerNodeId}`)
+    logger.info(`Executing project "${projectName}" from trigger ${triggerNodeId}`)
 
     if (project.status === 'disabled') {
-      console.log(`🚫 Project "${projectName}" is disabled - skipping trigger execution`)
+      logger.info(`🚫 Project "${projectName}" is disabled - skipping trigger execution`)
       return { success: false, message: 'Project is disabled' }
     }
     
     // Get agent manager instance
     const agentManager = await getAgentManager()
 
-    console.log(`🔍 Trigger Execute: Looking for available agent...`)
+    logger.info(`🔍 Trigger Execute: Looking for available agent...`)
 
     // Convert graph to execution commands for the agent
     const executionCommands = convertGraphToCommands(nodes, edges, triggerContext)
 
-    console.log(`🔧 Generated ${executionCommands.length} commands`)
+    logger.info(`Generated ${executionCommands.length} commands`)
 
     // Filter to get only executable commands
     const executableCommands = executionCommands.filter(cmd => 
@@ -51,12 +52,12 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
     )
 
     if (executableCommands.length === 0) {
-      console.log('⚠️ No executable commands found in triggered graph')
+      logger.info('No executable commands found in triggered graph')
       return { success: false, message: 'No executable commands found' }
     }
 
     // Skip agent selection validation for triggered executions (assume cron jobs are pre-configured)
-    console.log(`🎯 Executing ${executableCommands.length} commands sequentially (triggered):`, executableCommands.map(cmd => ({
+    logger.info(`Executing ${executableCommands.length} commands sequentially (triggered):`, executableCommands.map(cmd => ({
       type: cmd.type,
       label: cmd.nodeLabel,
       requiredAgent: cmd.requiredAgentId || 'any',
@@ -94,9 +95,9 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
         }
       })
       currentBuildNumber = buildResult.buildNumber
-      console.log(`✅ Build #${currentBuildNumber} started for triggered execution of "${projectName}"`)
+      logger.info(`Build #${currentBuildNumber} started for triggered execution of "${projectName}"`)
     } catch (error) {
-      console.warn('Failed to start build recording for triggered execution:', error)
+      logger.warn('Failed to start build recording for triggered execution:', error)
     }
 
     // Create job record
@@ -126,7 +127,7 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
 
     // Start with the first command - find appropriate agent
     const firstCommand = executableCommands[0]
-    console.log(`🚀 Starting triggered sequential execution with command 1/${executableCommands.length}: ${firstCommand.nodeLabel}`)
+    logger.info(`Starting triggered sequential execution with command 1/${executableCommands.length}: ${firstCommand.nodeLabel}`)
     
     // Find agent for the first command
     const requiresSpecificAgent = firstCommand.requiredAgentId && firstCommand.requiredAgentId !== 'any' && firstCommand.requiredAgentId !== 'local'
@@ -138,7 +139,7 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
         ? `🚨 CRITICAL: Required agent "${firstCommand.requiredAgentId}" not available for triggered command: ${firstCommand.nodeLabel}`
         : 'No agents available for triggered job execution'
       
-      console.error(errorMsg)
+      logger.error(errorMsg)
       await jobManager.updateJob(jobId, { status: 'failed', error: errorMsg })
       
       // Broadcast failure to UI
@@ -163,7 +164,7 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
             nodesExecuted: 0
           })
         } catch (buildError) {
-          console.warn('Failed to update build record on agent selection failure:', buildError)
+          logger.warn('Failed to update build record on agent selection failure:', buildError)
         }
       }
       
@@ -171,9 +172,9 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
     }
     
     if (requiresSpecificAgent) {
-      console.log(`🔒 ENFORCING agent selection for triggered job: ${selectedAgent.agentId} for command: ${firstCommand.nodeLabel}`)
+      logger.info(`🔒 ENFORCING agent selection for triggered job: ${selectedAgent.agentId} for command: ${firstCommand.nodeLabel}`)
     } else {
-      console.log(`🎯 Selected agent ${selectedAgent.agentId} for triggered command: ${firstCommand.nodeLabel}`)
+      logger.info(`Selected agent ${selectedAgent.agentId} for triggered command: ${firstCommand.nodeLabel}`)
     }
 
     // Update build record with agent selection
@@ -185,9 +186,9 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
           agentName: selectedAgent.nickname || selectedAgent.name || selectedAgent.agentId,
           status: 'running'
         })
-        console.log(`📊 BUILD STATS: Agent ${selectedAgent.nickname} assigned to build ${currentBuildId}`)
+        logger.info(`BUILD STATS: Agent ${selectedAgent.nickname} assigned to build ${currentBuildId}`)
       } catch (buildError) {
-        console.warn('Failed to update build record with agent selection:', buildError)
+        logger.warn('Failed to update build record with agent selection:', buildError)
       }
     }
 
@@ -208,7 +209,7 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
       // Failed to dispatch, clean up job
       await jobManager.deleteJob(jobId)
       const errorMsg = 'Failed to dispatch triggered job to agent'
-      console.error(`❌ ${errorMsg}`)
+      logger.error(`${errorMsg}`)
       
       // Broadcast failure to UI
       if (globalThis.broadcastToProject) {
@@ -232,7 +233,7 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
             nodesExecuted: 0
           })
         } catch (buildError) {
-          console.warn('Failed to update build record on dispatch failure:', buildError)
+          logger.warn('Failed to update build record on dispatch failure:', buildError)
         }
       }
       
@@ -249,7 +250,7 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
       buildNumber: currentBuildNumber
     })
 
-    console.log(`✅ Triggered job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildNumber ? ` (build #: ${currentBuildNumber})` : ''}`)
+    logger.info(`Triggered job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildNumber ? ` (build #: ${currentBuildNumber})` : ''}`)
 
     return {
       success: true,
@@ -262,7 +263,7 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
     }
     
   } catch (error) {
-    console.error(`❌ Error executing triggered project ${projectId}:`, error)
+    logger.error(`Error executing triggered project ${projectId}:`, error)
     
     // Broadcast error to UI
     if (globalThis.broadcastToProject) {
@@ -284,9 +285,9 @@ export async function executeProjectFromTrigger(projectId, nodes, edges, trigger
           message: `Execution error: ${error.message}`,
           nodesExecuted: 0
         })
-        console.log(`📊 BUILD STATS: Build ${currentBuildId} marked as failed due to execution error`)
+        logger.info(`BUILD STATS: Build ${currentBuildId} marked as failed due to execution error`)
       } catch (buildError) {
-        console.warn('Failed to update build record on execution error:', buildError)
+        logger.warn('Failed to update build record on execution error:', buildError)
       }
     }
     

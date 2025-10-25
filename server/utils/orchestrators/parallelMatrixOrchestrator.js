@@ -15,6 +15,7 @@
 import { getAgentManager } from '../agentManager.js'
 import { jobManager } from '../jobManager.js'
 import { v4 as uuidv4 } from 'uuid'
+import logger from '../logger.js'
 
 /**
  * Execute parallel matrix orchestrator
@@ -35,11 +36,11 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
     nodeLabel
   } = orchestratorCommand
 
-  console.log(`🔀 Starting parallel matrix orchestrator: ${nodeLabel}`)
-  console.log(`📊 Matrix items: ${items.length}, Variable: ${itemVariableName}, Max Concurrency: ${maxConcurrency || 'unlimited'}, Fail Fast: ${failFast}, Continue on Error: ${continueOnError}`)
+  logger.info(`Starting parallel matrix orchestrator: ${nodeLabel}`)
+  logger.info(`Matrix items: ${items.length}, Variable: ${itemVariableName}, Max Concurrency: ${maxConcurrency || 'unlimited'}, Fail Fast: ${failFast}, Continue on Error: ${continueOnError}`)
 
   if (!iterationTarget) {
-    console.error(`❌ No iteration target found for matrix orchestrator ${nodeLabel}`)
+    logger.error(`No iteration target found for matrix orchestrator ${nodeLabel}`)
     return {
       success: false,
       results: [],
@@ -50,7 +51,7 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
   }
 
   if (items.length === 0) {
-    console.log(`⚠️  No items to iterate for matrix orchestrator ${nodeLabel}`)
+    logger.info(` No items to iterate for matrix orchestrator ${nodeLabel}`)
     return {
       success: true,
       results: [],
@@ -69,7 +70,7 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
     try {
       // Convert item to string for logging
       const itemString = typeof item === 'object' ? JSON.stringify(item) : String(item)
-      console.log(`🔢 Matrix[${index}]: Starting execution with ${itemVariableName}=${itemString}`)
+      logger.info(`🔢 Matrix[${index}]: Starting execution with ${itemVariableName}=${itemString}`)
 
       // Generate sub-job ID for this matrix iteration
       const subJobId = `${parentJob.jobId}_matrix_${index}_${uuidv4().split('-')[0]}`
@@ -161,7 +162,7 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
         throw new Error(errorMsg)
       }
 
-      console.log(`🎯 Matrix[${index}]: Dispatching to agent ${selectedAgent.agentId}`)
+      logger.info(`Matrix[${index}]: Dispatching to agent ${selectedAgent.agentId}`)
 
       // Dispatch job to agent
       const dispatchSuccess = await agentManager.dispatchJobToAgent(selectedAgent.agentId, {
@@ -192,12 +193,12 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
         agentName: selectedAgent.name || selectedAgent.hostname
       })
 
-      console.log(`✅ Matrix[${index}]: Dispatched successfully, waiting for completion...`)
+      logger.info(`Matrix[${index}]: Dispatched successfully, waiting for completion...`)
 
       // Wait for job completion (event-driven, not polling)
       const result = await agentManager.waitForJobCompletion(subJobId)
 
-      console.log(`${result.success ? '✅' : '❌'} Matrix[${index}]: ${result.success ? 'Completed successfully' : 'Failed'}`)
+      logger.info(`${result.success ? '✅' : '❌'} Matrix[${index}]: ${result.success ? 'Completed successfully' : 'Failed'}`)
 
       return {
         matrixIndex: index,
@@ -210,7 +211,7 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
       }
 
     } catch (error) {
-      console.error(`❌ Matrix[${index}]: Execution error:`, error.message)
+      logger.error(`Matrix[${index}]: Execution error:`, error.message)
 
       return {
         matrixIndex: index,
@@ -229,13 +230,13 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
 
   if (maxConcurrency && maxConcurrency > 0) {
     // Use concurrency limiting
-    console.log(`🔄 Executing matrix with max concurrency: ${maxConcurrency}`)
+    logger.info(`🔄 Executing matrix with max concurrency: ${maxConcurrency}`)
 
     // Simple concurrency control: execute in batches
     results = []
     for (let i = 0; i < matrixPromises.length; i += maxConcurrency) {
       const batch = matrixPromises.slice(i, i + maxConcurrency)
-      console.log(`📦 Executing batch ${Math.floor(i / maxConcurrency) + 1} (${batch.length} iterations)`)
+      logger.info(`📦 Executing batch ${Math.floor(i / maxConcurrency) + 1} (${batch.length} iterations)`)
       const batchResults = await Promise.allSettled(batch)
       results.push(...batchResults)
 
@@ -246,14 +247,14 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
           r.status === 'rejected'
         )
         if (hasFailure) {
-          console.log(`🚨 Fail-fast triggered in batch ${Math.floor(i / maxConcurrency) + 1}`)
+          logger.info(`🚨 Fail-fast triggered in batch ${Math.floor(i / maxConcurrency) + 1}`)
           break
         }
       }
     }
   } else {
     // Unlimited parallelism
-    console.log(`🚀 Executing all ${matrixPromises.length} matrix iterations in parallel (unlimited concurrency)`)
+    logger.info(`Executing all ${matrixPromises.length} matrix iterations in parallel (unlimited concurrency)`)
 
     if (failFast && !continueOnError) {
       // Use Promise.race logic - abort on first failure
@@ -262,11 +263,11 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
       // Check for failures
       for (const result of results) {
         if (result.status === 'fulfilled' && result.value && !result.value.success) {
-          console.log(`🚨 Fail-fast triggered: Matrix[${result.value.matrixIndex}] failed`)
+          logger.info(`🚨 Fail-fast triggered: Matrix[${result.value.matrixIndex}] failed`)
           break // Stop checking after first failure
         }
         if (result.status === 'rejected') {
-          console.log(`🚨 Fail-fast triggered: Matrix iteration threw error`)
+          logger.info(`🚨 Fail-fast triggered: Matrix iteration threw error`)
           break
         }
       }
@@ -305,17 +306,17 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
 
   const allSucceeded = failureCount === 0
 
-  console.log(`${allSucceeded ? '✅' : '⚠️'} Parallel matrix complete: ${successCount} succeeded, ${failureCount} failed`)
+  logger.info(`${allSucceeded ? '✅' : '⚠️'} Parallel matrix complete: ${successCount} succeeded, ${failureCount} failed`)
 
   // Log individual matrix results (first 10 for brevity)
   const resultsToLog = matrixResults.slice(0, 10)
   for (const result of resultsToLog) {
     const icon = result.success ? '✅' : '❌'
     const itemStr = typeof result.matrixItem === 'object' ? JSON.stringify(result.matrixItem) : String(result.matrixItem)
-    console.log(`  ${icon} Matrix[${result.matrixIndex}] (${itemStr}): ${result.success ? 'Success' : `Failed - ${result.error}`}`)
+    logger.info(`  ${icon} Matrix[${result.matrixIndex}] (${itemStr}): ${result.success ? 'Success' : `Failed - ${result.error}`}`)
   }
   if (matrixResults.length > 10) {
-    console.log(`  ... and ${matrixResults.length - 10} more results`)
+    logger.info(`  ... and ${matrixResults.length - 10} more results`)
   }
 
   return {

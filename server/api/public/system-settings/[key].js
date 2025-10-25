@@ -1,4 +1,5 @@
 import { DataService } from '../../../utils/dataService'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
@@ -40,7 +41,7 @@ export default defineEventHandler(async (event) => {
     }
     return setting
   } catch (error) {
-    console.error('Public system setting API error:', error)
+    logger.error('Public system setting API error:', error)
     throw createError({
       statusCode: 500,
       statusMessage: 'Internal server error'

@@ -5,6 +5,7 @@ import { getExecutionConnectedNodes } from '../api/projects/execute.post.js'
 import { executeParallelBranches } from './orchestrators/parallelBranchesOrchestrator.js'
 import { executeParallelMatrix } from './orchestrators/parallelMatrixOrchestrator.js'
 import { notificationService } from './notificationService.js'
+import logger from './logger.js'
 
 class AgentManager {
   constructor() {
@@ -18,8 +19,8 @@ class AgentManager {
 
   async initialize(server = null) {
     this.dataService = await getDataService()
-    console.log('AgentManager initialized (Socket.IO handled by plugin)')
-    
+    logger.info('AgentManager initialized (Socket.IO handled by plugin)')
+
     // Note: Socket.IO initialization is now handled by the Nitro plugin
     // This method is kept for backward compatibility and data service setup
   }
@@ -62,17 +63,17 @@ class AgentManager {
       // The output from the agent is already in the correct format
       // Just add it to the job's output array (will be stored in build record)
       await jobManager.addJobOutput(jobId, output)
-      console.log(`📋 Added job output for ${jobId}:`, output.message || output)
+      logger.info(`Added job output for ${jobId}:`, output.message || output)
     }
   }
 
   // Handle job failure (called on every failure, including during retries)
   async handleJobFailure(agentId, data) {
     const { jobId, error, exitCode, output, currentAttempt, maxAttempts, isRetrying } = data
-    
+
     if (jobId) {
       const job = await jobManager.getJob(jobId)
-      
+
       if (job) {
         // Get the failed node label if available
         let failedNodeLabel = null
@@ -83,17 +84,23 @@ class AgentManager {
           }
         }
 
-        console.log(`🔄 Triggering failure handlers for failure (attempt ${currentAttempt}/${maxAttempts})`)
-        await this.triggerNextNodes(job, {
-          success: false,
-          exitCode: exitCode || 1,
-          error: error,
-          output: output,
-          failedNodeLabel: failedNodeLabel,
-          currentAttempt: currentAttempt,
-          maxAttempts: maxAttempts,
-          isRetrying: isRetrying
-        })
+        // Only trigger failure handlers if retries are configured (maxAttempts > 1)
+        // For non-retry scenarios (maxAttempts = 1), handleJobError will trigger handlers instead
+        if (maxAttempts > 1) {
+          logger.info(`Triggering failure handlers for failure (attempt ${currentAttempt}/${maxAttempts})`)
+          await this.triggerNextNodes(job, {
+            success: false,
+            exitCode: exitCode || 1,
+            error: error,
+            output: output,
+            failedNodeLabel: failedNodeLabel,
+            currentAttempt: currentAttempt,
+            maxAttempts: maxAttempts,
+            isRetrying: isRetrying
+          })
+        } else {
+          logger.info(`Skipping failure handlers in handleJobFailure - will be triggered by handleJobError for non-retry scenario`)
+        }
       }
     }
   }
@@ -107,7 +114,7 @@ class AgentManager {
       const job = await jobManager.getJob(jobId)
       
       if (!job) {
-        console.error(`❌ Job ${jobId} not found during completion handling`)
+        logger.error(`Job ${jobId} not found during completion handling`)
         return
       }
 
@@ -116,31 +123,31 @@ class AgentManager {
         const currentIndex = job.currentCommandIndex
         const totalCommands = job.executionCommands.length
         
-        console.log(`✅ Command ${currentIndex + 1}/${totalCommands} completed for job ${jobId}`)
-        
+        logger.info(`Command ${currentIndex + 1}/${totalCommands} completed for job ${jobId}`)
+
         // Check if there are more commands to execute
         if (currentIndex + 1 < totalCommands) {
           const nextIndex = currentIndex + 1
           const nextCommand = job.executionCommands[nextIndex]
 
-          console.log(`🔄 Starting next command ${nextIndex + 1}/${totalCommands}: ${nextCommand.nodeLabel}`)
+          logger.info(`Starting next command ${nextIndex + 1}/${totalCommands}: ${nextCommand.nodeLabel}`)
 
           // Check if the next command is a parallel orchestrator
           if (nextCommand.type === 'parallel_branches_orchestrator') {
-            console.log(`🔀 Executing parallel branches orchestrator`)
+            logger.info(`Executing parallel branches orchestrator`)
             await this.executeParallelBranches(jobId, nextCommand, job)
             return // Don't continue with normal sequential flow
           }
 
           if (nextCommand.type === 'parallel_matrix_orchestrator') {
-            console.log(`🔀 Executing parallel matrix orchestrator`)
+            logger.info(`Executing parallel matrix orchestrator`)
             await this.executeParallelMatrix(jobId, nextCommand, job)
             return // Don't continue with normal sequential flow
           }
 
           // Check if the next command is a notification
           if (nextCommand.type === 'notification') {
-            console.log(`📧 Processing notification: ${nextCommand.nodeLabel}`)
+            logger.info(`Processing notification: ${nextCommand.nodeLabel}`)
 
             try {
               // Get the failed node label if this is a failure notification
@@ -168,12 +175,12 @@ class AgentManager {
               const result = await notificationService.sendNotification(nextCommand, context)
 
               if (result.success) {
-                console.log(`✅ Notification sent successfully for: ${nextCommand.nodeLabel}`)
+                logger.info(`Notification sent successfully for: ${nextCommand.nodeLabel}`)
               } else {
-                console.error(`❌ Notification failed for: ${nextCommand.nodeLabel}`, result.error)
+                logger.error(`Notification failed for: ${nextCommand.nodeLabel}`, result.error)
               }
             } catch (notificationError) {
-              console.error(`❌ Notification error for: ${nextCommand.nodeLabel}`, notificationError)
+              logger.error(`Notification error for: ${nextCommand.nodeLabel}`, notificationError)
             }
 
             // Update job to move to next command after notification
@@ -194,10 +201,10 @@ class AgentManager {
           
           if (!nextAgent) {
             const errorMsg = nextRequiresSpecificAgent
-              ? `🚨 CRITICAL: Required agent "${nextCommand.requiredAgentId}" not available for command: ${nextCommand.nodeLabel}. Sequential execution STOPPED to prevent running on wrong environment.`
+              ? `CRITICAL: Required agent "${nextCommand.requiredAgentId}" not available for command: ${nextCommand.nodeLabel}. Sequential execution STOPPED to prevent running on wrong environment.`
               : 'No agents available for next command'
-            
-            console.error(`❌ ${errorMsg}`)
+
+            logger.error(errorMsg)
             await jobManager.updateJob(jobId, {
               status: 'failed',
               error: errorMsg,
@@ -213,18 +220,18 @@ class AgentManager {
                   message: errorMsg,
                   nodesExecuted: currentIndex + 1
                 })
-                console.log(`📊 BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed (no agent available)`)
+                logger.info(`BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed (no agent available)`)
               } catch (buildError) {
-                console.warn('Failed to update build record on agent unavailable:', buildError)
+                logger.warn('Failed to update build record on agent unavailable:', buildError)
               }
             }
             return
           }
           
           if (nextRequiresSpecificAgent) {
-            console.log(`🔒 ENFORCING agent selection: ${nextAgent.agentId} for command: ${nextCommand.nodeLabel}`)
+            logger.info(`ENFORCING agent selection: ${nextAgent.agentId} for command: ${nextCommand.nodeLabel}`)
           } else {
-            console.log(`🎯 Selected agent ${nextAgent.agentId} for next command: ${nextCommand.nodeLabel} (user chose "any available")`)
+            logger.info(`Selected agent ${nextAgent.agentId} for next command: ${nextCommand.nodeLabel} (user chose "any available")`)
           }
           
           // Update job with next command index and agent
@@ -253,7 +260,7 @@ class AgentManager {
           })
           
           if (!dispatchSuccess) {
-            console.error(`❌ Failed to dispatch next command for job ${jobId}`)
+            logger.error(`Failed to dispatch next command for job ${jobId}`)
             await jobManager.updateJob(jobId, {
               status: 'failed',
               error: 'Failed to dispatch next command in sequence',
@@ -269,9 +276,9 @@ class AgentManager {
                   message: 'Failed to dispatch next command in sequence',
                   nodesExecuted: nextIndex
                 })
-                console.log(`📊 BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed (dispatch failed)`)
+                logger.info(`BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed (dispatch failed)`)
               } catch (buildError) {
-                console.warn('Failed to update build record on dispatch failure:', buildError)
+                logger.warn('Failed to update build record on dispatch failure:', buildError)
               }
             }
           }
@@ -281,7 +288,7 @@ class AgentManager {
       }
       
       // No more commands or not a sequential job - mark as completed
-      console.log(`🎉 All commands completed for job ${jobId}`)
+      logger.info(`All commands completed for job ${jobId}`)
       await jobManager.updateJob(jobId, {
         status: 'completed',
         exitCode: exitCode || 0,
@@ -324,14 +331,14 @@ class AgentManager {
             message: `Job completed successfully (exit code: ${exitCode || 0})`,
             nodesExecuted: job.executionCommands ? job.executionCommands.length : 1
           })
-          console.log(`📊 BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as successful`)
+          logger.info(`BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as successful`)
         } catch (buildError) {
-          console.warn('Failed to update build record on job completion:', buildError)
+          logger.warn('Failed to update build record on job completion:', buildError)
         }
       } else if (hasNextNodes) {
-        console.log(`🔄 Build #${job.buildNumber} continues - next nodes triggered, not finishing build yet`)
+        logger.info(`Build #${job.buildNumber} continues - next nodes triggered, not finishing build yet`)
       } else if (job.triggeredByFailure) {
-        console.log(`✅ Failure handler node completed successfully - build remains in failed state`)
+        logger.info(`Failure handler node completed successfully - build remains in failed state`)
       }
     }
   }
@@ -351,7 +358,7 @@ class AgentManager {
         const currentCommand = job.executionCommands[currentIndex]
         
         errorMessage = `Command ${currentIndex + 1}/${totalCommands} failed (${currentCommand.nodeLabel}): ${error}`
-        console.log(`❌ Sequential execution failed at command ${currentIndex + 1}/${totalCommands}: ${currentCommand.nodeLabel}`)
+        logger.error(`Sequential execution failed at command ${currentIndex + 1}/${totalCommands}: ${currentCommand.nodeLabel}`)
       }
       
       // Only mark job as permanently failed if this is NOT a retry attempt
@@ -384,7 +391,7 @@ class AgentManager {
             }
           }
 
-          console.log(`🔄 Triggering failure handlers for final failure`)
+          logger.info(`Triggering failure handlers for final failure`)
           await this.triggerNextNodes(job, {
             success: false,
             exitCode: exitCode || 1,
@@ -407,9 +414,9 @@ class AgentManager {
               message: errorMessage,
               nodesExecuted: job.executionCommands ? (job.currentCommandIndex || 0) + 1 : 0
             })
-            console.log(`📊 BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed`)
+            logger.info(`BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed`)
           } catch (buildError) {
-            console.warn('Failed to update build record on job error:', buildError)
+            logger.warn('Failed to update build record on job error:', buildError)
           }
         }
 
@@ -427,7 +434,7 @@ class AgentManager {
           })
         }
       } else {
-        console.log(`🔄 Job ${jobId} failed but will retry - failure handlers already triggered by handleJobFailure`)
+        logger.info(`Job ${jobId} failed but will retry - failure handlers already triggered by handleJobFailure`)
       }
     }
   }
@@ -435,25 +442,25 @@ class AgentManager {
   // Dispatch job to specific agent
   async dispatchJobToAgent(agentId, jobData) {
     const socket = this.connectedAgents.get(agentId)
-    
+
     if (!socket || !socket.connected) {
-      console.error(`Agent ${agentId} is not connected`)
+      logger.error(`Agent ${agentId} is not connected`)
       return false
     }
 
     try {
-      console.log(`🚀 Dispatching job to agent ${agentId}:\nJob ID: ${jobData.jobId}\nProject ID: ${jobData.projectId}\nCommand(s): ${jobData.commands}`)
-      
+      logger.info(`Dispatching job to agent ${agentId}:\nJob ID: ${jobData.jobId}\nProject ID: ${jobData.projectId}\nCommand(s): ${jobData.commands}`)
+
       // Send job to agent using Socket.IO
       socket.emit('message', {
         type: 'execute_job',
         ...jobData
       })
 
-      console.log(`Job ${jobData.jobId} dispatched to agent ${agentId}`)
+      logger.info(`Job ${jobData.jobId} dispatched to agent ${agentId}`)
       return true
     } catch (error) {
-      console.error(`Failed to dispatch job to agent ${agentId}:`, error)
+      logger.error(`Failed to dispatch job to agent ${agentId}:`, error)
       return false
     }
   }
@@ -471,7 +478,7 @@ class AgentManager {
       jobId: jobId
     })
 
-    console.log(`Job ${jobId} cancellation sent to agent ${agentId}`)
+    logger.info(`Job ${jobId} cancellation sent to agent ${agentId}`)
     return true
   }
 
@@ -480,71 +487,67 @@ class AgentManager {
     try {
       return this.cancelJobOnAgent(agentId, jobData.jobId)
     } catch (error) {
-      console.error(`Failed to cancel job ${jobData.jobId} on agent ${agentId}:`, error)
+      logger.error(`Failed to cancel job ${jobData.jobId} on agent ${agentId}:`, error)
       return false
     }
   }
 
   // Find available agent for job execution
   async findAvailableAgent(requirements = {}) {
-    console.log(`🔍 findAvailableAgent: Checking ${this.connectedAgents.size} connected agents`)
-    console.log(`🔍 findAvailableAgent: Agent data has ${this.agentData.size} entries`)
-    console.log(`🔍 Requirements:`, requirements)
-    
     // If a specific agent is requested, ONLY return that agent - no fallbacks!
     if (requirements.agentId) {
       // Handle "local" as a special case - find the local agent
       if (requirements.agentId === 'local') {
-        console.log(`🔍 Looking for local agent...`)
-        
+        logger.info(`Looking for local agent...`)
+
         // Find the local agent by name
         for (const [agentId, agentInfo] of this.agentData) {
           if (agentInfo.name === 'Local Agent' && agentInfo.status === 'online') {
             const socket = this.connectedAgents.get(agentId)
             if (socket && socket.connected) {
-              console.log(`✅ Found local agent: ${agentId}`)
+              logger.info(`Found local agent: ${agentId}`)
               return agentInfo
             }
           }
         }
-        
-        console.log(`❌ Local agent not available - BLOCKING execution`)
+
+        logger.error(`Local agent not available - BLOCKING execution`)
         return null
       }
       
       const socket = this.connectedAgents.get(requirements.agentId)
       const agentInfo = this.agentData.get(requirements.agentId)
-      
+
       if (socket && socket.connected && agentInfo && agentInfo.status === 'online') {
-        console.log(`✅ Found requested agent: ${requirements.agentId}`)
+        logger.info(`Found requested agent: ${requirements.agentId}`)
         return agentInfo
       } else {
-        console.log(`❌ REQUIRED agent ${requirements.agentId} not available - BLOCKING execution`)
+        logger.error(`REQUIRED agent ${requirements.agentId} not available - BLOCKING execution`)
         return null // NEVER fallback when specific agent is required
       }
     }
-    
+
     // Only when NO specific agent is requested, find any available agent
-    console.log(`🔍 No specific agent required - finding any available agent`)
+    logger.info(`No specific agent required - finding any available agent`)
     for (const [agentId, socket] of this.connectedAgents) {
-      console.log(`🔍 Checking agent ${agentId}: connected=${socket?.connected}`)
+      logger.debug(`Checking agent ${agentId}: connected=${socket?.connected}`)
       
       
       if (socket && socket.connected) { // Socket.IO connected state
         // Get agent data and return it
         const agentInfo = this.agentData.get(agentId)
         if (agentInfo && ['online', 'idle', 'ready', 'busy'].includes(agentInfo.status)) {
-          console.log(`✅ Found available agent: ${agentId} (status: ${agentInfo.status})`)
+          logger.info(`Found available agent: ${agentId} (status: ${agentInfo.status})`)
           return agentInfo
         } else {
-          console.log(`❌ Agent ${agentId} not available - status: ${agentInfo?.status || 'no data'}`)
+          logger.debug(`Agent ${agentId} not available - status: ${agentInfo?.status || 'no data'}`)
         }
       } else {
-        console.log(`❌ Agent ${agentId} not connected`)
+        logger.debug(`Agent ${agentId} not connected`)
       }
     }
-    
-    console.log(`❌ No available agents found`)
+
+    logger.error(`No available agents found`)
     return null
   }
 
@@ -569,7 +572,7 @@ class AgentManager {
   // Returns true if nodes were triggered, false otherwise
   async triggerNextNodes(job, executionResult) {
     if (!job.nodes || !job.edges) {
-      console.log(`⚠️ No graph data available for job ${job.jobId} to trigger next nodes`)
+      logger.warn(`No graph data available for job ${job.jobId} to trigger next nodes`)
       return false
     }
 
@@ -595,26 +598,26 @@ class AgentManager {
       }
 
       if (!currentNode) {
-        console.log(`⚠️ Could not find current execution node for job ${job.jobId}`)
+        logger.warn(`Could not find current execution node for job ${job.jobId}`)
         return false
       }
 
-      console.log(`🔍 Finding next nodes from: ${currentNode.data.label} (${currentNode.data.nodeType})`)
+      logger.info(`Finding next nodes from: ${currentNode.data.label} (${currentNode.data.nodeType})`)
 
       // Get next nodes based on execution result
       const nextNodes = getExecutionConnectedNodes(currentNode.id, nodes, edges, new Map(), executionResult)
 
       if (nextNodes.length === 0) {
-        console.log(`🏁 No next nodes to execute for job ${job.jobId}`)
+        logger.info(`No next nodes to execute for job ${job.jobId}`)
         return false
       }
 
-      console.log(`🔄 Triggering ${nextNodes.length} next nodes for job ${job.jobId}`)
+      logger.info(`Triggering ${nextNodes.length} next nodes for job ${job.jobId}`)
 
       // Execute next nodes by creating new jobs or sending notifications directly
       for (const nextNode of nextNodes) {
-        console.log(`🚀 Executing next node: ${nextNode.data.label}`)
-        
+        logger.info(`Executing next node: ${nextNode.data.label}`)
+
         try {
           // Create parameter values map including execution outputs
           const parameterValues = new Map()
@@ -627,9 +630,9 @@ class AgentManager {
               edge.target === nextNode.id && 
               edge.sourceHandle === 'output'
             )
-            
+
             if (outputConnection && outputConnection.targetHandle) {
-              console.log(`📤 Passing execution output "${executionResult.output}" to node: ${nextNode.data.label}`)
+              logger.info(`Passing execution output "${executionResult.output}" to node: ${nextNode.data.label}`)
 
               // Find the actual socket label from the target node's input sockets
               const targetSocket = nextNode.data.inputSockets?.find(s => s.id === outputConnection.targetHandle)
@@ -670,12 +673,12 @@ class AgentManager {
           })
           
           if (response.success) {
-            console.log(`✅ Successfully triggered next node ${nextNode.data.label} on agent ${response.agentName}`)
+            logger.info(`Successfully triggered next node ${nextNode.data.label} on agent ${response.agentName}`)
           } else {
-            console.error(`❌ Failed to trigger next node ${nextNode.data.label}`)
+            logger.error(`Failed to trigger next node ${nextNode.data.label}`)
           }
         } catch (error) {
-          console.error(`❌ Error executing next node ${nextNode.data.label}:`, error)
+          logger.error(`Error executing next node ${nextNode.data.label}:`, error)
         }
       }
 
@@ -683,20 +686,20 @@ class AgentManager {
       return true
 
     } catch (error) {
-      console.error(`❌ Error triggering next nodes for job ${job?.jobId || 'undefined'}:`, error)
+      logger.error(`Error triggering next nodes for job ${job?.jobId || 'undefined'}:`, error)
       return false
     }
   }
 
   // Execute parallel branches orchestrator
   async executeParallelBranches(parentJobId, orchestratorCommand, parentJob) {
-    console.log(`🔀 Executing parallel branches orchestrator for job ${parentJobId}`)
+    logger.info(`Executing parallel branches orchestrator for job ${parentJobId}`)
 
     try {
       // Execute the orchestrator
       const result = await executeParallelBranches(orchestratorCommand, parentJob)
 
-      console.log(`${result.success ? '✅' : '⚠️'} Parallel branches orchestrator completed: ${result.message}`)
+      logger.info(`Parallel branches orchestrator completed: ${result.message}`)
 
       // Update parent job with aggregated results
       await jobManager.updateJob(parentJobId, {
@@ -705,7 +708,7 @@ class AgentManager {
 
       // Handle failure if necessary
       if (!result.success && orchestratorCommand.failFast) {
-        console.error(`❌ Parallel branches failed with fail-fast enabled - marking parent job as failed`)
+        logger.error(`Parallel branches failed with fail-fast enabled - marking parent job as failed`)
         await jobManager.updateJob(parentJobId, {
           status: 'failed',
           error: result.message,
@@ -722,7 +725,7 @@ class AgentManager {
               nodesExecuted: parentJob.currentCommandIndex + 1
             })
           } catch (buildError) {
-            console.warn('Failed to update build record:', buildError)
+            logger.warn('Failed to update build record:', buildError)
           }
         }
         return
@@ -732,7 +735,7 @@ class AgentManager {
       await this.continueSequentialExecution(parentJobId)
 
     } catch (error) {
-      console.error(`❌ Error in parallel branches orchestrator:`, error)
+      logger.error(`Error in parallel branches orchestrator:`, error)
       await jobManager.updateJob(parentJobId, {
         status: 'failed',
         error: `Parallel branches orchestrator error: ${error.message}`,
@@ -749,7 +752,7 @@ class AgentManager {
             nodesExecuted: parentJob.currentCommandIndex + 1
           })
         } catch (buildError) {
-          console.warn('Failed to update build record:', buildError)
+          logger.warn('Failed to update build record:', buildError)
         }
       }
     }
@@ -757,13 +760,13 @@ class AgentManager {
 
   // Execute parallel matrix orchestrator
   async executeParallelMatrix(parentJobId, orchestratorCommand, parentJob) {
-    console.log(`🔀 Executing parallel matrix orchestrator for job ${parentJobId}`)
+    logger.info(`Executing parallel matrix orchestrator for job ${parentJobId}`)
 
     try {
       // Execute the orchestrator
       const result = await executeParallelMatrix(orchestratorCommand, parentJob)
 
-      console.log(`${result.success ? '✅' : '⚠️'} Parallel matrix orchestrator completed: ${result.message}`)
+      logger.info(`Parallel matrix orchestrator completed: ${result.message}`)
 
       // Update parent job with aggregated results
       await jobManager.updateJob(parentJobId, {
@@ -772,7 +775,7 @@ class AgentManager {
 
       // Handle failure if necessary
       if (!result.success && orchestratorCommand.failFast) {
-        console.error(`❌ Parallel matrix failed with fail-fast enabled - marking parent job as failed`)
+        logger.error(`Parallel matrix failed with fail-fast enabled - marking parent job as failed`)
         await jobManager.updateJob(parentJobId, {
           status: 'failed',
           error: result.message,
@@ -789,7 +792,7 @@ class AgentManager {
               nodesExecuted: parentJob.currentCommandIndex + 1
             })
           } catch (buildError) {
-            console.warn('Failed to update build record:', buildError)
+            logger.warn('Failed to update build record:', buildError)
           }
         }
         return
@@ -799,7 +802,7 @@ class AgentManager {
       await this.continueSequentialExecution(parentJobId)
 
     } catch (error) {
-      console.error(`❌ Error in parallel matrix orchestrator:`, error)
+      logger.error(`Error in parallel matrix orchestrator:`, error)
       await jobManager.updateJob(parentJobId, {
         status: 'failed',
         error: `Parallel matrix orchestrator error: ${error.message}`,
@@ -816,7 +819,7 @@ class AgentManager {
             nodesExecuted: parentJob.currentCommandIndex + 1
           })
         } catch (buildError) {
-          console.warn('Failed to update build record:', buildError)
+          logger.warn('Failed to update build record:', buildError)
         }
       }
     }
@@ -860,7 +863,7 @@ class AgentManager {
   notifyJobCompletion(jobId, result) {
     const callback = this.jobCompletionCallbacks.get(jobId)
     if (callback) {
-      console.log(`🔔 Notifying job completion for ${jobId}:`, result.success ? 'SUCCESS' : 'FAILED')
+      logger.info(`Notifying job completion for ${jobId}:`, result.success ? 'SUCCESS' : 'FAILED')
       callback(result)
       this.jobCompletionCallbacks.delete(jobId)
     }
@@ -871,7 +874,7 @@ class AgentManager {
     const parentJobUpdated = await jobManager.getJob(parentJobId)
     const nextIndex = parentJobUpdated.currentCommandIndex + 1
 
-    console.log(`🔄 Continuing sequential execution: command ${nextIndex + 1}/${parentJobUpdated.executionCommands.length}`)
+    logger.info(`Continuing sequential execution: command ${nextIndex + 1}/${parentJobUpdated.executionCommands.length}`)
 
     if (nextIndex < parentJobUpdated.executionCommands.length) {
       // Update command index
@@ -883,13 +886,13 @@ class AgentManager {
 
       // Check if the next command is also an orchestrator
       if (nextCommand.type === 'parallel_branches_orchestrator') {
-        console.log(`🔀 Next command is parallel branches orchestrator`)
+        logger.info(`Next command is parallel branches orchestrator`)
         await this.executeParallelBranches(parentJobId, nextCommand, parentJobUpdated)
         return
       }
 
       if (nextCommand.type === 'parallel_matrix_orchestrator') {
-        console.log(`🔀 Next command is parallel matrix orchestrator`)
+        logger.info(`Next command is parallel matrix orchestrator`)
         await this.executeParallelMatrix(parentJobId, nextCommand, parentJobUpdated)
         return
       }
@@ -901,10 +904,10 @@ class AgentManager {
 
       if (!nextAgent) {
         const errorMsg = nextRequiresSpecificAgent
-          ? `🚨 CRITICAL: Required agent "${nextCommand.requiredAgentId}" not available for command: ${nextCommand.nodeLabel}`
+          ? `CRITICAL: Required agent "${nextCommand.requiredAgentId}" not available for command: ${nextCommand.nodeLabel}`
           : 'No agents available for next command'
 
-        console.error(`❌ ${errorMsg}`)
+        logger.error(errorMsg)
         await jobManager.updateJob(parentJobId, {
           status: 'failed',
           error: errorMsg,
@@ -936,7 +939,7 @@ class AgentManager {
       })
 
       if (!dispatchSuccess) {
-        console.error(`❌ Failed to dispatch next command for job ${parentJobId}`)
+        logger.error(`Failed to dispatch next command for job ${parentJobId}`)
         await jobManager.updateJob(parentJobId, {
           status: 'failed',
           error: 'Failed to dispatch next command in sequence',
@@ -945,7 +948,7 @@ class AgentManager {
       }
     } else {
       // No more commands - mark parent job as complete and trigger next nodes
-      console.log(`🎉 All commands (including parallel orchestration) completed for job ${parentJobId}`)
+      logger.info(`All commands (including parallel orchestration) completed for job ${parentJobId}`)
       await jobManager.updateJob(parentJobId, {
         status: 'completed',
         completedAt: new Date().toISOString()
@@ -963,9 +966,9 @@ class AgentManager {
             message: 'Job completed successfully with parallel execution',
             nodesExecuted: parentJobUpdated.executionCommands.length
           })
-          console.log(`📊 BUILD STATS: Build #${parentJobUpdated.buildNumber} for project "${parentJobUpdated.projectName}" marked as successful`)
+          logger.info(`BUILD STATS: Build #${parentJobUpdated.buildNumber} for project "${parentJobUpdated.projectName}" marked as successful`)
         } catch (buildError) {
-          console.warn('Failed to update build record on job completion:', buildError)
+          logger.warn('Failed to update build record on job completion:', buildError)
         }
       }
     }

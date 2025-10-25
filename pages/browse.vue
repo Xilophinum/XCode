@@ -699,7 +699,7 @@ const getBuildStats = async (projectId) => {
     if (error.statusCode === 404 || error.statusCode === 500) {
       return null
     }
-    console.warn(`Failed to fetch build stats for project ${projectId}:`, error)
+    logger.warn(`Failed to fetch build stats for project ${projectId}:`, error)
     return null
   }
 }
@@ -1014,7 +1014,7 @@ const handleMoveItem = async () => {
   if (result.success) {
     cancelMove()
   } else {
-    console.error('Failed to move item:', result.error)
+    logger.error('Failed to move item:', result.error)
     alert('Failed to move item. Please try again.')
   }
 }
@@ -1047,7 +1047,7 @@ const handleRenameItem = async () => {
   if (result.success) {
     cancelRename()
   } else {
-    console.error('Failed to rename item:', result.error)
+    logger.error('Failed to rename item:', result.error)
     alert('Failed to rename item. Please try again.')
   }
 }
@@ -1081,7 +1081,7 @@ const loadGroups = async () => {
       groups.value = []
     }
   } catch (error) {
-    console.error('Failed to load groups:', error)
+    logger.error('Failed to load groups:', error)
     groups.value = []
   }
 }
@@ -1104,7 +1104,7 @@ const handleAccessUpdate = async () => {
     
     cancelAccessSettings()
   } catch (error) {
-    console.error('Failed to update access settings:', error)
+    logger.error('Failed to update access settings:', error)
     alert('Failed to update access settings. Please try again.')
   }
 }
@@ -1149,9 +1149,9 @@ const toggleProjectStatus = async (project) => {
   const result = await projectsStore.toggleProjectStatus(project.id)
   
   if (result.success) {
-    console.log(`✅ Project ${result.status}: ${project.name}`)
+    logger.info(`Project ${result.status}: ${project.name}`)
   } else {
-    console.error('Failed to toggle project status:', result.error)
+    logger.error('Failed to toggle project status:', result.error)
     alert('Failed to change project status. Please try again.')
   }
 }
@@ -1165,7 +1165,7 @@ const handleDeleteProject = async () => {
     showDeleteProjectModal.value = false
     projectToDelete.value = null
   } else {
-    console.error('Failed to delete project:', result.error)
+    logger.error('Failed to delete project:', result.error)
     alert('Failed to delete project. Please try again.')
   }
 }
@@ -1197,7 +1197,7 @@ const handleCreateFolder = async () => {
     folderForm.value = { name: '', description: '' }
     showCreateFolderModal.value = false
   } else {
-    console.error('Failed to create folder:', result.error)
+    logger.error('Failed to create folder:', result.error)
   }
 }
 
@@ -1216,7 +1216,7 @@ const handleCreateProject = async () => {
     // Navigate to the new project
     openProject(result.project)
   } else {
-    console.error('Failed to create project:', result.error)
+    logger.error('Failed to create project:', result.error)
   }
 }
 
@@ -1254,7 +1254,7 @@ const loadAgents = async () => {
     const data = await $fetch('/api/admin/agents')
     agents.value = data
   } catch (error) {
-    console.error('Error loading agents:', error)
+    logger.error('Error loading agents:', error)
     agents.value = []
   }
 }
@@ -1279,9 +1279,9 @@ const handleAgentStatusUpdate = (event) => {
     if (version) agent.version = version
     
     agents.value[agentIndex] = { ...agent } // Trigger reactivity
-    console.log(`🔄 Updated agent ${agentId} status: ${status}`)
+    logger.info(`🔄 Updated agent ${agentId} status: ${status}`)
   } else {
-    console.log(`⚠️ Agent ${agentId} not found in local array - refreshing agent list`)
+    logger.info(`Agent ${agentId} not found in local array - refreshing agent list`)
     loadAgents() // Reload if agent not found (new agent connected)
   }
 }
@@ -1316,7 +1316,7 @@ const setupProjectSubscriptions = async () => {
       }
     }
   } catch (error) {
-    console.error('Failed to setup project subscriptions:', error)
+    logger.error('Failed to setup project subscriptions:', error)
   }
 }
 
@@ -1349,7 +1349,7 @@ onMounted(async () => {
       }
     }
   } catch (error) {
-    console.error('Failed to initialize page:', error)
+    logger.error('Failed to initialize page:', error)
   }
 })
 

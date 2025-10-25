@@ -8,6 +8,7 @@
 import { getDB, builds } from './database.js'
 import { v4 as uuidv4 } from 'uuid'
 import { eq, and } from 'drizzle-orm'
+import logger from './logger.js'
 
 class JobManager {
   constructor() {
@@ -16,8 +17,8 @@ class JobManager {
     this.jobsByProject = new Map() // projectId -> Set of jobIds
     this.outputSequence = new Map() // jobId -> next sequence number
     this.db = null
-    
-    console.log('📋 Job Manager initialized with database persistence')
+
+    logger.info('Job Manager initialized with database persistence')
   }
 
   async initialize() {
@@ -25,13 +26,13 @@ class JobManager {
     
     // Load active jobs from database on startup
     await this.loadActiveJobsFromDatabase()
-    
-    console.log(`📋 Loaded ${this.jobs.size} active jobs from database`)
+
+    logger.info(`Loaded ${this.jobs.size} active jobs from database`)
   }
 
   async loadActiveJobsFromDatabase() {
     // Jobs table was migrated to builds table - no active jobs to load on startup
-    console.log('📋 Jobs are now stored in builds table - starting with empty job cache')
+    logger.info('Jobs are now stored in builds table - starting with empty job cache')
   }
 
   /**
@@ -82,8 +83,8 @@ class JobManager {
     
     // Initialize output sequence
     this.outputSequence.set(jobId, 0)
-    
-    console.log(`📋 Created job ${jobId} for project "${jobData.projectName || projectId}" (persisted to database)`)
+
+    logger.info(`Created job ${jobId} for project "${jobData.projectName || projectId}" (persisted to database)`)
 
     // Broadcast job creation to subscribed clients
     if (globalThis.broadcastToProject) {
@@ -151,8 +152,8 @@ class JobManager {
 
     // Jobs are now stored in builds table - skip database update for jobs
 
-    console.log(`📋 Updated job ${jobId}:`, Object.keys(updates), '(persisted to database)')
-    
+    logger.info(`Updated job ${jobId}:`, Object.keys(updates), '(persisted to database)')
+
     // Broadcast job status updates to subscribed clients
     if (globalThis.broadcastToProject && job.projectId) {
       globalThis.broadcastToProject(job.projectId, {
@@ -192,7 +193,7 @@ class JobManager {
 
     // Remove job
     this.jobs.delete(jobId)
-    console.log(`📋 Deleted job ${jobId}`)
+    logger.info(`Deleted job ${jobId}`)
     return true
   }
 
@@ -202,7 +203,7 @@ class JobManager {
   async addJobOutput(jobId, outputLine) {
     const job = this.jobs.get(jobId)
     if (!job) {
-      console.warn(`⚠️ Attempted to add output to non-existent job ${jobId}`)
+      logger.warn(`Attempted to add output to non-existent job ${jobId}`)
       return false
     }
 
@@ -272,7 +273,7 @@ class JobManager {
       }
 
     } catch (dbError) {
-      console.warn(`Failed to persist job output to database:`, dbError.message)
+      logger.warn(`Failed to persist job output to database:`, dbError.message)
     }
 
     // Add to memory cache (keep only last 100 lines for performance) - use masked version
@@ -364,7 +365,7 @@ class JobManager {
   async handleAgentJobUpdate(jobId, statusData) {
     const job = this.jobs.get(jobId)
     if (!job) {
-      console.warn(`⚠️ Received status update for unknown job ${jobId}`)
+      logger.warn(`Received status update for unknown job ${jobId}`)
       return false
     }
 
@@ -404,7 +405,7 @@ class JobManager {
       })
     }
 
-    console.log(`📋 Job ${jobId} status updated: ${status}`)
+    logger.info(`Job ${jobId} status updated: ${status}`)
     return true
   }
 
@@ -414,7 +415,7 @@ class JobManager {
   async handleAgentJobOutput(jobId, outputData) {
     const job = this.jobs.get(jobId)
     if (!job) {
-      console.warn(`⚠️ Received output for unknown job ${jobId}`)
+      logger.warn(`Received output for unknown job ${jobId}`)
       return false
     }
 
@@ -458,7 +459,7 @@ class JobManager {
     }
 
     if (jobsToDelete.length > 0) {
-      console.log(`📋 Cleaned up ${jobsToDelete.length} old jobs from memory`)
+      logger.info(`Cleaned up ${jobsToDelete.length} old jobs from memory`)
     }
     return jobsToDelete.length
   }
@@ -547,7 +548,7 @@ if (typeof setInterval !== 'undefined') {
       const manager = await getJobManager()
       await manager.cleanupOldJobs()
     } catch (error) {
-      console.error('Error during job cleanup:', error)
+      logger.error('Error during job cleanup:', error)
     }
   }, 60 * 60 * 1000) // 1 hour
 }

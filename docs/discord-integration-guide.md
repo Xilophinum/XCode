@@ -257,19 +257,20 @@ Use these variables in your Discord webhook bodies:
 
 ---
 
-## Environment Variables (Recommended)
+## Environment Variables (Optional)
 
-To avoid hardcoding webhook URLs in your workflows, use environment variables:
+For convenience, you can set a default Discord webhook URL using an environment variable:
 
-Create a `.env` file:
+Add to your `.env` file:
 ```env
-# Discord Webhooks
+# Discord Webhook (optional - provides a default webhook URL)
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123456789/abcdefghijklmnopqrstuvwxyz
-DISCORD_WEBHOOK_BUILDS=https://discord.com/api/webhooks/111111111/aaaaaaaaaaaaaa
-DISCORD_WEBHOOK_ALERTS=https://discord.com/api/webhooks/222222222/bbbbbbbbbbbbbb
 ```
 
-**Note:** While you can enter webhook URLs directly in notification nodes, using environment variables is more secure and easier to rotate if a webhook is compromised.
+**Usage:**
+- If set, this ENV variable can be referenced in notification nodes for convenience
+- You can still specify different webhook URLs directly in each notification node for different channels/scenarios
+- Using ENV variables is more secure and easier to rotate if a webhook is compromised
 
 **Restart XCode** after adding environment variables.
 

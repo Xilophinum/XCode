@@ -26,7 +26,7 @@ export const useAuthStore = defineStore('auth', {
         
         return { success: true }
       } catch (error) {
-        console.error('Login error:', error)
+        logger.error('Login error:', error)
         return { success: false, error: error instanceof Error ? error.message : 'Login failed' }
       } finally {
         this.isLoading = false
@@ -40,7 +40,7 @@ export const useAuthStore = defineStore('auth', {
           method: 'POST'
         })
       } catch (error) {
-        console.error('Logout API error:', error)
+        logger.error('Logout API error:', error)
       } finally {
         // Clear client-side state regardless of API result
         this.user = null
@@ -82,7 +82,7 @@ export const useAuthStore = defineStore('auth', {
         
         return { success: true }
       } catch (error) {
-        console.error('Registration error:', error)
+        logger.error('Registration error:', error)
         return { success: false, error: error instanceof Error ? error.message : 'Registration failed' }
       } finally {
         this.isLoading = false

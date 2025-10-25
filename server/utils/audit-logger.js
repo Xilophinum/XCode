@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid'
 import { eq, and, desc } from 'drizzle-orm'
-
+import logger from './logger.js'
 /**
  * Audit Logger Utility
  * Tracks all changes to folders and projects with full history
@@ -60,7 +60,7 @@ export class AuditLogger {
       await this.db.insert(this.auditLogs).values(auditLog)
       return auditLog
     } catch (error) {
-      console.error('❌ Error logging audit event:', error)
+      logger.error('Error logging audit event:', error)
       throw error
     }
   }
@@ -121,7 +121,7 @@ export class AuditLogger {
       await this.db.insert(this.projectSnapshots).values(snapshot)
       return snapshot
     } catch (error) {
-      console.error('❌ Error creating snapshot:', error)
+      logger.error('Error creating snapshot:', error)
       throw error
     }
   }
@@ -146,7 +146,7 @@ export class AuditLogger {
         newData: log.newData ? JSON.parse(log.newData) : null
       }))
     } catch (error) {
-      console.error('❌ Error fetching entity logs:', error)
+      logger.error('Error fetching entity logs:', error)
       throw error
     }
   }
@@ -170,7 +170,7 @@ export class AuditLogger {
         diagramData: JSON.parse(snapshot.diagramData)
       }))
     } catch (error) {
-      console.error('❌ Error fetching project snapshots:', error)
+      logger.error('Error fetching project snapshots:', error)
       throw error
     }
   }
@@ -202,7 +202,7 @@ export class AuditLogger {
         diagramData: JSON.parse(snapshots[0].diagramData)
       }
     } catch (error) {
-      console.error('❌ Error fetching snapshot:', error)
+      logger.error('Error fetching snapshot:', error)
       throw error
     }
   }
@@ -227,7 +227,7 @@ export class AuditLogger {
         newData: log.newData ? JSON.parse(log.newData) : null
       }))
     } catch (error) {
-      console.error('❌ Error fetching user logs:', error)
+      logger.error('Error fetching user logs:', error)
       throw error
     }
   }
@@ -255,7 +255,7 @@ export class AuditLogger {
         newData: log.newData ? JSON.parse(log.newData) : null
       }))
     } catch (error) {
-      console.error('❌ Error fetching recent logs:', error)
+      logger.error('Error fetching recent logs:', error)
       throw error
     }
   }
@@ -272,10 +272,10 @@ export class AuditLogger {
 
       // Note: This would need to use raw SQL for proper date comparison in SQLite
       // For now, this is a placeholder
-      console.log(`🧹 Would clean up audit logs older than ${cutoffISO}`)
+      logger.info(`🧹 Would clean up audit logs older than ${cutoffISO}`)
       // await this.db.delete(this.auditLogs).where(lt(this.auditLogs.createdAt, cutoffISO))
     } catch (error) {
-      console.error('❌ Error cleaning up old logs:', error)
+      logger.error('Error cleaning up old logs:', error)
       throw error
     }
   }

@@ -2,6 +2,7 @@ import { getDataService } from '~/server/utils/dataService.js'
 import { authenticateWithLDAP } from '~/server/utils/ldapAuth.js'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -116,7 +117,7 @@ export default defineEventHandler(async (event) => {
         sessionTimeoutHours = parseInt(sessionSetting.value)
       }
     } catch (error) {
-      console.warn('Failed to get session timeout setting, using default 24h:', error)
+      logger.warn('Failed to get session timeout setting, using default 24h:', error)
     }
 
     // Create JWT token
@@ -137,7 +138,7 @@ export default defineEventHandler(async (event) => {
 
     return { id: user.id, name: user.name, email: user.email, role: userRole }
   } catch (error) {
-    console.error('Login error:', error)
+    logger.error('Login error:', error)
     if (error.statusCode) {
       throw error
     }

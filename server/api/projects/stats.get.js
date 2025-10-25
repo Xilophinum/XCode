@@ -1,4 +1,5 @@
 import { getBuildStatsManager } from "~/server/utils/buildStatsManager"
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -10,7 +11,7 @@ export default defineEventHandler(async (event) => {
     const stats = await buildStatsManager.getAllBuildStats()
     return stats
   } catch (error) {
-    console.error('Error in /api/projects/stats:', error)
+    logger.error('Error in /api/projects/stats:', error)
     throw createError({
       statusCode: error.statusCode || 500,
       statusMessage: error.statusMessage || 'Failed to fetch project stats: ' + error.message

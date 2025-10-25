@@ -1,5 +1,5 @@
 import { getBuildStatsManager } from '../../../../server/utils/buildStatsManager.js'
-
+import logger from '~/server/utils/logger.js'
 /**
  * GET /api/projects/[projectId]/retention
  * Get project retention settings
@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (error) {
-    console.error('Error getting project retention settings:', error)
+    logger.error('Error getting project retention settings:', error)
     throw createError({
       statusCode: 500,
       statusMessage: 'Failed to get retention settings'

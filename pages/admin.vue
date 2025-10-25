@@ -384,7 +384,7 @@
                   <div class="font-medium text-sm text-gray-950 dark:text-white">{{ variable.key }}</div>
                   <div class="text-xs text-gray-500 dark:text-gray-400">{{ variable.description || 'No description' }}</div>
                   <div class="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                    {{ variable.isSecret === 'true' ? '🔒 Secret' : '📝 Public' }}
+                    {{ variable.isSecret === 'true' ? '🔒 Secret' : 'Public' }}
                   </div>
                 </div>
                 <div class="flex space-x-2">
@@ -1552,7 +1552,7 @@ const loadEnvVariables = async () => {
     const data = await $fetch('/api/admin/env-variables')
     envVariables.value = data
   } catch (error) {
-    console.error('Failed to load environment variables:', error)
+    logger.error('Failed to load environment variables:', error)
   }
 }
 
@@ -1561,7 +1561,7 @@ const loadCredentials = async () => {
     const data = await $fetch('/api/admin/credentials')
     storedCredentials.value = data
   } catch (error) {
-    console.error('Failed to load credentials:', error)
+    logger.error('Failed to load credentials:', error)
   }
 }
 
@@ -1570,7 +1570,7 @@ const loadUsers = async () => {
     const data = await $fetch('/api/admin/users')
     users.value = data
   } catch (error) {
-    console.error('Failed to load users:', error)
+    logger.error('Failed to load users:', error)
   }
 }
 
@@ -1596,7 +1596,7 @@ const loadGroups = async () => {
       groups.value = []
     }
   } catch (error) {
-    console.error('Failed to load groups:', error)
+    logger.error('Failed to load groups:', error)
   }
 }
 
@@ -1616,7 +1616,7 @@ const saveEnvVariable = async () => {
     closeEnvModal()
     await loadEnvVariables()
   } catch (error) {
-    console.error('Failed to save environment variable:', error)
+    logger.error('Failed to save environment variable:', error)
   }
 }
 
@@ -1639,7 +1639,7 @@ const deleteEnvVariable = async (id) => {
       })
       await loadEnvVariables()
     } catch (error) {
-      console.error('Failed to delete environment variable:', error)
+      logger.error('Failed to delete environment variable:', error)
     }
   }
 }
@@ -1662,14 +1662,14 @@ const loadSystemSettings = async () => {
     const data = await $fetch('/api/admin/system-settings')
     groupedSystemSettings.value = data
   } catch (error) {
-    console.error('Failed to load system settings:', error)
+    logger.error('Failed to load system settings:', error)
     // Initialize system settings if they don't exist
     try {
       await $fetch('/api/admin/system-settings', { method: 'POST' })
       const data = await $fetch('/api/admin/system-settings')
       groupedSystemSettings.value = data
     } catch (initError) {
-      console.error('Failed to initialize system settings:', initError)
+      logger.error('Failed to initialize system settings:', initError)
     }
   } finally {
     loading.value = false
@@ -1689,9 +1689,9 @@ const updateSetting = async (key, value) => {
         await $fetch('/api/cron/update-timezone', {
           method: 'POST'
         })
-        console.log(`🌍 Updated timezone for all cron jobs to: ${value}`)
+        logger.info(`🌍 Updated timezone for all cron jobs to: ${value}`)
       } catch (error) {
-        console.error('Failed to update cron job timezones:', error)
+        logger.error('Failed to update cron job timezones:', error)
       }
     }
     
@@ -1702,7 +1702,7 @@ const updateSetting = async (key, value) => {
       window.location.reload()
     }
   } catch (error) {
-    console.error('Failed to update system setting:', error)
+    logger.error('Failed to update system setting:', error)
   }
 }
 
@@ -1852,7 +1852,7 @@ const saveCredential = async () => {
     closeCredentialModal()
     await loadCredentials()
   } catch (error) {
-    console.error('Failed to save credential:', error)
+    logger.error('Failed to save credential:', error)
   }
 }
 
@@ -1863,7 +1863,7 @@ const viewCredential = async (credential) => {
     viewingCredential.value = fullCredential
     showCredentialViewModal.value = true
   } catch (error) {
-    console.error('Failed to load credential details:', error)
+    logger.error('Failed to load credential details:', error)
   }
 }
 
@@ -1875,7 +1875,7 @@ const editCredential = async (credential) => {
     credentialForm.value = { ...fullCredential }
     showCredentialModal.value = true
   } catch (error) {
-    console.error('Failed to load credential for editing:', error)
+    logger.error('Failed to load credential for editing:', error)
   }
 }
 
@@ -1887,7 +1887,7 @@ const deleteCredential = async (id) => {
       })
       await loadCredentials()
     } catch (error) {
-      console.error('Failed to delete credential:', error)
+      logger.error('Failed to delete credential:', error)
     }
   }
 }
@@ -1914,7 +1914,7 @@ const toggleUserRole = async (user) => {
       })
       await loadUsers()
     } catch (error) {
-      console.error('Failed to update user role:', error)
+      logger.error('Failed to update user role:', error)
     }
   }
 }
@@ -1960,7 +1960,7 @@ const testLdapConnection = async () => {
     // Clear password after test
     ldapTestForm.value.password = ''
   } catch (error) {
-    console.error('LDAP test failed:', error)
+    logger.error('LDAP test failed:', error)
     ldapTestResult.value = {
       success: false,
       message: 'Test failed',
@@ -1992,7 +1992,7 @@ const saveGroup = async () => {
     await loadGroups()
     await loadUsers()
   } catch (error) {
-    console.error('Failed to save group:', error)
+    logger.error('Failed to save group:', error)
   }
 }
 
@@ -2019,7 +2019,7 @@ const deleteGroup = async (id) => {
       await loadGroups()
       await loadUsers()
     } catch (error) {
-      console.error('Failed to delete group:', error)
+      logger.error('Failed to delete group:', error)
     }
   }
 }
@@ -2062,7 +2062,7 @@ const saveUserGroups = async () => {
     await loadUsers()
     await loadGroups()
   } catch (error) {
-    console.error('Failed to update user groups:', error)
+    logger.error('Failed to update user groups:', error)
   }
 }
 
@@ -2095,7 +2095,7 @@ async function loadNotificationTemplates() {
       notificationTemplates.value = response.templates
     }
   } catch (error) {
-    console.error('Failed to load notification templates:', error)
+    logger.error('Failed to load notification templates:', error)
   } finally {
     loadingTemplates.value = false
   }
@@ -2115,7 +2115,7 @@ async function saveTemplate() {
       alert('Template saved successfully!')
     }
   } catch (error) {
-    console.error('Failed to save template:', error)
+    logger.error('Failed to save template:', error)
     alert('Failed to save template: ' + (error.data?.message || error.message))
   }
 }
@@ -2134,7 +2134,7 @@ async function deleteTemplate(template) {
     await loadNotificationTemplates()
     alert('Template deleted successfully!')
   } catch (error) {
-    console.error('Failed to delete template:', error)
+    logger.error('Failed to delete template:', error)
     alert('Failed to delete template: ' + (error.data?.message || error.message))
   }
 }

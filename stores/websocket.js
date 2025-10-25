@@ -27,7 +27,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // Initialize WebSocket connection
   const connect = async () => {
     if (socket.value && socket.value.connected) {
-      console.log('🔌 WebSocket already connected')
+      logger.info('WebSocket already connected')
       return
     }
     
@@ -56,7 +56,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       })
 
       socket.value.on('disconnect', (reason) => {
-        console.log('❌ WebSocket disconnected:', reason)
+        logger.info('WebSocket disconnected:', reason)
         isConnected.value = false
         isAuthenticated.value = false
         
@@ -67,14 +67,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
       })
 
       socket.value.on('connect_error', (error) => {
-        console.error('❌ WebSocket connection error:', error)
+        logger.error('WebSocket connection error:', error)
         isConnected.value = false
         connectionError.value = error.message
         lastReconnectAttempt.value = new Date()
       })
 
       socket.value.on('reconnect', (attemptNumber) => {
-        console.log(`🔄 WebSocket reconnected after ${attemptNumber} attempts`)
+        logger.info(`🔄 WebSocket reconnected after ${attemptNumber} attempts`)
         isConnected.value = true
         connectionError.value = null
       })
@@ -91,20 +91,20 @@ export const useWebSocketStore = defineStore('websocket', () => {
         }
       })
       socket.value.on('client_auth_error', (data) => {
-        console.error('❌ Client authentication error:', data.message)
+        logger.error('Client authentication error:', data.message)
         connectionError.value = data.message
         isConnected.value = false
         isAuthenticated.value = false
       })
       socket.value.on('project_subscribed', (data) => {
-        console.log('✅ Project subscribed:', data.projectId)
+        logger.info('Project subscribed:', data.projectId)
       })
       socket.value.on('subscription_error', (data) => {
-        console.error('❌ Subscription error:', data.message)
+        logger.error('Subscription error:', data.message)
       })
       
     } catch (error) {
-      console.error('❌ Failed to initialize WebSocket:', error)
+      logger.error('Failed to initialize WebSocket:', error)
       connectionError.value = error.message
     }
   }
@@ -127,7 +127,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         userEmail: authStore.user.email
       })
     } catch (error) {
-      console.error('❌ Client authentication failed:', error)
+      logger.error('Client authentication failed:', error)
       connectionError.value = 'Authentication failed: ' + error.message
     }
   }
@@ -136,12 +136,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const subscribeToProject = async (projectId) => {
     try {
       if (!socket.value || !isConnected.value) {
-        console.warn('⚠️ Cannot subscribe: WebSocket not connected')
+        logger.warn('Cannot subscribe: WebSocket not connected')
         return false
       }
       
       if (!isAuthenticated.value) {
-        console.warn('⚠️ Cannot subscribe: Client not authenticated, adding to pending subscriptions')
+        logger.warn('Cannot subscribe: Client not authenticated, adding to pending subscriptions')
         subscribedProjects.value.add(projectId)
         return false
       }
@@ -150,7 +150,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       subscribedProjects.value.add(projectId)
       return true
     } catch (error) {
-      console.error(`❌ Failed to subscribe to project ${projectId}:`, error)
+      logger.error(`Failed to subscribe to project ${projectId}:`, error)
       return false
     }
   }
@@ -167,7 +167,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       // currentJobs will be cleared when job completes (see job_complete, job_error, job_status_updated handlers)
       jobMessages.value.delete(projectId)
     } catch (error) {
-      console.error(`❌ Failed to unsubscribe from project ${projectId}:`, error)
+      logger.error(`Failed to unsubscribe from project ${projectId}:`, error)
     }
   }
 
@@ -184,9 +184,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
       // Clear all messages since we're leaving all projects
       jobMessages.value.clear()
 
-      console.log('📡 Unsubscribed from all projects (keeping job state for progress bars)')
+      logger.info('Unsubscribed from all projects (keeping job state for progress bars)')
     } catch (error) {
-      console.error(`❌ Failed to unsubscribe from all projects:`, error)
+      logger.error(`Failed to unsubscribe from all projects:`, error)
     }
   }
   
@@ -197,7 +197,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       updateInternalState(message)
       
     } catch (error) {
-      console.error('❌ Error handling WebSocket message:', error)
+      logger.error('Error handling WebSocket message:', error)
     }
   }
   
@@ -207,7 +207,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     
     // Skip processing if no projectId
     if (!projectId && (type !== 'agent_status_update')) {
-      console.warn('⚠️ Received message without projectId:', message)
+      logger.warn('Received message without projectId:', message)
       return
     }
     
@@ -217,7 +217,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'webhook_trigger_error':
-        addJobMessage(projectId, 'System', 'error', `❌ Webhook trigger error: ${message.error}`)
+        addJobMessage(projectId, 'System', 'error', `Webhook trigger error: ${message.error}`)
         break
 
       case 'cron_trigger_fired':
@@ -240,7 +240,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
           addJobMessage(projectId, 'System', 'info', `Build #: ${message.buildNumber}`)
         } else {
           // Fallback message when job details aren't available yet
-          addJobMessage(projectId, 'System', 'info', `🎯 Cron job starting for ${message.cronNodeLabel || 'trigger'}...`)
+          addJobMessage(projectId, 'System', 'info', `Cron job starting for ${message.cronNodeLabel || 'trigger'}...`)
         }
         break
         
@@ -276,13 +276,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
             nodeId: message.nodeId,
             trigger: 'manual'
           })
-          console.log(`📋 Main job created with buildNumber: ${message.buildNumber}`)
+          logger.info(`Main job created with buildNumber: ${message.buildNumber}`)
         } else {
           // This is a sub-job - don't overwrite main job, just log it
-          console.log(`📋 Sub-job created: ${message.jobId} (preserving main job)`)
+          logger.info(`Sub-job created: ${message.jobId} (preserving main job)`)
         }
         // Show the message for all jobs
-        addJobMessage(projectId, 'System', 'success', `🚀 Job created: ${message.jobId}`)
+        addJobMessage(projectId, 'System', 'success', `Job created: ${message.jobId}`)
         break
 
       case 'job_started':
@@ -300,7 +300,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
           nodeId: message.nodeId,
           trigger: message.trigger || 'manual'
         })
-        console.log(`✅ Job started with buildNumber: ${message.buildNumber || existingJob?.buildNumber}`)
+        logger.info(`Job started with buildNumber: ${message.buildNumber || existingJob?.buildNumber}`)
         break
         
       case 'job_status_updated':
@@ -346,7 +346,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       case 'job_complete':
         const completionMessage = message.result?.message || message.message || 'Job completed successfully'
-        addJobMessage(projectId, 'System', 'success', `✅ ${completionMessage}`)
+        addJobMessage(projectId, 'System', 'success', `${completionMessage}`)
         const completedJob = currentJobs.value.get(projectId)
         if (completedJob) {
           completedJob.status = 'completed'
@@ -356,7 +356,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'job_error':
-        addJobMessage(projectId, 'System', 'error', `❌ Job error: ${message.error || 'Unknown error'}`)
+        addJobMessage(projectId, 'System', 'error', `Job error: ${message.error || 'Unknown error'}`)
         const errorJob = currentJobs.value.get(projectId)
         if (errorJob) {
           errorJob.status = 'failed'
@@ -367,7 +367,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       case 'job_started':
         // Job has started execution on agent
-        addJobMessage(projectId, 'System', 'success', `🚀 Job started on agent ${message.agentName || message.agentId}`)
+        addJobMessage(projectId, 'System', 'success', `Job started on agent ${message.agentName || message.agentId}`)
         const startedJob = currentJobs.value.get(projectId)
         if (startedJob) {
           startedJob.status = 'running'
@@ -398,7 +398,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       case 'job_cancel_failed':
         // Job cancellation failed
-        addJobMessage(projectId, 'System', 'error', `❌ ${message.error || 'Job cancellation failed'}`)
+        addJobMessage(projectId, 'System', 'error', `${message.error || 'Job cancellation failed'}`)
         const cancelFailedJob = currentJobs.value.get(projectId)
         if (cancelFailedJob) {
           cancelFailedJob.status = 'cancel_failed'
@@ -406,12 +406,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'cron_trigger_error':
-        addJobMessage(projectId, 'System', 'error', `❌ Cron trigger error: ${message.error}`)
+        addJobMessage(projectId, 'System', 'error', `Cron trigger error: ${message.error}`)
         break
         
       case 'agent_status_update':
         // Agent status changed - emit event for other components to handle
-        console.log('🤖 Agent status update received:', message)
+        logger.info('🤖 Agent status update received:', message)
         
         // Create a custom event for agent status changes
         if (typeof window !== 'undefined') {
@@ -482,10 +482,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
         })
 
       } else {
-        console.warn('⚠️ Cannot persist System message: No buildNumber available yet')
+        logger.warn('Cannot persist System message: No buildNumber available yet')
       }
     } catch (error) {
-      console.error('❌ Failed to persist System message:', error)
+      logger.error('Failed to persist System message:', error)
     }
   }
   
@@ -501,7 +501,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   
   // Clear messages for a project
   const clearJobMessages = (projectId) => {
-    console.log(`🧹 Clearing all messages for project ${projectId}`)
+    logger.info(`🧹 Clearing all messages for project ${projectId}`)
     jobMessages.value.delete(projectId)
   }
 
@@ -522,9 +522,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
       isAuthenticated.value = false
       connectionError.value = null
       subscribedProjects.value.clear()
-      console.log('🔌 WebSocket disconnected')
+      logger.info('WebSocket disconnected')
     } catch (error) {
-      console.error('❌ Error disconnecting WebSocket:', error)
+      logger.error('Error disconnecting WebSocket:', error)
     }
   }
   

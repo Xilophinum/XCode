@@ -147,7 +147,7 @@
           </div>
           <div class="ml-3">
             <p class="text-sm font-medium text-amber-800 dark:text-amber-200">
-              ⚠️ This project is disabled
+              This project is disabled
             </p>
             <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
               Cron jobs will not run, manual execution is blocked, job triggers will not fire, and webhooks will be ignored. Click "Enable" to reactivate.
@@ -572,7 +572,7 @@
                   </option>
                 </select>
                 <p class="mt-1 text-xs text-red-500 dark:text-red-400" v-if="!selectedNode.data.agentId">
-                  ⚠️ Agent selection is required for execution nodes
+                  Agent selection is required for execution nodes
                 </p>
                 <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400" v-else>
                   This node will execute on the selected agent. Choose "Any available agent" if you don't have a preference.
@@ -850,26 +850,26 @@ const startBuild = async () => {
 
     // Response now contains { buildId, buildNumber }
     currentBuildId = response.buildId
-    console.log(`✅ Build #${response.buildNumber} started (${response.buildId})`)
+    logger.info(`Build #${response.buildNumber} started (${response.buildId})`)
 
     // Update WebSocket store with buildId for System log persistence
     // This ensures that any System logs added before job_created arrives can be persisted
     const currentJob = webSocketStore.getCurrentJob(project.value.id)
     if (currentJob) {
       currentJob.buildId = currentBuildId
-      console.log(`📋 Updated current job with buildId: ${currentBuildId}`)
+      logger.info(`Updated current job with buildId: ${currentBuildId}`)
     } else {
       // Create a temporary job entry for log persistence
       webSocketStore.currentJobs.set(project.value.id, {
         buildId: currentBuildId,
         status: 'starting'
       })
-      console.log(`📋 Created temporary job entry with buildId: ${currentBuildId}`)
+      logger.info(`Created temporary job entry with buildId: ${currentBuildId}`)
     }
 
     return currentBuildId
   } catch (error) {
-    console.warn('Failed to start build recording:', error)
+    logger.warn('Failed to start build recording:', error)
     return null
   }
 }
@@ -887,17 +887,17 @@ const finishBuild = async (status, message) => {
       }
     })
     
-    console.log('✅ Build finished:', currentBuildId, status)
+    logger.info('Build finished:', currentBuildId, status)
     currentBuildId = null
   } catch (error) {
-    console.warn('Failed to finish build recording:', error)
+    logger.warn('Failed to finish build recording:', error)
   }
 }
 
 const addBuildLog = async (level, message, command = null) => {
-  if (!currentBuildId) return console.warn('⚠️ Cannot add build log: currentBuildId is null');
+  if (!currentBuildId) return logger.warn('Cannot add build log: currentBuildId is null');
   
-  console.log(`📝 Adding build log: ${level} - ${message}`)
+  logger.info(`Adding build log: ${level} - ${message}`)
   try {
     await $fetch(`/api/projects/${project.value.id}/builds/${currentBuildId}/logs`, {
       method: 'PATCH',
@@ -910,7 +910,7 @@ const addBuildLog = async (level, message, command = null) => {
       }
     })
   } catch (error) {
-    console.warn('Failed to add build log:', error)
+    logger.warn('Failed to add build log:', error)
   }
 }
 
@@ -1066,7 +1066,7 @@ const executionNodes = [
   { type: 'cmd', name: 'Command Prompt', description: 'Execute Windows CMD commands', placeholder: 'echo Hello from Command Prompt'},
   { type: 'python', name: 'Python Script', description: 'Execute Python code', placeholder: 'print("Hello from Python")'},
   { type: 'python3', name: 'Python3 Script', description: 'Execute Python3 code', placeholder: 'print("Hello from Python3")'},
-  { type: 'node', name: 'Node.js Script', description: 'Execute Node.js/JavaScript code', placeholder: 'console.log("Hello from Node.js")'},
+  { type: 'node', name: 'Node.js Script', description: 'Execute Node.js/JavaScript code', placeholder: 'logger.info("Hello from Node.js")'},
   { type: 'go', name: 'Go Script', description: 'Execute Go code', placeholder: 'package main\nimport "fmt"\nfunc main() {\n    fmt.Println("Hello from Go")\n}'},
   { type: 'ruby', name: 'Ruby Script', description: 'Execute Ruby code', placeholder: 'puts "Hello from Ruby"'},
   { type: 'php', name: 'PHP Script', description: 'Execute PHP code', placeholder: '<?php echo "Hello from PHP"; ?>'},
@@ -1103,7 +1103,7 @@ const loadAgents = async () => {
     const data = await $fetch('/api/admin/agents')
     agents.value = data
   } catch (error) {
-    console.error('Error loading agents:', error)
+    logger.error('Error loading agents:', error)
     agents.value = []
   }
 }
@@ -1128,9 +1128,9 @@ const handleAgentStatusUpdate = (event) => {
     if (version) agent.version = version
     
     agents.value[agentIndex] = { ...agent } // Trigger reactivity
-    console.log(`🔄 Updated agent ${agentId} status: ${status}`)
+    logger.info(`🔄 Updated agent ${agentId} status: ${status}`)
   } else {
-    console.log(`⚠️ Agent ${agentId} not found in local array - refreshing agent list`)
+    logger.info(`Agent ${agentId} not found in local array - refreshing agent list`)
     loadAgents() // Reload if agent not found (new agent connected)
   }
 }
@@ -1419,7 +1419,7 @@ const loadRetentionSettings = async () => {
       retentionSettings.value = response.retention
     }
   } catch (error) {
-    console.error('Failed to load retention settings:', error)
+    logger.error('Failed to load retention settings:', error)
   }
 }
 
@@ -1436,10 +1436,10 @@ const handleSaveRetentionSettings = async () => {
     if (response.success) {
       showRetentionModal.value = false
       // Show success message
-      console.log('✅ Retention settings updated successfully')
+      logger.info('Retention settings updated successfully')
     }
   } catch (error) {
-    console.error('Failed to save retention settings:', error)
+    logger.error('Failed to save retention settings:', error)
     alert('Failed to save retention settings. Please try again.')
   } finally {
     isSavingRetention.value = false
@@ -1702,7 +1702,7 @@ const getDefaultNodeData = (type) => {
           { id: 'failure', label: 'Failure', connected: false },
           { id: 'output', label: 'Output', connected: false }
         ],
-        script: 'console.log("Hello from Node.js");',
+        script: 'logger.info("Hello from Node.js");',
         workingDirectory: '.',
         timeout: 300,
         retryEnabled: false,
@@ -2010,10 +2010,10 @@ const saveProject = async () => {
     // Show warnings for webhook issues but still allow saving
     const webhookErrors = validationErrors.filter(error => error.includes('🎣') || error.includes('🔐'))
     if (webhookErrors.length > 0) {
-      console.warn('Webhook validation warnings:', webhookErrors)
+      logger.warn('Webhook validation warnings:', webhookErrors)
       // Could add toast notifications here for webhook warnings
       for (const warning of webhookErrors) {
-        console.warn(`⚠️ ${warning}`)
+        logger.warn(`${warning}`)
       }
     }
     
@@ -2037,15 +2037,15 @@ const saveProject = async () => {
           edges: edges.value
         }
       })
-      console.log('✅ Cron jobs updated')
+      logger.info('Cron jobs updated')
     } catch (cronError) {
-      console.warn('⚠️ Failed to update cron jobs:', cronError)
+      logger.warn('Failed to update cron jobs:', cronError)
     }
     
     // Log job trigger nodes for debugging
     const jobTriggerNodes = nodes.value.filter(node => node.data?.nodeType === 'job-trigger')
     if (jobTriggerNodes.length > 0) {
-      console.log(`🎯 Found ${jobTriggerNodes.length} job trigger nodes:`, 
+      logger.info(`Found ${jobTriggerNodes.length} job trigger nodes:`, 
         jobTriggerNodes.map(n => ({ 
           id: n.id, 
           label: n.data.label, 
@@ -2056,7 +2056,7 @@ const saveProject = async () => {
     }
     
   } catch (error) {
-    console.error('Error saving project:', error)
+    logger.error('Error saving project:', error)
   } finally {
     isSaving.value = false
   }
@@ -2080,7 +2080,7 @@ const validateExecutionNodes = () => {
         errors.push(`🎣 "${node.data.label || 'Unnamed Webhook'}" has no custom endpoint configured.`)
       }
       if (!node.data.secretToken || node.data.secretToken.trim() === '') {
-        errors.push(`🔐 "${node.data.label || 'Unnamed Webhook'}" has no secret token. Secret tokens are required for webhook security.`)
+        errors.push(`"${node.data.label || 'Unnamed Webhook'}" has no secret token. Secret tokens are required for webhook security.`)
       }
     }
   }
@@ -2155,7 +2155,7 @@ const executeGraph = async () => {
         const currentJob = webSocketStore.getCurrentJob(project.value.id)
         if (currentJob) {
           currentJob.buildNumber = response.buildNumber
-          console.log(`📋 Updated current job with buildNumber from API: ${response.buildNumber}`)
+          logger.info(`Updated current job with buildNumber from API: ${response.buildNumber}`)
         } else {
           // Create a temporary job entry for log persistence
           webSocketStore.currentJobs.set(project.value.id, {
@@ -2163,7 +2163,7 @@ const executeGraph = async () => {
             jobId: response.jobId,
             status: 'dispatched'
           })
-          console.log(`📋 Created job entry with buildNumber from API: ${response.buildNumber}`)
+          logger.info(`Created job entry with buildNumber from API: ${response.buildNumber}`)
         }
       }
 
@@ -2173,13 +2173,13 @@ const executeGraph = async () => {
       addExecutionResult('System', 'info', 'Execution started - waiting for agent output...')
 
       // The job status and output will be received via WebSocket
-      console.log('✅ Job dispatched successfully:', response)
+      logger.info('Job dispatched successfully:', response)
     } else {
       addExecutionResult('System', 'error', `Failed to dispatch job: ${response.message || 'Unknown error'}`)
     }
     
   } catch (error) {
-    console.error('Execution dispatch error:', error)
+    logger.error('Execution dispatch error:', error)
     addExecutionResult('System', 'error', `Failed to start execution: ${error.message}`)
     
     await recordBuildEvent('failure', `Failed to dispatch job: ${error.message}`)
@@ -2194,7 +2194,7 @@ const cancelExecution = async () => {
   
   if (isJobRunningOnAgent.value && currentProjectJob.value) {
     // Scenario 2: Cancel job running on agent
-    console.log('🛑 Cancelling job running on agent:', currentProjectJob.value)
+    logger.info('🛑 Cancelling job running on agent:', currentProjectJob.value)
     addExecutionResult('System', 'info', `Cancelling job ${currentProjectJob.value.jobId} on agent...`)
     
     try {
@@ -2212,21 +2212,21 @@ const cancelExecution = async () => {
         // We don't immediately set isExecuting to false because we need to wait
         // for the agent to confirm the cancellation
         
-        console.log('✅ Cancellation request sent to agent successfully')
+        logger.info('Cancellation request sent to agent successfully')
       } else {
         addExecutionResult('System', 'error', `Failed to cancel job: ${response.message || 'Unknown error'}`)
-        console.error('❌ Failed to cancel job on agent:', response)
+        logger.error('Failed to cancel job on agent:', response)
       }
       
     } catch (error) {
-      console.error('❌ Error cancelling job on agent:', error)
+      logger.error('Error cancelling job on agent:', error)
       addExecutionResult('System', 'error', `Error cancelling job: ${error.message}`)
     }
     
   } else if (isExecuting.value) {
     // Scenario 1: Cancel local execution (started from this editor)
     // Since isExecuting is computed from job state, we need to cancel through the job system
-    console.log('🛑 Cancelling local execution')
+    logger.info('🛑 Cancelling local execution')
     addExecutionResult('System', 'info', 'Cancellation requested by user...')
     
     // Record cancellation
@@ -2254,10 +2254,10 @@ const cancelExecution = async () => {
         addExecutionResult('System', 'warning', 'Local execution cancelled by user')
       }
       
-      console.log('✅ Local execution cancellation initiated')
+      logger.info('Local execution cancellation initiated')
       
     } catch (error) {
-      console.error('Error during local cancellation:', error)
+      logger.error('Error during local cancellation:', error)
       addExecutionResult('System', 'error', `Cancellation error: ${error.message}`)
     }
   }
@@ -2293,7 +2293,7 @@ const setupRealtimeConnection = async () => {
       await webSocketStore.subscribeToProject(project.value.id)
     }
   } catch (error) {
-    console.error('❌ Failed to setup real-time connection:', error)
+    logger.error('Failed to setup real-time connection:', error)
   }
 }
 
@@ -2311,7 +2311,7 @@ const initializeEditor = async () => {
     
     isEditorReady.value = true
   } catch (error) {
-    console.error('Error initializing editor:', error)
+    logger.error('Error initializing editor:', error)
   }
 }
 // Initialize editor on mount
@@ -2355,7 +2355,7 @@ onUnmounted(() => {
 watch(() => isJobRunningOnAgent.value, async (isRunning, wasRunning) => {
   // Detect when a job finishes (was running, now not running)
   if (wasRunning && !isRunning && currentBuildId) {
-    console.log('🏁 Job execution completed, finishing build...')
+    logger.info('🏁 Job execution completed, finishing build...')
     
     // Check the last few messages to determine success/failure
     const messages = currentProjectJob.value?.messages || []
@@ -2433,7 +2433,7 @@ const checkCurrentBuildStatus = async () => {
               logEntry.timestamp // Preserve original timestamp
             )
           })
-          console.log(`📋 Loaded ${logsResponse.logs.length} logs from database for job ${response.currentJob.jobId}`)
+          logger.info(`Loaded ${logsResponse.logs.length} logs from database for job ${response.currentJob.jobId}`)
         } else {
           // Add status messages if no logs found
           webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🔄 Restored running job: ${response.currentJob.jobId}`)
@@ -2442,11 +2442,11 @@ const checkCurrentBuildStatus = async () => {
           webSocketStore.addJobMessage(project.value.id, 'System', 'info', 'Waiting for agent output...')
         }
       } else {
-        console.log(`📋 Using ${existingMessages.length} existing messages from WebSocket store - skipping database load`)
+        logger.info(`Using ${existingMessages.length} existing messages from WebSocket store - skipping database load`)
       }
     }
   } catch (error) {
-    console.warn('Failed to check current build status:', error)
+    logger.warn('Failed to check current build status:', error)
   }
 }
 
@@ -2472,7 +2472,7 @@ onMounted(async () => {
   
   // Check if project exists
   if (!project.value) {
-    console.error('❌ Project not found, redirecting to home')
+    logger.error('Project not found, redirecting to home')
     await navigateTo('/')
     return
   }
@@ -2502,7 +2502,7 @@ const toggleProjectStatus = async () => {
     const result = await projectsStore.toggleProjectStatus(project.value.id)
     
     if (result.success) {
-      console.log(`✅ Project ${result.status}: ${project.value.name}`)
+      logger.info(`Project ${result.status}: ${project.value.name}`)
       
       // Show notification in terminal
       addExecutionResult('System', 'info', `Project ${result.status === 'disabled' ? 'disabled' : 'enabled'} successfully`)
@@ -2512,12 +2512,12 @@ const toggleProjectStatus = async () => {
         await cancelExecution()
       }
     } else {
-      console.error('Failed to toggle project status:', result.error)
+      logger.error('Failed to toggle project status:', result.error)
       addExecutionResult('System', 'error', `Failed to ${project.value.status === 'disabled' ? 'enable' : 'disable'} project: ${result.error}`)
     }
     saveProject()
   } catch (error) {
-    console.error('Error toggling project status:', error)
+    logger.error('Error toggling project status:', error)
     addExecutionResult('System', 'error', `Error changing project status: ${error.message}`)
   } finally {
     isTogglingStatus.value = false

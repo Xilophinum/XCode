@@ -311,11 +311,11 @@ SMTP_USER=user@gmail.com
 SMTP_PASS=password
 SMTP_SECURE=false
 
-# Slack
+# Slack OAuth Integration
 SLACK_BOT_TOKEN=xoxb-token
 SLACK_DEFAULT_CHANNEL=#general
 
-# Discord (use webhooks directly)
+# Discord Webhook (optional - for convenience)
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
 

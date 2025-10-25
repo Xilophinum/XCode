@@ -579,7 +579,7 @@ const handleCreateFolder = async () => {
     folderForm.value = { name: '', description: '' }
     showCreateFolderModal.value = false
   } else {
-    console.error('Failed to create folder:', result.error)
+    logger.error('Failed to create folder:', result.error)
   }
 }
 
@@ -613,7 +613,7 @@ const handleEditFolder = async () => {
   if (result.success) {
     cancelEdit()
   } else {
-    console.error('Failed to edit folder:', result.error)
+    logger.error('Failed to edit folder:', result.error)
   }
 }
 
@@ -636,7 +636,7 @@ const handleDeleteFolder = async () => {
   if (result.success) {
     cancelDelete()
   } else {
-    console.error('Failed to delete folder:', result.error)
+    logger.error('Failed to delete folder:', result.error)
   }
 }
 
@@ -683,7 +683,7 @@ const handleMoveItem = async () => {
   if (result.success) {
     cancelMove()
   } else {
-    console.error('Failed to move item:', result.error)
+    logger.error('Failed to move item:', result.error)
     alert('Failed to move item. Please try again.')
   }
 }
@@ -743,7 +743,7 @@ const loadAgents = async () => {
     const data = await $fetch('/api/admin/agents')
     agents.value = data
   } catch (error) {
-    console.error('Error loading agents:', error)
+    logger.error('Error loading agents:', error)
     agents.value = []
   }
 }

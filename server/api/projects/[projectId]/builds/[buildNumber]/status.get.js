@@ -6,6 +6,7 @@
 import { getDB, builds } from '~/server/utils/database.js'
 import { jobManager } from '~/server/utils/jobManager.js'
 import { eq, and } from 'drizzle-orm'
+import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {

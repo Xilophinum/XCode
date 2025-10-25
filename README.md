@@ -22,13 +22,13 @@ Lightweight, stateless agents for Windows, Linux, and macOS with automatic load 
 ### 🔗 Universal Git Integration
 Built-in webhook support for GitHub, GitLab, Bitbucket, and Azure DevOps with secure signature validation. Trigger builds automatically on push, pull request, or custom repository events.
 
-### 🚀 Advanced Execution
+### Advanced Execution
 - **Parallel Execution**: Run multiple jobs concurrently with fail-fast behavior
 - **Matrix Builds**: Test across multiple language versions, OS platforms, or configurations
 - **Multi-Language**: Execute Bash, PowerShell, Python, Node.js, and CMD scripts
 - **Cron Scheduling**: Timezone-aware scheduling with quick presets
 
-### 📊 Enterprise-Ready
+### Enterprise-Ready
 - **Hierarchical Organization**: Organize projects in nested folders with path-based permissions
 - **Audit Logging**: Complete change history with before/after snapshots for compliance
 - **LDAP/Active Directory**: Enterprise SSO integration with role-based access control

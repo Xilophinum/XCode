@@ -1,6 +1,8 @@
 import { getDB, builds, items } from './database.js'
 import { eq, desc, and, gte, lte, count, avg, min, max } from 'drizzle-orm'
 import { broadcastBuildCompletion } from '../plugins/websocket.js'
+import logger from './logger.js'
+
 export class BuildStatsManager {
   constructor() {
     this.db = null
@@ -60,7 +62,7 @@ export class BuildStatsManager {
 
     await this.db.insert(builds).values(build)
 
-    console.log(`📊 Started build #${buildNumber} for project "${projectName}"`)
+    logger.info(`Started build #${buildNumber} for project "${projectName}"`)
 
     return {
       projectId: buildData.projectId,
@@ -149,7 +151,7 @@ export class BuildStatsManager {
         eq(builds.buildNumber, buildNumber)
       ))
 
-    console.log(`📋 Added log entry to build #${buildNumber} (${projectId}): ${logEntry.message}`)
+    logger.debug(`Added log entry to build #${buildNumber} (${projectId}): ${logEntry.message}`)
   }
 
   /**
@@ -175,7 +177,7 @@ export class BuildStatsManager {
     // Don't allow changing status from "failure" to "success"
     // Once a build fails, it stays failed even if failure handlers succeed
     if (build.status === 'failure' && result.status === 'success') {
-      console.log(`⚠️ Prevented changing build #${buildNumber} status from "failure" to "success" - build remains failed`)
+      logger.warn(`Prevented changing build #${buildNumber} status from "failure" to "success" - build remains failed`)
       return
     }
 
@@ -209,7 +211,7 @@ export class BuildStatsManager {
     // Clean up old builds if needed
     await this.cleanupOldBuilds(projectId)
 
-    console.log(`📊 Finished build #${buildNumber} for project "${build.projectName}" with status: ${result.status}`)
+    logger.info(`Finished build #${buildNumber} for project "${build.projectName}" with status: ${result.status}`)
   }
 
 
@@ -404,7 +406,7 @@ export class BuildStatsManager {
         ))
       }
 
-      console.log(`🧹 Cleaned up ${buildNumbers.length} old builds for project "${projectName}"`)
+      logger.info(`Cleaned up ${buildNumbers.length} old builds for project "${projectName}"`)
     }
   }
 
@@ -424,10 +426,10 @@ export class BuildStatsManager {
         buildData: buildData,
         timestamp: new Date().toISOString()
       })
-      
-      console.log(`📡 Broadcasted build completion for project ${projectId} with status: ${status}`)
+
+      logger.info(`Broadcasted build completion for project ${projectId} with status: ${status}`)
     } catch (error) {
-      console.error('Failed to broadcast build completion:', error)
+      logger.error('Failed to broadcast build completion:', error)
     }
   }
 
@@ -455,8 +457,8 @@ export class BuildStatsManager {
         .set(updateData)
         .where(eq(items.id, projectId))
 
-      console.log(`📊 Updated retention settings for project ${projectId}:`, updateData)
-      
+      logger.info(`Updated retention settings for project ${projectId}:`, updateData)
+
       // Trigger cleanup with new settings
       await this.cleanupOldBuilds(projectId)
     }

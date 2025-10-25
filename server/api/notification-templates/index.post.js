@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import { getRawDB } from '../../utils/database.js'
-
+import logger from '~/server/utils/logger.js'
 /**
  * POST /api/notification-templates
  * Create a new custom notification template
@@ -84,7 +84,7 @@ export default defineEventHandler(async (event) => {
       template
     }
   } catch (error) {
-    console.error('Error creating notification template:', error)
+    logger.error('Error creating notification template:', error)
     throw createError({
       statusCode: 500,
       statusMessage: error.message || 'Failed to create notification template'
