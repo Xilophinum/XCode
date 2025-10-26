@@ -1,7 +1,7 @@
 /**
  * Client-Side Logger Composable
  * Provides Winston-style logging for Vue components
- * Respects log level from system settings
+ * Respects log level from .env or defaults to 'info'
  */
 
 // Log levels
@@ -12,8 +12,8 @@ const LOG_LEVELS = {
   debug: 3
 }
 
-// Current log level (fetched from system settings)
-let currentLogLevel = 'info'
+// Current log level (fetched from .env or defaults to 'info')
+let currentLogLevel = import.meta.CLIENT_LOG_LEVEL || 'info'
 
 // Emoji mapping for log levels
 const EMOJIS = {
@@ -58,24 +58,9 @@ function log(level, message, meta = {}) {
   }
 }
 
-/**
- * Fetch and set log level from system settings
- */
-async function fetchLogLevel() {
-  try {
-    const response = await $fetch('/api/public/system-settings/log_level')
-    if (response?.value) {
-      currentLogLevel = response.value
-    }
-  } catch (error) {
-    // Silently fail - keep default level
-  }
-}
-
-// Fetch log level on composable load
-if (process.client) {
-  fetchLogLevel()
-}
+// Note: Client-side log level is independent from server-side Winston log level
+// The server log level (configured in system settings) only affects server console output
+// Client log level defaults to 'info' and can be changed via logger.setLevel()
 
 /**
  * Logger composable for Vue components

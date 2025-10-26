@@ -44,6 +44,7 @@ See [Troubleshooting](#troubleshooting) for detailed solutions.
    - `chat:write` - **Required:** Send messages as the bot
    - `chat:write.public` - **Required:** Send messages to public channels without joining
    - `chat:write.customize` - Optional: Customize message username and icon
+   - `files:write` - Optional: will allow you to add a log file of the build
 
 ⚠️ **Important:** If your app is already installed, you'll see a yellow banner saying "Please reinstall your app". You MUST reinstall to get the new scopes.
 

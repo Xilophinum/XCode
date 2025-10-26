@@ -5,7 +5,7 @@ import { getExecutionConnectedNodes } from '../api/projects/execute.post.js'
 import { executeParallelBranches } from './orchestrators/parallelBranchesOrchestrator.js'
 import { executeParallelMatrix } from './orchestrators/parallelMatrixOrchestrator.js'
 import { notificationService } from './notificationService.js'
-import logger from './logger.js'
+import logger, { getBuildLogger } from './logger.js'
 
 class AgentManager {
   constructor() {
@@ -15,6 +15,37 @@ class AgentManager {
     this.dataService = null
     this.heartbeatIntervals = new Map() // agentId -> interval
     this.jobCompletionCallbacks = new Map() // jobId -> callback function
+  }
+
+  /**
+   * Get the appropriate logger for a job (build logger if available, otherwise main logger)
+   * @param {Object} job - Job object with projectId and buildNumber
+   * @returns {Object} - Winston logger instance
+   */
+  getJobLogger(job) {
+    if (job && job.projectId && job.buildNumber) {
+      return getBuildLogger(job.projectId, job.buildNumber)
+    }
+    return logger
+  }
+
+  /**
+   * Get all environment variables from system settings as a key-value object
+   * @returns {Promise<Object>} - Environment variables object
+   */
+  async getEnvironmentVariables() {
+    if (!this.dataService) {
+      this.dataService = await getDataService()
+    }
+
+    const envVars = await this.dataService.getEnvVariables()
+    const envObject = {}
+
+    for (const envVar of envVars) {
+      envObject[envVar.key] = envVar.value
+    }
+
+    return envObject
   }
 
   async initialize(server = null) {
@@ -242,12 +273,15 @@ class AgentManager {
             status: 'running'
           })
           
+          // Get environment variables from system settings
+          const environment = await this.getEnvironmentVariables()
+
           // Dispatch next command to the appropriate agent
           const dispatchSuccess = await this.dispatchJobToAgent(nextAgent.agentId, {
             jobId,
             projectId: job.projectId,
             commands: nextCommand.script,
-            environment: {},
+            environment,
             workingDirectory: nextCommand.workingDirectory || '.',
             timeout: nextCommand.timeout,
             jobType: nextCommand.type,
@@ -922,11 +956,14 @@ class AgentManager {
         status: 'running'
       })
 
+      // Get environment variables from system settings
+      const environment = await this.getEnvironmentVariables()
+
       const dispatchSuccess = await this.dispatchJobToAgent(nextAgent.agentId, {
         jobId: parentJobId,
         projectId: parentJobUpdated.projectId,
         commands: nextCommand.script,
-        environment: {},
+        environment,
         workingDirectory: nextCommand.workingDirectory || '.',
         timeout: nextCommand.timeout,
         jobType: nextCommand.type,

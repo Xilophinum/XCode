@@ -1,11 +1,41 @@
 /**
  * Notification Service
  * Handles sending notifications via Email, Slack, and Webhooks
+ *
+ * BUILD LOG ATTACHMENTS:
+ *
+ * When the "Attach build log file" option is enabled in a notification node,
+ * build logs are handled differently depending on the notification type:
+ *
+ * 1. EMAIL:
+ *    - Attaches the log file as an email attachment using nodemailer
+ *    - Filename: build_${projectId}_${buildNumber}.log
+ *
+ * 2. SLACK (OAuth):
+ *    - Uploads the file using Slack's files.uploadV2 API
+ *    - REQUIRES: "files:write" OAuth scope on your Slack app
+ *    - The file is uploaded with the message as initial_comment
+ *    - To add this scope: Go to api.slack.com/apps → Your App → OAuth & Permissions → Scopes
+ *
+ * 3. WEBHOOK (Generic):
+ *    - DISCORD: Automatically detects Discord webhooks and sends file as multipart/form-data attachment
+ *    - OTHER WEBHOOKS: Log content is added to context variables for template substitution:
+ *      • $BuildLog - Full build log content as string
+ *      • $BuildLogPath - Absolute path to the log file
+ *
+ *    Example for non-Discord webhooks:
+ *    {
+ *      "message": "Build completed",
+ *      "log": "$BuildLog",
+ *      "logPath": "$BuildLogPath"
+ *    }
+ *
+ * Log files are automatically deleted 30 seconds after build completion.
  */
 
 import nodemailer from 'nodemailer'
 import { getDataService } from './dataService.js'
-import logger from './logger.js'
+import logger, { getBuildLogPath } from './logger.js'
 
 export class NotificationService {
   constructor() {
@@ -58,7 +88,9 @@ export class NotificationService {
 
   /**
    * Resolve context variables in notification fields
-   * Supports: $BuildNumber, $JobId, $ProjectId, $ProjectName, $ExitCode, $Output, $Timestamp, $TimestampHuman, $FailedNodeLabel, $DefaultEmailFrom, $DefaultEmailTo, $AdminEmail
+   * System Variables: $BuildNumber, $JobId, $ProjectId, $ProjectName, $ExitCode, $Timestamp, $TimestampHuman, $FailedNodeLabel, $DefaultEmailFrom, $DefaultEmailTo, $AdminEmail, $BuildLog, $BuildLogPath
+   * Environment Variables: Any custom environment variables from system settings (e.g., $MY_ENV, $API_KEY)
+   * Note: Use input sockets ($INPUT_1, $INPUT_2, etc.) to reference output from connected nodes
    * @param {Object} command - Notification command
    * @param {Object} context - Context data
    * @returns {Object} Command with resolved variables
@@ -80,20 +112,45 @@ export class NotificationService {
     // Get default email settings from database
     const dataService = await getDataService()
     const notificationSettings = await dataService.getSystemSettings('notifications')
-    
+
     const getSetting = (key) => {
       const setting = notificationSettings.find(s => s.key === key)
       return setting?.value || setting?.defaultValue || ''
     }
 
-    // Build variable map
+    // Get build log content if attachBuildLog is enabled
+    let buildLogContent = ''
+    let buildLogPath = ''
+
+    if (command.attachBuildLog && context.projectId && context.buildNumber) {
+      const logPath = getBuildLogPath(context.projectId, context.buildNumber)
+      if (logPath) {
+        buildLogPath = logPath
+        try {
+          const fs = await import('fs')
+          buildLogContent = fs.readFileSync(logPath, 'utf-8')
+        } catch (error) {
+          logger.warn(`Failed to read build log for context variables: ${error.message}`)
+          buildLogContent = '[Build log unavailable]'
+        }
+      }
+    }
+
+    // Get environment variables from system settings
+    const envVariables = await dataService.getEnvVariables()
+    const envVarMap = {}
+    for (const envVar of envVariables) {
+      envVarMap[envVar.key] = envVar.value
+    }
+
+    // Build variable map (includes system context variables + environment variables)
     const variables = {
+      // System context variables
       BuildNumber: context.buildNumber || 'N/A',
       JobId: context.jobId || 'N/A',
       ProjectId: context.projectId || 'N/A',
       ProjectName: context.projectName || 'N/A',
       ExitCode: context.exitCode !== undefined ? String(context.exitCode) : 'N/A',
-      Output: context.output || '',
       Timestamp: now.toISOString(),
       TimestampHuman: humanReadableTimestamp,
       Status: context.exitCode === 0 ? 'Success' : 'Failed',
@@ -103,8 +160,11 @@ export class NotificationService {
       AdminEmail: getSetting('admin_email'),
       CurrentAttempt: context.currentAttempt !== undefined ? String(context.currentAttempt) : 'N/A',
       MaxAttempts: context.maxAttempts !== undefined ? String(context.maxAttempts) : 'N/A',
-      IsRetrying: context.isRetrying ? 'Yes' : 'No',
-      WillRetry: context.isRetrying ? 'Yes' : 'No'
+      WillRetry: context.isRetrying ? 'Yes' : 'No',
+      BuildLog: buildLogContent,
+      BuildLogPath: buildLogPath,
+      // Environment variables from system settings (e.g., $MY_ENV, $API_KEY, etc.)
+      ...envVarMap
     }
     
     // Helper function to escape a value for safe inclusion in JSON strings
@@ -277,6 +337,20 @@ export class NotificationService {
       [emailHtml ? 'html' : 'text']: emailBody
     }
 
+    // Attach build log file if requested and available
+    if (notification.attachBuildLog && context.projectId && context.buildNumber) {
+      const logPath = getBuildLogPath(context.projectId, context.buildNumber)
+      if (logPath) {
+        mailOptions.attachments = [{
+          filename: `build_${context.projectId}_${context.buildNumber}.log`,
+          path: logPath
+        }]
+        logger.info(`Attaching build log: ${logPath}`)
+      } else {
+        logger.warn(`Build log requested but not found for build #${context.buildNumber}`)
+      }
+    }
+
     logger.info(`Sending email via ${smtpHost}:${transportConfig.port}...`)
     const info = await transporter.sendMail(mailOptions)
     logger.info(`Email sent! Message ID: ${info.messageId}`)
@@ -323,7 +397,59 @@ export class NotificationService {
     logger.info(`Channel: ${channel}`)
     logger.info(`Bot Token: ${slackBotToken.substring(0, 15)}...`)
 
-    // Build Slack API payload
+    // Upload build log file if requested
+    let fileId = null
+    if (notification.attachBuildLog && context.projectId && context.buildNumber) {
+      const logPath = getBuildLogPath(context.projectId, context.buildNumber)
+      if (logPath) {
+        try {
+          logger.info(`Uploading build log to Slack: ${logPath}`)
+          const fs = await import('fs')
+          const fileContent = fs.readFileSync(logPath)
+          const fileName = `build_${context.projectId}_${context.buildNumber}.log`
+
+          // Use Slack files.uploadV2 API
+          const FormData = (await import('form-data')).default
+          const formData = new FormData()
+          formData.append('file', fileContent, fileName)
+          formData.append('filename', fileName)
+          formData.append('channels', channel)
+          formData.append('initial_comment', slackMessage || 'Build log file')
+
+          const uploadResponse = await fetch('https://slack.com/api/files.uploadV2', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${slackBotToken}`,
+              ...formData.getHeaders()
+            },
+            body: formData
+          })
+
+          const uploadResult = await uploadResponse.json()
+
+          if (!uploadResult.ok) {
+            logger.warn(`Failed to upload build log to Slack: ${uploadResult.error}`)
+          } else {
+            logger.info(`Build log uploaded to Slack successfully`)
+            fileId = uploadResult.file?.id
+
+            // If we uploaded the file with a message, we're done
+            return {
+              status: uploadResponse.status,
+              response: uploadResult,
+              fileId: fileId,
+              channel: channel
+            }
+          }
+        } catch (error) {
+          logger.warn(`Error uploading build log to Slack: ${error.message}`)
+        }
+      } else {
+        logger.warn(`Build log requested but not found for build #${context.buildNumber}`)
+      }
+    }
+
+    // Build Slack API payload for message
     const payload = {
       channel: channel
     }
@@ -368,7 +494,8 @@ export class NotificationService {
       status: response.status,
       response: result,
       messageTs: result.ts,
-      channel: result.channel
+      channel: result.channel,
+      fileId: fileId
     }
   }
 
@@ -397,6 +524,95 @@ export class NotificationService {
     logger.info(`URL: ${webhookUrl}`)
     logger.info(`Method: ${method}`)
 
+    // Detect if this is a Discord webhook (supports file uploads via multipart/form-data)
+    const isDiscordWebhook = webhookUrl && webhookUrl.includes('discord.com/api/webhooks')
+
+    // Check if we need to attach a build log file to Discord
+    const shouldAttachFile = notification.attachBuildLog && context.projectId && context.buildNumber
+    let logPath = null
+
+    if (shouldAttachFile) {
+      logPath = getBuildLogPath(context.projectId, context.buildNumber)
+      if (!logPath) {
+        logger.warn(`Build log requested but not found for build #${context.buildNumber}`)
+      }
+    }
+
+    // If attaching a file to Discord webhook, use multipart/form-data
+    if (logPath && isDiscordWebhook) {
+      logger.info(`Attaching build log to Discord webhook: ${logPath}`)
+      const fs = await import('fs')
+      const FormData = (await import('form-data')).default
+      const formData = new FormData()
+
+      // Parse the JSON body and add as payload_json for Discord
+      let parsedBody
+      if (typeof webhookBody === 'string') {
+        try {
+          parsedBody = JSON.parse(webhookBody)
+        } catch (error) {
+          logger.warn('Webhook body is not valid JSON, sending as-is:', error.message)
+          parsedBody = { content: webhookBody }
+        }
+      } else {
+        parsedBody = webhookBody
+      }
+
+      // Add JSON payload
+      formData.append('payload_json', JSON.stringify(parsedBody))
+
+      // Add the build log file
+      const fileName = `build_${context.projectId}_${context.buildNumber}.log`
+      formData.append('file', fs.createReadStream(logPath), fileName)
+
+      // Parse custom headers
+      let customHeaders = {}
+      if (webhookHeaders) {
+        try {
+          customHeaders = typeof webhookHeaders === 'string'
+            ? JSON.parse(webhookHeaders)
+            : webhookHeaders
+        } catch (error) {
+          logger.warn('Failed to parse webhook headers, using default:', error.message)
+        }
+      }
+
+      logger.info('Sending Discord webhook with file attachment via multipart/form-data')
+
+      // Send multipart form data
+      const response = await fetch(webhookUrl, {
+        method,
+        headers: {
+          ...customHeaders,
+          ...formData.getHeaders()
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Webhook failed: ${response.status} ${errorText}`)
+      }
+
+      let responseData
+      const contentType = response.headers.get('content-type')
+
+      if (contentType && contentType.includes('application/json')) {
+        responseData = await response.json()
+      } else {
+        responseData = await response.text()
+      }
+
+      logger.info(`Discord webhook response:`, responseData)
+
+      return {
+        status: response.status,
+        response: responseData,
+        fileAttached: true
+      }
+    }
+
+    // Standard JSON webhook (no file attachment)
     // Parse headers
     let headers = { 'Content-Type': 'application/json' }
 
@@ -424,7 +640,7 @@ export class NotificationService {
     } else {
       body = JSON.stringify(body)
     }
-    
+
     // Send webhook
     const fetchOptions = {
       method,

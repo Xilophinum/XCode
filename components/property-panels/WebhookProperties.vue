@@ -110,38 +110,52 @@
             </div>
         </div>
         
-        <!-- Webhook Documentation -->
-        <div class="mt-4 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
-            <div class="font-medium text-green-800 dark:text-green-200 mb-2">📖 Authentication Methods:</div>
-            <div class="text-green-700 dark:text-green-300 space-y-2">
-            <div class="space-y-1">
-                <div class="font-medium">Custom APIs & Services:</div>
-                <div class="pl-2 text-xs opacity-90">Header: <span class="font-mono">X-Webhook-Token: your-secret-token</span></div>
-                <div class="pl-2 text-xs opacity-90">Body: <span class="font-mono">&#123;"token": "your-secret-token"&#125;</span></div>
-                <div class="pl-2 text-xs opacity-90">Query: <span class="font-mono">?token=your-secret-token</span></div>
-            </div>
-            <div class="space-y-1">
-                <div class="font-medium">Git Platforms (Automatic):</div>
-                <div class="pl-2 text-xs opacity-90">GitHub: X-Hub-Signature-256 (SHA256 HMAC)</div>
-                <div class="pl-2 text-xs opacity-90">GitLab: X-Gitlab-Token header</div>
-                <div class="pl-2 text-xs opacity-90">Bitbucket: X-Hub-Signature (SHA1 HMAC)</div>
-                <div class="pl-2 text-xs opacity-90">Azure DevOps: Authorization header</div>
-            </div>
-            <div class="pt-1 border-t border-green-200 dark:border-green-800">
-                <div class="font-medium">Security Note:</div>
-                <div class="text-xs opacity-90">Always configure a secret token for production webhooks. Git platforms will automatically sign requests using your secret.</div>
-            </div>
-            </div>
-        </div>
-        
-        <!-- Common Use Cases -->
-        <div class="mt-3 p-3 bg-amber-50 dark:bg-amber-950 rounded text-xs">
-            <div class="font-medium text-amber-800 dark:text-amber-200 mb-2">💡 Common Use Cases:</div>
-            <div class="text-amber-700 dark:text-amber-300 space-y-1">
-            <div>• <strong>CI/CD:</strong> Trigger deployments from GitHub, GitLab, or other platforms</div>
-            <div>• <strong>Notifications:</strong> Respond to events from Slack, Discord, or monitoring tools</div>
-            <div>• <strong>API Integration:</strong> Process data from external APIs or services</div>
-            <div>• <strong>Automation:</strong> Execute workflows when specific events occur</div>
+        <!-- Authentication & Security (Collapsible) -->
+        <div class="mt-4 border border-green-200 dark:border-green-800 rounded-lg overflow-hidden">
+            <button
+                @click="showAuthDocs = !showAuthDocs"
+                class="w-full p-3 bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 transition-colors flex items-center justify-between text-left"
+            >
+                <span class="font-medium text-green-800 dark:text-green-200 text-xs">📖 Authentication Methods & Security</span>
+                <svg
+                    class="w-4 h-4 text-green-600 dark:text-green-400 transition-transform"
+                    :class="{ 'rotate-180': showAuthDocs }"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            <div v-show="showAuthDocs" class="p-3 bg-green-50 dark:bg-green-950 border-t border-green-200 dark:border-green-800 text-xs">
+                <div class="text-green-700 dark:text-green-300 space-y-2">
+                    <div class="space-y-1">
+                        <div class="font-medium">Custom APIs & Services:</div>
+                        <div class="pl-2 text-xs opacity-90">Header: <span class="font-mono">X-Webhook-Token: your-secret-token</span></div>
+                        <div class="pl-2 text-xs opacity-90">Body: <span class="font-mono">&#123;"token": "your-secret-token"&#125;</span></div>
+                        <div class="pl-2 text-xs opacity-90">Query: <span class="font-mono">?token=your-secret-token</span></div>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="font-medium">Git Platforms (Automatic):</div>
+                        <div class="pl-2 text-xs opacity-90">GitHub: X-Hub-Signature-256 (SHA256 HMAC)</div>
+                        <div class="pl-2 text-xs opacity-90">GitLab: X-Gitlab-Token header</div>
+                        <div class="pl-2 text-xs opacity-90">Bitbucket: X-Hub-Signature (SHA1 HMAC)</div>
+                        <div class="pl-2 text-xs opacity-90">Azure DevOps: Authorization header</div>
+                    </div>
+                    <div class="pt-1 border-t border-green-200 dark:border-green-800">
+                        <div class="font-medium">Security Note:</div>
+                        <div class="text-xs opacity-90">Always configure a secret token for production webhooks. Git platforms will automatically sign requests using your secret.</div>
+                    </div>
+                    <div class="pt-1 border-t border-green-200 dark:border-green-800">
+                        <div class="font-medium">💡 Common Use Cases:</div>
+                        <div class="space-y-1">
+                            <div>• <strong>CI/CD:</strong> Trigger deployments from GitHub, GitLab, or other platforms</div>
+                            <div>• <strong>Notifications:</strong> Respond to events from Slack, Discord, or monitoring tools</div>
+                            <div>• <strong>API Integration:</strong> Process data from external APIs or services</div>
+                            <div>• <strong>Automation:</strong> Execute workflows when specific events occur</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -281,6 +295,11 @@ const props = defineProps({
     required: true
   }
 })
+
+// Collapsible sections state
+const showAuthDocs = ref(false)
+const showGitSetup = ref(false)
+const showDataAccess = ref(false)
 
 // Webhook endpoint validation
 const validateEndpoint = (event) => {

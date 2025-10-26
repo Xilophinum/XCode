@@ -53,6 +53,25 @@
       </p>
     </div>
 
+    <!-- General Options (for all notification types) -->
+    <div class="mt-4 p-3 bg-purple-50 dark:bg-purple-950 rounded-lg border border-purple-200 dark:border-purple-800">
+      <h4 class="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-2">General Options</h4>
+      <div class="flex items-center">
+        <input
+          type="checkbox"
+          id="attachBuildLog"
+          v-model="nodeData.data.attachBuildLog"
+          class="w-4 h-4 text-purple-600 bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 rounded focus:ring-purple-500 dark:focus:ring-purple-600 focus:ring-2"
+        />
+        <label for="attachBuildLog" class="ml-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          Attach build log file
+        </label>
+      </div>
+      <p class="mt-1 ml-6 text-xs text-purple-700 dark:text-purple-300">
+        Email: Attaches log file • Slack: Uploads file (requires files:write scope) • Discord: Attaches file • Other webhooks: Use $BuildLog variable
+      </p>
+    </div>
+
     <!-- Email Configuration -->
     <div v-if="nodeData.data.notificationType === 'email'" class="mt-4 space-y-3">
       <div>
@@ -271,104 +290,211 @@
       </div>
     </div>
 
-    <!-- Available Variables Documentation -->
-    <div class="mt-4 p-3 bg-purple-50 dark:bg-purple-950 rounded text-xs">
-      <div class="font-medium text-purple-800 dark:text-purple-200 mb-2">Available Context Variables:</div>
-      <div class="text-purple-700 dark:text-purple-300 space-y-1">
-        <div class="font-mono">$ProjectName - Name of the project being executed</div>
-        <div class="font-mono">$ProjectId - The project identifier (UUID)</div>
-        <div class="font-mono">$BuildNumber - The current build number</div>
-        <div class="font-mono">$JobId - Unique identifier for this job execution</div>
-        <div class="font-mono">$Status - Status text based on exit code (Success/Failed)</div>
-        <div class="font-mono">$ExitCode - Exit code from previous execution (0 = success)</div>
-        <div class="font-mono">$FailedNodeLabel - Label of the node that failed (only on failure)</div>
-        <div class="font-mono">$CurrentAttempt - Current failure attempt number (1, 2, 3, etc.)</div>
-        <div class="font-mono">$MaxAttempts - Maximum number of attempts configured</div>
-        <div class="font-mono">$IsRetrying - Whether the job will retry (Yes/No)</div>
-        <div class="font-mono">$WillRetry - Same as IsRetrying (Yes/No)</div>
-        <div class="font-mono">$Output - Output from the previous node</div>
-        <div class="font-mono">$Timestamp - ISO 8601 timestamp (e.g., 2025-10-23T14:30:00.000Z)</div>
-        <div class="font-mono">$TimestampHuman - Human-readable timestamp (e.g., Oct 23, 2025, 02:30:00 PM)</div>
-        <div class="font-mono">$DefaultEmailFrom - Default from address from system settings</div>
-        <div class="font-mono">$DefaultEmailTo - Default to address from system settings</div>
-        <div class="font-mono">$AdminEmail - Administrator email from system settings</div>
-      </div>
-      <p class="mt-2 text-purple-700 dark:text-purple-300">
-        Use both ${'{VarName}'} or $VarName format in your notification messages
-      </p>
-    </div>
-
-    <!-- Input Socket Variables Help -->
-    <div v-if="nodeData.data.inputSockets && nodeData.data.inputSockets.length > 0" class="mt-4 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
-      <div class="font-medium text-green-800 dark:text-green-200 mb-2">Available Input Socket Variables:</div>
-      <div class="text-green-700 dark:text-green-300 space-y-1">
-        <div v-for="socket in nodeData.data.inputSockets" :key="socket.id" class="font-mono">
-          ${{ socket.label }}
+    <!-- Available Variables Documentation (Collapsible) -->
+    <div class="mt-4 border border-purple-200 dark:border-purple-800 rounded-lg overflow-hidden">
+      <button
+        @click="showVariables = !showVariables"
+        class="w-full p-3 bg-purple-50 dark:bg-purple-950 hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors flex items-center justify-between text-left"
+      >
+        <span class="font-medium text-purple-800 dark:text-purple-200 text-xs">Available Context Variables</span>
+        <svg
+          class="w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform"
+          :class="{ 'rotate-180': showVariables }"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div v-show="showVariables" class="p-3 bg-purple-50 dark:bg-purple-950 border-t border-purple-200 dark:border-purple-800 text-xs">
+        <div class="text-purple-700 dark:text-purple-300 space-y-1">
+          <div class="font-mono">$ProjectName - Name of the project being executed</div>
+          <div class="font-mono">$ProjectId - The project identifier (UUID)</div>
+          <div class="font-mono">$BuildNumber - The current build number</div>
+          <div class="font-mono">$JobId - Unique identifier for this job execution</div>
+          <div class="font-mono">$Status - Status text based on exit code (Success/Failed)</div>
+          <div class="font-mono">$ExitCode - Exit code from previous execution (0 = success)</div>
+          <div class="font-mono">$FailedNodeLabel - Label of the node that failed (only on failure)</div>
+          <div class="font-mono">$CurrentAttempt - Current failure attempt number (1, 2, 3, etc.)</div>
+          <div class="font-mono">$MaxAttempts - Maximum number of attempts configured</div>
+          <div class="font-mono">$WillRetry - Whether the job will retry after failure (Yes/No)</div>
+          <div class="font-mono">$Timestamp - ISO 8601 timestamp (e.g., 2025-10-23T14:30:00.000Z)</div>
+          <div class="font-mono">$TimestampHuman - Human-readable timestamp (e.g., Oct 23, 2025, 02:30:00 PM)</div>
+          <div class="font-mono">$BuildLog - Complete build log content (only when "Attach build log file" is enabled)</div>
+          <div class="font-mono">$BuildLogPath - Absolute path to build log file (only when "Attach build log file" is enabled)</div>
+          <div class="font-mono">$DefaultEmailFrom - Default from address from system settings</div>
+          <div class="font-mono">$DefaultEmailTo - Default to address from system settings</div>
+          <div class="font-mono">$AdminEmail - Administrator email from system settings</div>
         </div>
-      </div>
-      <p class="mt-2 text-green-700 dark:text-green-300">
-        Use these variables to include data passed from connected nodes
-      </p>
-    </div>
-
-    <!-- Usage Examples -->
-    <div class="mt-4 p-3 bg-amber-50 dark:bg-amber-950 rounded text-xs">
-      <div class="font-medium text-amber-800 dark:text-amber-200 mb-2">Usage Examples:</div>
-      <div class="text-amber-700 dark:text-amber-300 space-y-2">
-        <div v-if="nodeData.data.notificationType === 'email'">
-          <div class="font-medium mb-1">Email Notification (Success):</div>
-          <div class="pl-2 space-y-1 font-mono text-xs">
-            <div>Subject: "[$ProjectName] Build #$BuildNumber - $Status"</div>
-            <div>Body: "Build $BuildNumber completed at $TimestampHuman"</div>
-          </div>
-          <div class="font-medium mb-1 mt-2">Email Notification (Failure with Retry):</div>
-          <div class="pl-2 space-y-1 font-mono text-xs">
-            <div>Subject: "[$ProjectName] Build #$BuildNumber - Attempt $CurrentAttempt Failed"</div>
-            <div>Body: "Node '$FailedNodeLabel' failed (attempt $CurrentAttempt/$MaxAttempts). Will retry: $WillRetry"</div>
-          </div>
-        </div>
-        <div v-if="nodeData.data.notificationType === 'slack'">
-          <div class="font-medium mb-1">Slack Notification:</div>
-          <div class="pl-2 space-y-1 font-mono text-xs">
-            <div>":x: *$ProjectName* - Build #$BuildNumber Failed"</div>
-            <div>"*Failed Node:* $FailedNodeLabel"</div>
-            <div>"*Time:* $TimestampHuman | *Exit Code:* $ExitCode"</div>
-          </div>
-        </div>
-        <div v-if="nodeData.data.notificationType === 'webhook'">
-          <div class="font-medium mb-1">Webhook Payload:</div>
-          <div class="pl-2 font-mono bg-amber-100 dark:bg-amber-900 p-2 rounded mt-1 text-xs">
-            {<br/>
-            &nbsp;&nbsp;"event": "build_failed",<br/>
-            &nbsp;&nbsp;"project": "$ProjectName",<br/>
-            &nbsp;&nbsp;"buildNumber": "$BuildNumber",<br/>
-            &nbsp;&nbsp;"failedNode": "$FailedNodeLabel",<br/>
-            &nbsp;&nbsp;"status": "$Status",<br/>
-            &nbsp;&nbsp;"exitCode": $ExitCode,<br/>
-            &nbsp;&nbsp;"timestamp": "$Timestamp"<br/>
-            }
-          </div>
-        </div>
+        <p class="mt-2 text-purple-700 dark:text-purple-300">
+          Use both ${'{VarName}'} or $VarName format in your notification messages. To reference output from connected nodes, use input socket variables like $INPUT_1, $INPUT_2, etc. All environment variables from System Settings are also available (e.g., $MY_ENV, $API_KEY).
+        </p>
       </div>
     </div>
 
-    <!-- SMTP Configuration Notice (for email) -->
-    <div v-if="nodeData.data.notificationType === 'email'" class="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded text-xs">
-      <div class="font-medium text-blue-800 dark:text-blue-200 mb-1">SMTP Configuration Required</div>
-      <div class="text-blue-700 dark:text-blue-300">
-        Make sure your SMTP server settings are configured in the system environment variables or configuration file.
+    <!-- Input Socket Variables Help (Collapsible) -->
+    <div v-if="nodeData.data.inputSockets && nodeData.data.inputSockets.length > 0" class="mt-4 border border-green-200 dark:border-green-800 rounded-lg overflow-hidden">
+      <button
+        @click="showInputSockets = !showInputSockets"
+        class="w-full p-3 bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 transition-colors flex items-center justify-between text-left"
+      >
+        <span class="font-medium text-green-800 dark:text-green-200 text-xs">Available Input Socket Variables</span>
+        <svg
+          class="w-4 h-4 text-green-600 dark:text-green-400 transition-transform"
+          :class="{ 'rotate-180': showInputSockets }"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div v-show="showInputSockets" class="p-3 bg-green-50 dark:bg-green-950 border-t border-green-200 dark:border-green-800 text-xs">
+        <div class="text-green-700 dark:text-green-300 space-y-1">
+          <div v-for="socket in nodeData.data.inputSockets" :key="socket.id" class="font-mono">
+            ${{ socket.label }}
+          </div>
+        </div>
+        <p class="mt-2 text-green-700 dark:text-green-300">
+          Use these variables to include data passed from connected nodes
+        </p>
       </div>
     </div>
 
-    <!-- Slack Setup Guide -->
-    <div v-if="nodeData.data.notificationType === 'slack'" class="mt-4 p-3 bg-purple-50 dark:bg-purple-950 rounded text-xs">
-      <div class="font-medium text-purple-800 dark:text-purple-200 mb-2">Slack Webhook Setup:</div>
-      <div class="text-purple-700 dark:text-purple-300 space-y-1">
-        <div>1. Go to https://api.slack.com/apps</div>
-        <div>2. Create a new app or select existing</div>
-        <div>3. Enable "Incoming Webhooks"</div>
-        <div>4. Add webhook to workspace</div>
-        <div>5. Copy the webhook URL and paste above</div>
+    <!-- Usage Examples (Collapsible) -->
+    <div class="mt-4 border border-amber-200 dark:border-amber-800 rounded-lg overflow-hidden">
+      <button
+        @click="showExamples = !showExamples"
+        class="w-full p-3 bg-amber-50 dark:bg-amber-950 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors flex items-center justify-between text-left"
+      >
+        <span class="font-medium text-amber-800 dark:text-amber-200 text-xs">Usage Examples</span>
+        <svg
+          class="w-4 h-4 text-amber-600 dark:text-amber-400 transition-transform"
+          :class="{ 'rotate-180': showExamples }"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div v-show="showExamples" class="p-3 bg-amber-50 dark:bg-amber-950 border-t border-amber-200 dark:border-amber-800 text-xs">
+        <div class="text-amber-700 dark:text-amber-300 space-y-2">
+          <div v-if="nodeData.data.notificationType === 'email'">
+            <div class="font-medium mb-1">Email Notification (Success):</div>
+            <div class="pl-2 space-y-1 font-mono text-xs">
+              <div>Subject: "[$ProjectName] Build #$BuildNumber - $Status"</div>
+              <div>Body: "Build $BuildNumber completed at $TimestampHuman"</div>
+            </div>
+            <div class="font-medium mb-1 mt-2">Email Notification (Failure with Retry):</div>
+            <div class="pl-2 space-y-1 font-mono text-xs">
+              <div>Subject: "[$ProjectName] Build #$BuildNumber - Attempt $CurrentAttempt Failed"</div>
+              <div>Body: "Node '$FailedNodeLabel' failed (attempt $CurrentAttempt/$MaxAttempts). Will retry: $WillRetry"</div>
+            </div>
+          </div>
+          <div v-if="nodeData.data.notificationType === 'slack'">
+            <div class="font-medium mb-1">Slack Notification:</div>
+            <div class="pl-2 space-y-1 font-mono text-xs">
+              <div>":x: *$ProjectName* - Build #$BuildNumber Failed"</div>
+              <div>"*Failed Node:* $FailedNodeLabel"</div>
+              <div>"*Time:* $TimestampHuman | *Exit Code:* $ExitCode"</div>
+            </div>
+          </div>
+          <div v-if="nodeData.data.notificationType === 'webhook'">
+            <div class="font-medium mb-1">Webhook Payload (Basic):</div>
+            <div class="pl-2 font-mono bg-amber-100 dark:bg-amber-900 p-2 rounded mt-1 text-xs">
+              {<br/>
+              &nbsp;&nbsp;"event": "build_failed",<br/>
+              &nbsp;&nbsp;"project": "$ProjectName",<br/>
+              &nbsp;&nbsp;"buildNumber": "$BuildNumber",<br/>
+              &nbsp;&nbsp;"failedNode": "$FailedNodeLabel",<br/>
+              &nbsp;&nbsp;"status": "$Status",<br/>
+              &nbsp;&nbsp;"exitCode": $ExitCode,<br/>
+              &nbsp;&nbsp;"timestamp": "$Timestamp"<br/>
+              }
+            </div>
+            <div class="font-medium mb-1 mt-3">Webhook with Build Log (when "Attach build log file" is enabled):</div>
+            <div class="pl-2 font-mono bg-amber-100 dark:bg-amber-900 p-2 rounded mt-1 text-xs">
+              {<br/>
+              &nbsp;&nbsp;"project": "$ProjectName",<br/>
+              &nbsp;&nbsp;"buildNumber": "$BuildNumber",<br/>
+              &nbsp;&nbsp;"status": "$Status",<br/>
+              &nbsp;&nbsp;"buildLog": "$BuildLog",<br/>
+              &nbsp;&nbsp;"logPath": "$BuildLogPath"<br/>
+              }
+            </div>
+            <p class="mt-2 text-amber-700 dark:text-amber-300 text-xs">
+              Note: Discord webhooks automatically attach the log file. For other webhooks, use $BuildLog to include log content in the JSON payload.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Setup & Configuration Guide (Collapsible) -->
+    <div class="mt-4 border border-blue-200 dark:border-blue-800 rounded-lg overflow-hidden">
+      <button
+        @click="showSetupGuide = !showSetupGuide"
+        class="w-full p-3 bg-blue-50 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors flex items-center justify-between text-left"
+      >
+        <span class="font-medium text-blue-800 dark:text-blue-200 text-xs">Setup & Configuration Guide</span>
+        <svg
+          class="w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform"
+          :class="{ 'rotate-180': showSetupGuide }"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div v-show="showSetupGuide" class="p-3 bg-blue-50 dark:bg-blue-950 border-t border-blue-200 dark:border-blue-800 text-xs">
+        <!-- Email SMTP Setup -->
+        <div v-if="nodeData.data.notificationType === 'email'" class="text-blue-700 dark:text-blue-300">
+          <div class="font-medium mb-2">SMTP Configuration Required</div>
+          <div class="space-y-1">
+            <div>Make sure your SMTP server settings are configured in the system environment variables or configuration file.</div>
+            <div class="mt-2 font-mono text-xs bg-blue-100 dark:bg-blue-900 p-2 rounded">
+              Required environment variables:<br/>
+              • SMTP_HOST<br/>
+              • SMTP_PORT<br/>
+              • SMTP_USER<br/>
+              • SMTP_PASS
+            </div>
+          </div>
+        </div>
+
+        <!-- Slack Setup -->
+        <div v-if="nodeData.data.notificationType === 'slack'" class="text-purple-700 dark:text-purple-300">
+          <div class="font-medium mb-2">Slack App Setup</div>
+          <div class="space-y-1">
+            <div>1. Go to https://api.slack.com/apps</div>
+            <div>2. Create a new app or select existing</div>
+            <div>3. Go to OAuth & Permissions → Scopes</div>
+            <div>4. Add Bot Token Scopes: <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">chat:write</code> and <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">files:write</code></div>
+            <div>5. Install app to workspace</div>
+            <div>6. Copy Bot Token and set <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">SLACK_BOT_TOKEN</code> environment variable</div>
+          </div>
+        </div>
+
+        <!-- Webhook Setup -->
+        <div v-if="nodeData.data.notificationType === 'webhook'" class="text-blue-700 dark:text-blue-300">
+          <div class="font-medium mb-2">Webhook Configuration</div>
+          <div class="space-y-2">
+            <div><strong>Discord Webhooks:</strong></div>
+            <div class="pl-2 space-y-1">
+              <div>1. Open Discord → Server Settings → Integrations</div>
+              <div>2. Create new webhook</div>
+              <div>3. Copy webhook URL</div>
+              <div>4. Paste in "Webhook URL" field or set <code class="bg-blue-100 dark:bg-blue-900 px-1 rounded">DISCORD_WEBHOOK_URL</code> env variable</div>
+            </div>
+            <div class="mt-2"><strong>Other Webhooks:</strong></div>
+            <div class="pl-2">
+              Configure the HTTP method, headers, and body as required by your webhook service. Use context variables like $BuildNumber in the body.
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -381,6 +507,12 @@ const props = defineProps({
     required: true
   }
 })
+
+// Collapsible sections state
+const showVariables = ref(false)
+const showInputSockets = ref(false)
+const showExamples = ref(false)
+const showSetupGuide = ref(false)
 
 // Template management
 const templates = ref([])

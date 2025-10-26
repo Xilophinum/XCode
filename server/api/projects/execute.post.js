@@ -976,6 +976,9 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
           }
         })(),
 
+        // General notification properties
+        attachBuildLog: node.data.attachBuildLog || false, // Whether to attach build log file
+
         nodeId: node.id,
         nodeLabel: node.data.label
       })

@@ -120,16 +120,7 @@ All notification types support these variables:
 
 ### Email Setup
 
-```env
-# Environment variables (optional)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-SMTP_SECURE=false
-```
-
-Or configure in: **Admin → Settings → Notifications**
+Configure in: **Admin → Settings → Notifications**
 
 ### Slack Setup
 

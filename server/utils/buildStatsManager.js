@@ -1,7 +1,7 @@
 import { getDB, builds, items } from './database.js'
 import { eq, desc, and, gte, lte, count, avg, min, max } from 'drizzle-orm'
 import { broadcastBuildCompletion } from '../plugins/websocket.js'
-import logger from './logger.js'
+import logger, { createBuildLogger, closeBuildLogger } from './logger.js'
 
 export class BuildStatsManager {
   constructor() {
@@ -64,10 +64,17 @@ export class BuildStatsManager {
 
     logger.info(`Started build #${buildNumber} for project "${projectName}"`)
 
+    // Create a build-specific logger for capturing all build-related logs
+    const buildLogger = createBuildLogger(buildData.projectId, buildNumber)
+    buildLogger.info(`Build #${buildNumber} started for project "${projectName}"`)
+    buildLogger.info(`Agent: ${buildData.agentName || buildData.agentId || 'Local'}`)
+    buildLogger.info(`Trigger: ${buildData.trigger || 'manual'}`)
+
     return {
       projectId: buildData.projectId,
       projectName: projectName,
-      buildNumber
+      buildNumber,
+      buildLogger // Return the logger so it can be used during execution
     }
   }
 
@@ -212,6 +219,12 @@ export class BuildStatsManager {
     await this.cleanupOldBuilds(projectId)
 
     logger.info(`Finished build #${buildNumber} for project "${build.projectName}" with status: ${result.status}`)
+
+    // Close and delete the build-specific log file after a short delay
+    // This allows notifications to attach the file before it's deleted
+    setTimeout(async () => {
+      await closeBuildLogger(projectId, buildNumber)
+    }, 30000) // 30 second delay
   }
 
 

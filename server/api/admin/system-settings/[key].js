@@ -1,6 +1,6 @@
 import { getAuthenticatedUser } from '../../../utils/auth'
 import { DataService } from '../../../utils/dataService'
-import logger from '~/server/utils/logger.js'
+import logger, { setLogLevel } from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   // Check authentication and admin role
@@ -32,6 +32,13 @@ export default defineEventHandler(async (event) => {
       // Update system setting
       const body = await readBody(event)
       const setting = await dataService.updateSystemSettingByKey(settingKey, body.value)
+
+      // Apply log level change immediately if log_level setting was updated
+      if (settingKey === 'log_level') {
+        setLogLevel(body.value)
+        logger.info(`Log level changed to: ${body.value}`)
+      }
+
       return setting
     }
   } catch (error) {
