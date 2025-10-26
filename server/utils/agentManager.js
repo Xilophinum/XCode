@@ -39,12 +39,17 @@ class AgentManager {
     }
 
     const envVars = await this.dataService.getEnvVariables()
+    logger.debug(`Fetched ${envVars.length} environment variables from database`)
+
     const envObject = {}
 
     for (const envVar of envVars) {
       envObject[envVar.key] = envVar.value
     }
 
+    // Log keys only (not values) to avoid exposing secrets in logs
+    const secretCount = envVars.filter(v => v.isSecret === 'true').length
+    logger.debug(`Environment variable keys: ${Object.keys(envObject).join(', ')} (${secretCount} marked as secret)`)
     return envObject
   }
 
@@ -275,6 +280,7 @@ class AgentManager {
           
           // Get environment variables from system settings
           const environment = await this.getEnvironmentVariables()
+          logger.debug(`Passing ${Object.keys(environment).length} environment variables to agent for job ${jobId}`)
 
           // Dispatch next command to the appropriate agent
           const dispatchSuccess = await this.dispatchJobToAgent(nextAgent.agentId, {
@@ -958,6 +964,7 @@ class AgentManager {
 
       // Get environment variables from system settings
       const environment = await this.getEnvironmentVariables()
+      logger.debug(`Passing ${Object.keys(environment).length} environment variables to agent for job ${parentJobId}`)
 
       const dispatchSuccess = await this.dispatchJobToAgent(nextAgent.agentId, {
         jobId: parentJobId,

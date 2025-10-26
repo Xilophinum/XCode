@@ -415,10 +415,15 @@ export class DataService {
 
   async updateEnvVariable(id, updates) {
     await this.ensureInitialized()
-    
+
     const updateData = {
       ...updates,
       updatedAt: new Date().toISOString(),
+    }
+
+    // Convert isSecret boolean to string for SQLite (if present in updates)
+    if (typeof updateData.isSecret === 'boolean') {
+      updateData.isSecret = updateData.isSecret ? 'true' : 'false'
     }
 
     await this.db

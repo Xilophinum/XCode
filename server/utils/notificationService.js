@@ -36,6 +36,7 @@
 import nodemailer from 'nodemailer'
 import { getDataService } from './dataService.js'
 import logger, { getBuildLogPath } from './logger.js'
+import FormData from 'form-data'
 
 export class NotificationService {
   constructor() {
@@ -409,7 +410,6 @@ export class NotificationService {
           const fileName = `build_${context.projectId}_${context.buildNumber}.log`
 
           // Use Slack files.uploadV2 API
-          const FormData = (await import('form-data')).default
           const formData = new FormData()
           formData.append('file', fileContent, fileName)
           formData.append('filename', fileName)

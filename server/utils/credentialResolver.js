@@ -28,7 +28,7 @@ export class CredentialResolver {
   /**
    * Resolve credentials for a job and inject as environment variables
    * @param {Array} nodes - Workflow nodes that may contain credential references
-   * @param {Object} baseEnv - Base environment variables
+   * @param {Object} baseEnv - Base environment variables (includes system env vars)
    * @returns {Object} - Environment variables with injected credentials
    */
   async resolveCredentials(nodes, baseEnv = {}) {
@@ -36,6 +36,9 @@ export class CredentialResolver {
 
     const env = { ...baseEnv }
     const credentialIds = new Set()
+
+    // Register secret environment variables for masking
+    await this.registerSecretEnvVars()
 
     // Extract credential references from all nodes
     for (const node of nodes) {
@@ -65,19 +68,37 @@ export class CredentialResolver {
 
         // Inject credential into environment based on type
         const resolvedValues = await this.injectCredential(credential, env, nodes)
-        
+
         // Register credential values for log masking
         this.logMasker.registerCredential(credential, resolvedValues)
-        
+
         // Update last used timestamp
         await this.dataService.updateCredentialLastUsed(credentialId)
-        
+
       } catch (error) {
         logger.error(`Error resolving credential ${credentialId}:`, error)
       }
     }
 
     return env
+  }
+
+  /**
+   * Register secret environment variables for log masking
+   */
+  async registerSecretEnvVars() {
+    if (!this.dataService) await this.initialize()
+
+    const envVars = await this.dataService.getEnvVariables()
+
+    for (const envVar of envVars) {
+      // Register values marked as secret
+      if (envVar.isSecret === 'true' && envVar.value) {
+        this.logMasker.sensitiveValues.add(envVar.value)
+      }
+    }
+
+    logger.debug(`Registered ${this.logMasker.getSensitiveCount()} secret values for masking`)
   }
 
   /**

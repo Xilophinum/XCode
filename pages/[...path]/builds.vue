@@ -235,7 +235,7 @@
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-neutral-800 divide-y divide-gray-200 dark:divide-gray-700">
-                <tr v-for="build in (builds || [])" :key="build.id" class="hover:bg-gray-50 dark:hover:bg-neutral-700">
+                <tr v-for="build in (builds || [])" :key="build.buildNumber" class="hover:bg-gray-50 dark:hover:bg-neutral-700">
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div class="text-sm font-medium text-gray-900 dark:text-white">
@@ -532,9 +532,9 @@ const viewBuildLogs = async (build) => {
   selectedBuild.value = build
   showLogsModal.value = true
   loadingLogs.value = true
-  
+
   try {
-    const response = await $fetch(`/api/projects/${projectId.value}/builds/${build.id}/logs`)
+    const response = await $fetch(`/api/projects/${projectId.value}/builds/${build.buildNumber}/logs`)
     buildLogs.value = response.logs
   } catch (error) {
     logger.error('Error loading build logs:', error)

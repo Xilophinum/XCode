@@ -156,15 +156,27 @@ export default defineEventHandler(async (event) => {
     // Store job in job manager
     await jobManager.createJob(job)
 
+    // Get environment variables from system settings
+    const systemEnvVars = await agentManager.getEnvironmentVariables()
+
     // Resolve credentials and inject as environment variables
     const credentialResolver = await getCredentialResolver()
-    const baseEnv = process.env
-    const resolvedEnv = await credentialResolver.resolveCredentials(nodes, baseEnv)
+    const resolvedEnv = await credentialResolver.resolveCredentials(nodes, systemEnvVars)
 
-    logger.info(`Resolved ${Object.keys(resolvedEnv).length - Object.keys(baseEnv).length} credential environment variables`)
+    logger.info(`Resolved ${Object.keys(resolvedEnv).length - Object.keys(systemEnvVars).length} credential environment variables`)
+
+    // Log environment keys only (not values) to avoid exposing secrets
+    logger.debug('Environment variable keys for job:', Object.keys(resolvedEnv))
 
     // Store credential resolver in job for log masking
-    job.credentialResolver = credentialResolver
+    // We need to update the job in the jobManager because it stores a separate reference
+    const jobFromManager = jobManager.jobs.get(jobId)
+    if (jobFromManager) {
+      jobFromManager.credentialResolver = credentialResolver
+      logger.debug(`Attached credentialResolver to job ${jobId} with ${credentialResolver.logMasker.getSensitiveCount()} secret values registered`)
+    } else {
+      logger.warn(`Could not find job ${jobId} in jobManager to attach credentialResolver`)
+    }
 
     // Store all commands in the job for sequential execution
     job.executionCommands = executableCommands
@@ -1150,37 +1162,32 @@ export function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameter
  */
 function getExecutionResultConnectedNodes(executionNode, allNodes, allEdges, executionResult) {
   const connectedNodes = []
-  
+
   // Determine which socket to use based on execution result
   const targetSocketId = (executionResult && executionResult.success) ? 'success' : 'failure'
-  
-  const outputEdge = allEdges.find(edge => 
+
+  logger.info(`Routing execution node "${executionNode.data.label}" - Result: ${executionResult?.success ? 'SUCCESS' : 'FAILURE'}, Using socket: ${targetSocketId}`)
+
+  const outputEdge = allEdges.find(edge =>
     edge.source === executionNode.id && edge.sourceHandle === targetSocketId
   )
-  
+
   if (outputEdge) {
     const targetNode = allNodes.find(node => node.id === outputEdge.target)
     if (targetNode) {
+      logger.info(`  → Found ${targetSocketId} socket connection to: ${targetNode.data.label} (${targetNode.data.nodeType})`)
       connectedNodes.push(targetNode)
     }
   }
-  
-  // Also check for output socket connections (these should receive the execution output)
-  if (executionResult && executionResult.output) {
-    const outputSocketEdge = allEdges.find(edge => 
-      edge.source === executionNode.id && edge.sourceHandle === 'output'
-    )
-    
-    if (outputSocketEdge) {
-      const outputTargetNode = allNodes.find(node => node.id === outputSocketEdge.target)
-      if (outputTargetNode && !connectedNodes.find(n => n.id === outputTargetNode.id)) {
-        connectedNodes.push(outputTargetNode)
-      }
-    }
-  }
+
+  // NOTE: Output sockets are for data passing ONLY, not execution flow
+  // They connect to input sockets to pass data, but don't trigger node execution
+  // Only success/failure sockets control execution flow
 
   if (connectedNodes.length === 0) {
-    logger.debug(`No output edges found for execution "${executionNode.data.label}" ${targetSocketId} path`)
+    logger.info(`  → No ${targetSocketId} socket connections found - execution stops here`)
+  } else {
+    logger.info(`  → Total nodes to trigger: ${connectedNodes.length}`)
   }
 
   return connectedNodes

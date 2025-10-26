@@ -217,7 +217,13 @@ class JobManager {
     // Mask sensitive values in output if credential resolver is available
     let maskedMessage = outputLine.message || String(outputLine)
     if (job.credentialResolver && typeof job.credentialResolver.maskLog === 'function') {
+      const originalMessage = maskedMessage
       maskedMessage = job.credentialResolver.maskLog(maskedMessage)
+      if (originalMessage !== maskedMessage) {
+        logger.debug(`Masked secret values in output for job ${jobId}`)
+      }
+    } else {
+      logger.debug(`No credentialResolver available for job ${jobId} - output not masked`)
     }
 
     // Get next sequence number

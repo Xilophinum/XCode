@@ -660,10 +660,14 @@ class XCodeBuildAgent {
       }
 
       logger.info(`Executing: ${executorConfig.command} ${finalArgs.join(' ')}`);
-      
+      logger.debug(`Received ${Object.keys(environment || {}).length} environment variables from server`);
+
+      const mergedEnv = { ...process.env, ...environment };
+      logger.debug(`Total environment variables for spawn: ${Object.keys(mergedEnv).length}`);
+
       const child = spawn(executorConfig.command, finalArgs, {
         cwd: workingDirectory || process.cwd(),
-        env: { ...process.env, ...environment },
+        env: mergedEnv,
         stdio: ['ignore', 'pipe', 'pipe'],
         shell: executorConfig.useShell || false
       });
@@ -705,8 +709,9 @@ class XCodeBuildAgent {
             });
           });
         }
-        
-        logger.info(chunk.trim());
+
+        // Don't log output here - it's sent to server where it will be properly masked for secrets
+        logger.debug(`Captured ${chunk.length} bytes of stdout`);
       });
 
       child.stderr.on('data', (data) => {
@@ -737,8 +742,9 @@ class XCodeBuildAgent {
             });
           });
         }
-        
-        logger.error(chunk.trim());
+
+        // Don't log error output here - it's sent to server where it will be properly masked for secrets
+        logger.debug(`Captured ${chunk.length} bytes of stderr`);
       });
 
       // Only set timeout if explicitly provided
