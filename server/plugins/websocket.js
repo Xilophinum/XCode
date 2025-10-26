@@ -762,6 +762,15 @@ async function handleAgentJobStatus(socket, msg, agentManager) {
     const agent = agentManager.agentData.get(socket.agentId)
     const agentName = agent?.name || socket.agentId
 
+    // Get current nodeId from job's execution commands
+    let currentNodeId = null
+    if (job.executionCommands && job.currentCommandIndex !== undefined) {
+      const currentCommand = job.executionCommands[job.currentCommandIndex]
+      if (currentCommand) {
+        currentNodeId = currentCommand.nodeId
+      }
+    }
+
     // Handle different job status types
     switch (status) {
       case 'started':
@@ -772,6 +781,7 @@ async function handleAgentJobStatus(socket, msg, agentManager) {
           projectId,
           agentId: socket.agentId,
           agentName,
+          nodeId: currentNodeId,
           status: 'running',
           timestamp: msg.timestamp || new Date().toISOString()
         })

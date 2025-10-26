@@ -668,7 +668,7 @@ class XCodeBuildAgent {
       const child = spawn(executorConfig.command, finalArgs, {
         cwd: workingDirectory || process.cwd(),
         env: mergedEnv,
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: ['inherit', 'pipe', 'pipe'],
         shell: executorConfig.useShell || false
       });
 

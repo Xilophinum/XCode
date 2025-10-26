@@ -831,6 +831,10 @@ const isJobRunningOnAgent = computed(() => {
 
 const isSocketConnected = computed(() => webSocketStore.isConnected)
 
+// Node execution state tracking
+const nodeExecutionStates = ref(new Map()) // nodeId -> { status: 'pending'|'executing'|'completed'|'failed', startTime, endTime }
+const completedNodes = ref(new Set()) // Track which nodes have completed
+
 // Build stats integration
 let currentBuildId = null
 
@@ -1149,11 +1153,17 @@ const formatTimestamp = (timestamp) => {
 // Node type definitions for Vue Flow
 const CustomNode = defineComponent({
   name: 'CustomNode',
-  props: ['data', 'id'],
+  props: ['data', 'id', 'class'],
   setup(props, { emit }) {
     return () => {
       const nodeData = props.data
       const nodeId = props.id
+
+      // Find the node in the nodes array to get its current class
+      const currentNode = nodes.value.find(n => n.id === nodeId)
+      const nodeClass = currentNode?.class || props.class || ''
+
+      console.log(`[CustomNode] Rendering node ${nodeId} with class: "${nodeClass}"`)
       
       // Calculate total input sockets count
       const inputSocketsCount = nodeData.inputSockets?.length || 0
@@ -1343,7 +1353,7 @@ const CustomNode = defineComponent({
       })
       
       return h('div', {
-        class: 'px-4 py-2 shadow-md rounded-md border-1 bg-white dark:bg-neutral-700 border-neutral-200 dark:border-neutral-600 relative',
+        class: `px-4 py-2 shadow-md rounded-md border-1 bg-white dark:bg-neutral-700 border-neutral-200 dark:border-neutral-600 relative ${nodeClass}`,
         style: {
           backgroundColor: nodeData.color || (dark.value ? '#404040' : '#ffffff'),
           color: nodeData.textColor || (dark.value ? '#f5f5f5' : '#000000'),
@@ -2017,9 +2027,36 @@ const saveProject = async () => {
       }
     }
     
+    // Clean execution state classes before saving
+    const cleanedNodes = nodes.value.map(node => {
+      const cleanNode = { ...node }
+      if (cleanNode.class) {
+        const originalClass = cleanNode.class
+        cleanNode.class = cleanNode.class.replace(/\s*(node-idle|node-executing|node-completed|node-failed)\s*/g, ' ').trim()
+        if (originalClass !== cleanNode.class) {
+          logger.debug(`Cleaned node ${node.id} class: "${originalClass}" -> "${cleanNode.class}"`)
+        }
+      }
+      return cleanNode
+    })
+
+    const cleanedEdges = edges.value.map(edge => {
+      const cleanEdge = { ...edge }
+      const hadClass = !!cleanEdge.class
+      const hadAnimated = cleanEdge.animated !== undefined
+      delete cleanEdge.class
+      delete cleanEdge.animated
+      if (hadClass || hadAnimated) {
+        logger.debug(`Cleaned edge ${edge.id}: removed class=${hadClass}, animated=${hadAnimated}`)
+      }
+      return cleanEdge
+    })
+
+    logger.info(`Saving project with ${cleanedNodes.length} nodes and ${cleanedEdges.length} edges (cleaned execution states)`)
+
     const diagramData = {
-      nodes: nodes.value,
-      edges: edges.value
+      nodes: cleanedNodes,
+      edges: cleanedEdges
     }
     
     // Save project data
@@ -2128,6 +2165,13 @@ const executeGraph = async () => {
   // isExecuting state is now automatically computed from WebSocket store
 
   clearExecutionResults()
+
+  // Initialize all edges as pending (animated) at start of execution
+  edges.value = edges.value.map(edge => ({
+    ...edge,
+    class: 'edge-pending',
+    animated: true
+  }))
 
   // Note: Build recording is now handled by the execute API
   // We don't need to start a build here anymore
@@ -2302,13 +2346,29 @@ const initializeEditor = async () => {
   try {
     // Load existing diagram data if available
     if (project.value?.diagramData) {
-      nodes.value = project.value.diagramData.nodes || []
-      edges.value = project.value.diagramData.edges || []
+      // Clean nodes of any execution state classes
+      nodes.value = (project.value.diagramData.nodes || []).map(node => {
+        const cleanNode = { ...node }
+        if (cleanNode.class) {
+          cleanNode.class = cleanNode.class.replace(/\s*(node-idle|node-executing|node-completed|node-failed)\s*/g, ' ').trim()
+        }
+        return cleanNode
+      })
+
+      // Clean edges of any execution state properties
+      edges.value = (project.value.diagramData.edges || []).map(edge => {
+        const cleanEdge = { ...edge }
+        delete cleanEdge.class
+        delete cleanEdge.animated
+        return cleanEdge
+      })
+
+      logger.info(`Loaded ${nodes.value.length} nodes and ${edges.value.length} edges (cleaned execution states)`)
     } else {
       nodes.value = []
       edges.value = []
     }
-    
+
     isEditorReady.value = true
   } catch (error) {
     logger.error('Error initializing editor:', error)
@@ -2346,6 +2406,73 @@ onMounted(async () => {
   await initializeEditor()
 })
 
+// Update node visual style based on execution state
+const updateNodeStyle = (nodeId, status) => {
+  console.log(`🎨 [updateNodeStyle] ENTRY - nodeId: ${nodeId}, status: ${status}`)
+  console.log(`🎨 [updateNodeStyle] nodes.value length: ${nodes.value.length}`)
+  console.log(`🎨 [updateNodeStyle] nodes.value is:`, nodes.value)
+
+  const nodeIndex = nodes.value.findIndex(n => n.id === nodeId)
+  console.log(`🔍 [updateNodeStyle] Node index found: ${nodeIndex}`)
+
+  if (nodeIndex === -1) {
+    console.warn(`❌ [updateNodeStyle] Cannot update node ${nodeId} - not found`)
+    console.log('[updateNodeStyle] Available node IDs:', nodes.value.map(n => n.id))
+    return
+  }
+
+  const node = nodes.value[nodeIndex]
+  console.log(`📦 [updateNodeStyle] Found node:`, node)
+
+  let currentClass = node.class || ''
+  console.log(`📝 [updateNodeStyle] Current class: "${currentClass}"`)
+
+  // Remove existing execution state classes
+  currentClass = currentClass.replace(/\s*(node-idle|node-executing|node-completed|node-failed)\s*/g, ' ').trim()
+  console.log(`🧹 [updateNodeStyle] Cleaned class: "${currentClass}"`)
+
+  // Add new status class
+  const newClass = `${currentClass} node-${status}`.trim()
+  console.log(`✨ [updateNodeStyle] New class: "${newClass}"`)
+
+  // Use Vue's reactivity to update the node
+  nodes.value[nodeIndex] = {
+    ...node,
+    class: newClass
+  }
+
+  console.log(`✅ [updateNodeStyle] Node ${nodeId} updated successfully`)
+  console.log(`🔍 [updateNodeStyle] Verification - nodes.value[${nodeIndex}].class:`, nodes.value[nodeIndex].class)
+}
+
+// Update edge styles based on completed nodes
+const updateEdgeStyles = () => {
+  console.log(`📊 [updateEdgeStyles] ENTRY - Processing ${edges.value.length} edges`)
+  console.log(`📊 [updateEdgeStyles] Completed nodes:`, Array.from(completedNodes.value))
+
+  edges.value = edges.value.map(edge => {
+    const sourceCompleted = completedNodes.value.has(edge.source)
+    console.log(`🔗 [updateEdgeStyles] Edge ${edge.id}: source=${edge.source}, completed=${sourceCompleted}`)
+
+    // Edge is completed if source node is completed
+    if (sourceCompleted) {
+      return {
+        ...edge,
+        class: 'edge-completed',
+        animated: false
+      }
+    } else {
+      return {
+        ...edge,
+        class: 'edge-pending',
+        animated: true
+      }
+    }
+  })
+
+  console.log(`✅ [updateEdgeStyles] Updated ${edges.value.length} edges, ${completedNodes.value.size} completed nodes`)
+}
+
 // Cleanup on unmount
 onUnmounted(() => {
   cleanupRealtimeConnection()
@@ -2380,6 +2507,79 @@ watch(() => isJobRunningOnAgent.value, async (isRunning, wasRunning) => {
     await addBuildLog('info', `Build finished with status: ${buildStatus}`)
   }
 }, { immediate: false })
+
+// Watch for node execution updates
+watch(() => currentProjectJob.value?.nodeId, (currentNodeId, previousNodeId) => {
+  logger.info(`🎯 Node execution watcher triggered - Current: ${currentNodeId}, Previous: ${previousNodeId}`)
+
+  if (!currentNodeId) {
+    logger.warn('No current nodeId, skipping execution state update')
+    return
+  }
+
+  // Mark previous node as completed if it exists
+  if (previousNodeId && previousNodeId !== currentNodeId) {
+    logger.info(`✅ Marking node ${previousNodeId} as completed`)
+    nodeExecutionStates.value.set(previousNodeId, {
+      status: 'completed',
+      startTime: nodeExecutionStates.value.get(previousNodeId)?.startTime,
+      endTime: new Date().toISOString()
+    })
+    completedNodes.value.add(previousNodeId)
+    updateNodeStyle(previousNodeId, 'completed')
+  }
+
+  // Mark current node as executing
+  logger.info(`🔵 Marking node ${currentNodeId} as executing`)
+  nodeExecutionStates.value.set(currentNodeId, {
+    status: 'executing',
+    startTime: new Date().toISOString()
+  })
+
+  try {
+    logger.info('📝 Calling updateNodeStyle...')
+    updateNodeStyle(currentNodeId, 'executing')
+    logger.info('📝 updateNodeStyle completed')
+    logger.info('📝 Calling updateEdgeStyles...')
+    updateEdgeStyles()
+    logger.info('✅ All style updates complete')
+  } catch (error) {
+    logger.error('❌ Error updating node/edge styles:', error)
+  }
+}, { immediate: true })
+
+// Watch for job completion to clear execution states
+watch(() => isJobRunningOnAgent.value, (isRunning) => {
+  if (!isRunning) {
+    // Job finished - mark the last executing node as completed
+    const currentNodeId = currentProjectJob.value?.nodeId
+    if (currentNodeId) {
+      nodeExecutionStates.value.set(currentNodeId, {
+        status: 'completed',
+        startTime: nodeExecutionStates.value.get(currentNodeId)?.startTime,
+        endTime: new Date().toISOString()
+      })
+      completedNodes.value.add(currentNodeId)
+      updateNodeStyle(currentNodeId, 'completed')
+      updateEdgeStyles()
+    }
+
+    // Clear states after a delay to allow user to see final state
+    setTimeout(() => {
+      nodeExecutionStates.value.clear()
+      completedNodes.value.clear()
+      // Reset all node styles
+      nodes.value.forEach(node => {
+        updateNodeStyle(node.id, 'idle')
+      })
+      updateEdgeStyles()
+    }, 5000) // Keep visualization for 5 seconds after completion
+  } else {
+    // Job starting - clear any previous states
+    nodeExecutionStates.value.clear()
+    completedNodes.value.clear()
+  }
+})
 
 // Cleanup function for component unmount
 const cleanupRealtimeConnection = () => {
@@ -2633,5 +2833,62 @@ onUnmounted(() => {
 
 :deep(.dark .vue-flow__handle) {
   border: 2px solid #404040;
+}
+
+/* Node execution state styles */
+:deep(.vue-flow__node.node-executing) {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.3);
+  animation: pulse-executing 2s ease-in-out infinite;
+}
+
+:deep(.vue-flow__node.node-completed) {
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.5);
+  opacity: 0.85;
+}
+
+:deep(.vue-flow__node.node-failed) {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5);
+}
+
+:deep(.vue-flow__node.node-idle) {
+  /* Default state - no special styling */
+}
+
+/* Edge execution state styles */
+:deep(.vue-flow__edge.edge-completed .vue-flow__edge-path) {
+  stroke: #22c55e !important;
+  stroke-width: 2px;
+}
+
+:deep(.dark .vue-flow__edge.edge-completed .vue-flow__edge-path) {
+  stroke: #4ade80 !important;
+  stroke-width: 2px;
+}
+
+:deep(.vue-flow__edge.edge-pending .vue-flow__edge-path) {
+  stroke: #94a3b8 !important;
+  stroke-width: 2px;
+  stroke-dasharray: 5, 5;
+  animation: dash-animation 0.5s linear infinite;
+}
+
+:deep(.dark .vue-flow__edge.edge-pending .vue-flow__edge-path) {
+  stroke: #64748b !important;
+}
+
+/* Animations */
+@keyframes pulse-executing {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.3), 0 0 30px rgba(59, 130, 246, 0.5);
+  }
+}
+
+@keyframes dash-animation {
+  to {
+    stroke-dashoffset: -10;
+  }
 }
 </style>
