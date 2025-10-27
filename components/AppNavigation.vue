@@ -340,19 +340,27 @@ const isClickableBreadcrumb = (index) => {
     }
   }
   
-  // Check if we're in a project context (editor or builds page)
-  const isInProjectContext = currentPath.includes('/editor') || currentPath.includes('/builds')
+  // Check if we're in a project context (editor, builds, or build page)
+  const isInProjectContext = currentPath.includes('/editor') || currentPath.includes('/builds') || currentPath.includes('/build/')
   
   if (!isInProjectContext) {
     // Not in a project, all breadcrumbs are clickable (except the last one which is handled elsewhere)
     return true
   }
   
-  // In project context: the project name (second-to-last breadcrumb) should not be clickable
-  // Only parent folders should be clickable
-  const isProjectName = index === props.breadcrumbs.length - 2
-  
-  return !isProjectName
+  // In project context: the project name should not be clickable
+  // For build pages, also make 'build' and build number non-clickable
+  if (currentPath.includes('/build/')) {
+    // In build view: project name, 'build', and build number are not clickable
+    const isProjectName = index === props.breadcrumbs.length - 3
+    const isBuildLabel = index === props.breadcrumbs.length - 2
+    const isBuildNumber = index === props.breadcrumbs.length - 1
+    return !isProjectName && !isBuildLabel && !isBuildNumber
+  } else {
+    // In editor/builds view: the project name (second-to-last breadcrumb) should not be clickable
+    const isProjectName = index === props.breadcrumbs.length - 2
+    return !isProjectName
+  }
 }
 
 const handleLogout = async () => {

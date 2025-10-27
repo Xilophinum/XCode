@@ -13,7 +13,7 @@ const LOG_LEVELS = {
 }
 
 // Current log level (fetched from .env or defaults to 'info')
-let currentLogLevel = import.meta.env.CLIENT_LOG_LEVEL || 'debug'
+let currentLogLevel = 'debug'
 
 // Emoji mapping for log levels
 const EMOJIS = {

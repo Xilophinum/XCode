@@ -5,27 +5,25 @@
       <template #mobile-actions>
         <!-- Mobile: Only show Run/Cancel and Save buttons -->
         <div class="inline-flex rounded-md shadow-sm">
-          <button
-            @click="executeGraph"
-            :disabled="isExecuting || project?.status === 'disabled'"
-            class="relative inline-flex items-center px-2 py-2 border border-transparent text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 rounded-l-md"
-            :class="{ 'rounded-r-md': !isExecuting }"
+          <NuxtLink
+            v-if="isExecuting && currentBuildNumber"
+            :to="`/${pathSegments.slice(0, -1).join('/')}/build/${currentBuildNumber}`"
+            class="relative inline-flex items-center px-2 py-2 border border-transparent text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 rounded-md"
           >
-            <svg v-if="isExecuting" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 718-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-dasharray="40" stroke-dashoffset="40" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6l10 6l-10 6Z"><animate fill="freeze" attributeName="fill-opacity" begin="0.5s" dur="0.5s" values="0;1"/><animate fill="freeze" attributeName="stroke-dashoffset" dur="0.5s" values="40;0"/></path></svg>
-          </button>
+          </NuxtLink>
           <button
-            v-if="isExecuting"
-            @click="cancelExecution"
-            class="relative inline-flex items-center px-2 py-2 border border-l-0 border-red-500 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 rounded-r-md"
+            v-else
+            @click="executeGraph"
+            :disabled="isExecuting || project?.status === 'disabled'"
+            class="relative inline-flex items-center px-2 py-2 border border-transparent text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 rounded-md"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" class="h-4 w-4">
-              <path fill="currentColor" d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10s10-4.47 10-10S17.53 2 12 2zM17 15.59L15.59 17L12 13.41L8.41 17L7 15.59L10.59 12L7 8.41L8.41 7L12 10.59L15.59 7L17 8.41L13.41 12L17 15.59z"/>
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-dasharray="40" stroke-dashoffset="40" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6l10 6l-10 6Z"><animate fill="freeze" attributeName="fill-opacity" begin="0.5s" dur="0.5s" values="0;1"/><animate fill="freeze" attributeName="stroke-dashoffset" dur="0.5s" values="40;0"/></path></svg>
           </button>
+
         </div>
         <button
           @click="saveProject"
@@ -38,34 +36,34 @@
       <template #actions>
         <!-- Run/Cancel Split Button -->
         <div class="inline-flex rounded-md shadow-sm">
-          <!-- Main Run Button -->
+          <!-- Main Run Button or View Build Link -->
+          <NuxtLink
+            v-if="isExecuting && currentBuildNumber"
+            :to="`/${pathSegments.slice(0, -1).join('/')}/build/${currentBuildNumber}`"
+            class="relative inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 rounded-md"
+          >
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 718-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            View Build #{{ currentBuildNumber }}
+          </NuxtLink>
           <button
+            v-else
             @click="executeGraph"
             :disabled="isExecuting || project?.status === 'disabled'"
-            class="relative inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 rounded-l-md"
-            :class="{ 'rounded-r-md': !isExecuting }"
+            class="relative inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 rounded-md"
           >
             <svg v-if="isExecuting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 718-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span v-if="isExecuting">Executing...</span>
-            <span v-else class="inline-flex items-center">
+            <span class="inline-flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" class="mr-2"><path fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-dasharray="40" stroke-dashoffset="40" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6l10 6l-10 6Z"><animate fill="freeze" attributeName="fill-opacity" begin="0.5s" dur="0.5s" values="0;1"/><animate fill="freeze" attributeName="stroke-dashoffset" dur="0.5s" values="40;0"/></path></svg>Run
             </span>
           </button>
           
-          <!-- Cancel Button (only visible when executing) -->
-          <button
-            v-if="isExecuting"
-            @click="cancelExecution"
-            class="relative inline-flex items-center px-2 py-2 border border-l-0 border-red-500 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 rounded-r-md"
-            :title="isJobRunningOnAgent ? `Cancel build ${currentProjectJob?.buildNumber} on agent` : 'Cancel local execution'"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" class="h-4 w-4">
-              <path fill="currentColor" d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10s10-4.47 10-10S17.53 2 12 2zM17 15.59L15.59 17L12 13.41L8.41 17L7 15.59L10.59 12L7 8.41L8.41 7L12 10.59L15.59 7L17 8.41L13.41 12L17 15.59z"/>
-            </svg>
-          </button>
+
         </div>
 
         <button
@@ -136,6 +134,36 @@
       </template>
     </AppNavigation>
 
+    <!-- Execution Warning Banner -->
+    <div v-if="isExecuting && currentBuildNumber" class="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+      <div class="px-4 py-3 sm:px-6">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <svg class="animate-spin h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 718-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+          <div class="ml-3">
+            <p class="text-sm font-medium text-blue-800 dark:text-blue-200">
+              Build #{{ currentBuildNumber }} is currently executing
+            </p>
+            <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+              This project is currently running. Click "View Build" to monitor progress or cancel execution.
+            </p>
+          </div>
+          <div class="ml-auto">
+            <NuxtLink
+              :to="`/${pathSegments.slice(0, -1).join('/')}/build/${currentBuildNumber}`"
+              class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-blue-800 dark:text-blue-200 bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              View Build #{{ currentBuildNumber }}
+            </NuxtLink>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Disabled Project Warning Banner -->
     <div v-if="project?.status === 'disabled'" class="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
       <div class="px-4 py-3 sm:px-6">
@@ -168,7 +196,7 @@
 
     <!-- Editor Content -->
     <main class="flex-1 overflow-hidden">
-      <div class="flex" :style="{ height: `calc(100vh - 64px - ${project?.status === 'disabled' ? '60px' : '0px'})` }">
+      <div class="flex" :style="{ height: `calc(100vh - 64px - ${project?.status === 'disabled' ? '60px' : '0px'} - ${isExecuting && currentBuildNumber ? '60px' : '0px'})` }">
         <!-- Nodes Sidebar -->
         <div 
           v-if="showNodesPanel"
@@ -264,13 +292,7 @@
         <!-- Main Editor Area -->
         <div class="flex-1 flex flex-col">
           <!-- Vue Flow Editor Section -->
-          <div 
-            class="relative"
-            :style="{ 
-              height: `calc(100vh - 64px - ${terminalHeight}px)`,
-              minHeight: `${minVueFlowHeight}px`
-            }"
-          >
+          <div class="relative h-full">
             <!-- Floating toggle buttons when panels are hidden -->
             <div v-if="!showNodesPanel" class="absolute top-4 left-4 z-40">
               <button
@@ -332,101 +354,7 @@
             </div>
           </div>
           
-          <!-- Resize Handle -->
-          <div 
-            class="h-1 bg-gray-600 hover:bg-blue-500 cursor-row-resize transition-colors relative group"
-            @mousedown="startResize"
-          >
-            <div class="absolute inset-x-0 -top-1 -bottom-1 flex items-center justify-center">
-              <div class="w-12 h-0.5 bg-gray-400 group-hover:bg-blue-400 transition-colors"></div>
-            </div>
-          </div>
-          
-          <!-- Terminal-like Execution Panel -->
-          <div 
-            class="bg-gray-950 border-t border-gray-700 flex flex-col"
-            :style="{ height: `${terminalHeight}px` }"
-          >
-            <!-- Terminal Header -->
-            <div class="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
-              <div class="flex items-center space-x-2">
-                <div class="flex space-x-2">
-                  <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                </div>
-                <span class="text-sm text-gray-300 ml-4">Execution Terminal</span>
-                
-                <!-- WebSocket Status Indicator -->
-                <div class="flex items-center ml-4">
-                  <div 
-                    :class="{
-                      'w-2 h-2 rounded-full': true,
-                      'bg-green-500': isSocketConnected,
-                      'bg-red-500': !isSocketConnected,
-                      'animate-pulse': !isSocketConnected
-                    }"
-                  ></div>
-                  <span class="text-xs text-gray-400 ml-1">
-                    {{ isSocketConnected ? 'Real-time' : 'Disconnected' }}
-                  </span>
-                </div>
-              </div>
-              <button
-                @click="clearExecutionResults"
-                class="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded border border-gray-600 hover:border-gray-500"
-              >
-                Clear
-              </button>
-            </div>
-            
-            <!-- Terminal Content -->
-            <div class="flex-1 overflow-y-auto p-4 font-mono text-sm">
-              <!-- Show different states based on execution -->
-              <div v-if="executionResults.length === 0 && !isJobRunningOnAgent" class="text-neutral-500">
-                Ready to execute. Click the "▶ Run" button to start...
-              </div>
-              
-              <div v-if="isJobRunningOnAgent && currentProjectJob && executionResults.length === 0" class="text-neutral-500">
-                <div class="flex items-center">
-                  <svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Waiting for agent output...
-                </div>
-              </div>
-              
-              <!-- Agent job info panel -->
-              <div v-if="isJobRunningOnAgent && currentProjectJob" class="mb-4 p-3 bg-blue-950 border border-blue-800 rounded">
-                <div class="text-blue-200 text-sm font-medium mb-1">🤖 Job Running on Agent</div>
-                <div class="text-blue-300 text-xs">
-                  <div>Build #: {{ currentProjectJob.buildNumber }}</div>
-                  <div>Agent: {{ currentProjectJob.agentId }}</div>
-                  <div>Started: {{ new Date(currentProjectJob.startTime).toLocaleString() }}</div>
-                  <div v-if="currentProjectJob.nodeId">Current: {{ currentProjectJob.nodeId }}</div>
-                </div>
-              </div>
-              
-              <!-- Real-time output from agent -->
-              <div v-for="(result, index) in executionResults" :key="index" class="mb-1">
-                <span class="text-neutral-500 text-xs">{{ formatTimestamp(result.timestamp) }}</span>
-                <span 
-                  class="ml-2"
-                  :class="{
-                    'text-green-400': result.level === 'success',
-                    'text-red-400': result.level === 'error',
-                    'text-blue-400': result.level === 'info',
-                    'text-yellow-400': result.level === 'warning'
-                  }"
-                >
-                  [{{ result.nodeLabel || result.source || 'AGENT' }}]
-                </span>
-                <span class="text-neutral-300 ml-2">{{ result.message }}</span>
-                <span v-if="result.value !== undefined" class="text-cyan-400 ml-2">→ {{ result.value }}</span>
-              </div>
-            </div>
-          </div>
+
         </div>
 
         <!-- Properties Panel -->
@@ -803,138 +731,14 @@ const retentionSettings = ref({
   maxLogDays: 30
 })
 
-// Execution state - computed from WebSocket store to stay in sync
-const isExecuting = computed(() => {
-  if (!project.value?.id) return false
-  return webSocketStore.isProjectJobRunning(project.value.id)
-})
-const activeJobs = ref(new Map()) // Track active jobs for cancellation
-
 // Agent state
 const agents = ref([])
 
-// Execution state and computed values from WebSocket store
-const executionResults = computed(() => {
-  if (!project.value?.id) return []
-  return webSocketStore.getJobMessages(project.value.id)
-})
 
-const currentProjectJob = computed(() => {
-  if (!project.value?.id) return null
-  return webSocketStore.getCurrentJob(project.value.id)
-})
 
-const isJobRunningOnAgent = computed(() => {
-  if (!project.value?.id) return false
-  return webSocketStore.isProjectJobRunning(project.value.id)
-})
-
-const isSocketConnected = computed(() => webSocketStore.isConnected)
-
-// Node execution state tracking
-const nodeExecutionStates = ref(new Map()) // nodeId -> { status: 'pending'|'executing'|'completed'|'failed', startTime, endTime }
-const completedNodes = ref(new Set()) // Track which nodes have completed
-
-// Build stats integration
-let currentBuildId = null
-
-const startBuild = async () => {
-  if (!project.value?.id) return null
-
-  try {
-    const response = await $fetch(`/api/projects/${project.value.id}/builds`, {
-      method: 'POST',
-      body: {
-        trigger: 'manual',
-        message: 'Manual execution from editor',
-        nodeCount: nodes.value.length,
-        agentId: null // Will be updated when agent is assigned
-      }
-    })
-
-    // Response now contains { buildId, buildNumber }
-    currentBuildId = response.buildId
-    logger.info(`Build #${response.buildNumber} started (${response.buildId})`)
-
-    // Update WebSocket store with buildId for System log persistence
-    // This ensures that any System logs added before job_created arrives can be persisted
-    const currentJob = webSocketStore.getCurrentJob(project.value.id)
-    if (currentJob) {
-      currentJob.buildId = currentBuildId
-      logger.info(`Updated current job with buildId: ${currentBuildId}`)
-    } else {
-      // Create a temporary job entry for log persistence
-      webSocketStore.currentJobs.set(project.value.id, {
-        buildId: currentBuildId,
-        status: 'starting'
-      })
-      logger.info(`Created temporary job entry with buildId: ${currentBuildId}`)
-    }
-
-    return currentBuildId
-  } catch (error) {
-    logger.warn('Failed to start build recording:', error)
-    return null
-  }
-}
-
-const finishBuild = async (status, message) => {
-  if (!currentBuildId) return
-  
-  try {
-    await $fetch(`/api/projects/${project.value.id}/builds/${currentBuildId}`, {
-      method: 'PATCH',
-      body: {
-        status: status,
-        message: message,
-        nodesExecuted: nodes.value.length // Assume all nodes executed for now
-      }
-    })
-    
-    logger.info('Build finished:', currentBuildId, status)
-    currentBuildId = null
-  } catch (error) {
-    logger.warn('Failed to finish build recording:', error)
-  }
-}
-
-const addBuildLog = async (level, message, command = null) => {
-  if (!currentBuildId) return logger.warn('Cannot add build log: currentBuildId is null');
-  
-  logger.info(`Adding build log: ${level} - ${message}`)
-  try {
-    await $fetch(`/api/projects/${project.value.id}/builds/${currentBuildId}/logs`, {
-      method: 'PATCH',
-      body: {
-        type: 'log',
-        level: level,
-        message: message,
-        command: command,
-        source: 'system'
-      }
-    })
-  } catch (error) {
-    logger.warn('Failed to add build log:', error)
-  }
-}
-
-// Legacy functions for backward compatibility
-const recordBuildEvent = async (status, message, logs = []) => {
-  if (status === 'failure' || status === 'cancelled') {
-    await finishBuild(status === 'cancelled' ? 'cancelled' : 'failure', message)
-  }
-}
-
-const recordTerminalLog = async (level, message, command = null) => {
-  await addBuildLog(level, message, command)
-}
-
-// Terminal resize state
-const terminalHeight = ref(256) // Default height in pixels (h-64 = 256px)
-const minVueFlowHeight = ref(300) // Minimum height for Vue Flow
-const isResizing = ref(false)
-const resizeStartY = ref(0)
-const resizeStartHeight = ref(0)
+// Execution state tracking
+const isExecuting = ref(false)
+const currentBuildNumber = ref(null)
 
 // Panel visibility state
 const showNodesPanel = ref(false)
@@ -1112,44 +916,6 @@ const loadAgents = async () => {
   }
 }
 
-// Handle real-time agent status updates
-const handleAgentStatusUpdate = (event) => {
-  const { agentId, status, currentJobs, lastHeartbeat, hostname, platform, architecture, capabilities, version } = event.detail
-  
-  // Find and update the agent in our local array
-  const agentIndex = agents.value.findIndex(agent => agent.id === agentId)
-  if (agentIndex !== -1) {
-    const agent = agents.value[agentIndex]
-    agent.status = status
-    agent.currentJobs = currentJobs || 0
-    agent.lastHeartbeat = lastHeartbeat
-    
-    // Update system info if provided (registration updates)
-    if (hostname) agent.hostname = hostname
-    if (platform) agent.platform = platform
-    if (architecture) agent.architecture = architecture
-    if (capabilities) agent.capabilities = capabilities
-    if (version) agent.version = version
-    
-    agents.value[agentIndex] = { ...agent } // Trigger reactivity
-    logger.info(`🔄 Updated agent ${agentId} status: ${status}`)
-  } else {
-    logger.info(`Agent ${agentId} not found in local array - refreshing agent list`)
-    loadAgents() // Reload if agent not found (new agent connected)
-  }
-}
-
-// Terminal formatting functions
-const formatTimestamp = (timestamp) => {
-  if (!timestamp) return ''
-  return new Date(timestamp).toLocaleTimeString('en-US', { 
-    hour12: false, 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    second: '2-digit' 
-  })
-}
-
 // Node type definitions for Vue Flow
 const CustomNode = defineComponent({
   name: 'CustomNode',
@@ -1168,7 +934,6 @@ const CustomNode = defineComponent({
       // Calculate total input sockets count
       const inputSocketsCount = nodeData.inputSockets?.length || 0
       const hasExecutionInput = nodeData.hasExecutionInput
-      const totalInputs = (hasExecutionInput ? 1 : 0) + inputSocketsCount
       
       // Calculate output counts
       const hasExecutionOutput = nodeData.hasExecutionOutput
@@ -1495,39 +1260,6 @@ const removeInputSocket = (socketId) => {
   edges.value = edges.value.filter(edge => 
     !(edge.target === selectedNode.value.id && edge.targetHandle === socketId)
   )
-}
-
-// Terminal resize functions
-const startResize = (event) => {
-  isResizing.value = true
-  resizeStartY.value = event.clientY
-  resizeStartHeight.value = terminalHeight.value
-  
-  document.addEventListener('mousemove', handleResize)
-  document.addEventListener('mouseup', stopResize)
-  document.body.style.cursor = 'row-resize'
-  document.body.style.userSelect = 'none'
-}
-
-const handleResize = (event) => {
-  if (!isResizing.value) return
-  
-  const deltaY = resizeStartY.value - event.clientY // Inverted because we want to grow up
-  const newHeight = Math.max(100, resizeStartHeight.value + deltaY) // Minimum 100px for terminal
-  
-  // Calculate available space (total height minus nav height)
-  const availableHeight = window.innerHeight - 64 // Nav height is 64px (h-16)
-  const maxTerminalHeight = availableHeight - minVueFlowHeight.value
-  
-  terminalHeight.value = Math.min(newHeight, maxTerminalHeight)
-}
-
-const stopResize = () => {
-  isResizing.value = false
-  document.removeEventListener('mousemove', handleResize)
-  document.removeEventListener('mouseup', stopResize)
-  document.body.style.cursor = ''
-  document.body.style.userSelect = ''
 }
 
 const getDefaultNodeData = (type) => {
@@ -2125,56 +1857,21 @@ const validateExecutionNodes = () => {
   return errors
 }
 
-// Execution functions
-const clearExecutionResults = () => {
-  if (project.value?.id) {
-    webSocketStore.clearJobMessages(project.value.id)
-  }
-}
-
-const addExecutionResult = (nodeLabel, level, message, value = undefined) => {
-  if (project.value?.id) {
-    // WebSocket store handles all log persistence now
-    webSocketStore.addJobMessage(project.value.id, nodeLabel, level, message, value)
-  }
-}
+// Remove execution result functions - these are now handled in build page
 
 const executeGraph = async () => {
-  if (isExecuting.value) return
-  
   // Check if project is disabled
   if (project.value?.status === 'disabled') {
-    addExecutionResult('System', 'error', '🚫 Project is disabled. Manual execution is blocked.')
-    addExecutionResult('System', 'info', 'Enable the project to run manual executions.')
+    alert('Project is disabled. Manual execution is blocked.')
     return
   }
   
   // Validate that all execution nodes have agent selection
   const validationErrors = validateExecutionNodes()
   if (validationErrors.length > 0) {
-    // Show validation errors to user
-    for (const error of validationErrors) {
-      addExecutionResult('System', 'error', error)
-    }
-    addExecutionResult('System', 'error', 'Execution blocked due to validation errors. Please fix the issues above and try again.')
+    alert('Execution blocked due to validation errors:\n\n' + validationErrors.join('\n'))
     return
   }
-  
-  // This function only handles STARTING a job on an agent
-  // The actual execution happens on the agent, and output is streamed back
-  // isExecuting state is now automatically computed from WebSocket store
-
-  clearExecutionResults()
-
-  // Initialize all edges as pending (animated) at start of execution
-  edges.value = edges.value.map(edge => ({
-    ...edge,
-    class: 'edge-pending',
-    animated: true
-  }))
-
-  // Note: Build recording is now handled by the execute API
-  // We don't need to start a build here anymore
 
   try {
     // Convert the graph to execution data for the agent
@@ -2185,127 +1882,27 @@ const executeGraph = async () => {
       startTime: new Date().toISOString()
     }
 
-    // Use regular API call but don't wait for completion - just dispatch
+    // Dispatch job and redirect to build page
     const response = await $fetch('/api/projects/execute', {
       method: 'POST',
       body: executionData
     })
 
-    if (response.success) {
-
-      // Store the buildNumber from response and update WebSocket store immediately
-      if (response.buildNumber) {
-        // Update WebSocket store with buildNumber for System log persistence
-        const currentJob = webSocketStore.getCurrentJob(project.value.id)
-        if (currentJob) {
-          currentJob.buildNumber = response.buildNumber
-          logger.info(`Updated current job with buildNumber from API: ${response.buildNumber}`)
-        } else {
-          // Create a temporary job entry for log persistence
-          webSocketStore.currentJobs.set(project.value.id, {
-            buildNumber: response.buildNumber,
-            jobId: response.jobId,
-            status: 'dispatched'
-          })
-          logger.info(`Created job entry with buildNumber from API: ${response.buildNumber}`)
-        }
-      }
-
-      // Now add System messages with buildId available
-      addExecutionResult('System', 'info', 'Sending execution request to agent...')
-      addExecutionResult('System', 'success', `Job ${response.jobId} dispatched to ${response.agentName}`)
-      addExecutionResult('System', 'info', 'Execution started - waiting for agent output...')
-
-      // The job status and output will be received via WebSocket
-      logger.info('Job dispatched successfully:', response)
+    if (response.success && response.buildNumber) {
+      // Redirect to build execution page
+      const projectPath = pathSegments.value.slice(0, -1).join('/') // Remove 'editor' from path
+      await navigateTo(`/${projectPath}/build/${response.buildNumber}`)
     } else {
-      addExecutionResult('System', 'error', `Failed to dispatch job: ${response.message || 'Unknown error'}`)
+      alert(`Failed to start execution: ${response.message || 'Unknown error'}`)
     }
     
   } catch (error) {
     logger.error('Execution dispatch error:', error)
-    addExecutionResult('System', 'error', `Failed to start execution: ${error.message}`)
-    
-    await recordBuildEvent('failure', `Failed to dispatch job: ${error.message}`)
-    await recordTerminalLog('error', `Execution dispatch failed: ${error.message}`, 'Run Graph')
+    alert(`Failed to start execution: ${error.message}`)
   }
 }
 
-const cancelExecution = async () => {
-  // Handle two scenarios:
-  // 1. Local execution (started from this editor) - just stop the execution
-  // 2. Agent execution (running job from cron/webhook/etc.) - send cancel to agent
-  
-  if (isJobRunningOnAgent.value && currentProjectJob.value) {
-    // Scenario 2: Cancel job running on agent
-    logger.info('🛑 Cancelling job running on agent:', currentProjectJob.value)
-    addExecutionResult('System', 'info', `Cancelling job ${currentProjectJob.value.jobId} on agent...`)
-    
-    try {
-      const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildNumber}/cancel`, {
-        method: 'POST',
-        body: {
-          reason: 'Cancelled by user from editor'
-        }
-      })
-      
-      if (response.success) {
-        addExecutionResult('System', 'warning', `Job cancellation sent to agent. Waiting for confirmation...`)
-        
-        // The job status will be updated via polling in setupJobStatusUpdates()
-        // We don't immediately set isExecuting to false because we need to wait
-        // for the agent to confirm the cancellation
-        
-        logger.info('Cancellation request sent to agent successfully')
-      } else {
-        addExecutionResult('System', 'error', `Failed to cancel job: ${response.message || 'Unknown error'}`)
-        logger.error('Failed to cancel job on agent:', response)
-      }
-      
-    } catch (error) {
-      logger.error('Error cancelling job on agent:', error)
-      addExecutionResult('System', 'error', `Error cancelling job: ${error.message}`)
-    }
-    
-  } else if (isExecuting.value) {
-    // Scenario 1: Cancel local execution (started from this editor)
-    // Since isExecuting is computed from job state, we need to cancel through the job system
-    logger.info('🛑 Cancelling local execution')
-    addExecutionResult('System', 'info', 'Cancellation requested by user...')
-    
-    // Record cancellation
-    await recordTerminalLog('warning', 'Local execution cancelled by user', 'Cancel Execution')
-    await recordBuildEvent('cancelled', 'Local execution cancelled by user')
-    
-    try {
-      // If there's a current job, cancel it through the job system
-      if (currentProjectJob.value) {
-        const response = await $fetch(`/api/projects/${project.value.id}/builds/${currentProjectJob.value.buildNumber}/cancel`, {
-          method: 'POST',
-          body: {
-            reason: 'Cancelled by user from editor'
-          }
-        })
-        
-        if (response.success) {
-          addExecutionResult('System', 'warning', 'Job cancellation sent to agent. Waiting for confirmation...')
-        } else {
-          addExecutionResult('System', 'error', `Failed to cancel job: ${response.message || 'Unknown error'}`)
-        }
-      } else {
-        // No job found, clear any local tracking
-        activeJobs.value.clear()
-        addExecutionResult('System', 'warning', 'Local execution cancelled by user')
-      }
-      
-      logger.info('Local execution cancellation initiated')
-      
-    } catch (error) {
-      logger.error('Error during local cancellation:', error)
-      addExecutionResult('System', 'error', `Cancellation error: ${error.message}`)
-    }
-  }
-}
+// Remove cancelExecution - this is now handled in build page
 
 const onNodeClick = (event) => {
   selectedNode.value = event.node
@@ -2324,20 +1921,43 @@ onConnect(connection => {
   })
 })
 
-// Setup WebSocket connection when component mounts
-const setupRealtimeConnection = async () => {
-  try {
-    // Initialize WebSocket connection if not already connected
-    if (!webSocketStore.isConnected) {
-      await webSocketStore.connect()
+// WebSocket setup for execution state tracking
+const setupWebSocket = () => {
+  if (!webSocketStore.socket) {
+    webSocketStore.connect()
+  }
+  
+  // Listen for execution state changes
+  webSocketStore.socket?.on('executionStarted', (data) => {
+    if (data.projectId === project.value?.id) {
+      isExecuting.value = true
+      currentBuildNumber.value = data.buildNumber
+      logger.info(`Execution started for project ${data.projectId}, build #${data.buildNumber}`)
     }
-    
-    // Subscribe to project updates if we have a project
-    if (project.value?.id) {
-      await webSocketStore.subscribeToProject(project.value.id)
+  })
+  
+  webSocketStore.socket?.on('executionCompleted', (data) => {
+    if (data.projectId === project.value?.id) {
+      isExecuting.value = false
+      currentBuildNumber.value = null
+      logger.info(`Execution completed for project ${data.projectId}`)
     }
-  } catch (error) {
-    logger.error('Failed to setup real-time connection:', error)
+  })
+  
+  webSocketStore.socket?.on('executionFailed', (data) => {
+    if (data.projectId === project.value?.id) {
+      isExecuting.value = false
+      currentBuildNumber.value = null
+      logger.info(`Execution failed for project ${data.projectId}`)
+    }
+  })
+}
+
+const cleanupWebSocket = () => {
+  if (webSocketStore.socket) {
+    webSocketStore.socket.off('executionStarted')
+    webSocketStore.socket.off('executionCompleted')
+    webSocketStore.socket.off('executionFailed')
   }
 }
 
@@ -2391,287 +2011,6 @@ onMounted(async () => {
   
   // Check if project exists
   if (!project.value) {
-    await navigateTo('/')
-    return
-  }
-  
-  // Set current project
-  projectsStore.setCurrentProject(project.value)
-  
-  // Set up real-time WebSocket updates (replaces all polling)
-  await setupRealtimeConnection()
-  
-  // Initialize the editor
-  await nextTick()
-  await initializeEditor()
-})
-
-// Update node visual style based on execution state
-const updateNodeStyle = (nodeId, status) => {
-  console.log(`🎨 [updateNodeStyle] ENTRY - nodeId: ${nodeId}, status: ${status}`)
-  console.log(`🎨 [updateNodeStyle] nodes.value length: ${nodes.value.length}`)
-  console.log(`🎨 [updateNodeStyle] nodes.value is:`, nodes.value)
-
-  const nodeIndex = nodes.value.findIndex(n => n.id === nodeId)
-  console.log(`🔍 [updateNodeStyle] Node index found: ${nodeIndex}`)
-
-  if (nodeIndex === -1) {
-    console.warn(`❌ [updateNodeStyle] Cannot update node ${nodeId} - not found`)
-    console.log('[updateNodeStyle] Available node IDs:', nodes.value.map(n => n.id))
-    return
-  }
-
-  const node = nodes.value[nodeIndex]
-  console.log(`📦 [updateNodeStyle] Found node:`, node)
-
-  let currentClass = node.class || ''
-  console.log(`📝 [updateNodeStyle] Current class: "${currentClass}"`)
-
-  // Remove existing execution state classes
-  currentClass = currentClass.replace(/\s*(node-idle|node-executing|node-completed|node-failed)\s*/g, ' ').trim()
-  console.log(`🧹 [updateNodeStyle] Cleaned class: "${currentClass}"`)
-
-  // Add new status class
-  const newClass = `${currentClass} node-${status}`.trim()
-  console.log(`✨ [updateNodeStyle] New class: "${newClass}"`)
-
-  // Use Vue's reactivity to update the node
-  nodes.value[nodeIndex] = {
-    ...node,
-    class: newClass
-  }
-
-  console.log(`✅ [updateNodeStyle] Node ${nodeId} updated successfully`)
-  console.log(`🔍 [updateNodeStyle] Verification - nodes.value[${nodeIndex}].class:`, nodes.value[nodeIndex].class)
-}
-
-// Update edge styles based on completed nodes
-const updateEdgeStyles = () => {
-  console.log(`📊 [updateEdgeStyles] ENTRY - Processing ${edges.value.length} edges`)
-  console.log(`📊 [updateEdgeStyles] Completed nodes:`, Array.from(completedNodes.value))
-
-  edges.value = edges.value.map(edge => {
-    const sourceCompleted = completedNodes.value.has(edge.source)
-    console.log(`🔗 [updateEdgeStyles] Edge ${edge.id}: source=${edge.source}, completed=${sourceCompleted}`)
-
-    // Edge is completed if source node is completed
-    if (sourceCompleted) {
-      return {
-        ...edge,
-        class: 'edge-completed',
-        animated: false
-      }
-    } else {
-      return {
-        ...edge,
-        class: 'edge-pending',
-        animated: true
-      }
-    }
-  })
-
-  console.log(`✅ [updateEdgeStyles] Updated ${edges.value.length} edges, ${completedNodes.value.size} completed nodes`)
-}
-
-// Cleanup on unmount
-onUnmounted(() => {
-  cleanupRealtimeConnection()
-})
-
-// Watch for job completion to finish build recording
-watch(() => isJobRunningOnAgent.value, async (isRunning, wasRunning) => {
-  // Detect when a job finishes (was running, now not running)
-  if (wasRunning && !isRunning && currentBuildId) {
-    logger.info('🏁 Job execution completed, finishing build...')
-    
-    // Check the last few messages to determine success/failure
-    const messages = currentProjectJob.value?.messages || []
-    const lastMessages = messages.slice(-5) // Look at last 5 messages
-    
-    let buildStatus = 'success'
-    let buildMessage = 'Build completed successfully'
-    
-    // Check for error indicators in recent messages
-    const hasError = lastMessages.some(msg => 
-      msg.type === 'error' || 
-      (msg.message && msg.message.toLowerCase().includes('error')) ||
-      (msg.message && msg.message.toLowerCase().includes('failed'))
-    )
-    
-    if (hasError) {
-      buildStatus = 'failure'
-      buildMessage = 'Build completed with errors'
-    }
-    
-    await finishBuild(buildStatus, buildMessage)
-    await addBuildLog('info', `Build finished with status: ${buildStatus}`)
-  }
-}, { immediate: false })
-
-// Watch for node execution updates
-watch(() => currentProjectJob.value?.nodeId, (currentNodeId, previousNodeId) => {
-  logger.info(`🎯 Node execution watcher triggered - Current: ${currentNodeId}, Previous: ${previousNodeId}`)
-
-  if (!currentNodeId) {
-    logger.warn('No current nodeId, skipping execution state update')
-    return
-  }
-
-  // Mark previous node as completed if it exists
-  if (previousNodeId && previousNodeId !== currentNodeId) {
-    logger.info(`✅ Marking node ${previousNodeId} as completed`)
-    nodeExecutionStates.value.set(previousNodeId, {
-      status: 'completed',
-      startTime: nodeExecutionStates.value.get(previousNodeId)?.startTime,
-      endTime: new Date().toISOString()
-    })
-    completedNodes.value.add(previousNodeId)
-    updateNodeStyle(previousNodeId, 'completed')
-  }
-
-  // Mark current node as executing
-  logger.info(`🔵 Marking node ${currentNodeId} as executing`)
-  nodeExecutionStates.value.set(currentNodeId, {
-    status: 'executing',
-    startTime: new Date().toISOString()
-  })
-
-  try {
-    logger.info('📝 Calling updateNodeStyle...')
-    updateNodeStyle(currentNodeId, 'executing')
-    logger.info('📝 updateNodeStyle completed')
-    logger.info('📝 Calling updateEdgeStyles...')
-    updateEdgeStyles()
-    logger.info('✅ All style updates complete')
-  } catch (error) {
-    logger.error('❌ Error updating node/edge styles:', error)
-  }
-}, { immediate: true })
-
-// Watch for job completion to clear execution states
-watch(() => isJobRunningOnAgent.value, (isRunning) => {
-  if (!isRunning) {
-    // Job finished - mark the last executing node as completed
-    const currentNodeId = currentProjectJob.value?.nodeId
-    if (currentNodeId) {
-      nodeExecutionStates.value.set(currentNodeId, {
-        status: 'completed',
-        startTime: nodeExecutionStates.value.get(currentNodeId)?.startTime,
-        endTime: new Date().toISOString()
-      })
-      completedNodes.value.add(currentNodeId)
-      updateNodeStyle(currentNodeId, 'completed')
-      updateEdgeStyles()
-    }
-
-    // Clear states after a delay to allow user to see final state
-    setTimeout(() => {
-      nodeExecutionStates.value.clear()
-      completedNodes.value.clear()
-      // Reset all node styles
-      nodes.value.forEach(node => {
-        updateNodeStyle(node.id, 'idle')
-      })
-      updateEdgeStyles()
-    }, 5000) // Keep visualization for 5 seconds after completion
-  } else {
-    // Job starting - clear any previous states
-    nodeExecutionStates.value.clear()
-    completedNodes.value.clear()
-  }
-})
-
-// Cleanup function for component unmount
-const cleanupRealtimeConnection = () => {
-  if (project.value?.id) {
-    webSocketStore.unsubscribeFromProject(project.value.id)
-  }
-}
-
-// Check current build status when page loads
-const checkCurrentBuildStatus = async () => {
-  if (!project.value?.id) return
-  
-  try {
-    const response = await $fetch(`/api/projects/${project.value.id}/status`)
-    if (response.isRunning && response.currentJob) {
-      // Update WebSocket store with current job
-      webSocketStore.currentJobs.set(project.value.id, {
-        jobId: response.currentJob.jobId,
-        buildNumber: response.currentJob.buildNumber,
-        agentId: response.currentJob.agentId,
-        status: response.currentJob.status,
-        startTime: response.currentJob.startTime,
-        nodeId: response.currentJob.nodeId,
-        trigger: response.currentJob.trigger || 'unknown'
-      })
-      
-      // Only load logs if we don't already have them in the WebSocket store
-      const existingMessages = webSocketStore.getJobMessages(project.value.id)
-
-      if (!existingMessages || existingMessages.length === 0) {
-        // Load logs from build record (includes all parallel job outputs)
-        const buildNumber = response.currentJob.buildNumber
-        const logsResponse = await $fetch(`/api/projects/${project.value.id}/builds/${buildNumber}/logs`)
-
-        if (logsResponse.success && logsResponse.logs?.length > 0) {
-          logsResponse.logs.forEach(logEntry => {
-            // Map source field to proper nodeLabel for display
-            let displayLabel = logEntry.nodeLabel
-            if (!displayLabel) {
-              if (logEntry.source === 'agent') displayLabel = 'Agent'
-              else if (logEntry.source === 'system') displayLabel = 'System'
-              else displayLabel = logEntry.source || 'Agent'
-            }
-
-            webSocketStore.addJobMessage(
-              project.value.id,
-              displayLabel,
-              logEntry.type || 'info',
-              logEntry.message,
-              logEntry.value,
-              logEntry.timestamp // Preserve original timestamp
-            )
-          })
-          logger.info(`Loaded ${logsResponse.logs.length} logs from database for job ${response.currentJob.jobId}`)
-        } else {
-          // Add status messages if no logs found
-          webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🔄 Restored running job: ${response.currentJob.jobId}`)
-          webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🤖 Agent: ${response.currentJob.agentId || 'Unknown'}`)
-          webSocketStore.addJobMessage(project.value.id, 'System', 'info', `⏱️ Started: ${new Date(response.currentJob.startTime).toLocaleString()}`)
-          webSocketStore.addJobMessage(project.value.id, 'System', 'info', 'Waiting for agent output...')
-        }
-      } else {
-        logger.info(`Using ${existingMessages.length} existing messages from WebSocket store - skipping database load`)
-      }
-    }
-  } catch (error) {
-    logger.warn('Failed to check current build status:', error)
-  }
-}
-
-// Initialize editor on mount
-onMounted(async () => {
-  // Ensure authentication is initialized before loading data
-  if (!authStore.isAuthenticated) {
-    await authStore.initializeAuth()
-  }
-  
-  // Only load data if authenticated
-  if (authStore.isAuthenticated) {
-    // Load projects first to ensure we have the project data
-    await projectsStore.loadData()
-    // Load agents for execution node configuration
-    await loadAgents()
-    
-    // Listen for real-time agent status updates
-    if (typeof window !== 'undefined') {
-      window.addEventListener('agentStatusUpdate', handleAgentStatusUpdate)
-    }
-  }
-  
-  // Check if project exists
-  if (!project.value) {
     logger.error('Project not found, redirecting to home')
     await navigateTo('/')
     return
@@ -2679,17 +2018,18 @@ onMounted(async () => {
 
   // Set current project
   projectsStore.setCurrentProject(project.value)
-
-  // Set up real-time WebSocket updates
-  await setupRealtimeConnection()
-
-  // Check if there's already a job running for this project
-  // This will load messages from the database if needed
-  await checkCurrentBuildStatus()
+  
+  // Setup WebSocket for execution state tracking
+  setupWebSocket()
   
   // Initialize the editor
   await nextTick()
   await initializeEditor()
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  cleanupWebSocket()
 })
 
 // Project status toggle function
@@ -2703,35 +2043,18 @@ const toggleProjectStatus = async () => {
     
     if (result.success) {
       logger.info(`Project ${result.status}: ${project.value.name}`)
-      
-      // Show notification in terminal
-      addExecutionResult('System', 'info', `Project ${result.status === 'disabled' ? 'disabled' : 'enabled'} successfully`)
-      
-      // If project was disabled and jobs are running, cancel them
-      if (result.status === 'disabled' && isExecuting.value) {
-        await cancelExecution()
-      }
+      saveProject()
     } else {
       logger.error('Failed to toggle project status:', result.error)
-      addExecutionResult('System', 'error', `Failed to ${project.value.status === 'disabled' ? 'enable' : 'disable'} project: ${result.error}`)
+      alert(`Failed to ${project.value.status === 'disabled' ? 'enable' : 'disable'} project: ${result.error}`)
     }
-    saveProject()
   } catch (error) {
     logger.error('Error toggling project status:', error)
-    addExecutionResult('System', 'error', `Error changing project status: ${error.message}`)
+    alert(`Error changing project status: ${error.message}`)
   } finally {
     isTogglingStatus.value = false
   }
 }
-
-// Cleanup on unmount
-onUnmounted(() => {
-  cleanupRealtimeConnection()
-  // Clean up event listeners
-  if (typeof window !== 'undefined') {
-    window.removeEventListener('agentStatusUpdate', handleAgentStatusUpdate)
-  }
-})
 </script>
 
 <style scoped>

@@ -25,6 +25,12 @@ onMounted(async () => {
   } catch (error) {
     logger.error('Failed to initialize global WebSocket:', error)
   }
+
+  const logLevel = await $fetch('/api/admin/system-settings/log_level')
+  if (logLevel?.value) {
+    logger.setLevel(logLevel.value)
+    logger.info('Client Log level set to:', logLevel.value)
+  }
 })
 
 // Cleanup WebSocket on app unmount

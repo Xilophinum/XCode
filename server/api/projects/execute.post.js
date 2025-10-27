@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
     // Convert graph to execution commands FIRST to validate
     let executionCommands
     try {
-      executionCommands = convertGraphToCommands(nodes, edges, null, body.executionOutputs)
+      executionCommands = convertGraphToCommands(nodes, edges, null, body.executionOutputs, body.startNodeId)
       logger.info(`Generated ${executionCommands.length} commands`)
     } catch (error) {
       logger.error('Error converting graph to commands:', error.message)
@@ -181,8 +181,6 @@ export default defineEventHandler(async (event) => {
     // Store all commands in the job for sequential execution
     job.executionCommands = executableCommands
     job.currentCommandIndex = 0
-
-    // Build recording already done above (currentBuildId already set)
 
     // Start with the first command
     const firstCommand = executableCommands[0]
@@ -493,75 +491,32 @@ export default defineEventHandler(async (event) => {
 })
 
 /**
- * Determine platform requirements for a command
- */
-function getCommandPlatformRequirements(command) {
-  const platform = {
-    windows: false,
-    linux: false,
-    macos: false
-  }
-
-  switch (command.type) {
-    case 'powershell':
-      // PowerShell is primarily Windows, but can run on Linux/macOS with PowerShell Core
-      platform.windows = true
-      platform.linux = true  // PowerShell Core support
-      platform.macos = true  // PowerShell Core support
-      break
-    
-    case 'cmd':
-      // CMD is Windows-only
-      platform.windows = true
-      break
-    
-    case 'bash':
-      // Bash is primarily Linux/macOS, but available on Windows via WSL/Git Bash
-      platform.linux = true
-      platform.macos = true
-      platform.windows = true  // WSL/Git Bash support
-      break
-
-    case 'sh':
-      // POSIX shell is available on all Unix-like systems
-      platform.linux = true
-      platform.macos = true
-      platform.windows = true  // WSL/Git Bash support
-      break
-
-    case 'python':
-    case 'node':
-      // Python and Node.js are cross-platform
-      platform.windows = true
-      platform.linux = true
-      platform.macos = true
-      break
-    
-    default:
-      // Unknown command type - assume cross-platform
-      platform.windows = true
-      platform.linux = true
-      platform.macos = true
-  }
-
-  return platform
-}
-
-/**
  * Convert Vue Flow graph to executable commands for the agent
  * This function analyzes the graph and compiles it into a sequence of executable commands,
  * resolving parameter values and skipping non-executable nodes.
  */
-export function convertGraphToCommands(nodes, edges, triggerContext = null, executionOutputs = null) {
+export function convertGraphToCommands(nodes, edges, triggerContext = null, executionOutputs = null, startNodeId = null) {
   logger.info(`Converting graph to commands...`)
   logger.info(`Graph has ${nodes.length} nodes and ${edges.length} edges`)
 
   // Step 1: Build parameter value map from parameter nodes + trigger context + execution outputs
   const parameterValues = buildParameterValueMap(nodes, edges, triggerContext, executionOutputs)
 
-  // Step 2: Find executable starting points (trigger nodes or nodes without execution inputs)
-  const startingNodes = findExecutionStartingNodes(nodes, edges)
-  logger.info(`Found ${startingNodes.length} starting nodes:`, startingNodes.map(n => n.data.label))
+  // Step 2: Find executable starting points
+  let startingNodes
+  if (startNodeId) {
+    // Use specific starting node if provided
+    const specificNode = nodes.find(node => node.id === startNodeId)
+    if (!specificNode) {
+      throw new Error(`Start node with ID ${startNodeId} not found in graph`)
+    }
+    startingNodes = [specificNode]
+    logger.info(`Using specific starting node: ${specificNode.data.label}`)
+  } else {
+    // Find executable starting points (trigger nodes or nodes without execution inputs)
+    startingNodes = findExecutionStartingNodes(nodes, edges)
+    logger.info(`Found ${startingNodes.length} starting nodes:`, startingNodes.map(n => n.data.label))
+  }
 
   if (startingNodes.length === 0) {
     throw new Error('No executable nodes found in graph. Please add at least one executable node (bash, sh, powershell, cmd, python, or node) to create a workflow.')

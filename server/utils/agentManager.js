@@ -233,7 +233,16 @@ class AgentManager {
           // Handle "any" as explicit choice for any available agent
           const nextRequiresSpecificAgent = nextCommand.requiredAgentId && nextCommand.requiredAgentId !== 'any'
           const nextAgentRequirements = nextRequiresSpecificAgent ? { agentId: nextCommand.requiredAgentId } : {}
-          const nextAgent = await this.findAvailableAgent(nextAgentRequirements)
+          
+          // For sequential execution, allow some time for the agent to become available again
+          let nextAgent = await this.findAvailableAgent(nextAgentRequirements)
+          
+          // If agent not found, wait briefly and retry (agent might be finishing previous command)
+          if (!nextAgent) {
+            logger.info(`Agent not immediately available, waiting 2 seconds for sequential execution...`)
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            nextAgent = await this.findAvailableAgent(nextAgentRequirements)
+          }
           
           if (!nextAgent) {
             const errorMsg = nextRequiresSpecificAgent
@@ -358,8 +367,17 @@ class AgentManager {
         output: output
       })
 
-      // Trigger next nodes based on success
-      const hasNextNodes = await this.triggerNextNodes(job, { success: true, exitCode: exitCode || 0, output: output })
+      // Trigger next nodes for single-command jobs (external sequential execution)
+      // Do NOT trigger for multi-command jobs (internal sequential execution)
+      let hasNextNodes = false
+      
+      if (job.executionCommands && job.executionCommands.length > 1) {
+        logger.info(`Multi-command sequential job completed - not triggering next nodes (handled internally)`)
+        hasNextNodes = false
+      } else {
+        // Single command job - trigger next nodes
+        hasNextNodes = await this.triggerNextNodes(job, { success: true, exitCode: exitCode || 0, output: output })
+      }
 
       // Only mark build as complete if there are no more nodes to execute
       // Don't finish the build as "success" if this was a failure handler node
@@ -558,13 +576,15 @@ class AgentManager {
       const socket = this.connectedAgents.get(requirements.agentId)
       const agentInfo = this.agentData.get(requirements.agentId)
 
-      if (socket && socket.connected && agentInfo && agentInfo.status === 'online') {
-        logger.info(`Found requested agent: ${requirements.agentId}`)
-        return agentInfo
-      } else {
-        logger.error(`REQUIRED agent ${requirements.agentId} not available - BLOCKING execution`)
-        return null // NEVER fallback when specific agent is required
+      if (socket && socket.connected && agentInfo) {
+        // Accept agents that are online, idle, ready, or busy (busy agents can queue work)
+        if (['online', 'idle', 'ready', 'busy'].includes(agentInfo.status)) {
+          logger.info(`Found requested agent: ${requirements.agentId} (status: ${agentInfo.status})`)
+          return agentInfo
+        }
       }
+      logger.error(`REQUIRED agent ${requirements.agentId} not available - status: ${agentInfo?.status || 'no data'}, connected: ${socket?.connected || false}`)
+      return null
     }
 
     // Only when NO specific agent is requested, find any available agent
@@ -628,6 +648,8 @@ class AgentManager {
         if (lastCommand) {
           currentNode = nodes.find(node => node.id === lastCommand.nodeId)
         }
+      } else {
+        logger.warn(`🔗 No execution commands or currentCommandIndex in job`)
       }
 
       // Fallback: find any execution node if we can't determine the current one
@@ -635,28 +657,29 @@ class AgentManager {
         currentNode = nodes.find(node =>
           ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(node.data?.nodeType)
         )
+        logger.warn(`🔗 Using fallback current node: ${currentNode?.data?.label || 'NOT FOUND'}`)
       }
 
       if (!currentNode) {
-        logger.warn(`Could not find current execution node for job ${job.jobId}`)
+        logger.error(`🔗 Could not find current execution node for job ${job.jobId}`)
         return false
       }
-
-      logger.info(`Finding next nodes from: ${currentNode.data.label} (${currentNode.data.nodeType})`)
 
       // Get next nodes based on execution result
       const nextNodes = getExecutionConnectedNodes(currentNode.id, nodes, edges, new Map(), executionResult)
 
       if (nextNodes.length === 0) {
-        logger.info(`No next nodes to execute for job ${job.jobId}`)
+        logger.debug(`🔗 No next nodes to execute for job ${job.jobId} - execution chain complete`)
         return false
       }
 
-      logger.info(`Triggering ${nextNodes.length} next nodes for job ${job.jobId}`)
 
       // Execute next nodes by creating new jobs or sending notifications directly
+      let successCount = 0
+      let errorCount = 0
+      
       for (const nextNode of nextNodes) {
-        logger.info(`Executing next node: ${nextNode.data.label}`)
+        logger.debug(`🔗 Executing next node: ${nextNode.data.label}`)
 
         try {
           // Create parameter values map including execution outputs
@@ -672,7 +695,6 @@ class AgentManager {
             )
 
             if (outputConnection && outputConnection.targetHandle) {
-              logger.info(`Passing execution output "${executionResult.output}" to node: ${nextNode.data.label}`)
 
               // Find the actual socket label from the target node's input sockets
               const targetSocket = nextNode.data.inputSockets?.find(s => s.id === outputConnection.targetHandle)
@@ -692,8 +714,9 @@ class AgentManager {
 
           const executionData = {
             projectId: job.projectId,
-            nodes: [nextNode], // Only execute this specific node
+            nodes: nodes, // Pass full graph so next nodes can be found
             edges: edges,
+            startNodeId: nextNode.id, // Specify which node to start execution from
             startTime: new Date().toISOString(),
             trigger: 'node-completion',
             executionOutputs: executionOutputsObj, // Pass the execution outputs as plain object
@@ -706,6 +729,9 @@ class AgentManager {
             isRetrying: executionResult.isRetrying
           }
           
+          logger.debug(`🔗 Calling /api/projects/execute for node: ${nextNode.data.label}`)
+          logger.debug(`🔗 Execution data:`, JSON.stringify(executionData, null, 2))
+          
           // Execute the next node
           const response = await $fetch('/api/projects/execute', {
             method: 'POST',
@@ -713,20 +739,23 @@ class AgentManager {
           })
           
           if (response.success) {
-            logger.info(`Successfully triggered next node ${nextNode.data.label} on agent ${response.agentName}`)
+            logger.debug(`🔗 ✅ Successfully triggered next node ${nextNode.data.label} on agent ${response.agentName}`)
+            successCount++
           } else {
-            logger.error(`Failed to trigger next node ${nextNode.data.label}`)
+            logger.error(`🔗 ❌ Failed to trigger next node ${nextNode.data.label}: ${response.error || 'Unknown error'}`)
+            errorCount++
           }
         } catch (error) {
-          logger.error(`Error executing next node ${nextNode.data.label}:`, error)
+          logger.error(`🔗 ❌ Error executing next node ${nextNode.data.label}:`, error)
+          errorCount++
         }
       }
 
-      // Return true to indicate that nodes were triggered
-      return true
+      // Return true to indicate that nodes were triggered (even if some failed)
+      return successCount > 0
 
     } catch (error) {
-      logger.error(`Error triggering next nodes for job ${job?.jobId || 'undefined'}:`, error)
+      logger.error(`🔗 ❌ Error triggering next nodes for job ${job?.jobId || 'undefined'}:`, error)
       return false
     }
   }

@@ -1,0 +1,623 @@
+<template>
+  <div class="h-screen bg-neutral-50 dark:bg-neutral-900 overflow-hidden">
+    <!-- Navigation -->
+    <AppNavigation :breadcrumbs="breadcrumbSegments">
+      <template #actions>
+        <div v-if="isExecuting" class="flex items-center text-blue-600 dark:text-blue-400 mr-4">
+          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+          Executing...
+        </div>
+        <NuxtLink 
+          :to="`/${pathSegments.join('/')}/editor`"
+          class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" class="mr-2">
+            <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+          </svg>
+          Back to Editor
+        </NuxtLink>
+        <button
+          v-if="isExecuting"
+          @click="cancelExecution"
+          class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" class="mr-2">
+            <path fill="currentColor" d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/>
+          </svg>
+          Cancel Build
+        </button>
+      </template>
+    </AppNavigation>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col" style="height: calc(100vh - 64px);">
+      <!-- Build Graph -->
+      <div class="flex-1 relative overflow-hidden">
+        <VueFlow
+          v-model:nodes="nodes"
+          v-model:edges="edges"
+          :default-viewport="{ zoom: 0.8 }"
+          :nodes-draggable="false"
+          :nodes-connectable="false"
+          :elements-selectable="false"
+          :fit-view-on-init="true"
+          :min-zoom="0.1"
+          :max-zoom="2"
+          :snap-to-grid="true"
+          :snap-grid="[5, 5]"
+          class="build-flow w-full h-full"
+        >
+          <Background 
+            variant="lines" 
+            :gap="[20, 20]"
+            :size="1"
+            :color="dark ? '#525252' : '#d1d5db'"
+            :backgroundColor="dark ? '#171717' : '#f9fafb'"
+          />
+          <Controls />
+        </VueFlow>
+      </div>
+      
+      <!-- Terminal Panel -->
+      <div 
+        class="bg-gray-900 text-green-400 font-mono text-sm flex flex-col border-t border-gray-700 relative flex-shrink-0"
+        :style="{ height: `${terminalHeight}px` }"
+      >
+        <!-- Resize Handle -->
+        <div 
+          class="absolute top-0 left-0 right-0 h-2 bg-gray-600 hover:bg-gray-500 cursor-row-resize z-10 -mt-1"
+          @mousedown="startResize"
+        ></div>
+        
+        <div class="bg-gray-800 px-4 py-2 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
+          <span class="text-white font-semibold">Build #{{ buildNumber }} Output</span>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="clearTerminal"
+              class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+        <div ref="terminalRef" class="flex-1 p-4 overflow-y-auto">
+          <div v-for="(message, index) in terminalMessages" :key="index" class="mb-1">
+            <span :class="getMessageClass(message.level)">{{ message.text }}</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
+<script setup>
+import { VueFlow } from '@vue-flow/core'
+import { Background } from '@vue-flow/background'
+import { Controls } from '@vue-flow/controls'
+import '@vue-flow/core/dist/style.css'
+import '@vue-flow/core/dist/theme-default.css'
+import '@vue-flow/controls/dist/style.css'
+
+const route = useRoute()
+const authStore = useAuthStore()
+const projectsStore = useProjectsStore()
+const webSocketStore = useWebSocketStore()
+const { isDark: dark } = useDarkMode()
+const logger = useLogger()
+
+// Project data
+const project = ref(null)
+const nodes = ref([])
+const edges = ref([])
+const isJobRunningOnAgent = ref(false)
+// Extract path and build number
+const pathSegments = computed(() => {
+  const segments = Array.isArray(route.params.path) ? route.params.path : [route.params.path]
+  return segments.filter(Boolean)
+})
+const buildNumber = computed(() => route.params.buildNumber)
+
+// Breadcrumb segments for navigation
+const breadcrumbSegments = computed(() => {
+  return [...pathSegments.value, 'build', buildNumber.value]
+})
+
+// Set page title and breadcrumbs
+useHead({
+  title: `Build #${buildNumber.value} - ${project.value?.name || 'Loading...'}`
+})
+
+definePageMeta({
+  middleware: 'auth'
+})
+
+// Build state
+const buildStatus = ref('Loading...')
+const isExecuting = computed(() => {
+  return webSocketStore.isProjectJobRunning(project.value?.id)
+})
+
+// Terminal state
+const terminalRef = ref(null)
+const terminalMessages = ref([])
+const terminalHeight = ref(300)
+const isResizing = ref(false)
+
+// Execution functions
+const clearTerminal = () => {
+  terminalMessages.value = []
+  if (project.value?.id) {
+    webSocketStore.clearJobMessages(project.value.id)
+  }
+}
+
+// Terminal resize functionality
+const startResize = (event) => {
+  isResizing.value = true
+  const startY = event.clientY
+  const startHeight = terminalHeight.value
+  
+  const handleMouseMove = (e) => {
+    const deltaY = startY - e.clientY
+    const newHeight = Math.max(150, Math.min(600, startHeight + deltaY))
+    terminalHeight.value = newHeight
+  }
+  
+  const handleMouseUp = () => {
+    isResizing.value = false
+    document.removeEventListener('mousemove', handleMouseMove)
+    document.removeEventListener('mouseup', handleMouseUp)
+  }
+  
+  document.addEventListener('mousemove', handleMouseMove)
+  document.addEventListener('mouseup', handleMouseUp)
+}
+
+const addTerminalMessage = (level, message) => {
+  const timestamp = new Date().toLocaleTimeString()
+  terminalMessages.value.push({
+    level,
+    text: `[${timestamp}] ${message}`,
+    timestamp: new Date()
+  })
+  
+  // Auto-scroll to bottom
+  nextTick(() => {
+    if (terminalRef.value) {
+      terminalRef.value.scrollTop = terminalRef.value.scrollHeight
+    }
+  })
+}
+
+const isSocketConnected = computed(() => webSocketStore.isConnected)
+
+// Node execution state tracking
+const nodeExecutionStates = ref(new Map()) // nodeId -> { status: 'pending'|'executing'|'completed'|'failed', startTime, endTime }
+const completedNodes = ref(new Set()) // Track which nodes have completed
+
+// Build stats integration
+let currentBuildId = null
+
+const finishBuild = async (status, message) => {
+  if (!currentBuildId) return
+  
+  try {
+    await $fetch(`/api/projects/${project.value.id}/builds/${currentBuildId}`, {
+      method: 'PATCH',
+      body: {
+        status: status,
+        message: message,
+        nodesExecuted: nodes.value.length // Assume all nodes executed for now
+      }
+    })
+    
+    logger.info('Build finished:', currentBuildId, status)
+    currentBuildId = null
+  } catch (error) {
+    logger.warn('Failed to finish build recording:', error)
+  }
+}
+
+const addBuildLog = async (level, message, command = null) => {
+  if (!currentBuildId) return logger.warn('Cannot add build log: currentBuildId is null');
+  
+  logger.info(`Adding build log: ${level} - ${message}`)
+  try {
+    await $fetch(`/api/projects/${project.value.id}/builds/${currentBuildId}/logs`, {
+      method: 'PATCH',
+      body: {
+        type: 'log',
+        level: level,
+        message: message,
+        command: command,
+        source: 'system'
+      }
+    })
+  } catch (error) {
+    logger.warn('Failed to add build log:', error)
+  }
+}
+
+// Legacy functions for backward compatibility
+const recordBuildEvent = async (status, message, logs = []) => {
+  if (status === 'failure' || status === 'cancelled') {
+    await finishBuild(status === 'cancelled' ? 'cancelled' : 'failure', message)
+  }
+}
+
+const recordTerminalLog = async (level, message, command = null) => {
+  await addBuildLog(level, message, command)
+}
+
+const getMessageClass = (level) => {
+  switch (level) {
+    case 'error': return 'text-red-400'
+    case 'warning': return 'text-yellow-400'
+    case 'success': return 'text-green-400'
+    case 'info': return 'text-blue-400'
+    default: return 'text-gray-300'
+  }
+}
+
+const cancelExecution = async () => {
+  if (!project.value?.id) return
+  
+  try {
+    const response = await $fetch(`/api/projects/${project.value.id}/builds/${buildNumber.value}/cancel`, {
+      method: 'POST',
+      body: {
+        reason: 'Cancelled by user from build page'
+      }
+    })
+    
+    if (response.success) {
+      addTerminalMessage('warning', 'Job cancellation sent to agent. Waiting for confirmation...')
+    } else {
+      addTerminalMessage('error', `Failed to cancel job: ${response.message || 'Unknown error'}`)
+    }
+  } catch (error) {
+    addTerminalMessage('error', `Error cancelling job: ${error.message}`)
+  }
+}
+
+// Load project and build data
+const loadBuildData = async () => {
+  try {
+    // Load project using hierarchical approach
+    const projectName = pathSegments.value[pathSegments.value.length - 1]
+    const projectPath = pathSegments.value.slice(0, -1)
+    project.value = projectsStore.getItemByFullPath([...projectPath, projectName])
+    
+    if (!project.value) {
+      throw new Error('Project not found')
+    }
+
+    // Load build data
+    const buildData = await $fetch(`/api/projects/${project.value.id}/builds/${buildNumber.value}`)
+    
+    if (buildData.success) {
+      const build = buildData.build
+      buildStatus.value = build.status
+      
+      // Load graph from project
+      if (project.value.diagramData) {
+        nodes.value = JSON.parse(JSON.stringify(project.value.diagramData.nodes || []))
+        edges.value = JSON.parse(JSON.stringify(project.value.diagramData.edges || []))
+        
+        // Apply visual states based on build execution
+        applyBuildVisualStates(build)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load build data:', error)
+    buildStatus.value = 'Error'
+  }
+}
+
+// Apply visual states to nodes based on build execution
+const applyBuildVisualStates = (build) => {
+  // For now, just apply basic states
+  // TODO: Implement detailed node state tracking
+  nodes.value = nodes.value.map(node => ({
+    ...node,
+    class: getBuildNodeClass(node, build)
+  }))
+  
+  edges.value = edges.value.map(edge => ({
+    ...edge,
+    class: getBuildEdgeClass(edge, build)
+  }))
+}
+
+const getBuildNodeClass = (node, build) => {
+  // Basic implementation - enhance based on actual execution data
+  if (build.status === 'running') {
+    return 'node-pending'
+  } else if (build.status === 'success') {
+    return 'node-success'
+  } else if (build.status === 'failure') {
+    return 'node-error'
+  }
+  return 'node-pending'
+}
+
+const getBuildEdgeClass = (edge, build) => {
+  if (build.status === 'running') {
+    return 'edge-pending'
+  } else if (build.status === 'success') {
+    return 'edge-success'
+  }
+  return 'edge-default'
+}
+
+// Handle real-time agent status updates
+const handleAgentStatusUpdate = (event) => {
+  const { agentId, status, currentJobs, lastHeartbeat, hostname, platform, architecture, capabilities, version } = event.detail
+  
+  // Find and update the agent in our local array
+  const agentIndex = agents.value.findIndex(agent => agent.id === agentId)
+  if (agentIndex !== -1) {
+    const agent = agents.value[agentIndex]
+    agent.status = status
+    agent.currentJobs = currentJobs || 0
+    agent.lastHeartbeat = lastHeartbeat
+    
+    // Update system info if provided (registration updates)
+    if (hostname) agent.hostname = hostname
+    if (platform) agent.platform = platform
+    if (architecture) agent.architecture = architecture
+    if (capabilities) agent.capabilities = capabilities
+    if (version) agent.version = version
+    
+    agents.value[agentIndex] = { ...agent } // Trigger reactivity
+    logger.info(`🔄 Updated agent ${agentId} status: ${status}`)
+  } else {
+    logger.info(`Agent ${agentId} not found in local array - refreshing agent list`)
+    loadAgents() // Reload if agent not found (new agent connected)
+  }
+}
+
+// Watch for job completion to finish build recording
+watch(() => isJobRunningOnAgent.value, async (isRunning, wasRunning) => {
+  // Detect when a job finishes (was running, now not running)
+  if (wasRunning && !isRunning && currentBuildId) {
+    logger.info('🏁 Job execution completed, finishing build...')
+    
+    // Check the last few messages to determine success/failure
+    const messages = currentProjectJob.value?.messages || []
+    const lastMessages = messages.slice(-5) // Look at last 5 messages
+    
+    let buildStatus = 'success'
+    let buildMessage = 'Build completed successfully'
+    
+    // Check for error indicators in recent messages
+    const hasError = lastMessages.some(msg => 
+      msg.type === 'error' || 
+      (msg.message && msg.message.toLowerCase().includes('error')) ||
+      (msg.message && msg.message.toLowerCase().includes('failed'))
+    )
+    
+    if (hasError) {
+      buildStatus = 'failure'
+      buildMessage = 'Build completed with errors'
+    }
+    
+    await finishBuild(buildStatus, buildMessage)
+    await addBuildLog('info', `Build finished with status: ${buildStatus}`)
+  }
+}, { immediate: false })
+
+// Cleanup function for component unmount
+const cleanupRealtimeConnection = () => {
+  if (project.value?.id) {
+    webSocketStore.unsubscribeFromProject(project.value.id)
+  }
+}
+
+// Check current build status when page loads
+const checkCurrentBuildStatus = async () => {
+  if (!project.value?.id) return
+  
+  try {
+    const response = await $fetch(`/api/projects/${project.value.id}/status`)
+    if (response.isRunning && response.currentJob) {
+      // Update WebSocket store with current job
+      webSocketStore.currentJobs.set(project.value.id, {
+        jobId: response.currentJob.jobId,
+        buildNumber: response.currentJob.buildNumber,
+        agentId: response.currentJob.agentId,
+        status: response.currentJob.status,
+        startTime: response.currentJob.startTime,
+        nodeId: response.currentJob.nodeId,
+        trigger: response.currentJob.trigger || 'unknown'
+      })
+      
+      // Only load logs if we don't already have them in the WebSocket store
+      const existingMessages = webSocketStore.getJobMessages(project.value.id)
+
+      if (!existingMessages || existingMessages.length === 0) {
+        // Load logs from build record (includes all parallel job outputs)
+        const buildNumber = response.currentJob.buildNumber
+        const logsResponse = await $fetch(`/api/projects/${project.value.id}/builds/${buildNumber}/logs`)
+
+        if (logsResponse.success && logsResponse.logs?.length > 0) {
+          logsResponse.logs.forEach(logEntry => {
+            // Map source field to proper nodeLabel for display
+            let displayLabel = logEntry.nodeLabel
+            if (!displayLabel) {
+              if (logEntry.source === 'agent') displayLabel = 'Agent'
+              else if (logEntry.source === 'system') displayLabel = 'System'
+              else displayLabel = logEntry.source || 'Agent'
+            }
+
+            webSocketStore.addJobMessage(
+              project.value.id,
+              displayLabel,
+              logEntry.type || 'info',
+              logEntry.message,
+              logEntry.value,
+              logEntry.timestamp // Preserve original timestamp
+            )
+          })
+          logger.info(`Loaded ${logsResponse.logs.length} logs from database for job ${response.currentJob.jobId}`)
+        } else {
+          // Add status messages if no logs found
+          webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🔄 Restored running job: ${response.currentJob.jobId}`)
+          webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🤖 Agent: ${response.currentJob.agentId || 'Unknown'}`)
+          webSocketStore.addJobMessage(project.value.id, 'System', 'info', `⏱️ Started: ${new Date(response.currentJob.startTime).toLocaleString()}`)
+          webSocketStore.addJobMessage(project.value.id, 'System', 'info', 'Waiting for agent output...')
+        }
+      } else {
+        logger.info(`Using ${existingMessages.length} existing messages from WebSocket store - skipping database load`)
+      }
+    }
+  } catch (error) {
+    logger.warn('Failed to check current build status:', error)
+  }
+}
+
+// Terminal formatting functions
+const formatTimestamp = (timestamp) => {
+  if (!timestamp) return ''
+  return new Date(timestamp).toLocaleTimeString('en-US', { 
+    hour12: false, 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit' 
+  })
+}
+
+// Setup WebSocket for live updates
+onMounted(async () => {
+
+  // Ensure authentication is initialized before loading data
+  if (!authStore.isAuthenticated) {
+    await authStore.initializeAuth()
+  }
+  
+  // Only load data if authenticated
+  if (authStore.isAuthenticated) {
+    // Load projects first to ensure we have the project data
+    await projectsStore.loadData()
+    // Load agents for execution node configuration
+    await loadAgents()
+  }
+  
+  // Check if project exists
+  if (!project.value) {
+    await navigateTo('/')
+    return
+  }
+  
+  // Set current project
+  projectsStore.setCurrentProject(project.value)
+  await loadBuildData()
+  // Set up real-time WebSocket updates
+  await setupRealtimeConnection()
+  // Listen for real-time agent status updates
+  if (typeof window !== 'undefined') {
+    window.addEventListener('agentStatusUpdate', handleAgentStatusUpdate)
+  }
+  if (project.value) {
+    // Subscribe to WebSocket updates for this project
+    webSocketStore.subscribeToProject(project.value.id)
+    
+    // Load existing terminal messages
+    const existingMessages = webSocketStore.getJobMessages(project.value.id)
+    if (existingMessages && existingMessages.length > 0) {
+      terminalMessages.value = existingMessages.map(msg => ({
+        level: msg.level,
+        text: `[${new Date(msg.timestamp).toLocaleTimeString()}] ${msg.message}`,
+        timestamp: new Date(msg.timestamp)
+      }))
+    }
+    
+    // Watch for new WebSocket messages
+    watch(() => webSocketStore.getJobMessages(project.value.id), (newMessages) => {
+      if (newMessages && newMessages.length > terminalMessages.value.length) {
+        const latestMessage = newMessages[newMessages.length - 1]
+        addTerminalMessage(latestMessage.level, latestMessage.message)
+      }
+    }, { deep: true })
+
+    // Check if there's already a job running for this project
+    // This will load messages from the database if needed
+    await checkCurrentBuildStatus()
+  }
+})
+
+onUnmounted(() => {
+  if (project.value) {
+    webSocketStore.unsubscribeFromProject(project.value.id)
+  }
+  cleanupRealtimeConnection()
+  // Clean up event listeners
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('agentStatusUpdate', handleAgentStatusUpdate)
+  }
+})
+</script>
+
+<style scoped>
+.build-flow {
+  background: #f8fafc;
+}
+
+.dark .build-flow {
+  background: #1f2937;
+}
+
+/* Visual state classes */
+:deep(.node-pending) {
+  border: 2px solid #6b7280;
+  background: #f9fafb;
+}
+
+:deep(.node-running) {
+  border: 2px solid #3b82f6;
+  background: #eff6ff;
+  animation: pulse 2s infinite;
+}
+
+:deep(.node-success) {
+  border: 2px solid #10b981;
+  background: #ecfdf5;
+}
+
+:deep(.node-error) {
+  border: 2px solid #ef4444;
+  background: #fef2f2;
+}
+
+:deep(.edge-pending) {
+  stroke: #6b7280;
+  stroke-dasharray: 5,5;
+  animation: dash 1s linear infinite;
+}
+
+:deep(.edge-running) {
+  stroke: #3b82f6;
+  stroke-width: 3px;
+  animation: flow 2s linear infinite;
+}
+
+:deep(.edge-success) {
+  stroke: #10b981;
+  stroke-width: 2px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes dash {
+  to { stroke-dashoffset: -10; }
+}
+
+@keyframes flow {
+  0% { stroke-dasharray: 0, 20; }
+  50% { stroke-dasharray: 10, 10; }
+  100% { stroke-dasharray: 20, 0; }
+}
+</style>

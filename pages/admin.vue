@@ -1413,7 +1413,7 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
-
+const logger = useLogger()
 definePageMeta({
   middleware: 'admin'
 })
@@ -1701,6 +1701,9 @@ const updateSetting = async (key, value) => {
       await nextTick()
       window.location.reload()
     }
+    if (key === 'log_level') {
+      logger.setLevel(value)
+    }
   } catch (error) {
     logger.error('Failed to update system setting:', error)
   }
@@ -1737,17 +1740,6 @@ const getCategoryTitle = (category) => {
     'system': 'System Information'
   }
   return titles[category] || category.charAt(0).toUpperCase() + category.slice(1)
-}
-
-const closeSettingsModal = () => {
-  showSettingsModal.value = false
-  editingSystemSetting.value = null
-  systemSettingsForm.value = {
-    category: '',
-    key: '',
-    value: '',
-    description: ''
-  }
 }
 
 // Credential utility methods
