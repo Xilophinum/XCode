@@ -389,6 +389,15 @@ export default defineEventHandler(async (event) => {
 
     // Build recording already done above
 
+    // Update job with current node info BEFORE dispatching so output has nodeId
+    await jobManager.updateJob(jobId, {
+      executionCommands: executableCommands,
+      currentCommandIndex: 0,
+      currentNodeId: firstCommand.nodeId,
+      currentNodeLabel: firstCommand.nodeLabel,
+      buildNumber: currentBuildNumber
+    })
+
     const dispatchSuccess = await agentManager.dispatchJobToAgent(selectedAgent.agentId, {
       jobId,
       projectId,
@@ -429,14 +438,11 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Update job status to dispatched and store execution commands with buildNumber
+    // Update job status to dispatched after successful dispatch
     await jobManager.updateJob(jobId, {
       status: 'dispatched',
       agentId: selectedAgent.agentId,
-      agentName: selectedAgent.name || selectedAgent.hostname,
-      executionCommands: executableCommands,
-      currentCommandIndex: 0,
-      buildNumber: currentBuildNumber
+      agentName: selectedAgent.name || selectedAgent.hostname
     })
 
     logger.info(`Job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`)

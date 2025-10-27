@@ -120,7 +120,7 @@ class JobManager {
     }
 
     const now = new Date().toISOString()
-    
+
     // Update memory cache
     Object.assign(job, updates, {
       updatedAt: now
@@ -231,6 +231,7 @@ class JobManager {
     this.outputSequence.set(jobId, sequence + 1)
 
     // Prepare output entry with masked content
+    // Use nodeId and nodeLabel from job's current execution context if not provided in output
     const outputEntry = {
       sequence: sequence,
       type: outputLine.type || 'info',
@@ -239,7 +240,8 @@ class JobManager {
       command: outputLine.command || null,
       output: outputLine.output || null,
       source: outputLine.source || 'agent',
-      nodeId: outputLine.nodeId || null,
+      nodeId: outputLine.nodeId || job.currentNodeId || null,
+      nodeLabel: outputLine.nodeLabel || job.currentNodeLabel || outputLine.source || 'Agent',
       timestamp: outputLine.timestamp
     }
 
@@ -282,21 +284,22 @@ class JobManager {
       logger.warn(`Failed to persist job output to database:`, dbError.message)
     }
 
-    // Add to memory cache (keep only last 100 lines for performance) - use masked version
-    const maskedOutputLine = { ...outputLine, message: maskedMessage }
-    job.output.push(maskedOutputLine)
+    // Add to memory cache (keep only last 100 lines for performance)
+    // Use outputEntry (which has nodeId/nodeLabel) instead of original outputLine
+    job.output.push(outputEntry)
     if (job.output.length > 100) {
       job.output = job.output.slice(-100)
     }
 
-    // Broadcast output in real-time to subscribed clients - use masked version
+    // Broadcast output in real-time to subscribed clients
+    // Use outputEntry (which has nodeId/nodeLabel) instead of original outputLine
     if (globalThis.broadcastToProject && job.projectId) {
       globalThis.broadcastToProject(job.projectId, {
         type: 'job_output_line',
         jobId: jobId,
         projectId: job.projectId,
-        output: maskedOutputLine,
-        timestamp: outputLine.timestamp
+        output: outputEntry,
+        timestamp: outputEntry.timestamp
       })
     }
 

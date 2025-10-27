@@ -291,6 +291,13 @@ class AgentManager {
           const environment = await this.getEnvironmentVariables()
           logger.debug(`Passing ${Object.keys(environment).length} environment variables to agent for job ${jobId}`)
 
+          // Update job with current node info before dispatching
+          await jobManager.updateJob(jobId, {
+            currentNodeId: nextCommand.nodeId,
+            currentNodeLabel: nextCommand.nodeLabel,
+            currentCommandIndex: nextIndex
+          })
+
           // Dispatch next command to the appropriate agent
           const dispatchSuccess = await this.dispatchJobToAgent(nextAgent.agentId, {
             jobId,

@@ -229,6 +229,27 @@ export class BuildStatsManager {
 
 
   /**
+   * Get a specific build
+   * @param {string} projectId - Project ID
+   * @param {number} buildNumber - Build number
+   * @returns {Promise<Object|null>} - Build object or null if not found
+   */
+  async getBuild(projectId, buildNumber) {
+    if (!this.db) await this.initialize()
+
+    const [build] = await this.db
+      .select()
+      .from(builds)
+      .where(and(
+        eq(builds.projectId, projectId),
+        eq(builds.buildNumber, buildNumber)
+      ))
+      .limit(1)
+
+    return build || null
+  }
+
+  /**
    * Get project build statistics
    * @param {string} projectId - Project ID
    * @returns {Promise<Object>} - Build statistics

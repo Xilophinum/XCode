@@ -36,6 +36,7 @@
         <VueFlow
           v-model:nodes="nodes"
           v-model:edges="edges"
+          :node-types="nodeTypes"
           :default-viewport="{ zoom: 0.8 }"
           :nodes-draggable="false"
           :nodes-connectable="false"
@@ -173,14 +174,15 @@ const startResize = (event) => {
   document.addEventListener('mouseup', handleMouseUp)
 }
 
-const addTerminalMessage = (level, message) => {
+const addTerminalMessage = (level, message, nodeLabel = null) => {
   const timestamp = new Date().toLocaleTimeString()
+  const labelPrefix = nodeLabel ? `[${nodeLabel}] ` : ''
   terminalMessages.value.push({
     level,
-    text: `[${timestamp}] ${message}`,
+    text: `[${timestamp}] ${labelPrefix}${message}`,
     timestamp: new Date()
   })
-  
+
   // Auto-scroll to bottom
   nextTick(() => {
     if (terminalRef.value) {
@@ -191,9 +193,18 @@ const addTerminalMessage = (level, message) => {
 
 const isSocketConnected = computed(() => webSocketStore.isConnected)
 
+// Import shared CustomNode component
+const CustomNodeComponent = resolveComponent('CustomNode')
+
+// Register custom node type
+const nodeTypes = {
+  custom: markRaw(CustomNodeComponent)
+}
+
 // Node execution state tracking
-const nodeExecutionStates = ref(new Map()) // nodeId -> { status: 'pending'|'executing'|'completed'|'failed', startTime, endTime }
+const nodeExecutionStates = ref(new Map()) // nodeId -> { status: 'pending'|'executing'|'completed'|'failed', startTime, endTime, label }
 const completedNodes = ref(new Set()) // Track which nodes have completed
+const currentlyExecutingNodeId = ref(null) // Track which node is currently running
 
 // Build stats integration
 let currentBuildId = null
@@ -271,111 +282,253 @@ const cancelExecution = async () => {
     })
     
     if (response.success) {
-      addTerminalMessage('warning', 'Job cancellation sent to agent. Waiting for confirmation...')
+      addTerminalMessage('warning', 'Job cancellation sent to agent. Waiting for confirmation...', 'System')
     } else {
-      addTerminalMessage('error', `Failed to cancel job: ${response.message || 'Unknown error'}`)
+      addTerminalMessage('error', `Failed to cancel job: ${response.message || 'Unknown error'}`, 'System')
     }
   } catch (error) {
-    addTerminalMessage('error', `Error cancelling job: ${error.message}`)
+    addTerminalMessage('error', `Error cancelling job: ${error.message}`, 'System')
   }
 }
 
 // Load project and build data
 const loadBuildData = async () => {
   try {
-    // Load project using hierarchical approach
-    const projectName = pathSegments.value[pathSegments.value.length - 1]
-    const projectPath = pathSegments.value.slice(0, -1)
-    project.value = projectsStore.getItemByFullPath([...projectPath, projectName])
-    
     if (!project.value) {
       throw new Error('Project not found')
     }
 
-    // Load build data
+    // Load build data from API
     const buildData = await $fetch(`/api/projects/${project.value.id}/builds/${buildNumber.value}`)
-    
+
     if (buildData.success) {
       const build = buildData.build
       buildStatus.value = build.status
-      
       // Load graph from project
       if (project.value.diagramData) {
-        nodes.value = JSON.parse(JSON.stringify(project.value.diagramData.nodes || []))
-        edges.value = JSON.parse(JSON.stringify(project.value.diagramData.edges || []))
-        
+        const diagramData = project.value.diagramData
+        nodes.value = JSON.parse(JSON.stringify(diagramData.nodes || []))
+        edges.value = JSON.parse(JSON.stringify(diagramData.edges || []))
+
+        logger.info(`Loaded ${nodes.value.length} nodes and ${edges.value.length} edges`)
+
         // Apply visual states based on build execution
         applyBuildVisualStates(build)
+      } else {
+        logger.warn('No diagramData found in project')
       }
+    } else {
+      logger.error('Failed to load build data:', buildData)
     }
   } catch (error) {
-    console.error('Failed to load build data:', error)
+    logger.error('Failed to load build data:', error)
     buildStatus.value = 'Error'
   }
 }
 
+// Update node execution state based on log entry
+const updateNodeExecutionState = (nodeId, nodeLabel, level) => {
+  if (!nodeId) return
+
+  const currentState = nodeExecutionStates.value.get(nodeId)
+  const now = new Date()
+
+  // If we're starting a new node and there was a previous one executing, mark it as completed
+  if (!currentState && currentlyExecutingNodeId.value && currentlyExecutingNodeId.value !== nodeId) {
+    const previousState = nodeExecutionStates.value.get(currentlyExecutingNodeId.value)
+    if (previousState?.status === 'executing') {
+      nodeExecutionStates.value.set(currentlyExecutingNodeId.value, {
+        ...previousState,
+        status: 'completed',
+        endTime: now
+      })
+      completedNodes.value.add(currentlyExecutingNodeId.value)
+    }
+  }
+
+  // Determine if this is a start, progress, or completion message
+  if (level === 'error') {
+    // Error indicates failure
+    nodeExecutionStates.value.set(nodeId, {
+      status: 'failed',
+      startTime: currentState?.startTime || now,
+      endTime: now,
+      label: nodeLabel
+    })
+    completedNodes.value.add(nodeId)
+    currentlyExecutingNodeId.value = null
+  } else if (level === 'success' && currentState?.status === 'executing') {
+    // Success message after execution means completion
+    nodeExecutionStates.value.set(nodeId, {
+      status: 'completed',
+      startTime: currentState.startTime,
+      endTime: now,
+      label: nodeLabel
+    })
+    completedNodes.value.add(nodeId)
+    currentlyExecutingNodeId.value = null
+  } else if (!currentState || currentState.status === 'pending') {
+    // First message from a node indicates it's executing
+    nodeExecutionStates.value.set(nodeId, {
+      status: 'executing',
+      startTime: now,
+      endTime: null,
+      label: nodeLabel
+    })
+    currentlyExecutingNodeId.value = nodeId
+  } else if (currentState?.status === 'executing') {
+    // Node is already executing - ensure currentlyExecutingNodeId is set
+    // This handles the case where state was loaded from history but currentlyExecutingNodeId wasn't set
+    if (currentlyExecutingNodeId.value !== nodeId) {
+      currentlyExecutingNodeId.value = nodeId
+    }
+  }
+
+  // Update visual states
+  updateNodeVisualStates()
+}
+
 // Apply visual states to nodes based on build execution
 const applyBuildVisualStates = (build) => {
-  // For now, just apply basic states
-  // TODO: Implement detailed node state tracking
-  nodes.value = nodes.value.map(node => ({
-    ...node,
-    class: getBuildNodeClass(node, build)
-  }))
-  
-  edges.value = edges.value.map(edge => ({
-    ...edge,
-    class: getBuildEdgeClass(edge, build)
-  }))
+  // Parse logs to extract node execution states
+  if (build.outputLog) {
+    try {
+      const logs = typeof build.outputLog === 'string' ? JSON.parse(build.outputLog) : build.outputLog
+
+      // Process logs to build execution state
+      logs.forEach(logEntry => {
+        if (logEntry.nodeId) {
+          const nodeId = logEntry.nodeId
+          const nodeLabel = logEntry.nodeLabel || logEntry.source
+          const level = logEntry.level
+
+          const currentState = nodeExecutionStates.value.get(nodeId)
+          const timestamp = new Date(logEntry.timestamp)
+
+          if (level === 'error') {
+            nodeExecutionStates.value.set(nodeId, {
+              status: 'failed',
+              startTime: currentState?.startTime || timestamp,
+              endTime: timestamp,
+              label: nodeLabel
+            })
+            completedNodes.value.add(nodeId)
+          } else if (!currentState) {
+            // First log from this node
+            nodeExecutionStates.value.set(nodeId, {
+              status: 'executing',
+              startTime: timestamp,
+              endTime: null,
+              label: nodeLabel
+            })
+          }
+        }
+      })
+
+      // Mark nodes as completed if build is complete
+      if (build.status === 'success' || build.status === 'failure') {
+        nodeExecutionStates.value.forEach((state, nodeId) => {
+          if (state.status === 'executing') {
+            nodeExecutionStates.value.set(nodeId, {
+              ...state,
+              status: build.status === 'success' ? 'completed' : 'failed',
+              endTime: new Date(build.finishedAt || build.updatedAt)
+            })
+            completedNodes.value.add(nodeId)
+          }
+        })
+      }
+    } catch (error) {
+      logger.warn('Failed to parse build logs:', error)
+    }
+  }
+  // Apply visual states to all nodes
+  updateNodeVisualStates()
 }
 
-const getBuildNodeClass = (node, build) => {
-  // Basic implementation - enhance based on actual execution data
-  if (build.status === 'running') {
-    return 'node-pending'
-  } else if (build.status === 'success') {
-    return 'node-success'
-  } else if (build.status === 'failure') {
-    return 'node-error'
-  }
-  return 'node-pending'
+const updateNodeVisualStates = () => {
+  // Update node styles based on execution state
+  nodes.value = nodes.value.map(node => {
+    const state = nodeExecutionStates.value.get(node.id)
+
+    // Default styling
+    let borderColor = '#6b7280' // gray
+    let backgroundColor = dark.value ? '#404040' : '#f9fafb'
+    let nodeClass = 'node-pending'
+
+    if (state) {
+      if (state.status === 'executing') {
+        borderColor = '#3b82f6' // blue
+        backgroundColor = dark.value ? '#1e3a8a' : '#eff6ff'
+        nodeClass = 'node-running'
+      } else if (state.status === 'completed') {
+        borderColor = '#10b981' // green
+        backgroundColor = dark.value ? '#064e3b' : '#ecfdf5'
+        nodeClass = 'node-success'
+      } else if (state.status === 'failed') {
+        borderColor = '#ef4444' // red
+        backgroundColor = dark.value ? '#7f1d1d' : '#fef2f2'
+        nodeClass = 'node-error'
+      }
+    }
+
+    return {
+      ...node,
+      class: nodeClass,
+      style: {
+        ...node.style,
+        borderColor: borderColor,
+        borderWidth: '2px',
+        borderStyle: 'solid',
+        backgroundColor: backgroundColor
+      }
+    }
+  })
+
+  // Update edge styles based on connected nodes
+  edges.value = edges.value.map(edge => {
+    const sourceState = nodeExecutionStates.value.get(edge.source)
+    const targetState = nodeExecutionStates.value.get(edge.target)
+
+    let strokeColor = '#9ca3af' // default gray
+    let strokeWidth = 2
+    let animated = false
+    let edgeClass = 'edge-default'
+
+    // Edge is active if source is completed and target is executing
+    if (sourceState?.status === 'completed' && targetState?.status === 'executing') {
+      strokeColor = '#3b82f6' // blue
+      strokeWidth = 3
+      animated = true
+      edgeClass = 'edge-running'
+    } else if (sourceState?.status === 'completed' && targetState?.status === 'completed') {
+      strokeColor = '#10b981' // green
+      strokeWidth = 2
+      edgeClass = 'edge-success'
+    } else if (sourceState?.status === 'failed' || targetState?.status === 'failed') {
+      strokeColor = '#ef4444' // red
+      strokeWidth = 2
+      edgeClass = 'edge-error'
+    } else if (sourceState?.status === 'executing' || targetState?.status === 'executing') {
+      strokeColor = '#f59e0b' // orange
+      strokeWidth = 2
+      animated = true
+      edgeClass = 'edge-pending'
+    }
+
+    return {
+      ...edge,
+      class: edgeClass,
+      animated: animated,
+      style: {
+        ...edge.style,
+        stroke: strokeColor,
+        strokeWidth: `${strokeWidth}px`
+      }
+    }
+  })
 }
 
-const getBuildEdgeClass = (edge, build) => {
-  if (build.status === 'running') {
-    return 'edge-pending'
-  } else if (build.status === 'success') {
-    return 'edge-success'
-  }
-  return 'edge-default'
-}
-
-// Handle real-time agent status updates
-const handleAgentStatusUpdate = (event) => {
-  const { agentId, status, currentJobs, lastHeartbeat, hostname, platform, architecture, capabilities, version } = event.detail
-  
-  // Find and update the agent in our local array
-  const agentIndex = agents.value.findIndex(agent => agent.id === agentId)
-  if (agentIndex !== -1) {
-    const agent = agents.value[agentIndex]
-    agent.status = status
-    agent.currentJobs = currentJobs || 0
-    agent.lastHeartbeat = lastHeartbeat
-    
-    // Update system info if provided (registration updates)
-    if (hostname) agent.hostname = hostname
-    if (platform) agent.platform = platform
-    if (architecture) agent.architecture = architecture
-    if (capabilities) agent.capabilities = capabilities
-    if (version) agent.version = version
-    
-    agents.value[agentIndex] = { ...agent } // Trigger reactivity
-    logger.info(`🔄 Updated agent ${agentId} status: ${status}`)
-  } else {
-    logger.info(`Agent ${agentId} not found in local array - refreshing agent list`)
-    loadAgents() // Reload if agent not found (new agent connected)
-  }
-}
 
 // Watch for job completion to finish build recording
 watch(() => isJobRunningOnAgent.value, async (isRunning, wasRunning) => {
@@ -407,12 +560,6 @@ watch(() => isJobRunningOnAgent.value, async (isRunning, wasRunning) => {
   }
 }, { immediate: false })
 
-// Cleanup function for component unmount
-const cleanupRealtimeConnection = () => {
-  if (project.value?.id) {
-    webSocketStore.unsubscribeFromProject(project.value.id)
-  }
-}
 
 // Check current build status when page loads
 const checkCurrentBuildStatus = async () => {
@@ -453,11 +600,17 @@ const checkCurrentBuildStatus = async () => {
             webSocketStore.addJobMessage(
               project.value.id,
               displayLabel,
-              logEntry.type || 'info',
+              logEntry.type || logEntry.level || 'info',
               logEntry.message,
               logEntry.value,
-              logEntry.timestamp // Preserve original timestamp
+              logEntry.timestamp, // Preserve original timestamp
+              logEntry.nodeId // Pass nodeId for execution state tracking
             )
+
+            // Update node execution state for each log entry with nodeId
+            if (logEntry.nodeId) {
+              updateNodeExecutionState(logEntry.nodeId, displayLabel, logEntry.type || logEntry.level || 'info')
+            }
           })
           logger.info(`Loaded ${logsResponse.logs.length} logs from database for job ${response.currentJob.jobId}`)
         } else {
@@ -476,17 +629,6 @@ const checkCurrentBuildStatus = async () => {
   }
 }
 
-// Terminal formatting functions
-const formatTimestamp = (timestamp) => {
-  if (!timestamp) return ''
-  return new Date(timestamp).toLocaleTimeString('en-US', { 
-    hour12: false, 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    second: '2-digit' 
-  })
-}
-
 // Setup WebSocket for live updates
 onMounted(async () => {
 
@@ -494,66 +636,97 @@ onMounted(async () => {
   if (!authStore.isAuthenticated) {
     await authStore.initializeAuth()
   }
-  
+
   // Only load data if authenticated
   if (authStore.isAuthenticated) {
     // Load projects first to ensure we have the project data
     await projectsStore.loadData()
-    // Load agents for execution node configuration
-    await loadAgents()
   }
-  
+
+  // Load project using hierarchical approach
+  const projectName = pathSegments.value[pathSegments.value.length - 1]
+  const projectPath = pathSegments.value.slice(0, -1)
+  project.value = projectsStore.getItemByFullPath([...projectPath, projectName])
+
   // Check if project exists
   if (!project.value) {
     await navigateTo('/')
     return
   }
-  
+
   // Set current project
   projectsStore.setCurrentProject(project.value)
-  await loadBuildData()
-  // Set up real-time WebSocket updates
-  await setupRealtimeConnection()
-  // Listen for real-time agent status updates
-  if (typeof window !== 'undefined') {
-    window.addEventListener('agentStatusUpdate', handleAgentStatusUpdate)
-  }
-  if (project.value) {
-    // Subscribe to WebSocket updates for this project
-    webSocketStore.subscribeToProject(project.value.id)
-    
-    // Load existing terminal messages
-    const existingMessages = webSocketStore.getJobMessages(project.value.id)
-    if (existingMessages && existingMessages.length > 0) {
-      terminalMessages.value = existingMessages.map(msg => ({
-        level: msg.level,
-        text: `[${new Date(msg.timestamp).toLocaleTimeString()}] ${msg.message}`,
-        timestamp: new Date(msg.timestamp)
-      }))
-    }
-    
-    // Watch for new WebSocket messages
-    watch(() => webSocketStore.getJobMessages(project.value.id), (newMessages) => {
-      if (newMessages && newMessages.length > terminalMessages.value.length) {
-        const latestMessage = newMessages[newMessages.length - 1]
-        addTerminalMessage(latestMessage.level, latestMessage.message)
-      }
-    }, { deep: true })
 
-    // Check if there's already a job running for this project
-    // This will load messages from the database if needed
-    await checkCurrentBuildStatus()
+  // Load build data
+  await loadBuildData()
+
+  // Subscribe to WebSocket updates for this project
+  webSocketStore.subscribeToProject(project.value.id)
+
+  // Load existing terminal messages from WebSocket store
+  const existingMessages = webSocketStore.getJobMessages(project.value.id)
+  if (existingMessages && existingMessages.length > 0) {
+    terminalMessages.value = existingMessages.map(msg => ({
+      level: msg.level,
+      text: `[${new Date(msg.timestamp).toLocaleTimeString()}] ${msg.message}`,
+      timestamp: new Date(msg.timestamp)
+    }))
+  } else {
+    // If no messages in WebSocket store, load from database for historical builds
+    try {
+      const logsResponse = await $fetch(`/api/projects/${project.value.id}/builds/${buildNumber.value}/logs`)
+      if (logsResponse.success && logsResponse.logs?.length > 0) {
+        terminalMessages.value = logsResponse.logs.map(logEntry => ({
+          level: logEntry.level || logEntry.type || 'info',
+          text: `[${new Date(logEntry.timestamp).toLocaleTimeString()}] [${logEntry.nodeLabel || logEntry.source}] ${logEntry.message}`,
+          timestamp: new Date(logEntry.timestamp)
+        }))
+        logger.info(`Loaded ${logsResponse.logs.length} terminal messages from historical build`)
+      }
+    } catch (error) {
+      logger.warn('Failed to load historical build logs:', error)
+    }
   }
+
+  // Watch for new WebSocket messages
+  watch(() => webSocketStore.getJobMessages(project.value.id), (newMessages) => {
+    if (newMessages && newMessages.length > terminalMessages.value.length) {
+      const latestMessage = newMessages[newMessages.length - 1]
+      addTerminalMessage(latestMessage.level, latestMessage.message, latestMessage.nodeLabel)
+
+      // Update node execution state if message has nodeId
+      if (latestMessage.nodeId) {
+        updateNodeExecutionState(latestMessage.nodeId, latestMessage.nodeLabel, latestMessage.level)
+      } else {
+        // Check if this is a job completion message
+        if (latestMessage.nodeLabel === 'System' && latestMessage.message?.includes('Job completed')) {
+          // Mark the currently executing node as completed
+          if (currentlyExecutingNodeId.value) {
+            const finalNodeState = nodeExecutionStates.value.get(currentlyExecutingNodeId.value)
+            if (finalNodeState?.status === 'executing') {
+              nodeExecutionStates.value.set(currentlyExecutingNodeId.value, {
+                ...finalNodeState,
+                status: 'completed',
+                endTime: new Date()
+              })
+              completedNodes.value.add(currentlyExecutingNodeId.value)
+              currentlyExecutingNodeId.value = null
+              updateNodeVisualStates()
+            }
+          }
+        }
+      }
+    }
+  }, { deep: true })
+
+  // Check if there's already a job running for this project
+  // This will load messages from the database if needed
+  await checkCurrentBuildStatus()
 })
 
 onUnmounted(() => {
   if (project.value) {
     webSocketStore.unsubscribeFromProject(project.value.id)
-  }
-  cleanupRealtimeConnection()
-  // Clean up event listeners
-  if (typeof window !== 'undefined') {
-    window.removeEventListener('agentStatusUpdate', handleAgentStatusUpdate)
   }
 })
 </script>
@@ -568,42 +741,49 @@ onUnmounted(() => {
 }
 
 /* Visual state classes */
-:deep(.node-pending) {
-  border: 2px solid #6b7280;
-  background: #f9fafb;
+.vue-flow__node-input .node-pending {
+  border-color: #6b7280 !important;
 }
 
-:deep(.node-running) {
-  border: 2px solid #3b82f6;
-  background: #eff6ff;
+.vue-flow__node-input .node-running {
+  border-color: #3b82f6 !important;
   animation: pulse 2s infinite;
 }
 
-:deep(.node-success) {
-  border: 2px solid #10b981;
-  background: #ecfdf5;
+.vue-flow__node-input .node-success {
+  border-color: #10b981 !important;
 }
 
-:deep(.node-error) {
-  border: 2px solid #ef4444;
-  background: #fef2f2;
+.vue-flow__node-input .node-error {
+  border-color: #ef4444 !important;
 }
 
-:deep(.edge-pending) {
+.vue-flow__edge .edge-pending {
   stroke: #6b7280;
   stroke-dasharray: 5,5;
   animation: dash 1s linear infinite;
 }
 
-:deep(.edge-running) {
+.vue-flow__edge .edge-running {
   stroke: #3b82f6;
   stroke-width: 3px;
   animation: flow 2s linear infinite;
 }
 
-:deep(.edge-success) {
+.vue-flow__edge .edge-success {
   stroke: #10b981;
   stroke-width: 2px;
+}
+
+.vue-flow__edge .edge-error {
+  stroke: #ef4444;
+  stroke-width: 2px;
+  stroke-dasharray: 5,5;
+}
+
+.vue-flow__edge .edge-default {
+  stroke: #9ca3af;
+  stroke-width: 1px;
 }
 
 @keyframes pulse {

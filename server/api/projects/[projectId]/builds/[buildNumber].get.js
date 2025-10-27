@@ -20,7 +20,6 @@ export default defineEventHandler(async (event) => {
 
     const buildStatsManager = await getBuildStatsManager()
     const build = await buildStatsManager.getBuild(projectId, parseInt(buildNumber))
-
     if (!build) {
       throw createError({
         statusCode: 404,

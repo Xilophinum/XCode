@@ -332,14 +332,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
         
       case 'job_output_line':
         const outputData = message.output || message
-        addJobMessage(projectId, outputData.nodeLabel || 'Agent', outputData.level || 'info', outputData.message, outputData.value)
+        addJobMessage(projectId, outputData.nodeLabel || 'Agent', outputData.level || 'info', outputData.message, outputData.value, outputData.timestamp, outputData.nodeId)
         break
 
       case 'job_output':
         if (message.output && Array.isArray(message.output)) {
           message.output.forEach(outputLine => {
             addJobMessage(projectId, outputLine.nodeLabel || 'Agent', outputLine.level || 'info',
-              outputLine.message, outputLine.value)
+              outputLine.message, outputLine.value, outputLine.timestamp, outputLine.nodeId)
           })
         }
         break
@@ -435,7 +435,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   }
   
   // Add message to project's message array
-  const addJobMessage = (projectId, nodeLabel, level, message, value = undefined, timestamp = undefined) => {
+  const addJobMessage = (projectId, nodeLabel, level, message, value = undefined, timestamp = undefined, nodeId = undefined) => {
     if (!jobMessages.value.has(projectId)) {
       jobMessages.value.set(projectId, [])
     }
@@ -446,7 +446,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
       level,
       message,
       value,
-      timestamp: timestamp ? new Date(timestamp) : new Date()
+      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      nodeId
     })
 
     // Persist System messages to database via API call
