@@ -99,7 +99,6 @@ class AgentManager {
       // The output from the agent is already in the correct format
       // Just add it to the job's output array (will be stored in build record)
       await jobManager.addJobOutput(jobId, output)
-      logger.info(`Added job output for ${jobId}:`, output.message || output)
     }
   }
 

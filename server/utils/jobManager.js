@@ -9,6 +9,7 @@ import { getDB, builds } from './database.js'
 import { v4 as uuidv4 } from 'uuid'
 import { eq, and } from 'drizzle-orm'
 import logger from './logger.js'
+import { executionStateManager } from './executionStateManager.js'
 
 class JobManager {
   constructor() {
@@ -23,11 +24,8 @@ class JobManager {
 
   async initialize() {
     this.db = await getDB()
-    
     // Load active jobs from database on startup
     await this.loadActiveJobsFromDatabase()
-
-    logger.info(`Loaded ${this.jobs.size} active jobs from database`)
   }
 
   async loadActiveJobsFromDatabase() {
@@ -86,6 +84,30 @@ class JobManager {
 
     logger.info(`Created job ${jobId} for project "${jobData.projectName || projectId}" (persisted to database)`)
 
+    // Initialize execution state if we have nodes and a build number
+    // Only initialize if state doesn't already exist (don't reset on subsequent jobs for same build)
+    if (jobData.buildNumber && jobData.nodes && Array.isArray(jobData.nodes)) {
+      const existingState = executionStateManager.getBuildState(projectId, jobData.buildNumber)
+      if (!existingState) {
+        executionStateManager.initializeBuildState(projectId, jobData.buildNumber, jobData.nodes)
+        logger.info(`Initialized execution state for build #${jobData.buildNumber}`)
+      } else {
+        logger.info(`Execution state already exists for build #${jobData.buildNumber}, keeping existing state`)
+      }
+    }
+
+    // Persist "Job created" system message to build logs if this is a build job
+    if (jobData.buildNumber) {
+      const buildStatsManager = await getBuildStatsManager()
+      await buildStatsManager.addBuildLog(projectId, jobData.buildNumber, {
+        type: 'log',
+        level: 'success',
+        message: `Job created: ${jobId}`,
+        source: 'System',
+        timestamp: new Date().toISOString()
+      })
+    }
+
     // Broadcast job creation to subscribed clients
     if (globalThis.broadcastToProject) {
       globalThis.broadcastToProject(projectId, {
@@ -99,7 +121,7 @@ class JobManager {
         timestamp: new Date().toISOString()
       })
     }
-    
+
     return jobData
   }
 
@@ -120,6 +142,41 @@ class JobManager {
     }
 
     const now = new Date().toISOString()
+
+    // Track node transitions for execution state
+    const previousNodeId = job.currentNodeId
+    const newNodeId = updates.currentNodeId
+    const newNodeLabel = updates.currentNodeLabel
+    const newStatus = updates.status
+
+    logger.debug(`updateJob: previousNodeId=${previousNodeId}, newNodeId=${newNodeId}, newStatus=${newStatus}, buildNumber=${job.buildNumber}`)
+
+    // If currentNodeId is changing, mark the previous node as completed and new node as executing
+    if (job.buildNumber && previousNodeId && newNodeId && previousNodeId !== newNodeId) {
+      executionStateManager.markNodeCompleted(job.projectId, job.buildNumber, previousNodeId)
+      logger.info(`Node transition: ${previousNodeId} completed, ${newNodeId} starting`)
+
+      // Mark the new node as executing
+      executionStateManager.markNodeExecuting(job.projectId, job.buildNumber, newNodeId, newNodeLabel || job.currentNodeLabel)
+    }
+
+    // If this is the first node being set (job creation), mark it as executing
+    if (job.buildNumber && !previousNodeId && newNodeId) {
+      executionStateManager.markNodeExecuting(job.projectId, job.buildNumber, newNodeId, newNodeLabel || 'Node')
+      logger.info(`Initial node set: marking ${newNodeId} as executing`)
+    }
+
+    // If job is completing/failing, mark the current node as complete/failed
+    // IMPORTANT: Only do this if status is changing to completed/failed (not if already in that state)
+    if (job.buildNumber && job.currentNodeId && newStatus && job.status !== newStatus) {
+      if (newStatus === 'completed') {
+        executionStateManager.markNodeCompleted(job.projectId, job.buildNumber, job.currentNodeId)
+        logger.info(`Job completed: marking node ${job.currentNodeId} as completed`)
+      } else if (newStatus === 'failed') {
+        executionStateManager.markNodeFailed(job.projectId, job.buildNumber, job.currentNodeId)
+        logger.info(`Job failed: marking node ${job.currentNodeId} as failed`)
+      }
+    }
 
     // Update memory cache
     Object.assign(job, updates, {
@@ -231,7 +288,10 @@ class JobManager {
     this.outputSequence.set(jobId, sequence + 1)
 
     // Prepare output entry with masked content
-    // Use nodeId and nodeLabel from job's current execution context if not provided in output
+    // Use nodeLabel from job's current execution context as the source
+    // nodeId is tracked separately via executionStateManager, not in logs
+    const nodeLabel = outputLine.nodeLabel || job.currentNodeLabel || null
+
     const outputEntry = {
       sequence: sequence,
       type: outputLine.type || 'info',
@@ -239,9 +299,7 @@ class JobManager {
       message: maskedMessage,
       command: outputLine.command || null,
       output: outputLine.output || null,
-      source: outputLine.source || 'agent',
-      nodeId: outputLine.nodeId || job.currentNodeId || null,
-      nodeLabel: outputLine.nodeLabel || job.currentNodeLabel || outputLine.source || 'Agent',
+      source: nodeLabel || outputLine.source || 'Agent',
       timestamp: outputLine.timestamp
     }
 
@@ -284,15 +342,27 @@ class JobManager {
       logger.warn(`Failed to persist job output to database:`, dbError.message)
     }
 
+    // Update execution state based on output
+    // Node execution state is now primarily tracked in updateJob when currentNodeId changes
+    // We only track errors here since they can happen mid-execution
+    if (job.buildNumber && job.currentNodeId) {
+      const nodeId = job.currentNodeId
+      const level = outputEntry.level || outputEntry.type
+
+      // Mark node as failed on error output
+      if (level === 'error') {
+        executionStateManager.markNodeFailed(job.projectId, job.buildNumber, nodeId)
+        logger.debug(`Marked node ${nodeId} as failed due to error output`)
+      }
+    }
+
     // Add to memory cache (keep only last 100 lines for performance)
-    // Use outputEntry (which has nodeId/nodeLabel) instead of original outputLine
     job.output.push(outputEntry)
     if (job.output.length > 100) {
       job.output = job.output.slice(-100)
     }
 
     // Broadcast output in real-time to subscribed clients
-    // Use outputEntry (which has nodeId/nodeLabel) instead of original outputLine
     if (globalThis.broadcastToProject && job.projectId) {
       globalThis.broadcastToProject(job.projectId, {
         type: 'job_output_line',
@@ -393,6 +463,20 @@ class JobManager {
 
     if (status === 'completed' || status === 'failed' || status === 'cancelled') {
       updates.completedAt = new Date().toISOString()
+
+      // Mark the last executing node as completed/failed
+      logger.info(`Job ${status}: buildNumber=${job.buildNumber}, currentNodeId=${job.currentNodeId}`)
+      if (job.buildNumber && job.currentNodeId) {
+        if (status === 'completed') {
+          executionStateManager.markNodeCompleted(job.projectId, job.buildNumber, job.currentNodeId)
+          logger.info(`Job completed: marking final node ${job.currentNodeId} as completed`)
+        } else if (status === 'failed') {
+          executionStateManager.markNodeFailed(job.projectId, job.buildNumber, job.currentNodeId)
+          logger.info(`Job failed: marking final node ${job.currentNodeId} as failed`)
+        }
+      } else {
+        logger.warn(`Cannot mark node complete: buildNumber=${job.buildNumber}, currentNodeId=${job.currentNodeId}`)
+      }
     }
 
     await this.updateJob(jobId, updates)

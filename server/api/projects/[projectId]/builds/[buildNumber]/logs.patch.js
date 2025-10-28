@@ -25,14 +25,13 @@ export default defineEventHandler(async (event) => {
       })
     } else if (body.type === 'log') {
       // Add a log entry
+      // Note: source should be the nodeLabel, not nodeId
       await buildStatsManager.addBuildLog(projectId, buildNumber, {
-        nodeId: body.nodeId,
-        nodeLabel: body.nodeLabel,
         level: body.level,
         message: body.message,
         command: body.command,
         output: body.output,
-        source: body.source,
+        source: body.nodeLabel || body.source || 'Agent',
         timestamp: body.timestamp,
         metadata: body.metadata
       })

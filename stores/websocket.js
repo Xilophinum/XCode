@@ -96,12 +96,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
         isConnected.value = false
         isAuthenticated.value = false
       })
-      socket.value.on('project_subscribed', (data) => {
-        logger.info('Project subscribed:', data.projectId)
-      })
-      socket.value.on('subscription_error', (data) => {
-        logger.error('Subscription error:', data.message)
-      })
       
     } catch (error) {
       logger.error('Failed to initialize WebSocket:', error)
@@ -139,13 +133,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
         logger.warn('Cannot subscribe: WebSocket not connected')
         return false
       }
-      
+
       if (!isAuthenticated.value) {
         logger.warn('Cannot subscribe: Client not authenticated, adding to pending subscriptions')
         subscribedProjects.value.add(projectId)
         return false
       }
-      
       socket.value.emit('subscribe_project', { projectId })
       subscribedProjects.value.add(projectId)
       return true
@@ -332,14 +325,16 @@ export const useWebSocketStore = defineStore('websocket', () => {
         
       case 'job_output_line':
         const outputData = message.output || message
-        addJobMessage(projectId, outputData.nodeLabel || 'Agent', outputData.level || 'info', outputData.message, outputData.value, outputData.timestamp, outputData.nodeId)
+        // source contains the nodeLabel
+        addJobMessage(projectId, outputData.source || 'Agent', outputData.level || 'info', outputData.message, outputData.value, outputData.timestamp)
         break
 
       case 'job_output':
         if (message.output && Array.isArray(message.output)) {
           message.output.forEach(outputLine => {
-            addJobMessage(projectId, outputLine.nodeLabel || 'Agent', outputLine.level || 'info',
-              outputLine.message, outputLine.value, outputLine.timestamp, outputLine.nodeId)
+            // source contains the nodeLabel
+            addJobMessage(projectId, outputLine.source || 'Agent', outputLine.level || 'info',
+              outputLine.message, outputLine.value, outputLine.timestamp)
           })
         }
         break
@@ -412,7 +407,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       case 'agent_status_update':
         // Agent status changed - emit event for other components to handle
         logger.info('🤖 Agent status update received:', message)
-        
+
         // Create a custom event for agent status changes
         if (typeof window !== 'undefined') {
           const event = new CustomEvent('agentStatusUpdate', {
@@ -431,11 +426,29 @@ export const useWebSocketStore = defineStore('websocket', () => {
           window.dispatchEvent(event)
         }
         break
+
+      case 'node_execution_state_changed':
+        // Create a custom event for node state changes
+        if (typeof window !== 'undefined') {
+          const event = new CustomEvent('nodeExecutionStateChanged', {
+            detail: {
+              projectId: message.projectId,
+              buildNumber: message.buildNumber,
+              nodeId: message.nodeId,
+              status: message.status,
+              nodeState: message.nodeState,
+              timestamp: message.timestamp
+            }
+          })
+          window.dispatchEvent(event)
+        }
+        break
     }
   }
   
   // Add message to project's message array
-  const addJobMessage = (projectId, nodeLabel, level, message, value = undefined, timestamp = undefined, nodeId = undefined) => {
+  // nodeLabel is now the source/label of the log (e.g., node name, 'System', 'Agent')
+  const addJobMessage = (projectId, nodeLabel, level, message, value = undefined, timestamp = undefined) => {
     if (!jobMessages.value.has(projectId)) {
       jobMessages.value.set(projectId, [])
     }
@@ -446,8 +459,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       level,
       message,
       value,
-      timestamp: timestamp ? new Date(timestamp) : new Date(),
-      nodeId
+      timestamp: timestamp ? new Date(timestamp) : new Date()
     })
 
     // Persist System messages to database via API call
@@ -476,8 +488,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
             type: 'log',
             level: level,
             message: message,
-            source: 'system',
-            nodeLabel: 'System',
+            nodeLabel: 'System', // nodeLabel becomes the source in logs
             timestamp: timestamp || new Date().toISOString()
           }
         })

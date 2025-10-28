@@ -594,8 +594,6 @@ async function loadTemplate() {
       props.nodeData.data.webhookHeaders = template.webhook_headers || '{}'
       props.nodeData.data.webhookBody = template.webhook_body || ''
     }
-
-    logger.info(`Template "${template.name}" loaded successfully`)
   } catch (error) {
     logger.error('Failed to load template:', error)
   } finally {

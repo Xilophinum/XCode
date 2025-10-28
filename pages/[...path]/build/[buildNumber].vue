@@ -309,11 +309,8 @@ const loadBuildData = async () => {
         const diagramData = project.value.diagramData
         nodes.value = JSON.parse(JSON.stringify(diagramData.nodes || []))
         edges.value = JSON.parse(JSON.stringify(diagramData.edges || []))
-
-        logger.info(`Loaded ${nodes.value.length} nodes and ${edges.value.length} edges`)
-
         // Apply visual states based on build execution
-        applyBuildVisualStates(build)
+        applyBuildVisualStates()
       } else {
         logger.warn('No diagramData found in project')
       }
@@ -326,124 +323,49 @@ const loadBuildData = async () => {
   }
 }
 
-// Update node execution state based on log entry
-const updateNodeExecutionState = (nodeId, nodeLabel, level) => {
-  if (!nodeId) return
+// Note: Node execution state is now tracked server-side via executionStateManager
+// The frontend loads state from the API instead of tracking it from log messages
+// This function has been removed as it's no longer needed
 
-  const currentState = nodeExecutionStates.value.get(nodeId)
-  const now = new Date()
+// Load execution state from API
+const loadExecutionState = async () => {
+  if (!project.value?.id || !buildNumber.value) return
 
-  // If we're starting a new node and there was a previous one executing, mark it as completed
-  if (!currentState && currentlyExecutingNodeId.value && currentlyExecutingNodeId.value !== nodeId) {
-    const previousState = nodeExecutionStates.value.get(currentlyExecutingNodeId.value)
-    if (previousState?.status === 'executing') {
-      nodeExecutionStates.value.set(currentlyExecutingNodeId.value, {
-        ...previousState,
-        status: 'completed',
-        endTime: now
-      })
-      completedNodes.value.add(currentlyExecutingNodeId.value)
-    }
-  }
+  try {
+    const response = await $fetch(`/api/projects/${project.value.id}/builds/${buildNumber.value}/state`)
 
-  // Determine if this is a start, progress, or completion message
-  if (level === 'error') {
-    // Error indicates failure
-    nodeExecutionStates.value.set(nodeId, {
-      status: 'failed',
-      startTime: currentState?.startTime || now,
-      endTime: now,
-      label: nodeLabel
-    })
-    completedNodes.value.add(nodeId)
-    currentlyExecutingNodeId.value = null
-  } else if (level === 'success' && currentState?.status === 'executing') {
-    // Success message after execution means completion
-    nodeExecutionStates.value.set(nodeId, {
-      status: 'completed',
-      startTime: currentState.startTime,
-      endTime: now,
-      label: nodeLabel
-    })
-    completedNodes.value.add(nodeId)
-    currentlyExecutingNodeId.value = null
-  } else if (!currentState || currentState.status === 'pending') {
-    // First message from a node indicates it's executing
-    nodeExecutionStates.value.set(nodeId, {
-      status: 'executing',
-      startTime: now,
-      endTime: null,
-      label: nodeLabel
-    })
-    currentlyExecutingNodeId.value = nodeId
-  } else if (currentState?.status === 'executing') {
-    // Node is already executing - ensure currentlyExecutingNodeId is set
-    // This handles the case where state was loaded from history but currentlyExecutingNodeId wasn't set
-    if (currentlyExecutingNodeId.value !== nodeId) {
-      currentlyExecutingNodeId.value = nodeId
-    }
-  }
+    if (response.success && response.nodeStates) {
+      // Clear existing state
+      nodeExecutionStates.value.clear()
+      completedNodes.value.clear()
+      currentlyExecutingNodeId.value = null
 
-  // Update visual states
-  updateNodeVisualStates()
-}
+      // Load state into our tracking variables
+      Object.entries(response.nodeStates).forEach(([nodeId, state]) => {
+        nodeExecutionStates.value.set(nodeId, state)
 
-// Apply visual states to nodes based on build execution
-const applyBuildVisualStates = (build) => {
-  // Parse logs to extract node execution states
-  if (build.outputLog) {
-    try {
-      const logs = typeof build.outputLog === 'string' ? JSON.parse(build.outputLog) : build.outputLog
+        if (state.status === 'completed' || state.status === 'failed') {
+          completedNodes.value.add(nodeId)
+        }
 
-      // Process logs to build execution state
-      logs.forEach(logEntry => {
-        if (logEntry.nodeId) {
-          const nodeId = logEntry.nodeId
-          const nodeLabel = logEntry.nodeLabel || logEntry.source
-          const level = logEntry.level
-
-          const currentState = nodeExecutionStates.value.get(nodeId)
-          const timestamp = new Date(logEntry.timestamp)
-
-          if (level === 'error') {
-            nodeExecutionStates.value.set(nodeId, {
-              status: 'failed',
-              startTime: currentState?.startTime || timestamp,
-              endTime: timestamp,
-              label: nodeLabel
-            })
-            completedNodes.value.add(nodeId)
-          } else if (!currentState) {
-            // First log from this node
-            nodeExecutionStates.value.set(nodeId, {
-              status: 'executing',
-              startTime: timestamp,
-              endTime: null,
-              label: nodeLabel
-            })
-          }
+        if (state.status === 'executing') {
+          currentlyExecutingNodeId.value = nodeId
         }
       })
 
-      // Mark nodes as completed if build is complete
-      if (build.status === 'success' || build.status === 'failure') {
-        nodeExecutionStates.value.forEach((state, nodeId) => {
-          if (state.status === 'executing') {
-            nodeExecutionStates.value.set(nodeId, {
-              ...state,
-              status: build.status === 'success' ? 'completed' : 'failed',
-              endTime: new Date(build.finishedAt || build.updatedAt)
-            })
-            completedNodes.value.add(nodeId)
-          }
-        })
-      }
-    } catch (error) {
-      logger.warn('Failed to parse build logs:', error)
+      // Apply visual states to all nodes
+      updateNodeVisualStates()
+    } else {
+      logger.info('No execution state found for this build')
     }
+  } catch (error) {
+    logger.error('Failed to load execution state:', error)
   }
-  // Apply visual states to all nodes
-  updateNodeVisualStates()
+}
+
+// Legacy method - now just calls loadExecutionState
+const applyBuildVisualStates = async () => {
+  await loadExecutionState()
 }
 
 const updateNodeVisualStates = () => {
@@ -598,13 +520,8 @@ const checkCurrentBuildStatus = async () => {
 
         if (logsResponse.success && logsResponse.logs?.length > 0) {
           logsResponse.logs.forEach(logEntry => {
-            // Map source field to proper nodeLabel for display
-            let displayLabel = logEntry.nodeLabel
-            if (!displayLabel) {
-              if (logEntry.source === 'agent') displayLabel = 'Agent'
-              else if (logEntry.source === 'system') displayLabel = 'System'
-              else displayLabel = logEntry.source || 'Agent'
-            }
+            // source field now contains the nodeLabel
+            const displayLabel = logEntry.source || 'Agent'
 
             webSocketStore.addJobMessage(
               project.value.id,
@@ -612,16 +529,11 @@ const checkCurrentBuildStatus = async () => {
               logEntry.type || logEntry.level || 'info',
               logEntry.message,
               logEntry.value,
-              logEntry.timestamp, // Preserve original timestamp
-              logEntry.nodeId // Pass nodeId for execution state tracking
+              logEntry.timestamp // Preserve original timestamp
             )
-
-            // Update node execution state for each log entry with nodeId
-            if (logEntry.nodeId) {
-              updateNodeExecutionState(logEntry.nodeId, displayLabel, logEntry.type || logEntry.level || 'info')
-            }
           })
-          logger.info(`Loaded ${logsResponse.logs.length} logs from database for job ${response.currentJob.jobId}`)
+          // Load execution state from API (gets from memory for active builds)
+          await loadExecutionState()
         } else {
           // Add status messages if no logs found
           webSocketStore.addJobMessage(project.value.id, 'System', 'info', `🔄 Restored running job: ${response.currentJob.jobId}`)
@@ -630,73 +542,10 @@ const checkCurrentBuildStatus = async () => {
           webSocketStore.addJobMessage(project.value.id, 'System', 'info', 'Waiting for agent output...')
         }
       } else {
-        logger.info(`Using ${existingMessages.length} existing messages from WebSocket store - restoring node states`)
-        
-        // Restore node states from existing messages with proper state analysis
-        const nodeStates = new Map()
-        
-        // Analyze all messages to determine final state for each node
-        existingMessages.forEach(msg => {
-          if (msg.nodeId) {
-            if (!nodeStates.has(msg.nodeId)) {
-              nodeStates.set(msg.nodeId, {
-                nodeId: msg.nodeId,
-                nodeLabel: msg.nodeLabel,
-                messages: []
-              })
-            }
-            nodeStates.get(msg.nodeId).messages.push({
-              level: msg.level,
-              timestamp: msg.timestamp,
-              message: msg.message
-            })
-          }
-        })
-        
-        // Determine final state for each node based on message analysis
-        nodeStates.forEach((nodeData, nodeId) => {
-          const messages = nodeData.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-          const lastMessage = messages[messages.length - 1]
-          const hasError = messages.some(m => m.level === 'error')
-          const hasSuccess = messages.some(m => m.level === 'success' && m.message.includes('completed'))
-          
-          let finalStatus = 'pending'
-          if (hasError) {
-            finalStatus = 'failed'
-          } else if (hasSuccess) {
-            finalStatus = 'completed'
-          } else {
-            // Check if this node is currently executing based on current job
-            const currentJob = webSocketStore.getCurrentJob(project.value.id)
-            if (currentJob && currentJob.nodeId === nodeId) {
-              finalStatus = 'executing'
-            } else {
-              // If we have messages but no clear completion, assume completed
-              finalStatus = messages.length > 0 ? 'completed' : 'pending'
-            }
-          }
-          
-          // Set the final state
-          nodeExecutionStates.value.set(nodeId, {
-            status: finalStatus,
-            startTime: new Date(messages[0]?.timestamp || Date.now()),
-            endTime: finalStatus === 'completed' || finalStatus === 'failed' ? new Date(lastMessage.timestamp) : null,
-            label: nodeData.nodeLabel
-          })
-          
-          if (finalStatus === 'completed' || finalStatus === 'failed') {
-            completedNodes.value.add(nodeId)
-          }
-          
-          if (finalStatus === 'executing') {
-            currentlyExecutingNodeId.value = nodeId
-          }
-        })
-        
-        // Force visual update after state restoration
-        nextTick(() => {
-          updateNodeVisualStates()
-        })
+        logger.info(`Using ${existingMessages.length} existing messages from WebSocket store`)
+
+        // Load execution state from API (will get from memory for active builds)
+        await loadExecutionState()
       }
     }
   } catch (error) {
@@ -704,8 +553,38 @@ const checkCurrentBuildStatus = async () => {
   }
 }
 
+// Listen for real-time node execution state changes
+// Define handler at top level to avoid issues with Vue lifecycle hooks
+const handleNodeStateChange = (event) => {
+  const { projectId, buildNumber: eventBuildNumber, nodeId, status, nodeState } = event.detail
+
+  // Convert buildNumber to number for comparison (route params are strings)
+  const currentBuildNumber = parseInt(buildNumber.value)
+  // Only process if it's for this build (use == for number/string comparison)
+  if (projectId === project.value?.id && eventBuildNumber == currentBuildNumber) {
+    // Update the node state in memory
+    nodeExecutionStates.value.set(nodeId, nodeState)
+
+    if (status === 'executing') {
+      currentlyExecutingNodeId.value = nodeId
+    } else if (status === 'completed' || status === 'failed') {
+      completedNodes.value.add(nodeId)
+      if (currentlyExecutingNodeId.value === nodeId) {
+        currentlyExecutingNodeId.value = null
+      }
+    }
+
+    // Update visual states immediately
+    updateNodeVisualStates()
+  } else {
+    logger.warn(`❌ Event NOT for this build - ignoring (type check: event=${typeof eventBuildNumber}, current=${typeof currentBuildNumber})`)
+  }
+}
+
 // Setup WebSocket for live updates
 onMounted(async () => {
+  // Register event listener immediately (before any async operations)
+  window.addEventListener('nodeExecutionStateChanged', handleNodeStateChange)
 
   // Ensure authentication is initialized before loading data
   if (!authStore.isAuthenticated) {
@@ -746,10 +625,37 @@ onMounted(async () => {
   // Subscribe to WebSocket updates for this project
   const subscribed = await webSocketStore.subscribeToProject(project.value.id)
   if (!subscribed) {
-    logger.warn('Failed to subscribe to project, retrying in 2 seconds...')
+    logger.warn(`Failed to subscribe to project ${project.value.id}, retrying in 2 seconds...`)
     setTimeout(() => {
+      logger.info(`📡 Retrying subscription to project ${project.value.id}...`)
       webSocketStore.subscribeToProject(project.value.id)
     }, 2000)
+  } else {
+    logger.info(`✅ Successfully subscribed to project ${project.value.id}`)
+  }
+
+  // After subscribing, reload logs from database to catch any messages generated before subscription
+  // This ensures we don't miss any early output that was broadcast before we were listening
+  try {
+    const logsResponse = await $fetch(`/api/projects/${project.value.id}/builds/${buildNumber.value}/logs`)
+    if (logsResponse.success && logsResponse.logs?.length > 0) {
+      // Clear WebSocket store messages for this project and reload from database
+      webSocketStore.jobMessages.value.delete(project.value.id)
+
+      logsResponse.logs.forEach(logEntry => {
+        const displayLabel = logEntry.source || 'Agent'
+        webSocketStore.addJobMessage(
+          project.value.id,
+          displayLabel,
+          logEntry.type || logEntry.level || 'info',
+          logEntry.message,
+          logEntry.value,
+          logEntry.timestamp
+        )
+      })
+    }
+  } catch (error) {
+    logger.warn('Failed to reload logs after subscription:', error)
   }
 
   // Load existing terminal messages from WebSocket store
@@ -767,10 +673,9 @@ onMounted(async () => {
       if (logsResponse.success && logsResponse.logs?.length > 0) {
         terminalMessages.value = logsResponse.logs.map(logEntry => ({
           level: logEntry.level || logEntry.type || 'info',
-          text: `[${new Date(logEntry.timestamp).toLocaleTimeString()}] [${logEntry.nodeLabel || logEntry.source}] ${logEntry.message}`,
+          text: `[${new Date(logEntry.timestamp).toLocaleTimeString()}] [${logEntry.source}] ${logEntry.message}`,
           timestamp: new Date(logEntry.timestamp)
         }))
-        logger.info(`Loaded ${logsResponse.logs.length} terminal messages from historical build`)
       }
     } catch (error) {
       logger.warn('Failed to load historical build logs:', error)
@@ -783,27 +688,11 @@ onMounted(async () => {
       const latestMessage = newMessages[newMessages.length - 1]
       addTerminalMessage(latestMessage.level, latestMessage.message, latestMessage.nodeLabel)
 
-      // Update node execution state if message has nodeId
-      if (latestMessage.nodeId) {
-        updateNodeExecutionState(latestMessage.nodeId, latestMessage.nodeLabel, latestMessage.level)
-      } else {
-        // Check if this is a job completion message
-        if (latestMessage.nodeLabel === 'System' && latestMessage.message?.includes('Job completed')) {
-          // Mark the currently executing node as completed
-          if (currentlyExecutingNodeId.value) {
-            const finalNodeState = nodeExecutionStates.value.get(currentlyExecutingNodeId.value)
-            if (finalNodeState?.status === 'executing') {
-              nodeExecutionStates.value.set(currentlyExecutingNodeId.value, {
-                ...finalNodeState,
-                status: 'completed',
-                endTime: new Date()
-              })
-              completedNodes.value.add(currentlyExecutingNodeId.value)
-              currentlyExecutingNodeId.value = null
-              updateNodeVisualStates()
-            }
-          }
-        }
+      // Node execution state is now tracked server-side via executionStateManager
+      // Just reload the state from the API to get the latest
+      if (latestMessage.nodeLabel === 'System' && latestMessage.message?.includes('Job completed')) {
+        // Reload execution state from API when job completes
+        loadExecutionState()
       }
     }
   }, { deep: true })
@@ -811,14 +700,19 @@ onMounted(async () => {
   // Check if there's already a job running for this project
   // This will load messages from the database if needed
   await checkCurrentBuildStatus()
-  
-  // Force state restoration after everything is loaded
+
+  // Load execution state (this will always be called to ensure state is loaded)
+  await loadExecutionState()
+
+  // Force visual update after everything is loaded
   setTimeout(() => {
     updateNodeVisualStates()
   }, 500)
 })
 
+// Clean up event listener and unsubscribe on unmount
 onUnmounted(() => {
+  window.removeEventListener('nodeExecutionStateChanged', handleNodeStateChange)
   if (project.value) {
     webSocketStore.unsubscribeFromProject(project.value.id)
   }

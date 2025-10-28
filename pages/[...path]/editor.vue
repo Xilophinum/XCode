@@ -1754,8 +1754,6 @@ const initializeEditor = async () => {
         delete cleanEdge.animated
         return cleanEdge
       })
-
-      logger.info(`Loaded ${nodes.value.length} nodes and ${edges.value.length} edges (cleaned execution states)`)
     } else {
       nodes.value = []
       edges.value = []

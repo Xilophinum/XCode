@@ -569,31 +569,33 @@ async function handleClientAuthentication(socket, msg) {
 async function handleProjectSubscription(socket, msg) {
   try {
     const { projectId } = msg
-    
+
     if (!projectId) {
       socket.emit('subscription_error', {
         message: 'Project ID required'
       })
       return
     }
-    
+
     // Add client to project subscriptions
     if (!projectSubscriptions.has(projectId)) {
       projectSubscriptions.set(projectId, new Set())
     }
     projectSubscriptions.get(projectId).add(socket.clientId)
-    
+
     // Store project subscription on socket for cleanup
     if (!socket.subscribedProjects) {
       socket.subscribedProjects = new Set()
     }
     socket.subscribedProjects.add(projectId)
-    
+
+    logger.info(`✅ Client ${socket.clientId} subscribed to project ${projectId} (total subscribers: ${projectSubscriptions.get(projectId).size})`)
+
     socket.emit('project_subscribed', {
       projectId: projectId,
       status: 'subscribed'
     })
-    
+
   } catch (error) {
     logger.error('Project subscription error:', error)
     socket.emit('subscription_error', {
@@ -874,11 +876,11 @@ function broadcastToClients(message) {
 function broadcastToProject(projectId, message) {
   try {
     const subscribedClients = projectSubscriptions.get(projectId)
-    if (!subscribedClients) {
-      logger.info(`No subscribers for project ${projectId}`)
+    if (!subscribedClients || subscribedClients.size === 0) {
+      logger.info(`No subscribers for project ${projectId} (message type: ${message.type})`)
       return
     }
-    
+
     let successCount = 0
     subscribedClients.forEach(clientId => {
       const socket = clientConnections.get(clientId)
@@ -887,6 +889,8 @@ function broadcastToProject(projectId, message) {
         successCount++
       }
     })
+
+    logger.debug(`Broadcast ${message.type} to project ${projectId}: ${successCount}/${subscribedClients.size} clients`)
   } catch (error) {
     logger.error('Error broadcasting to project:', error)
   }

@@ -2,6 +2,7 @@ import { getDB, builds, items } from './database.js'
 import { eq, desc, and, gte, lte, count, avg, min, max } from 'drizzle-orm'
 import { broadcastBuildCompletion } from '../plugins/websocket.js'
 import logger, { createBuildLogger, closeBuildLogger } from './logger.js'
+import { executionStateManager } from './executionStateManager.js'
 
 export class BuildStatsManager {
   constructor() {
@@ -135,14 +136,13 @@ export class BuildStatsManager {
     }
 
     // Add new log entry
+    // Note: source is now the nodeLabel for display purposes
     const newLogEntry = {
       timestamp: logEntry.timestamp || now,
       level: logEntry.level || 'info',
       message: logEntry.message,
-      source: logEntry.source || 'system',
-      nodeLabel: logEntry.nodeLabel || logEntry.source || 'System',
-      command: logEntry.command || null,
-      nodeId: logEntry.nodeId || null
+      source: logEntry.source || 'System', // source is the nodeLabel
+      command: logEntry.command || null
     }
 
     logs.push(newLogEntry)
@@ -190,6 +190,12 @@ export class BuildStatsManager {
 
     const duration = new Date(now) - new Date(build.startedAt)
 
+    // Persist execution state to database before build completion
+    const finalState = executionStateManager.getBuildState(projectId, buildNumber)
+    logger.info(`Final execution state for build #${buildNumber}:`, finalState)
+    await executionStateManager.persistBuildState(projectId, buildNumber)
+    logger.info(`Persisted execution state for build #${buildNumber}`)
+
     // Update the build record
     await this.db.update(builds)
       .set({
@@ -204,6 +210,9 @@ export class BuildStatsManager {
         eq(builds.projectId, projectId),
         eq(builds.buildNumber, buildNumber)
       ))
+
+    // Clean up execution state from memory (already persisted to DB)
+    await executionStateManager.cleanupBuildState(projectId, buildNumber)
 
     // Broadcast build completion for job triggers
     await this.broadcastBuildCompletion(projectId, result.status, {

@@ -709,9 +709,6 @@ class XCodeBuildAgent {
             });
           });
         }
-
-        // Don't log output here - it's sent to server where it will be properly masked for secrets
-        logger.debug(`Captured ${chunk.length} bytes of stdout`);
       });
 
       child.stderr.on('data', (data) => {

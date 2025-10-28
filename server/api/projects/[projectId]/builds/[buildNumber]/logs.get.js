@@ -39,12 +39,12 @@ export default defineEventHandler(async (event) => {
         const dbLogs = JSON.parse(buildResults[0].outputLog)
         logger.info(`Found ${dbLogs.length} logs in database`)
         // Convert database format to normalized format
+        // Note: source now contains the nodeLabel, not nodeId
         logs = dbLogs.map(logEntry => ({
           type: logEntry.type || 'info',
           level: logEntry.level || 'info',
           message: logEntry.message || String(logEntry),
-          nodeLabel: logEntry.nodeLabel || logEntry.source || 'Agent',
-          source: logEntry.source || 'agent',
+          source: logEntry.source || 'Agent', // source is the nodeLabel
           timestamp: logEntry.timestamp,
           value: logEntry.value
         }))

@@ -430,9 +430,7 @@ export class NotificationService {
           if (!uploadResult.ok) {
             logger.warn(`Failed to upload build log to Slack: ${uploadResult.error}`)
           } else {
-            logger.info(`Build log uploaded to Slack successfully`)
             fileId = uploadResult.file?.id
-
             // If we uploaded the file with a message, we're done
             return {
               status: uploadResponse.status,

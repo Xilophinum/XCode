@@ -81,7 +81,19 @@ export class DatabaseManager {
   }
 
   async runSQLiteMigrations() {
-    // Migration: Update production tables when changes are needed
+    // Migration: Add nodeExecutionStates column to builds table
+    try {
+      const tableInfo = this.sqlite.prepare('PRAGMA table_info(builds)').all()
+      const hasNodeExecutionStates = tableInfo.some(col => col.name === 'node_execution_states')
+
+      if (!hasNodeExecutionStates) {
+        logger.info('Adding node_execution_states column to builds table...')
+        this.sqlite.exec('ALTER TABLE builds ADD COLUMN node_execution_states TEXT')
+        logger.info('Added node_execution_states column to builds table')
+      }
+    } catch (error) {
+      logger.error('Error running SQLite migrations:', error)
+    }
   }
 
   async createSQLiteTables() {
@@ -259,6 +271,7 @@ export class DatabaseManager {
           git_commit TEXT,
           metadata TEXT,
           output_log TEXT,
+          node_execution_states TEXT,
           last_sequence INTEGER DEFAULT 0,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
@@ -725,6 +738,7 @@ export class DatabaseManager {
           git_commit VARCHAR(255),
           metadata TEXT,
           output_log TEXT,
+          node_execution_states TEXT,
           last_sequence INTEGER DEFAULT 0,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
@@ -834,7 +848,27 @@ export class DatabaseManager {
   }
 
   async runPostgresMigrations() {
-    // Migration: Update production tables when changes are needed
+    // Migration: Add nodeExecutionStates column to builds table
+    try {
+      // Check if column exists
+      const result = await this.postgres`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'builds'
+        AND column_name = 'node_execution_states'
+      `
+
+      if (result.length === 0) {
+        logger.info('Adding node_execution_states column to builds table...')
+        await this.postgres`
+          ALTER TABLE builds
+          ADD COLUMN node_execution_states TEXT
+        `
+        logger.info('Added node_execution_states column to builds table')
+      }
+    } catch (error) {
+      logger.error('Error running PostgreSQL migrations:', error)
+    }
   }
 
   getDatabase() {
