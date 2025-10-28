@@ -450,39 +450,48 @@ const updateNodeVisualStates = () => {
   // Update node styles based on execution state
   nodes.value = nodes.value.map(node => {
     const state = nodeExecutionStates.value.get(node.id)
-
-    // Default styling
-    let borderColor = '#6b7280' // gray
-    let backgroundColor = dark.value ? '#404040' : '#f9fafb'
     let nodeClass = 'node-pending'
 
     if (state) {
       if (state.status === 'executing') {
-        borderColor = '#3b82f6' // blue
-        backgroundColor = dark.value ? '#1e3a8a' : '#eff6ff'
         nodeClass = 'node-running'
       } else if (state.status === 'completed') {
-        borderColor = '#10b981' // green
-        backgroundColor = dark.value ? '#064e3b' : '#ecfdf5'
         nodeClass = 'node-success'
       } else if (state.status === 'failed') {
-        borderColor = '#ef4444' // red
-        backgroundColor = dark.value ? '#7f1d1d' : '#fef2f2'
         nodeClass = 'node-error'
       }
     }
 
     return {
       ...node,
-      class: nodeClass,
-      style: {
-        ...node.style,
-        borderColor: borderColor,
-        borderWidth: '2px',
-        borderStyle: 'solid',
-        backgroundColor: backgroundColor
-      }
+      class: nodeClass
     }
+  })
+
+  // Apply classes to DOM elements with retry mechanism
+  const applyDOMClasses = (attempt = 0) => {
+    let appliedCount = 0
+    
+    nodes.value.forEach(node => {
+      const nodeContainer = document.querySelector(`[data-id="${node.id}"]`)
+      if (nodeContainer) {
+        const nodeElement = nodeContainer.querySelector('.vue-flow__node > div')
+        if (nodeElement) {
+          nodeElement.classList.remove('node-pending', 'node-running', 'node-success', 'node-error')
+          nodeElement.classList.add(node.class)
+          appliedCount++
+        }
+      }
+    })
+    
+    // If we didn't apply classes to all nodes and haven't tried too many times, retry
+    if (appliedCount < nodes.value.length && attempt < 5) {
+      setTimeout(() => applyDOMClasses(attempt + 1), 100)
+    }
+  }
+  
+  nextTick(() => {
+    setTimeout(applyDOMClasses, 200)
   })
 
   // Update edge styles based on connected nodes
@@ -621,7 +630,73 @@ const checkCurrentBuildStatus = async () => {
           webSocketStore.addJobMessage(project.value.id, 'System', 'info', 'Waiting for agent output...')
         }
       } else {
-        logger.info(`Using ${existingMessages.length} existing messages from WebSocket store - skipping database load`)
+        logger.info(`Using ${existingMessages.length} existing messages from WebSocket store - restoring node states`)
+        
+        // Restore node states from existing messages with proper state analysis
+        const nodeStates = new Map()
+        
+        // Analyze all messages to determine final state for each node
+        existingMessages.forEach(msg => {
+          if (msg.nodeId) {
+            if (!nodeStates.has(msg.nodeId)) {
+              nodeStates.set(msg.nodeId, {
+                nodeId: msg.nodeId,
+                nodeLabel: msg.nodeLabel,
+                messages: []
+              })
+            }
+            nodeStates.get(msg.nodeId).messages.push({
+              level: msg.level,
+              timestamp: msg.timestamp,
+              message: msg.message
+            })
+          }
+        })
+        
+        // Determine final state for each node based on message analysis
+        nodeStates.forEach((nodeData, nodeId) => {
+          const messages = nodeData.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+          const lastMessage = messages[messages.length - 1]
+          const hasError = messages.some(m => m.level === 'error')
+          const hasSuccess = messages.some(m => m.level === 'success' && m.message.includes('completed'))
+          
+          let finalStatus = 'pending'
+          if (hasError) {
+            finalStatus = 'failed'
+          } else if (hasSuccess) {
+            finalStatus = 'completed'
+          } else {
+            // Check if this node is currently executing based on current job
+            const currentJob = webSocketStore.getCurrentJob(project.value.id)
+            if (currentJob && currentJob.nodeId === nodeId) {
+              finalStatus = 'executing'
+            } else {
+              // If we have messages but no clear completion, assume completed
+              finalStatus = messages.length > 0 ? 'completed' : 'pending'
+            }
+          }
+          
+          // Set the final state
+          nodeExecutionStates.value.set(nodeId, {
+            status: finalStatus,
+            startTime: new Date(messages[0]?.timestamp || Date.now()),
+            endTime: finalStatus === 'completed' || finalStatus === 'failed' ? new Date(lastMessage.timestamp) : null,
+            label: nodeData.nodeLabel
+          })
+          
+          if (finalStatus === 'completed' || finalStatus === 'failed') {
+            completedNodes.value.add(nodeId)
+          }
+          
+          if (finalStatus === 'executing') {
+            currentlyExecutingNodeId.value = nodeId
+          }
+        })
+        
+        // Force visual update after state restoration
+        nextTick(() => {
+          updateNodeVisualStates()
+        })
       }
     }
   } catch (error) {
@@ -660,8 +735,22 @@ onMounted(async () => {
   // Load build data
   await loadBuildData()
 
+  // Force WebSocket reconnection to ensure we get live updates
+  if (!webSocketStore.isConnected) {
+    logger.info('WebSocket not connected, connecting...')
+    await webSocketStore.connect()
+    // Wait a bit for connection to establish
+    await new Promise(resolve => setTimeout(resolve, 1000))
+  }
+  
   // Subscribe to WebSocket updates for this project
-  webSocketStore.subscribeToProject(project.value.id)
+  const subscribed = await webSocketStore.subscribeToProject(project.value.id)
+  if (!subscribed) {
+    logger.warn('Failed to subscribe to project, retrying in 2 seconds...')
+    setTimeout(() => {
+      webSocketStore.subscribeToProject(project.value.id)
+    }, 2000)
+  }
 
   // Load existing terminal messages from WebSocket store
   const existingMessages = webSocketStore.getJobMessages(project.value.id)
@@ -722,6 +811,11 @@ onMounted(async () => {
   // Check if there's already a job running for this project
   // This will load messages from the database if needed
   await checkCurrentBuildStatus()
+  
+  // Force state restoration after everything is loaded
+  setTimeout(() => {
+    updateNodeVisualStates()
+  }, 500)
 })
 
 onUnmounted(() => {
@@ -741,47 +835,52 @@ onUnmounted(() => {
 }
 
 /* Visual state classes */
-.vue-flow__node-input .node-pending {
+:deep(.node-pending) {
   border-color: #6b7280 !important;
+  border-radius: 8px !important;
 }
 
-.vue-flow__node-input .node-running {
+:deep(.node-running) {
   border-color: #3b82f6 !important;
   animation: pulse 2s infinite;
+  border-radius: 8px !important;
 }
 
-.vue-flow__node-input .node-success {
+:deep(.node-success) {
   border-color: #10b981 !important;
+  border-radius: 8px !important;
 }
 
-.vue-flow__node-input .node-error {
+:deep(.node-error) {
   border-color: #ef4444 !important;
+  border-radius: 8px !important;
 }
 
-.vue-flow__edge .edge-pending {
+.edge-pending {
   stroke: #6b7280;
   stroke-dasharray: 5,5;
   animation: dash 1s linear infinite;
 }
 
-.vue-flow__edge .edge-running {
+.edge-running {
   stroke: #3b82f6;
   stroke-width: 3px;
   animation: flow 2s linear infinite;
+  border-radius: 5px;
 }
 
-.vue-flow__edge .edge-success {
+.edge-success {
   stroke: #10b981;
   stroke-width: 2px;
 }
 
-.vue-flow__edge .edge-error {
+.edge-error {
   stroke: #ef4444;
   stroke-width: 2px;
   stroke-dasharray: 5,5;
 }
 
-.vue-flow__edge .edge-default {
+.edge-default {
   stroke: #9ca3af;
   stroke-width: 1px;
 }

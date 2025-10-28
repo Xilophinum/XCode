@@ -1766,6 +1766,25 @@ const initializeEditor = async () => {
     logger.error('Error initializing editor:', error)
   }
 }
+// Check current build status when page loads
+const checkCurrentBuildStatus = async () => {
+  if (!project.value?.id) return
+  
+  try {
+    const response = await $fetch(`/api/projects/${project.value.id}/status`)
+    if (response.isRunning && response.currentJob) {
+      isExecuting.value = true
+      currentBuildNumber.value = response.currentJob.buildNumber
+      logger.info(`Found running build #${response.currentJob.buildNumber} for project ${project.value.id}`)
+    } else {
+      isExecuting.value = false
+      currentBuildNumber.value = null
+    }
+  } catch (error) {
+    logger.warn('Failed to check current build status:', error)
+  }
+}
+
 // Initialize editor on mount
 onMounted(async () => {
   // Ensure authentication is initialized before loading data
@@ -1790,6 +1809,9 @@ onMounted(async () => {
 
   // Set current project
   projectsStore.setCurrentProject(project.value)
+  
+  // Check current build status
+  await checkCurrentBuildStatus()
   
   // Setup WebSocket for execution state tracking
   setupWebSocket()
