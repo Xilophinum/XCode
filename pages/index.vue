@@ -502,6 +502,7 @@ definePageMeta({
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const webSocketStore = useWebSocketStore()
+const { success, error } = useNotifications()
 
 // Modal state
 const showCreateFolderModal = ref(false)
@@ -607,10 +608,12 @@ const handleCreateFolder = async () => {
   )
   
   if (result.success) {
+    success('Folder created successfully')
     folderForm.value = { name: '', description: '' }
     showCreateFolderModal.value = false
   } else {
     logger.error('Failed to create folder:', result.error)
+    error('Failed to create folder. Please try again.')
   }
 }
 
@@ -642,9 +645,11 @@ const handleEditFolder = async () => {
   )
   
   if (result.success) {
+    success('Folder updated successfully')
     cancelEdit()
   } else {
     logger.error('Failed to edit folder:', result.error)
+    error('Failed to update folder. Please try again.')
   }
 }
 
@@ -665,9 +670,11 @@ const handleDeleteFolder = async () => {
   const result = await projectsStore.deleteFolder(folderToDelete.value.id)
   
   if (result.success) {
+    success('Folder deleted successfully')
     cancelDelete()
   } else {
     logger.error('Failed to delete folder:', result.error)
+    error('Failed to delete folder. Please try again.')
   }
 }
 
@@ -695,7 +702,7 @@ const handleMoveItem = async () => {
   // Check if trying to move item to its current location
   const currentPath = itemToMove.value.path || []
   if (JSON.stringify(currentPath) === JSON.stringify(destination.path)) {
-    alert('Item is already in the selected location.')
+    error('Item is already in the selected location.')
     return
   }
   
@@ -704,7 +711,7 @@ const handleMoveItem = async () => {
     const itemFullPath = [...currentPath, itemToMove.value.name]
     if (destination.path.length >= itemFullPath.length && 
         JSON.stringify(destination.path.slice(0, itemFullPath.length)) === JSON.stringify(itemFullPath)) {
-      alert('Cannot move a folder into itself or its children.')
+      error('Cannot move a folder into itself or its children.')
       return
     }
   }
@@ -712,10 +719,11 @@ const handleMoveItem = async () => {
   const result = await projectsStore.moveItem(itemToMove.value.id, destination.path)
   
   if (result.success) {
+    success('Folder moved successfully')
     cancelMove()
   } else {
     logger.error('Failed to move item:', result.error)
-    alert('Failed to move item. Please try again.')
+    error('Failed to move item. Please try again.')
   }
 }
 

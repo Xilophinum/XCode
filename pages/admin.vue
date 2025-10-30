@@ -340,7 +340,7 @@
                   <div class="flex items-center gap-2 ml-4">
                     <button
                       v-if="!template.is_built_in"
-                      @click="deleteTemplate(template)"
+                      @click="confirmDeleteTemplate(template)"
                       class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50 rounded-md transition-colors"
                       v-tooltip="'Delete template'"
                     >
@@ -395,7 +395,7 @@
                     Edit
                   </button>
                   <button
-                    @click="deleteEnvVariable(variable.id)"
+                    @click="confirmDeleteEnvVariable(variable)"
                     class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm"
                   >
                     Delete
@@ -492,7 +492,7 @@
                     Edit
                   </button>
                   <button
-                    @click="deleteCredential(credential.id)"
+                    @click="confirmDeleteCredential(credential)"
                     class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm"
                   >
                     Delete
@@ -543,7 +543,7 @@
                     Edit
                   </button>
                   <button
-                    @click="deleteGroup(group.id)"
+                    @click="confirmDeleteGroup(group)"
                     class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm"
                   >
                     Delete
@@ -600,7 +600,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div class="flex space-x-2">
                         <button
-                          @click="toggleUserRole(user)"
+                          @click="confirmToggleUserRole(user)"
                           class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
                         >
                           {{ user.role === 'admin' ? 'Make User' : 'Make Admin' }}
@@ -1414,6 +1414,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 const logger = useLogger()
+const { success, error: notifyError } = useNotifications()
 definePageMeta({
   middleware: 'admin'
 })
@@ -1631,17 +1632,35 @@ const editEnvVariable = (variable) => {
   showEnvModal.value = true
 }
 
-const deleteEnvVariable = async (id) => {
-  if (confirm('Are you sure you want to delete this environment variable?')) {
-    try {
-      await $fetch(`/api/admin/env-variables/${id}`, {
-        method: 'DELETE'
-      })
-      await loadEnvVariables()
-    } catch (error) {
-      logger.error('Failed to delete environment variable:', error)
-    }
+// Delete confirmation modal states
+const showDeleteEnvModal = ref(false)
+const envToDelete = ref(null)
+
+const confirmDeleteEnvVariable = (variable) => {
+  envToDelete.value = variable
+  showDeleteEnvModal.value = true
+}
+
+const deleteEnvVariable = async () => {
+  if (!envToDelete.value) return
+  
+  try {
+    await $fetch(`/api/admin/env-variables/${envToDelete.value.id}`, {
+      method: 'DELETE'
+    })
+    success('Environment variable deleted successfully')
+    showDeleteEnvModal.value = false
+    envToDelete.value = null
+    await loadEnvVariables()
+  } catch (error) {
+    logger.error('Failed to delete environment variable:', error)
+    notifyError('Failed to delete environment variable')
   }
+}
+
+const cancelDeleteEnvVariable = () => {
+  showDeleteEnvModal.value = false
+  envToDelete.value = null
 }
 
 const closeEnvModal = () => {
@@ -1871,17 +1890,34 @@ const editCredential = async (credential) => {
   }
 }
 
-const deleteCredential = async (id) => {
-  if (confirm('Are you sure you want to delete this credential?')) {
-    try {
-      await $fetch(`/api/admin/credentials/${id}`, {
-        method: 'DELETE'
-      })
-      await loadCredentials()
-    } catch (error) {
-      logger.error('Failed to delete credential:', error)
-    }
+const showDeleteCredentialModal = ref(false)
+const credentialToDelete = ref(null)
+
+const confirmDeleteCredential = (credential) => {
+  credentialToDelete.value = credential
+  showDeleteCredentialModal.value = true
+}
+
+const deleteCredential = async () => {
+  if (!credentialToDelete.value) return
+  
+  try {
+    await $fetch(`/api/admin/credentials/${credentialToDelete.value.id}`, {
+      method: 'DELETE'
+    })
+    success('Credential deleted successfully')
+    showDeleteCredentialModal.value = false
+    credentialToDelete.value = null
+    await loadCredentials()
+  } catch (error) {
+    logger.error('Failed to delete credential:', error)
+    notifyError('Failed to delete credential')
   }
+}
+
+const cancelDeleteCredential = () => {
+  showDeleteCredentialModal.value = false
+  credentialToDelete.value = null
 }
 
 const closeCredentialModal = () => {
@@ -1895,20 +1931,37 @@ const closeCredentialViewModal = () => {
   viewingCredential.value = null
 }
 
-const toggleUserRole = async (user) => {
-  const newRole = user.role === 'admin' ? 'user' : 'admin'
+const showRoleChangeModal = ref(false)
+const userForRoleChange = ref(null)
+
+const confirmToggleUserRole = (user) => {
+  userForRoleChange.value = user
+  showRoleChangeModal.value = true
+}
+
+const toggleUserRole = async () => {
+  if (!userForRoleChange.value) return
   
-  if (confirm(`Are you sure you want to change ${user.name}'s role to ${newRole}?`)) {
-    try {
-      await $fetch('/api/admin/update-user-role', {
-        method: 'POST',
-        body: { userId: user.id, role: newRole }
-      })
-      await loadUsers()
-    } catch (error) {
-      logger.error('Failed to update user role:', error)
-    }
+  const newRole = userForRoleChange.value.role === 'admin' ? 'user' : 'admin'
+  
+  try {
+    await $fetch('/api/admin/update-user-role', {
+      method: 'POST',
+      body: { userId: userForRoleChange.value.id, role: newRole }
+    })
+    success(`User role changed to ${newRole} successfully`)
+    showRoleChangeModal.value = false
+    userForRoleChange.value = null
+    await loadUsers()
+  } catch (error) {
+    logger.error('Failed to update user role:', error)
+    notifyError('Failed to update user role')
   }
+}
+
+const cancelRoleChange = () => {
+  showRoleChangeModal.value = false
+  userForRoleChange.value = null
 }
 
 const toggleCategory = (category) => {
@@ -1997,23 +2050,39 @@ const editGroup = (group) => {
   showGroupModal.value = true
 }
 
-const deleteGroup = async (id) => {
-  if (confirm('Are you sure you want to delete this group?')) {
-    try {
-      const groupToDelete = groups.value.find(g => g.id === id)
-      const updatedGroups = groups.value.filter(g => g.id !== id).map(g => g.name)
-      
-      await $fetch('/api/admin/system-settings/user_groups', {
-        method: 'PUT',
-        body: { value: JSON.stringify(updatedGroups) }
-      })
-      
-      await loadGroups()
-      await loadUsers()
-    } catch (error) {
-      logger.error('Failed to delete group:', error)
-    }
+const showDeleteGroupModal = ref(false)
+const groupToDelete = ref(null)
+
+const confirmDeleteGroup = (group) => {
+  groupToDelete.value = group
+  showDeleteGroupModal.value = true
+}
+
+const deleteGroup = async () => {
+  if (!groupToDelete.value) return
+  
+  try {
+    const updatedGroups = groups.value.filter(g => g.id !== groupToDelete.value.id).map(g => g.name)
+    
+    await $fetch('/api/admin/system-settings/user_groups', {
+      method: 'PUT',
+      body: { value: JSON.stringify(updatedGroups) }
+    })
+    
+    success('Group deleted successfully')
+    showDeleteGroupModal.value = false
+    groupToDelete.value = null
+    await loadGroups()
+    await loadUsers()
+  } catch (error) {
+    logger.error('Failed to delete group:', error)
+    notifyError('Failed to delete group')
   }
+}
+
+const cancelDeleteGroup = () => {
+  showDeleteGroupModal.value = false
+  groupToDelete.value = null
 }
 
 const closeGroupModal = () => {
@@ -2104,31 +2173,44 @@ async function saveTemplate() {
     if (response.success) {
       await loadNotificationTemplates()
       closeTemplateModal()
-      alert('Template saved successfully!')
+      success('Template saved successfully!', { title: 'Template Saved' })
     }
   } catch (error) {
     logger.error('Failed to save template:', error)
-    alert('Failed to save template: ' + (error.data?.message || error.message))
+    notifyError('Failed to save template: ' + (error.data?.message || error.message), { title: 'Save Failed' })
   }
 }
 
 // Delete notification template
-async function deleteTemplate(template) {
-  if (!confirm(`Are you sure you want to delete "${template.name}"?`)) {
-    return
-  }
+const showDeleteTemplateModal = ref(false)
+const templateToDelete = ref(null)
+
+const confirmDeleteTemplate = (template) => {
+  templateToDelete.value = template
+  showDeleteTemplateModal.value = true
+}
+
+async function deleteTemplate() {
+  if (!templateToDelete.value) return
 
   try {
-    await $fetch(`/api/notification-templates/${template.id}`, {
+    await $fetch(`/api/notification-templates/${templateToDelete.value.id}`, {
       method: 'DELETE'
     })
 
+    success('Template deleted successfully!')
+    showDeleteTemplateModal.value = false
+    templateToDelete.value = null
     await loadNotificationTemplates()
-    alert('Template deleted successfully!')
   } catch (error) {
     logger.error('Failed to delete template:', error)
-    alert('Failed to delete template: ' + (error.data?.message || error.message))
+    notifyError('Failed to delete template: ' + (error.data?.message || error.message))
   }
+}
+
+const cancelDeleteTemplate = () => {
+  showDeleteTemplateModal.value = false
+  templateToDelete.value = null
 }
 
 // Close template modal and reset form

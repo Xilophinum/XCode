@@ -712,6 +712,7 @@ const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const webSocketStore = useWebSocketStore()
 const { isDark: dark } = useDarkMode()
+const { success, error } = useNotifications()
 const isEditorReady = ref(false)
 const isSaving = ref(false)
 const selectedNode = ref(null)
@@ -981,13 +982,13 @@ const handleSaveRetentionSettings = async () => {
     })
 
     if (response.success) {
+      success('Retention settings updated successfully')
       showRetentionModal.value = false
-      // Show success message
       logger.info('Retention settings updated successfully')
     }
   } catch (error) {
     logger.error('Failed to save retention settings:', error)
-    alert('Failed to save retention settings. Please try again.')
+    error('Failed to save retention settings. Please try again.')
   } finally {
     isSavingRetention.value = false
   }
@@ -1634,14 +1635,14 @@ const validateExecutionNodes = () => {
 const executeGraph = async () => {
   // Check if project is disabled
   if (project.value?.status === 'disabled') {
-    alert('Project is disabled. Manual execution is blocked.')
+    error('Project is disabled. Manual execution is blocked.')
     return
   }
   
   // Validate that all execution nodes have agent selection
   const validationErrors = validateExecutionNodes()
   if (validationErrors.length > 0) {
-    alert('Execution blocked due to validation errors:\n\n' + validationErrors.join('\n'))
+    error('Execution blocked due to validation errors:\n\n' + validationErrors.join('\n'))
     return
   }
 
@@ -1665,12 +1666,12 @@ const executeGraph = async () => {
       const projectPath = pathSegments.value.slice(0, -1).join('/') // Remove 'editor' from path
       await navigateTo(`/${projectPath}/build/${response.buildNumber}`)
     } else {
-      alert(`Failed to start execution: ${response.message || 'Unknown error'}`)
+      error(`Failed to start execution: ${response.message || 'Unknown error'}`)
     }
     
   } catch (error) {
     logger.error('Execution dispatch error:', error)
-    alert(`Failed to start execution: ${error.message}`)
+    error(`Failed to start execution: ${error.message}`)
   }
 }
 
@@ -1835,14 +1836,15 @@ const toggleProjectStatus = async () => {
     
     if (result.success) {
       logger.info(`Project ${result.status}: ${project.value.name}`)
+      success(`Project ${result.status === 'enabled' ? 'enabled' : 'disabled'} successfully`)
       saveProject()
     } else {
       logger.error('Failed to toggle project status:', result.error)
-      alert(`Failed to ${project.value.status === 'disabled' ? 'enable' : 'disable'} project: ${result.error}`)
+      error(`Failed to ${project.value.status === 'disabled' ? 'enable' : 'disable'} project: ${result.error}`)
     }
   } catch (error) {
     logger.error('Error toggling project status:', error)
-    alert(`Error changing project status: ${error.message}`)
+    error(`Error changing project status: ${error.message}`)
   } finally {
     isTogglingStatus.value = false
   }

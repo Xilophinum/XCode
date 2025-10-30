@@ -100,7 +100,7 @@
               <button
                 @click.stop="showAuditHistory(folder)"
                 class="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                v-tooltip="'View history'"
+                v-tooltip:bottomleft="'View history'"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -658,6 +658,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const webSocketStore = useWebSocketStore()
+const { success, error } = useNotifications()
 
 import { nextTick, onMounted, onUnmounted, watch } from 'vue'
 
@@ -995,7 +996,7 @@ const handleMoveItem = async () => {
   // Check if trying to move item to its current location
   const currentPath = itemToMove.value.path || []
   if (JSON.stringify(currentPath) === JSON.stringify(destination.path)) {
-    alert('Item is already in the selected location.')
+    error('Item is already in the selected location.')
     return
   }
   
@@ -1004,7 +1005,7 @@ const handleMoveItem = async () => {
     const itemFullPath = [...currentPath, itemToMove.value.name]
     if (destination.path.length >= itemFullPath.length && 
         JSON.stringify(destination.path.slice(0, itemFullPath.length)) === JSON.stringify(itemFullPath)) {
-      alert('Cannot move a folder into itself or its children.')
+      error('Cannot move a folder into itself or its children.')
       return
     }
   }
@@ -1012,10 +1013,11 @@ const handleMoveItem = async () => {
   const result = await projectsStore.moveItem(itemToMove.value.id, destination.path)
   
   if (result.success) {
+    success('Item moved successfully')
     cancelMove()
   } else {
     logger.error('Failed to move item:', result.error)
-    alert('Failed to move item. Please try again.')
+    error('Failed to move item. Please try again.')
   }
 }
 
@@ -1045,10 +1047,11 @@ const handleRenameItem = async () => {
   })
   
   if (result.success) {
+    success('Item renamed successfully')
     cancelRename()
   } else {
     logger.error('Failed to rename item:', result.error)
-    alert('Failed to rename item. Please try again.')
+    error('Failed to rename item. Please try again.')
   }
 }
 
@@ -1102,10 +1105,11 @@ const handleAccessUpdate = async () => {
     itemForAccess.value.accessPolicy = accessForm.value.access_policy
     itemForAccess.value.allowedGroups = accessForm.value.allowed_groups
     
+    success('Access settings updated successfully')
     cancelAccessSettings()
   } catch (error) {
     logger.error('Failed to update access settings:', error)
-    alert('Failed to update access settings. Please try again.')
+    error('Failed to update access settings. Please try again.')
   }
 }
 
@@ -1150,9 +1154,10 @@ const toggleProjectStatus = async (project) => {
   
   if (result.success) {
     logger.info(`Project ${result.status}: ${project.name}`)
+    success(`Project ${result.status === 'enabled' ? 'enabled' : 'disabled'} successfully`)
   } else {
     logger.error('Failed to toggle project status:', result.error)
-    alert('Failed to change project status. Please try again.')
+    error('Failed to change project status. Please try again.')
   }
 }
 
@@ -1162,11 +1167,12 @@ const handleDeleteProject = async () => {
   const result = await projectsStore.deleteItem(projectToDelete.value.id)
   
   if (result.success) {
+    success('Item deleted successfully')
     showDeleteProjectModal.value = false
     projectToDelete.value = null
   } else {
     logger.error('Failed to delete project:', result.error)
-    alert('Failed to delete project. Please try again.')
+    error('Failed to delete item. Please try again.')
   }
 }
 
@@ -1194,10 +1200,12 @@ const handleCreateFolder = async () => {
   )
   
   if (result.success) {
+    success('Folder created successfully')
     folderForm.value = { name: '', description: '' }
     showCreateFolderModal.value = false
   } else {
     logger.error('Failed to create folder:', result.error)
+    error('Failed to create folder. Please try again.')
   }
 }
 
@@ -1211,12 +1219,14 @@ const handleCreateProject = async () => {
   )
   
   if (result.success) {
+    success('Project created successfully')
     projectForm.value = { name: '', description: '' }
     showCreateProjectModal.value = false
     // Navigate to the new project
     openProject(result.project)
   } else {
     logger.error('Failed to create project:', result.error)
+    error('Failed to create project. Please try again.')
   }
 }
 

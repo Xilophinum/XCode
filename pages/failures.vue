@@ -14,17 +14,46 @@
               <p class="text-gray-600 dark:text-gray-300">Projects where the latest build failed</p>
             </div>
 
-            <!-- Refresh Button -->
+            <!-- Auto-refresh and Manual Refresh Controls -->
             <div class="flex items-center space-x-4">
+              <!-- Auto-refresh Status -->
+              <div class="flex items-center space-x-2">
+                <div :class="[
+                  'w-2 h-2 rounded-full',
+                  autoRefreshEnabled ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
+                ]"></div>
+                <span class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ autoRefreshEnabled ? 'Live updates ON' : 'Live updates OFF' }}
+                </span>
+              </div>
+              
+              <!-- Auto-refresh Toggle -->
+              <button
+                @click="toggleAutoRefresh"
+                :class="[
+                  'inline-flex items-center px-3 py-2 border text-sm font-medium rounded-md',
+                  autoRefreshEnabled
+                    ? 'border-green-300 text-green-700 bg-green-50 hover:bg-green-100 dark:border-green-600 dark:text-green-400 dark:bg-green-900/20 dark:hover:bg-green-900/30'
+                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700'
+                ]"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                {{ autoRefreshEnabled ? 'Disable Live' : 'Enable Live' }}
+              </button>
+              
+              <!-- Manual Refresh Button -->
               <button
                 @click="loadFailedBuilds"
                 :disabled="isLoading"
+                v-show="!autoRefreshEnabled"
                 class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
                 <svg class="w-4 h-4 mr-2" :class="{ 'animate-spin': isLoading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                 </svg>
-                Refresh
+                Refresh Now
               </button>
             </div>
           </div>
@@ -316,12 +345,17 @@ definePageMeta({
 
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
+const webSocketStore = useWebSocketStore()
+const { success, error: notifyError } = useNotifications()
 const route = useRoute()
 
 // State
 const isLoading = ref(false)
 const failedBuilds = ref([])
 const lastUpdated = ref(null)
+const currentTime = ref(new Date())
+const autoRefreshEnabled = ref(true)
+const timeUpdateInterval = ref(null)
 
 const showLogsModalState = ref(false)
 const selectedBuild = ref(null)
@@ -344,8 +378,7 @@ const loadFailedBuilds = async () => {
 
 const formatLastUpdated = () => {
   if (!lastUpdated.value) return 'Never'
-  const now = new Date()
-  const diffMs = now - lastUpdated.value
+  const diffMs = currentTime.value - lastUpdated.value
   const diffSecs = Math.floor(diffMs / 1000)
 
   if (diffSecs < 10) return 'Just now'
@@ -356,6 +389,64 @@ const formatLastUpdated = () => {
 
   return lastUpdated.value.toLocaleTimeString()
 }
+
+const startRealTimeUpdates = () => {
+  // Update current time every second for live timestamps
+  timeUpdateInterval.value = setInterval(() => {
+    currentTime.value = new Date()
+  }, 1000)
+}
+
+const stopRealTimeUpdates = () => {
+  if (timeUpdateInterval.value) {
+    clearInterval(timeUpdateInterval.value)
+    timeUpdateInterval.value = null
+  }
+}
+
+const toggleAutoRefresh = () => {
+  autoRefreshEnabled.value = !autoRefreshEnabled.value
+}
+
+// Handle WebSocket events for real-time updates
+const handleBuildStatusUpdate = (message) => {
+  const { type, projectId, status } = message
+  
+  // Only refresh if it's a build completion or failure
+  if (type === 'job_complete' || type === 'job_error' || type === 'job_status_updated') {
+    if (status === 'failed' || status === 'completed' || status === 'cancelled') {
+      // Debounce multiple rapid updates
+      if (refreshTimeout.value) {
+        clearTimeout(refreshTimeout.value)
+      }
+      refreshTimeout.value = setTimeout(() => {
+        if (autoRefreshEnabled.value) {
+          loadFailedBuilds()
+          lastUpdated.value = new Date()
+        }
+      }, 1000) // Wait 1 second before refreshing
+    }
+  }
+}
+
+// Handle custom build events
+const handleBuildEvent = (event) => {
+  const { type, status } = event.detail
+  
+  if (type === 'buildCompleted' || type === 'buildFailed') {
+    if (refreshTimeout.value) {
+      clearTimeout(refreshTimeout.value)
+    }
+    refreshTimeout.value = setTimeout(() => {
+      if (autoRefreshEnabled.value) {
+        loadFailedBuilds()
+        lastUpdated.value = new Date()
+      }
+    }, 500)
+  }
+}
+
+const refreshTimeout = ref(null)
 
 const getErrorMessage = (build) => {
   // Try multiple sources for error information
@@ -465,19 +556,27 @@ const rebuildProject = async (build) => {
     })
 
     // Show success notification
-    alert(`Rebuild started successfully! New build #${response.buildNumber}`)
+    success(`Rebuild started successfully! New build #${response.buildNumber}`, {
+      title: 'Build Started',
+      actions: [{
+        label: 'View Build',
+        primary: true,
+        handler: () => {
+          const buildUrl = getBuildUrl({ ...build, buildNumber: response.buildNumber })
+          if (buildUrl !== '#') {
+            navigateTo(buildUrl)
+          }
+        }
+      }]
+    })
 
     // Reload the failures list (this project should fall off if the new build succeeds)
     await loadFailedBuilds()
-
-    // Navigate to the new build
-    const buildUrl = getBuildUrl({ ...build, buildNumber: response.buildNumber })
-    if (buildUrl !== '#') {
-      navigateTo(buildUrl)
-    }
   } catch (error) {
     console.error('Error rebuilding project:', error)
-    alert(`Failed to rebuild project: ${error.message || error.data?.error || 'Unknown error'}`)
+    notifyError(`Failed to rebuild project: ${error.message || error.data?.error || 'Unknown error'}`, {
+      title: 'Rebuild Failed'
+    })
   } finally {
     rebuildingProjects.value.delete(projectId)
   }
@@ -492,28 +591,79 @@ const rebuildProjectFromModal = () => {
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return 'N/A'
   const date = new Date(timestamp)
-  const now = new Date()
-  const diffMs = now - date
+  const diffMs = currentTime.value - date
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const diffDays = Math.floor(diffHours / 24)
 
-  if (diffHours < 1) {
-    const diffMins = Math.floor(diffMs / (1000 * 60))
-    return `${diffMins} min${diffMins !== 1 ? 's' : ''} ago`
-  } else if (diffHours < 24) {
-    return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
-  } else if (diffDays < 7) {
-    return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
-  } else {
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
-  }
+  if (diffDays > 0) return `${diffDays}d ago`
+  if (diffHours > 0) return `${diffHours}h ago`
+  
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  if (diffMins > 0) return `${diffMins}m ago`
+  
+  return 'Just now'
 }
 
 const formatLogTimestamp = (timestamp) => {
   if (!timestamp) return ''
-  const date = new Date(timestamp)
-  return date.toLocaleTimeString()
+  return new Date(timestamp).toLocaleTimeString()
 }
+
+const getLogLevelClass = (level) => {
+  switch (level?.toLowerCase()) {
+    case 'error': return 'text-red-400'
+    case 'warning': return 'text-yellow-400'
+    case 'success': return 'text-green-400'
+    case 'info': return 'text-blue-400'
+    default: return 'text-gray-300'
+  }
+}
+
+// Lifecycle
+onMounted(async () => {
+  // Load initial data
+  if (!authStore.isAuthenticated) {
+    await authStore.initializeAuth()
+  }
+  
+  if (authStore.isAuthenticated) {
+    await projectsStore.loadData()
+    await loadFailedBuilds()
+  }
+  
+  // Start real-time updates
+  startRealTimeUpdates()
+  
+  // Connect to WebSocket if not already connected
+  if (!webSocketStore.isConnected) {
+    await webSocketStore.connect()
+  }
+  
+  // Listen for build status updates via WebSocket
+  if (webSocketStore.socket) {
+    webSocketStore.socket.on('message', handleBuildStatusUpdate)
+  }
+  
+  // Also listen for custom build events
+  window.addEventListener('buildStatusChanged', handleBuildEvent)
+})
+
+onUnmounted(() => {
+  stopRealTimeUpdates()
+  
+  // Clean up WebSocket listeners
+  if (webSocketStore.socket) {
+    webSocketStore.socket.off('message', handleBuildStatusUpdate)
+  }
+  
+  // Clean up custom event listeners
+  window.removeEventListener('buildStatusChanged', handleBuildEvent)
+  
+  // Clear any pending refresh timeout
+  if (refreshTimeout.value) {
+    clearTimeout(refreshTimeout.value)
+  }
+})
 
 const getTriggerBadgeClass = (trigger) => {
   const classes = {
@@ -524,26 +674,4 @@ const getTriggerBadgeClass = (trigger) => {
   }
   return classes[trigger] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
 }
-
-const getLogLevelClass = (level) => {
-  const classes = {
-    error: 'text-red-400',
-    warn: 'text-yellow-400',
-    info: 'text-blue-400',
-    debug: 'text-gray-400'
-  }
-  return classes[level] || 'text-green-400'
-}
-
-// Load data on mount
-onMounted(async () => {
-  if (!authStore.isAuthenticated) {
-    await authStore.initializeAuth()
-  }
-
-  if (authStore.isAuthenticated) {
-    await projectsStore.loadData()
-    await loadFailedBuilds()
-  }
-})
 </script>

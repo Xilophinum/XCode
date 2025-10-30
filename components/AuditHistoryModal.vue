@@ -293,6 +293,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 
+const { success, confirm, error } = useNotifications()
+
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -342,8 +344,8 @@ const fetchAuditLogs = async () => {
       params: { limit: 50 }
     })
     auditLogs.value = response.logs || []
-  } catch (error) {
-    logger.error('Error fetching audit logs:', error)
+  } catch (e) {
+    logger.error('Error fetching audit logs:', e)
   } finally {
     loading.value = false
   }
@@ -356,15 +358,17 @@ const fetchSnapshots = async () => {
       params: { limit: 20 }
     })
     snapshots.value = response.snapshots || []
-  } catch (error) {
-    logger.error('Error fetching snapshots:', error)
+  } catch (e) {
+    logger.error('Error fetching snapshots:', e)
   } finally {
     loadingSnapshots.value = false
   }
 }
 
 const revertToVersion = async (version) => {
-  if (!confirm(`Are you sure you want to revert to version ${version}? This will overwrite the current configuration.`)) {
+  // Show confirmation modal instead of browser confirm
+  const confirmed = await confirm(`Are you sure you want to revert to version ${version}? This will overwrite the current configuration.`)
+  if (!confirmed) {
     return
   }
 
@@ -375,15 +379,15 @@ const revertToVersion = async (version) => {
       body: { version }
     })
 
-    alert(`Successfully reverted to version ${version}`)
+    success(`Successfully reverted to version ${version}`)
     emit('reverted', response.project)
 
     // Refresh logs and snapshots
     await fetchAuditLogs()
     await fetchSnapshots()
-  } catch (error) {
-    logger.error('Error reverting:', error)
-    alert('Failed to revert to version: ' + (error.data?.message || error.message))
+  } catch (e) {
+    logger.error('Error reverting:', e)
+    error('Failed to revert to version: ' + (e.data?.message || e.message))
   } finally {
     reverting.value = false
   }

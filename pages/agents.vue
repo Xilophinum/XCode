@@ -250,7 +250,7 @@
                       </button>
                       <button
                         v-if="!agent.isLocal"
-                        @click="deleteAgent(agent)"
+                        @click="confirmDeleteAgent(agent)"
                         class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                         v-tooltip="'Delete agent'"
                       >
@@ -427,6 +427,30 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete Agent Confirmation Modal -->
+    <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" @click="cancelDeleteAgent">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full" @click.stop>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Delete Agent</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-6">
+          Are you sure you want to delete agent "{{ agentToDelete?.name }}"? This action cannot be undone.
+        </p>
+        <div class="flex justify-end space-x-4">
+          <button
+            @click="cancelDeleteAgent"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Cancel
+          </button>
+          <button
+            @click="deleteAgent"
+            class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -437,6 +461,7 @@ definePageMeta({
 
 const { isDark } = useDarkMode()
 const authStore = useAuthStore()
+const { success, error } = useNotifications()
 
 // State
 const agents = ref([])
@@ -512,7 +537,7 @@ const createAgent = async () => {
     await loadAgents(false) // Pass false since this is not initial load
   } catch (error) {
     logger.error('Error creating agent:', error)
-    alert('Failed to create agent. Please try again.')
+    error('Failed to create agent. Please try again.')
   } finally {
     creating.value = false
   }
@@ -522,9 +547,10 @@ const createAgent = async () => {
 const copyToken = async () => {
   try {
     await navigator.clipboard.writeText(createdAgentToken.value)
-    // You could add a toast notification here
+    success('Agent token copied to clipboard!')
   } catch (error) {
     logger.error('Failed to copy token:', error)
+    error('Failed to copy agent token')
   }
 }
 
@@ -569,25 +595,41 @@ const updateAgent = async () => {
     await loadAgents(false)
   } catch (error) {
     logger.error('Error updating agent:', error)
-    alert('Failed to update agent. Please try again.')
+    error('Failed to update agent. Please try again.')
   }
 }
 
-const deleteAgent = async (agent) => {
-  if (!confirm(`Are you sure you want to delete agent "${agent.name}"?`)) {
-    return
-  }
+// Delete confirmation modal state
+const showDeleteModal = ref(false)
+const agentToDelete = ref(null)
+
+const confirmDeleteAgent = (agent) => {
+  agentToDelete.value = agent
+  showDeleteModal.value = true
+}
+
+const deleteAgent = async () => {
+  if (!agentToDelete.value) return
   
   try {
-    await $fetch(`/api/admin/agents/${agent.id}`, {
+    await $fetch(`/api/admin/agents/${agentToDelete.value.id}`, {
       method: 'DELETE'
     })
     
     // No need to refresh - WebSocket updates will handle removal
-    logger.info(`🗑️ Agent ${agent.name} deleted successfully`)
+    logger.info(`🗑️ Agent ${agentToDelete.value.name} deleted successfully`)
+    success('Agent deleted successfully')
+    showDeleteModal.value = false
+    agentToDelete.value = null
   } catch (error) {
     logger.error('Error deleting agent:', error)
+    error('Failed to delete agent: ' + (error.data?.message || error.message))
   }
+}
+
+const cancelDeleteAgent = () => {
+  showDeleteModal.value = false
+  agentToDelete.value = null
 }
 
 const getStatusBadgeClass = (status) => {
