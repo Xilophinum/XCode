@@ -1,2 +1,287 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+
+/* Tooltip styles */
+.has-tooltip {
+  position: relative;
+}
+
+.has-tooltip::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  padding: 6px 12px;
+  background-color: rgb(31 41 55);
+  color: white;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 50;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  max-width: 300px;
+  width: max-content;
+}
+
+.has-tooltip::after {
+  content: '';
+  position: absolute;
+  border: 4px solid transparent;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 50;
+}
+
+/* Default position: TOP */
+.has-tooltip::before,
+.has-tooltip[data-tooltip-position="top"]::before {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+}
+
+.has-tooltip::after,
+.has-tooltip[data-tooltip-position="top"]::after {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 2px;
+  border-top-color: rgb(31 41 55);
+}
+
+/* Position: BOTTOM */
+.has-tooltip[data-tooltip-position="bottom"]::before {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 8px;
+  bottom: auto;
+  margin-bottom: 0;
+}
+
+.has-tooltip[data-tooltip-position="bottom"]::after {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 2px;
+  bottom: auto;
+  margin-bottom: 0;
+  border-top-color: transparent;
+  border-bottom-color: rgb(31 41 55);
+}
+
+/* Position: LEFT */
+.has-tooltip[data-tooltip-position="left"]::before {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 8px;
+  bottom: auto;
+  left: auto;
+  margin-bottom: 0;
+}
+
+.has-tooltip[data-tooltip-position="left"]::after {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 2px;
+  bottom: auto;
+  left: auto;
+  margin-bottom: 0;
+  border-top-color: transparent;
+  border-left-color: rgb(31 41 55);
+}
+
+/* Position: RIGHT */
+.has-tooltip[data-tooltip-position="right"]::before {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 8px;
+  bottom: auto;
+  margin-bottom: 0;
+}
+
+.has-tooltip[data-tooltip-position="right"]::after {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 2px;
+  bottom: auto;
+  margin-bottom: 0;
+  border-top-color: transparent;
+  border-right-color: rgb(31 41 55);
+}
+
+/* Corner Position: TOP-LEFT */
+.has-tooltip[data-tooltip-position="topleft"]::before {
+  bottom: 100%;
+  left: 0;
+  transform: none;
+  margin-bottom: 8px;
+}
+
+.has-tooltip[data-tooltip-position="topleft"]::after {
+  bottom: 100%;
+  left: 12px;
+  transform: none;
+  margin-bottom: 2px;
+  border-top-color: rgb(31 41 55);
+}
+
+/* Corner Position: TOP-RIGHT */
+.has-tooltip[data-tooltip-position="topright"]::before {
+  bottom: 100%;
+  right: 0;
+  left: auto;
+  transform: none;
+  margin-bottom: 8px;
+}
+
+.has-tooltip[data-tooltip-position="topright"]::after {
+  bottom: 100%;
+  right: 12px;
+  left: auto;
+  transform: none;
+  margin-bottom: 2px;
+  border-top-color: rgb(31 41 55);
+}
+
+/* Corner Position: BOTTOM-LEFT */
+.has-tooltip[data-tooltip-position="bottomleft"]::before {
+  top: 100%;
+  left: 0;
+  bottom: auto;
+  transform: none;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.has-tooltip[data-tooltip-position="bottomleft"]::after {
+  top: 100%;
+  left: 12px;
+  bottom: auto;
+  transform: none;
+  margin-top: 2px;
+  margin-bottom: 0;
+  border-top-color: transparent;
+  border-bottom-color: rgb(31 41 55);
+}
+
+/* Corner Position: BOTTOM-RIGHT */
+.has-tooltip[data-tooltip-position="bottomright"]::before {
+  top: 100%;
+  right: 0;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.has-tooltip[data-tooltip-position="bottomright"]::after {
+  top: 100%;
+  right: 12px;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  margin-top: 2px;
+  margin-bottom: 0;
+  border-top-color: transparent;
+  border-bottom-color: rgb(31 41 55);
+}
+
+/* For elements near the right edge, position tooltip to the left (legacy support) */
+tr td:last-child .has-tooltip:not([data-tooltip-position])::before,
+.flex:last-child .has-tooltip:not([data-tooltip-position])::before {
+  left: auto;
+  right: 0;
+  transform: translateX(0);
+}
+
+tr td:last-child .has-tooltip:not([data-tooltip-position])::after,
+.flex:last-child .has-tooltip:not([data-tooltip-position])::after {
+  left: auto;
+  right: 8px;
+  transform: translateX(0);
+}
+
+/* For elements near the top (like header/nav buttons), show tooltip below (legacy support) */
+header .has-tooltip:not([data-tooltip-position])::before,
+nav .has-tooltip:not([data-tooltip-position])::before {
+  bottom: auto;
+  top: 100%;
+  margin-bottom: 0;
+  margin-top: 8px;
+}
+
+header .has-tooltip:not([data-tooltip-position])::after,
+nav .has-tooltip:not([data-tooltip-position])::after {
+  bottom: auto;
+  top: 100%;
+  margin-bottom: 0;
+  margin-top: 2px;
+  border-top-color: transparent;
+  border-bottom-color: rgb(31 41 55);
+}
+
+.has-tooltip:hover::before,
+.has-tooltip:hover::after {
+  opacity: 1;
+}
+
+/* Dark mode tooltip */
+@media (prefers-color-scheme: dark) {
+  .dark .has-tooltip::before {
+    background-color: rgb(55 65 81);
+  }
+
+  /* Top position (default) */
+  .dark .has-tooltip::after,
+  .dark .has-tooltip[data-tooltip-position="top"]::after {
+    border-top-color: rgb(55 65 81);
+  }
+
+  /* Bottom position */
+  .dark .has-tooltip[data-tooltip-position="bottom"]::after {
+    border-top-color: transparent;
+    border-bottom-color: rgb(55 65 81);
+  }
+
+  /* Left position */
+  .dark .has-tooltip[data-tooltip-position="left"]::after {
+    border-top-color: transparent;
+    border-left-color: rgb(55 65 81);
+  }
+
+  /* Right position */
+  .dark .has-tooltip[data-tooltip-position="right"]::after {
+    border-top-color: transparent;
+    border-right-color: rgb(55 65 81);
+  }
+
+  /* Corner positions - top corners use top arrow */
+  .dark .has-tooltip[data-tooltip-position="topleft"]::after,
+  .dark .has-tooltip[data-tooltip-position="topright"]::after {
+    border-top-color: rgb(55 65 81);
+  }
+
+  /* Corner positions - bottom corners use bottom arrow */
+  .dark .has-tooltip[data-tooltip-position="bottomleft"]::after,
+  .dark .has-tooltip[data-tooltip-position="bottomright"]::after {
+    border-top-color: transparent;
+    border-bottom-color: rgb(55 65 81);
+  }
+
+  /* Legacy auto-positioning support */
+  .dark header .has-tooltip:not([data-tooltip-position])::after,
+  .dark nav .has-tooltip:not([data-tooltip-position])::after {
+    border-top-color: transparent;
+    border-bottom-color: rgb(55 65 81);
+  }
+}

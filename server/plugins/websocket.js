@@ -388,6 +388,10 @@ async function handleAgentRegistration(socket, msg, agentManager) {
     
     // Check for jobs that can retry on this agent reconnection
     await checkRetryableJobsOnReconnect(socket.agentId, agentManager)
+
+    // Process any queued jobs for this agent (from server restart or disconnects)
+    logger.info(`Processing queued jobs for reconnected agent ${socket.agentId}`)
+    await agentManager.processAgentQueue(socket.agentId)
     
     logger.info(`Agent ${updatedAgent.name} registered successfully`)
     logger.info(`Platform: ${agentInfo.platform} (${agentInfo.architecture})`)
@@ -670,7 +674,7 @@ async function handleJobComplete(socket, msg, agentManager) {
   try {
     // Handle the agent job completion (existing functionality)
     agentManager.handleJobComplete(socket.agentId, msg)
-    
+
     // Broadcast job completion to subscribed clients
     if (msg.projectId) {
       broadcastToProject(msg.projectId, {
@@ -684,7 +688,11 @@ async function handleJobComplete(socket, msg, agentManager) {
         timestamp: msg.timestamp || new Date().toISOString()
       })
     }
-    
+
+    // Process queue - dispatch next job if any are queued and agent has capacity
+    logger.debug(`Job ${msg.jobId} completed - processing queue for agent ${socket.agentId}`)
+    await agentManager.processAgentQueue(socket.agentId)
+
   } catch (error) {
     logger.error('Job completion handling error:', error)
   }
@@ -810,6 +818,10 @@ async function handleAgentJobStatus(socket, msg, agentManager) {
           exitCode: exitCode || 1,
           timestamp: msg.timestamp || new Date().toISOString()
         })
+
+        // Process queue - a job slot opened up
+        logger.debug(`Job ${jobId} failed - processing queue for agent ${socket.agentId}`)
+        await agentManager.processAgentQueue(socket.agentId)
         break
 
       case 'cancelled':
@@ -822,6 +834,10 @@ async function handleAgentJobStatus(socket, msg, agentManager) {
           message: message || 'Job was cancelled',
           timestamp: msg.timestamp || new Date().toISOString()
         })
+
+        // Process queue - a job slot opened up
+        logger.debug(`Job ${jobId} cancelled - processing queue for agent ${socket.agentId}`)
+        await agentManager.processAgentQueue(socket.agentId)
         break
 
       case 'cancelling':
@@ -920,40 +936,70 @@ async function handleOrphanedJobs(agentId, agentManager) {
         job.executionCommands[job.currentCommandIndex].requiredAgentId !== 'any'
       
       if (requiresSpecificAgent) {
-        // Job requires specific agent - mark as failed and wait for reconnection
-        logger.info(`⏸️ Job ${job.jobId} requires specific agent ${agentId} - marking as failed (will retry on reconnection)`)
-        
+        // Job requires specific agent - queue it for when agent reconnects
+        logger.info(`📥 Job ${job.jobId} requires specific agent ${agentId} - queuing for agent reconnection`)
+
+        // Get current command details for re-dispatch
+        const currentCommand = job.executionCommands[job.currentCommandIndex]
+
+        // Get job queue manager
+        const { getJobQueueManager } = await import('../utils/jobQueueManager.js')
+        const jobQueueManager = getJobQueueManager()
+
+        // Queue the job with high priority (it was already running)
+        jobQueueManager.enqueueJob(agentId, {
+          jobId: job.jobId,
+          projectId: job.projectId,
+          projectName: job.projectName,
+          buildNumber: job.buildNumber,
+          commands: currentCommand.script,
+          environment: {}, // Will be fetched on dispatch
+          workingDirectory: currentCommand.workingDirectory || '.',
+          timeout: currentCommand.timeout,
+          jobType: currentCommand.type,
+          retryEnabled: currentCommand.retryEnabled,
+          maxRetries: currentCommand.maxRetries,
+          retryDelay: currentCommand.retryDelay,
+          isSequential: true,
+          commandIndex: job.currentCommandIndex,
+          totalCommands: job.executionCommands.length,
+          isOrphanedRetry: true
+        }, 'high')  // High priority since it was interrupted
+
         await jobManager.updateJob(job.jobId, {
-          status: 'failed',
-          error: `${errorMsg}. Job requires specific agent and cannot be reassigned.`,
-          failedAt: new Date(),
-          canRetryOnReconnect: true // Flag for potential retry
+          status: 'queued',
+          error: `${errorMsg}. Queued for agent reconnection.`,
+          queuedAt: new Date().toISOString(),
+          canRetryOnReconnect: true
         })
+
+        logger.info(`✅ Job ${job.jobId} queued for agent ${agentId} reconnection`)
       } else {
-        // Job can run on any agent - attempt reassignment
+        // Job can run on any agent - attempt reassignment with queue support
         logger.info(`🔄 Attempting to reassign job ${job.jobId} to another agent`)
-        
+
         const availableAgent = await agentManager.findAvailableAgent()
-        
+
         if (availableAgent) {
           logger.info(`Reassigning job ${job.jobId} to agent ${availableAgent.agentId}`)
-          
+
           // Get current command to retry
           const currentCommand = job.executionCommands?.[job.currentCommandIndex || 0]
-          
+
           if (currentCommand) {
             // Update job with new agent
             await jobManager.updateJob(job.jobId, {
               agentId: availableAgent.agentId,
               agentName: availableAgent.name || availableAgent.hostname,
-              status: 'running',
               error: null // Clear previous error
             })
-            
-            // Dispatch to new agent
-            const dispatchSuccess = await agentManager.dispatchJobToAgent(availableAgent.agentId, {
+
+            // Dispatch to new agent WITH QUEUE SUPPORT
+            const dispatchResult = await agentManager.dispatchJobWithQueue(availableAgent.agentId, {
               jobId: job.jobId,
               projectId: job.projectId,
+              projectName: job.projectName,
+              buildNumber: job.buildNumber,
               commands: currentCommand.script,
               environment: {},
               workingDirectory: currentCommand.workingDirectory || '.',
@@ -966,15 +1012,60 @@ async function handleOrphanedJobs(agentId, agentManager) {
               commandIndex: job.currentCommandIndex || 0,
               totalCommands: job.executionCommands?.length || 1,
               isReassignment: true
-            })
-            
-            if (!dispatchSuccess) {
-              logger.error(`Failed to reassign job ${job.jobId} - marking as failed`)
+            }, 'high')  // High priority for reassigned jobs
+
+            if (dispatchResult.dispatched) {
               await jobManager.updateJob(job.jobId, {
-                status: 'failed',
-                error: `${errorMsg}. Failed to reassign to available agent.`,
-                failedAt: new Date()
+                status: 'running'
               })
+              logger.info(`✅ Job ${job.jobId} successfully reassigned and dispatched to ${availableAgent.agentId}`)
+            } else if (dispatchResult.queued) {
+              await jobManager.updateJob(job.jobId, {
+                status: 'queued'
+              })
+              logger.info(`📥 Job ${job.jobId} reassigned to ${availableAgent.agentId} and queued at position ${dispatchResult.queuePosition}`)
+            } else {
+              logger.error(`Failed to reassign job ${job.jobId} - queuing for any available agent`)
+              // Queue for ANY agent (will be picked up when any agent has capacity)
+              const { getJobQueueManager } = await import('../utils/jobQueueManager.js')
+              const jobQueueManager = getJobQueueManager()
+
+              // Find all online agents and queue for the first one
+              const allAgents = Array.from(agentManager.agentData.values()).filter(a => a.status !== 'offline')
+              if (allAgents.length > 0) {
+                const targetAgent = allAgents[0]
+                jobQueueManager.enqueueJob(targetAgent.agentId, {
+                  jobId: job.jobId,
+                  projectId: job.projectId,
+                  projectName: job.projectName,
+                  buildNumber: job.buildNumber,
+                  commands: currentCommand.script,
+                  environment: {},
+                  workingDirectory: currentCommand.workingDirectory || '.',
+                  timeout: currentCommand.timeout,
+                  jobType: currentCommand.type,
+                  retryEnabled: currentCommand.retryEnabled,
+                  maxRetries: currentCommand.maxRetries,
+                  retryDelay: currentCommand.retryDelay,
+                  isSequential: true,
+                  commandIndex: job.currentCommandIndex || 0,
+                  totalCommands: job.executionCommands?.length || 1,
+                  isReassignment: true
+                }, 'high')
+
+                await jobManager.updateJob(job.jobId, {
+                  status: 'queued',
+                  agentId: targetAgent.agentId,
+                  agentName: targetAgent.name
+                })
+                logger.info(`📥 Job ${job.jobId} queued for agent ${targetAgent.agentId}`)
+              } else {
+                await jobManager.updateJob(job.jobId, {
+                  status: 'failed',
+                  error: `${errorMsg}. No agents available for reassignment.`,
+                  failedAt: new Date()
+                })
+              }
             }
           } else {
             logger.error(`No current command found for job ${job.jobId} - marking as failed`)
@@ -985,13 +1076,48 @@ async function handleOrphanedJobs(agentId, agentManager) {
             })
           }
         } else {
-          // No available agents - mark as failed
-          logger.info(`No available agents for reassignment - marking job ${job.jobId} as failed`)
-          await jobManager.updateJob(job.jobId, {
-            status: 'failed',
-            error: `${errorMsg}. No available agents for reassignment.`,
-            failedAt: new Date()
-          })
+          // No available agents - queue for when one becomes available
+          logger.info(`No available agents right now - queuing job ${job.jobId}`)
+
+          const currentCommand = job.executionCommands?.[job.currentCommandIndex || 0]
+          if (currentCommand) {
+            const { getJobQueueManager } = await import('../utils/jobQueueManager.js')
+            const jobQueueManager = getJobQueueManager()
+
+            // Queue for ANY agent that comes online
+            // For now, queue on the original agent - when it reconnects, it will process
+            jobQueueManager.enqueueJob(agentId, {
+              jobId: job.jobId,
+              projectId: job.projectId,
+              projectName: job.projectName,
+              buildNumber: job.buildNumber,
+              commands: currentCommand.script,
+              environment: {},
+              workingDirectory: currentCommand.workingDirectory || '.',
+              timeout: currentCommand.timeout,
+              jobType: currentCommand.type,
+              retryEnabled: currentCommand.retryEnabled,
+              maxRetries: currentCommand.maxRetries,
+              retryDelay: currentCommand.retryDelay,
+              isSequential: true,
+              commandIndex: job.currentCommandIndex || 0,
+              totalCommands: job.executionCommands?.length || 1,
+              isReassignment: true
+            }, 'high')
+
+            await jobManager.updateJob(job.jobId, {
+              status: 'queued',
+              error: `${errorMsg}. Queued for agent reconnection.`
+            })
+            logger.info(`📥 Job ${job.jobId} queued for agent ${agentId} reconnection`)
+          } else {
+            logger.error(`No current command found for job ${job.jobId} - marking as failed`)
+            await jobManager.updateJob(job.jobId, {
+              status: 'failed',
+              error: `${errorMsg}. No command to retry.`,
+              failedAt: new Date()
+            })
+          }
         }
       }
       
@@ -1093,42 +1219,79 @@ async function checkRetryableJobsOnReconnect(agentId, agentManager) {
 async function handleServerRestartOrphanedJobs(agentManager) {
   try {
     const activeJobs = await jobManager.getActiveJobs()
-    
+
     if (activeJobs.length === 0) {
       logger.info(`No orphaned jobs found on server restart`)
       return
     }
-    
+
     logger.info(`🚨 Found ${activeJobs.length} orphaned jobs on server restart`)
-    
+
+    // Get job queue manager
+    const { getJobQueueManager } = await import('../utils/jobQueueManager.js')
+    const jobQueueManager = getJobQueueManager()
+
     for (const job of activeJobs) {
       const errorMsg = 'Server restarted during job execution'
-      
-      logger.info(`Marking job ${job.jobId} as failed due to server restart`)
-      
-      await jobManager.updateJob(job.jobId, {
-        status: 'failed',
-        error: errorMsg,
-        failedAt: new Date()
-      })
-      
-      // Update build status if job has associated build
-      if (job.buildNumber) {
-        try {
-          const buildStatsManager = await getBuildStatsManager()
 
-          await buildStatsManager.finishBuild(job.projectId, job.buildNumber, {
-            status: 'failure',
-            message: errorMsg,
-            nodesExecuted: (job.currentCommandIndex || 0) + 1
-          })
-          logger.info(`BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed due to server restart`)
-        } catch (buildError) {
-          logger.warn('Failed to update build record for restart orphaned job:', buildError)
+      logger.info(`📥 Queuing job ${job.jobId} for retry after server restart`)
+
+      // Get current command to retry
+      const currentCommand = job.executionCommands?.[job.currentCommandIndex || 0]
+
+      if (currentCommand && job.agentId) {
+        // Queue the job with high priority (it was already running)
+        jobQueueManager.enqueueJob(job.agentId, {
+          jobId: job.jobId,
+          projectId: job.projectId,
+          projectName: job.projectName,
+          buildNumber: job.buildNumber,
+          commands: currentCommand.script,
+          environment: {}, // Will be fetched on dispatch
+          workingDirectory: currentCommand.workingDirectory || '.',
+          timeout: currentCommand.timeout,
+          jobType: currentCommand.type,
+          retryEnabled: currentCommand.retryEnabled,
+          maxRetries: currentCommand.maxRetries,
+          retryDelay: currentCommand.retryDelay,
+          isSequential: true,
+          commandIndex: job.currentCommandIndex || 0,
+          totalCommands: job.executionCommands?.length || 1,
+          isServerRestartRetry: true
+        }, 'high')  // High priority since it was interrupted
+
+        await jobManager.updateJob(job.jobId, {
+          status: 'queued',
+          error: `${errorMsg}. Queued for retry when agent reconnects.`,
+          canRetryOnReconnect: true
+        })
+
+        logger.info(`✅ Job ${job.jobId} queued for agent ${job.agentId} (will retry when agent reconnects)`)
+      } else {
+        // No command or agent info - mark as failed
+        logger.warn(`Cannot queue job ${job.jobId} - missing command or agent info`)
+        await jobManager.updateJob(job.jobId, {
+          status: 'failed',
+          error: `${errorMsg}. Cannot retry - missing job information.`,
+          failedAt: new Date()
+        })
+
+        // Update build status if job has associated build
+        if (job.buildNumber) {
+          try {
+            const buildStatsManager = await getBuildStatsManager()
+            await buildStatsManager.finishBuild(job.projectId, job.buildNumber, {
+              status: 'failure',
+              message: `${errorMsg}. Cannot retry - missing job information.`,
+              nodesExecuted: (job.currentCommandIndex || 0) + 1
+            })
+          } catch (buildError) {
+            logger.warn('Failed to update build record for restart orphaned job:', buildError)
+          }
         }
       }
     }
-    
+
   } catch (error) {
     logger.error('Error handling server restart orphaned jobs:', error)
   }

@@ -17,7 +17,7 @@
             v-if="nodeData.data.branches.length > 1"
             @click="removeBranch(index)"
             class="px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded"
-            title="Remove branch"
+            v-tooltip="'Remove branch'"
           >
             ✕
           </button>

@@ -5,6 +5,7 @@ import { getExecutionConnectedNodes } from '../api/projects/execute.post.js'
 import { executeParallelBranches } from './orchestrators/parallelBranchesOrchestrator.js'
 import { executeParallelMatrix } from './orchestrators/parallelMatrixOrchestrator.js'
 import { notificationService } from './notificationService.js'
+import { getJobQueueManager } from './jobQueueManager.js'
 import logger, { getBuildLogger } from './logger.js'
 
 class AgentManager {
@@ -15,6 +16,7 @@ class AgentManager {
     this.dataService = null
     this.heartbeatIntervals = new Map() // agentId -> interval
     this.jobCompletionCallbacks = new Map() // jobId -> callback function
+    this.jobQueueManager = null // Lazy loaded
   }
 
   /**
@@ -297,10 +299,12 @@ class AgentManager {
             currentCommandIndex: nextIndex
           })
 
-          // Dispatch next command to the appropriate agent
-          const dispatchSuccess = await this.dispatchJobToAgent(nextAgent.agentId, {
+          // Dispatch next command to the appropriate agent (with queue support)
+          const dispatchResult = await this.dispatchJobWithQueue(nextAgent.agentId, {
             jobId,
             projectId: job.projectId,
+            projectName: job.projectName,
+            buildNumber: job.buildNumber,
             commands: nextCommand.script,
             environment,
             workingDirectory: nextCommand.workingDirectory || '.',
@@ -313,13 +317,18 @@ class AgentManager {
             commandIndex: nextIndex,
             totalCommands: totalCommands
           })
-          
-          if (!dispatchSuccess) {
-            logger.error(`Failed to dispatch next command for job ${jobId}`)
+
+          if (!dispatchResult.dispatched && !dispatchResult.queued) {
+            logger.error(`Failed to dispatch or queue next command for job ${jobId}`)
             await jobManager.updateJob(jobId, {
               status: 'failed',
-              error: 'Failed to dispatch next command in sequence',
+              error: dispatchResult.error || 'Failed to dispatch or queue next command in sequence',
               failedAt: new Date().toISOString()
+            })
+          } else if (dispatchResult.queued) {
+            logger.info(`Next command for job ${jobId} queued at position ${dispatchResult.queuePosition}`)
+            await jobManager.updateJob(jobId, {
+              status: 'queued'
             })
 
             // Update build status if this job is associated with a build
@@ -503,7 +512,7 @@ class AgentManager {
     }
   }
 
-  // Dispatch job to specific agent
+  // Dispatch job to specific agent (low-level method - use dispatchJobWithQueue instead)
   async dispatchJobToAgent(agentId, jobData) {
     const socket = this.connectedAgents.get(agentId)
 
@@ -527,6 +536,139 @@ class AgentManager {
       logger.error(`Failed to dispatch job to agent ${agentId}:`, error)
       return false
     }
+  }
+
+  /**
+   * Dispatch job with queue support - enqueues if agent at capacity
+   * This is the primary method that should be used for job dispatch
+   * @param {string} agentId - Agent ID
+   * @param {object} jobData - Job data
+   * @param {string} priority - 'high' or 'normal' (default: 'normal')
+   * @returns {Promise<object>} { dispatched: boolean, queued: boolean, queuePosition?: number }
+   */
+  async dispatchJobWithQueue(agentId, jobData, priority = 'normal') {
+    // Lazy load job queue manager
+    if (!this.jobQueueManager) {
+      this.jobQueueManager = getJobQueueManager()
+    }
+
+    const agentInfo = this.agentData.get(agentId)
+
+    if (!agentInfo) {
+      logger.error(`Agent ${agentId} not found in agentData`)
+      return { dispatched: false, queued: false, error: 'Agent not found' }
+    }
+
+    const currentJobs = agentInfo.currentJobs || 0
+    const maxJobs = agentInfo.maxConcurrentJobs || 1
+
+    logger.info(`Agent ${agentId} capacity: ${currentJobs}/${maxJobs}`)
+
+    // Check if agent has capacity
+    if (currentJobs < maxJobs) {
+      // Agent has capacity - dispatch immediately
+      logger.info(`✅ Agent ${agentId} has capacity - dispatching immediately`)
+      const success = await this.dispatchJobToAgent(agentId, jobData)
+
+      if (success) {
+        // Broadcast queue status update (queue is empty since we dispatched)
+        this.broadcastQueueStatus(agentId)
+      }
+
+      return { dispatched: success, queued: false }
+    } else {
+      // Agent at capacity - enqueue the job
+      logger.warn(`⏸️  Agent ${agentId} at capacity (${currentJobs}/${maxJobs}) - enqueuing job`)
+
+      const queuePosition = this.jobQueueManager.enqueueJob(agentId, jobData, priority)
+
+      // Broadcast queue status update
+      this.broadcastQueueStatus(agentId)
+
+      return {
+        dispatched: false,
+        queued: true,
+        queuePosition: queuePosition,
+        queueLength: this.jobQueueManager.getQueueLength(agentId)
+      }
+    }
+  }
+
+  /**
+   * Process queue for an agent - dequeue and dispatch next job if capacity available
+   * Called automatically when a job completes
+   * @param {string} agentId - Agent ID
+   */
+  async processAgentQueue(agentId) {
+    if (!this.jobQueueManager) {
+      this.jobQueueManager = getJobQueueManager()
+    }
+
+    const agentInfo = this.agentData.get(agentId)
+
+    if (!agentInfo) {
+      logger.warn(`Cannot process queue for agent ${agentId} - agent not found`)
+      return
+    }
+
+    const currentJobs = agentInfo.currentJobs || 0
+    const maxJobs = agentInfo.maxConcurrentJobs || 1
+    const queueLength = this.jobQueueManager.getQueueLength(agentId)
+
+    logger.debug(`Processing queue for agent ${agentId}: ${currentJobs}/${maxJobs} jobs, ${queueLength} queued`)
+
+    // Keep dispatching jobs while agent has capacity and queue is not empty
+    while (currentJobs < maxJobs && queueLength > 0) {
+      const nextJob = this.jobQueueManager.dequeueNextJob(agentId)
+
+      if (!nextJob) {
+        // Queue is empty
+        break
+      }
+
+      logger.info(`🚀 Dispatching queued job ${nextJob.jobId} to agent ${agentId}`)
+
+      const success = await this.dispatchJobToAgent(agentId, nextJob)
+
+      if (!success) {
+        logger.error(`Failed to dispatch queued job ${nextJob.jobId} - re-enqueueing`)
+        // Re-enqueue at front with high priority
+        this.jobQueueManager.enqueueJob(agentId, nextJob, 'high')
+        break
+      }
+
+      // Update currentJobs count (will be updated by heartbeat, but update immediately for accurate queue processing)
+      agentInfo.currentJobs = (agentInfo.currentJobs || 0) + 1
+
+      // Broadcast queue status after each dispatch
+      this.broadcastQueueStatus(agentId)
+    }
+
+    // Final broadcast after queue processing
+    this.broadcastQueueStatus(agentId)
+  }
+
+  /**
+   * Broadcast queue status for an agent to all connected clients
+   * @param {string} agentId - Agent ID
+   */
+  broadcastQueueStatus(agentId) {
+    if (!this.jobQueueManager || !this.io) {
+      return
+    }
+
+    const queuedJobs = this.jobQueueManager.getQueuedJobs(agentId)
+    const queueLength = queuedJobs.length
+
+    this.io.emit('message', {
+      type: 'agent_queue_update',
+      agentId: agentId,
+      queueLength: queueLength,
+      queuedJobs: queuedJobs,
+      timestamp: new Date().toISOString()
+    })
+
+    logger.debug(`Broadcasted queue status for agent ${agentId}: ${queueLength} jobs queued`)
   }
 
   // Cancel job on specific agent
@@ -991,19 +1133,15 @@ class AgentManager {
         return
       }
 
-      await jobManager.updateJob(parentJobId, {
-        agentId: nextAgent.agentId,
-        agentName: nextAgent.name || nextAgent.hostname,
-        status: 'running'
-      })
-
       // Get environment variables from system settings
       const environment = await this.getEnvironmentVariables()
       logger.debug(`Passing ${Object.keys(environment).length} environment variables to agent for job ${parentJobId}`)
 
-      const dispatchSuccess = await this.dispatchJobToAgent(nextAgent.agentId, {
+      const dispatchResult = await this.dispatchJobWithQueue(nextAgent.agentId, {
         jobId: parentJobId,
         projectId: parentJobUpdated.projectId,
+        projectName: parentJobUpdated.projectName,
+        buildNumber: parentJobUpdated.buildNumber,
         commands: nextCommand.script,
         environment,
         workingDirectory: nextCommand.workingDirectory || '.',
@@ -1017,8 +1155,21 @@ class AgentManager {
         totalCommands: parentJobUpdated.executionCommands.length
       })
 
-      if (!dispatchSuccess) {
-        logger.error(`Failed to dispatch next command for job ${parentJobId}`)
+      if (dispatchResult.dispatched) {
+        await jobManager.updateJob(parentJobId, {
+          agentId: nextAgent.agentId,
+          agentName: nextAgent.name || nextAgent.hostname,
+          status: 'running'
+        })
+      } else if (dispatchResult.queued) {
+        logger.info(`Next command for job ${parentJobId} queued at position ${dispatchResult.queuePosition}`)
+        await jobManager.updateJob(parentJobId, {
+          agentId: nextAgent.agentId,
+          agentName: nextAgent.name || nextAgent.hostname,
+          status: 'queued'
+        })
+      } else {
+        logger.error(`Failed to dispatch or queue next command for job ${parentJobId}`)
         await jobManager.updateJob(parentJobId, {
           status: 'failed',
           error: 'Failed to dispatch next command in sequence',

@@ -398,9 +398,11 @@ export default defineEventHandler(async (event) => {
       buildNumber: currentBuildNumber
     })
 
-    const dispatchSuccess = await agentManager.dispatchJobToAgent(selectedAgent.agentId, {
+    const dispatchResult = await agentManager.dispatchJobWithQueue(selectedAgent.agentId, {
       jobId,
       projectId,
+      projectName: project.name,
+      buildNumber: currentBuildNumber,
       commands: firstCommand.script,
       environment: resolvedEnv,
       workingDirectory: firstCommand.workingDirectory || '.',
@@ -414,8 +416,8 @@ export default defineEventHandler(async (event) => {
       totalCommands: executableCommands.length
     })
 
-    if (!dispatchSuccess) {
-      // Failed to dispatch, clean up job
+    if (!dispatchResult.dispatched && !dispatchResult.queued) {
+      // Failed to dispatch OR queue, clean up job
       await jobManager.deleteJob(jobId)
 
       // Update build record with failure if build was started
@@ -424,7 +426,7 @@ export default defineEventHandler(async (event) => {
           const buildStatsManager = await getBuildStatsManager()
           await buildStatsManager.finishBuild(projectId, currentBuildNumber, {
             status: 'failure',
-            message: 'Failed to dispatch job to agent',
+            message: dispatchResult.error || 'Failed to dispatch or queue job to agent',
             nodesExecuted: 0
           })
         } catch (buildError) {
@@ -434,18 +436,29 @@ export default defineEventHandler(async (event) => {
 
       throw createError({
         statusCode: 503,
-        statusMessage: 'Failed to dispatch job to agent'
+        statusMessage: dispatchResult.error || 'Failed to dispatch or queue job to agent'
       })
     }
 
-    // Update job status to dispatched after successful dispatch
-    await jobManager.updateJob(jobId, {
-      status: 'dispatched',
-      agentId: selectedAgent.agentId,
-      agentName: selectedAgent.name || selectedAgent.hostname
-    })
-
-    logger.info(`Job ${jobId} dispatched to agent ${selectedAgent.agentId}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`)
+    // Update job status based on dispatch result
+    if (dispatchResult.dispatched) {
+      // Job was dispatched immediately
+      await jobManager.updateJob(jobId, {
+        status: 'dispatched',
+        agentId: selectedAgent.agentId,
+        agentName: selectedAgent.name || selectedAgent.hostname
+      })
+      logger.info(`✅ Job ${jobId} dispatched immediately to agent ${selectedAgent.agentId}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`)
+    } else if (dispatchResult.queued) {
+      // Job was queued
+      await jobManager.updateJob(jobId, {
+        status: 'queued',
+        agentId: selectedAgent.agentId,
+        agentName: selectedAgent.name || selectedAgent.hostname
+      })
+      logger.info(`📥 Job ${jobId} queued for agent ${selectedAgent.agentId} at position ${dispatchResult.queuePosition}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`)
+      logger.info(`   Queue length: ${dispatchResult.queueLength}`)
+    }
 
     // Broadcast job started event to WebSocket clients
     if (globalThis.broadcastToProject) {

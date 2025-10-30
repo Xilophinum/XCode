@@ -6,7 +6,7 @@
         <button
           @click="darkMode.toggle()"
           class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          title="Toggle dark mode"
+          v-tooltip="'Toggle dark mode'"
         >
           <!-- Sun icon for light mode -->
           <svg

@@ -103,7 +103,7 @@
         <!-- Admin Tools (for admin users only) -->
         <div v-if="authStore.user?.role === 'admin'" class="mb-8">
           <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Admin Tools</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <!-- Agents Management Card -->
             <NuxtLink
               to="/agents"
@@ -139,6 +139,37 @@
                   </div>
                   <div class="flex-shrink-0">
                     <svg class="w-5 h-5 text-gray-400 group-hover:text-green-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </NuxtLink>
+
+            <!-- Failed Builds Card -->
+            <NuxtLink
+              to="/failures"
+              class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow group"
+            >
+              <div class="p-6">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-md flex items-center justify-center">
+                      <svg class="w-7 h-7 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="ml-5 w-0 flex-1">
+                    <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                      Failed Projects
+                    </h4>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      Projects where latest build failed. View logs and quickly rebuild.
+                    </p>
+                  </div>
+                  <div class="flex-shrink-0">
+                    <svg class="w-5 h-5 text-gray-400 group-hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                     </svg>
                   </div>

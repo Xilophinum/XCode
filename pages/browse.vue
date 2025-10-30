@@ -100,7 +100,7 @@
               <button
                 @click.stop="showAuditHistory(folder)"
                 class="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                title="View history"
+                v-tooltip="'View history'"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -185,7 +185,7 @@
               <button
                 @click.stop="showAuditHistory(project)"
                 class="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                title="View history"
+                v-tooltip="'View history'"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -272,7 +272,7 @@
                   @click.stop="viewBuildHistory(project)"
                   class="text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors"
                   :class="getProjectTextColor(projectBuildStats.get(project.id))"
-                  title="View build history"
+                  v-tooltip="'View build history'"
                 >
                   View History
                 </button>
@@ -285,7 +285,7 @@
                 <button
                   @click.stop="viewBuildHistory(project)"
                   class="text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors text-gray-500 dark:text-gray-400"
-                  title="View build history"
+                  v-tooltip="'View build history'"
                 >
                   View History
                 </button>

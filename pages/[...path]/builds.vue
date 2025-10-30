@@ -268,7 +268,7 @@
                     <button
                       @click="viewBuildLogs(build)"
                       class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                      title="View build logs"
+                      v-tooltip="'View build logs'"
                     >
                       View Logs
                     </button>
