@@ -611,7 +611,7 @@
               />
 
               <!-- Script Editor for execution nodes -->
-              <div v-if="selectedNode.data?.script !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix'].includes(selectedNode.data?.nodeType)">
+              <div v-if="selectedNode.data?.script !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Script</label>
                 <textarea
                   v-model="selectedNode.data.script"
@@ -619,7 +619,7 @@
                   class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
                   placeholder="Enter your script here. Use ${SOCKET_1_INPUT} or ${SocketLabel} to reference input values"
                 ></textarea>
-                
+
                 <!-- Parameter substitution help -->
                 <div v-if="selectedNode.data.inputSockets && selectedNode.data.inputSockets.length > 0" class="mt-2 p-2 bg-blue-50 dark:bg-blue-950 rounded text-xs">
                   <div class="font-medium text-blue-800 dark:text-blue-200 mb-1">Available placeholders:</div>
@@ -632,7 +632,7 @@
               </div>
 
               <!-- Working Directory for execution nodes -->
-              <div v-if="selectedNode.data?.workingDirectory !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix'].includes(selectedNode.data?.nodeType)">
+              <div v-if="selectedNode.data?.workingDirectory !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Working Directory</label>
                 <input
                   v-model="selectedNode.data.workingDirectory"
@@ -646,7 +646,7 @@
               </div>
 
               <!-- Timeout for execution nodes -->
-              <div v-if="selectedNode.data?.timeout !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix'].includes(selectedNode.data?.nodeType)">
+              <div v-if="selectedNode.data?.timeout !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Timeout (seconds)</label>
                 <input
                   v-model.number="selectedNode.data.timeout"
