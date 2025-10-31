@@ -123,10 +123,10 @@ const breadcrumbSegments = computed(() => {
   return [...pathSegments.value, 'build', buildNumber.value]
 })
 
-// Set page title and breadcrumbs
-useHead({
-  title: `Build #${buildNumber.value} - ${project.value?.name || 'Loading...'}`
-})
+// Set page title and breadcrumbs (reactive)
+useHead(() => ({
+  title: computed(() => `Build #${buildNumber.value} - ${project.value?.name || 'Loading...'}`).value
+}))
 
 definePageMeta({
   middleware: 'auth'
