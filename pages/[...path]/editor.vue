@@ -391,11 +391,20 @@
         </div>
 
         <!-- Properties Panel -->
-        <div 
+        <div
           v-if="showPropertiesPanel"
-          class="w-96 lg:w-128 bg-white dark:bg-neutral-800 shadow-sm border-l border-neutral-200 dark:border-neutral-700 overflow-y-auto transition-all duration-300 ease-in-out"
+          class="bg-white dark:bg-neutral-800 shadow-sm border-l border-neutral-200 dark:border-neutral-700 transition-all duration-300 ease-in-out relative flex flex-col"
+          :style="{ width: `${propertiesPanelWidth}px` }"
         >
-          <div class="p-4">
+          <!-- Resize Handle - Fixed to full height of panel -->
+          <div
+            class="fixed bottom-0 w-1 cursor-col-resize hover:bg-blue-500 hover:w-1.5 transition-all z-50"
+            :class="{ 'bg-blue-500 w-1.5': isResizingPanel }"
+            :style="{ left: `calc(100vw - ${propertiesPanelWidth}px)`, top: '64px' }"
+            @mousedown="startResizingPanel"
+          ></div>
+
+          <div class="p-4 overflow-y-auto flex-1">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-medium text-neutral-900 dark:text-white">Node Properties</h3>
               <button
@@ -827,6 +836,10 @@ const currentBuildNumber = ref(null)
 const showNodesPanel = ref(false)
 const showPropertiesPanel = ref(false)
 
+// Properties panel resize state
+const propertiesPanelWidth = ref(384) // Default width in pixels (w-96 = 384px)
+const isResizingPanel = ref(false)
+
 // Vue Flow state
 const nodes = ref([])
 const edges = ref([])
@@ -1027,6 +1040,74 @@ const toggleNodesPanel = () => {
 
 const togglePropertiesPanel = () => {
   showPropertiesPanel.value = !showPropertiesPanel.value
+}
+
+// Properties panel resize handlers
+const startResizingPanel = (event) => {
+  isResizingPanel.value = true
+  event.preventDefault()
+
+  // Add CSS class to prevent text selection during resize
+  document.body.classList.add('resizing-panel')
+
+  const startX = event.clientX
+  const startWidth = propertiesPanelWidth.value
+
+  // Get DOM references for direct manipulation (bypass Vue reactivity for performance)
+  const panelElement = event.target.closest('.bg-white.dark\\:bg-neutral-800')
+  const handleElement = event.target
+
+  // Disable transitions during resize for instant response
+  if (panelElement) {
+    panelElement.style.transition = 'none'
+  }
+  if (handleElement) {
+    handleElement.style.transition = 'none'
+  }
+
+  let currentWidth = startWidth
+
+  const handleMouseMove = (e) => {
+    if (!isResizingPanel.value) return
+
+    // Calculate new width (dragging left increases width, dragging right decreases)
+    const deltaX = startX - e.clientX
+    const newWidth = Math.max(300, Math.min(1600, startWidth + deltaX)) // Min 300px, Max 1600px
+    currentWidth = newWidth
+
+    // Directly update DOM styles for instant response (no Vue reactivity delay)
+    if (panelElement) {
+      panelElement.style.width = `${newWidth}px`
+    }
+    if (handleElement) {
+      handleElement.style.left = `calc(100vw - ${newWidth}px)`
+    }
+  }
+
+  const handleMouseUp = () => {
+    isResizingPanel.value = false
+    document.body.classList.remove('resizing-panel')
+
+    // Re-enable transitions
+    if (panelElement) {
+      panelElement.style.transition = ''
+    }
+    if (handleElement) {
+      handleElement.style.transition = ''
+    }
+
+    // Sync final width with Vue state
+    propertiesPanelWidth.value = currentWidth
+
+    document.removeEventListener('mousemove', handleMouseMove)
+    document.removeEventListener('mouseup', handleMouseUp)
+
+    // Save to localStorage for persistence
+    localStorage.setItem('propertiesPanelWidth', currentWidth.toString())
+  }
+
+  document.addEventListener('mousemove', handleMouseMove)
+  document.addEventListener('mouseup', handleMouseUp)
 }
 
 // Modal confirmation methods
@@ -2001,11 +2082,17 @@ const checkCurrentBuildStatus = async () => {
 
 // Initialize editor on mount
 onMounted(async () => {
+  // Load saved panel width from localStorage
+  const savedWidth = localStorage.getItem('propertiesPanelWidth')
+  if (savedWidth) {
+    propertiesPanelWidth.value = parseInt(savedWidth)
+  }
+
   // Ensure authentication is initialized before loading data
   if (!authStore.isAuthenticated) {
     await authStore.initializeAuth()
   }
-  
+
   // Only load data if authenticated
   if (authStore.isAuthenticated) {
     // Load projects first to ensure we have the project data
@@ -2069,6 +2156,16 @@ const toggleProjectStatus = async () => {
 <style scoped>
 :deep(html), :deep(body) {
   overflow: hidden;
+}
+
+/* Prevent text selection during panel resize */
+body.resizing-panel {
+  user-select: none;
+  cursor: col-resize !important;
+}
+
+body.resizing-panel * {
+  cursor: col-resize !important;
 }
 
 :deep(.vue-flow__background) {
@@ -2180,10 +2277,6 @@ const toggleProjectStatus = async () => {
 
 :deep(.vue-flow__node.node-failed) {
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5);
-}
-
-:deep(.vue-flow__node.node-idle) {
-  /* Default state - no special styling */
 }
 
 /* Edge execution state styles */
