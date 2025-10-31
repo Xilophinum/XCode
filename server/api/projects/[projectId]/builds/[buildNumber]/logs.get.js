@@ -46,8 +46,20 @@ export default defineEventHandler(async (event) => {
           message: logEntry.message || String(logEntry),
           source: logEntry.source || 'Agent', // source is the nodeLabel
           timestamp: logEntry.timestamp,
+          nanotime: logEntry.nanotime,
           value: logEntry.value
         }))
+        
+        // Sort logs by nanotime to ensure correct order
+        logs.sort((a, b) => {
+          const aNano = a.nanotime || '0'
+          const bNano = b.nanotime || '0'
+          // Use string comparison for BigInt strings to avoid conversion overhead
+          if (aNano.length !== bNano.length) {
+            return aNano.length - bNano.length
+          }
+          return aNano < bNano ? -1 : aNano > bNano ? 1 : 0
+        })
       } catch (e) {
         logger.info(`Error parsing database logs:`, e)
         logs = []

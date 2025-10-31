@@ -398,12 +398,15 @@ export default defineEventHandler(async (event) => {
       buildNumber: currentBuildNumber
     })
 
+    // For dependency and git nodes, send the entire command object; for script nodes, send just the script
+    const isDependencyOrGitNode = ['npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(firstCommand.type)
+    
     const dispatchResult = await agentManager.dispatchJobWithQueue(selectedAgent.agentId, {
       jobId,
       projectId,
       projectName: project.name,
       buildNumber: currentBuildNumber,
-      commands: firstCommand.script,
+      commands: isDependencyOrGitNode ? firstCommand : firstCommand.script,
       environment: resolvedEnv,
       workingDirectory: firstCommand.workingDirectory || '.',
       timeout: firstCommand.timeout,
@@ -807,17 +810,100 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
       break
 
     case 'npm-install':
-    case 'pip-install':
-    case 'go-mod':
-    case 'bundle-install':
-    case 'composer-install':
-    case 'cargo-build':
-      // Dependency installation nodes
       commands.push({
         type: nodeType,
         nodeId: node.id,
         nodeLabel: node.data.label,
-        ...node.data,
+        packageManager: node.data.packageManager,
+        script: node.data.script,
+        installArgs: node.data.installArgs,
+        useExistingFile: node.data.useExistingFile,
+        workingDirectory: node.data.workingDirectory || '.',
+        timeout: node.data.timeout ? node.data.timeout * 1000 : 600000,
+        requiredAgentId: node.data.agentId,
+        retryEnabled: node.data.retryEnabled || false,
+        maxRetries: node.data.maxRetries || 3,
+        retryDelay: node.data.retryDelay || 5
+      })
+      break
+
+    case 'pip-install':
+      commands.push({
+        type: nodeType,
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        pythonVersion: node.data.pythonVersion,
+        script: node.data.script,
+        installArgs: node.data.installArgs,
+        useExistingFile: node.data.useExistingFile,
+        workingDirectory: node.data.workingDirectory || '.',
+        timeout: node.data.timeout ? node.data.timeout * 1000 : 600000,
+        requiredAgentId: node.data.agentId,
+        retryEnabled: node.data.retryEnabled || false,
+        maxRetries: node.data.maxRetries || 3,
+        retryDelay: node.data.retryDelay || 5
+      })
+      break
+
+    case 'go-mod':
+      commands.push({
+        type: nodeType,
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        command: node.data.command,
+        script: node.data.script,
+        useExistingFile: node.data.useExistingFile,
+        workingDirectory: node.data.workingDirectory || '.',
+        timeout: node.data.timeout ? node.data.timeout * 1000 : 600000,
+        requiredAgentId: node.data.agentId,
+        retryEnabled: node.data.retryEnabled || false,
+        maxRetries: node.data.maxRetries || 3,
+        retryDelay: node.data.retryDelay || 5
+      })
+      break
+
+    case 'bundle-install':
+      commands.push({
+        type: nodeType,
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        script: node.data.script,
+        installArgs: node.data.installArgs,
+        useExistingFile: node.data.useExistingFile,
+        workingDirectory: node.data.workingDirectory || '.',
+        timeout: node.data.timeout ? node.data.timeout * 1000 : 600000,
+        requiredAgentId: node.data.agentId,
+        retryEnabled: node.data.retryEnabled || false,
+        maxRetries: node.data.maxRetries || 3,
+        retryDelay: node.data.retryDelay || 5
+      })
+      break
+
+    case 'composer-install':
+      commands.push({
+        type: nodeType,
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        script: node.data.script,
+        installArgs: node.data.installArgs,
+        useExistingFile: node.data.useExistingFile,
+        workingDirectory: node.data.workingDirectory || '.',
+        timeout: node.data.timeout ? node.data.timeout * 1000 : 600000,
+        requiredAgentId: node.data.agentId,
+        retryEnabled: node.data.retryEnabled || false,
+        maxRetries: node.data.maxRetries || 3,
+        retryDelay: node.data.retryDelay || 5
+      })
+      break
+
+    case 'cargo-build':
+      commands.push({
+        type: nodeType,
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        buildType: node.data.buildType,
+        script: node.data.script,
+        useExistingFile: node.data.useExistingFile,
         workingDirectory: node.data.workingDirectory || '.',
         timeout: node.data.timeout ? node.data.timeout * 1000 : 600000,
         requiredAgentId: node.data.agentId,

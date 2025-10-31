@@ -10,13 +10,13 @@ import { v4 as uuidv4 } from 'uuid'
 import { eq, and } from 'drizzle-orm'
 import logger from './logger.js'
 import { executionStateManager } from './executionStateManager.js'
+import { getBuildStatsManager } from './buildStatsManager.js'
 
 class JobManager {
   constructor() {
     // In-memory cache for active jobs (performance)
     this.jobs = new Map()
     this.jobsByProject = new Map() // projectId -> Set of jobIds
-    this.outputSequence = new Map() // jobId -> next sequence number
     this.db = null
 
     logger.info('Job Manager initialized with database persistence')
@@ -78,9 +78,6 @@ class JobManager {
       this.jobsByProject.set(projectId, new Set())
     }
     this.jobsByProject.get(projectId).add(jobId)
-    
-    // Initialize output sequence
-    this.outputSequence.set(jobId, 0)
 
     logger.info(`Created job ${jobId} for project "${jobData.projectName || projectId}" (persisted to database)`)
 
@@ -104,7 +101,8 @@ class JobManager {
         level: 'success',
         message: `Job created: ${jobId}`,
         source: 'System',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        nanotime: (Date.now() * 1000000).toString()
       })
     }
 
@@ -118,7 +116,8 @@ class JobManager {
         agentId: jobData.agentId,
         agentName: jobData.agentName,
         status: jobData.status || 'created',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        nanotime: (Date.now() * 1000000).toString()
       })
     }
 
@@ -225,7 +224,8 @@ class JobManager {
         agentName: job.agentName,
         buildNumber: job.buildNumber,
         updates: updates,
-        timestamp: now
+        timestamp: now,
+        nanotime: (Date.now() * 1000000).toString()
       })
     }
     
@@ -283,63 +283,30 @@ class JobManager {
       logger.debug(`No credentialResolver available for job ${jobId} - output not masked`)
     }
 
-    // Get next sequence number
-    const sequence = this.outputSequence.get(jobId) || 0
-    this.outputSequence.set(jobId, sequence + 1)
-
     // Prepare output entry with masked content
     // Use nodeLabel from job's current execution context as the source
     // nodeId is tracked separately via executionStateManager, not in logs
     const nodeLabel = outputLine.nodeLabel || job.currentNodeLabel || null
 
     const outputEntry = {
-      sequence: sequence,
       type: outputLine.type || 'info',
       level: outputLine.level || 'info',
       message: maskedMessage,
       command: outputLine.command || null,
       output: outputLine.output || null,
       source: nodeLabel || outputLine.source || 'Agent',
-      timestamp: outputLine.timestamp
+      timestamp: outputLine.timestamp,
+      nanotime: outputLine.nanotime || process.hrtime.bigint().toString()
     }
 
-    // Update database with single-row JSON approach
-    if (!this.db) await this.initialize()
-
-    // Store job output in builds table
-    try {
-      const db = await getDB()
-
-      if (job.buildNumber) {
-        const buildResults = await db.select({ outputLog: builds.outputLog }).from(builds).where(and(
-          eq(builds.projectId, job.projectId),
-          eq(builds.buildNumber, job.buildNumber)
-        ))
-        const build = buildResults[0]
-
-        let currentLog = []
-        if (build && build.outputLog) {
-          try {
-            currentLog = JSON.parse(build.outputLog)
-          } catch (e) {
-            currentLog = []
-          }
-        }
-
-        // Add new entry
-        currentLog.push(outputEntry)
-
-        await db.update(builds).set({
-          outputLog: JSON.stringify(currentLog),
-          updatedAt: now
-        }).where(and(
-          eq(builds.projectId, job.projectId),
-          eq(builds.buildNumber, job.buildNumber)
-        ))
+    // Persist agent output to database (System messages persisted separately in createJob)
+    if (job.buildNumber && outputEntry.source !== 'System') {
+      try {
+        const buildStatsManager = await getBuildStatsManager()
+        await buildStatsManager.addBuildLog(job.projectId, job.buildNumber, outputEntry)
+      } catch (dbError) {
+        logger.warn(`Failed to persist job output to database:`, dbError.message)
       }
-
-    } catch (dbError) {
-      logger.warn(`Failed to persist job output to database:`, dbError.message)
     }
 
     // Update execution state based on output
@@ -547,7 +514,6 @@ class JobManager {
         }
         
         this.jobs.delete(jobId)
-        this.outputSequence.delete(jobId)
       }
     }
 

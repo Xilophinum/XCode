@@ -675,8 +675,23 @@ async function handleJobComplete(socket, msg, agentManager) {
     // Handle the agent job completion (existing functionality)
     agentManager.handleJobComplete(socket.agentId, msg)
 
-    // Broadcast job completion to subscribed clients
+    // Persist job completion message to database
     if (msg.projectId) {
+      const job = await jobManager.getJob(msg.jobId)
+      if (job?.buildNumber) {
+        const buildStatsManager = await getBuildStatsManager()
+        const completionMessage = msg.result?.message || msg.message || `Job completed successfully (exit code: ${msg.result?.exitCode || 0})`
+        await buildStatsManager.addBuildLog(msg.projectId, job.buildNumber, {
+          type: 'log',
+          level: 'success',
+          message: `Job completed: ${completionMessage}`,
+          source: 'System',
+          timestamp: msg.timestamp || new Date().toISOString(),
+          nanotime: (Date.now() * 1000000).toString()
+        })
+      }
+
+      // Broadcast job completion to subscribed clients
       broadcastToProject(msg.projectId, {
         type: 'job_complete',
         jobId: msg.jobId,
@@ -685,7 +700,8 @@ async function handleJobComplete(socket, msg, agentManager) {
         result: msg.result,
         message: msg.result?.message || msg.message || `Job completed (exit code: ${msg.result?.exitCode || 0})`,
         exitCode: msg.result?.exitCode || 0,
-        timestamp: msg.timestamp || new Date().toISOString()
+        timestamp: msg.timestamp || new Date().toISOString(),
+        nanotime: (Date.now() * 1000000).toString()
       })
     }
 

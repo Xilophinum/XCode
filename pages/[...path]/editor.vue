@@ -633,6 +633,31 @@
                 </div>
               </div>
 
+              <!-- Working Directory for execution nodes -->
+              <div v-if="selectedNode.data?.workingDirectory !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix'].includes(selectedNode.data?.nodeType)">
+                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Working Directory</label>
+                <input
+                  v-model="selectedNode.data.workingDirectory"
+                  type="text"
+                  class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+                  placeholder="."
+                >
+                <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  Directory where the script will execute. Relative to agent's workspace.
+                </p>
+              </div>
+
+              <!-- Timeout for execution nodes -->
+              <div v-if="selectedNode.data?.timeout !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix'].includes(selectedNode.data?.nodeType)">
+                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Timeout (seconds)</label>
+                <input
+                  v-model.number="selectedNode.data.timeout"
+                  type="number"
+                  min="1"
+                  class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+                >
+              </div>
+
               <CredentialBinding 
                 v-if="selectedNode.data?.executionNode"
                 v-model="selectedNode.data.credentials" 

@@ -139,6 +139,7 @@ export class BuildStatsManager {
     // Note: source is now the nodeLabel for display purposes
     const newLogEntry = {
       timestamp: logEntry.timestamp || now,
+      nanotime: logEntry.nanotime || process.hrtime.bigint().toString(),
       level: logEntry.level || 'info',
       message: logEntry.message,
       source: logEntry.source || 'System', // source is the nodeLabel
@@ -146,6 +147,17 @@ export class BuildStatsManager {
     }
 
     logs.push(newLogEntry)
+
+    // Sort logs by nanotime to ensure correct order
+    logs.sort((a, b) => {
+      const aNano = a.nanotime || '0'
+      const bNano = b.nanotime || '0'
+      // Use string comparison for BigInt strings to avoid conversion overhead
+      if (aNano.length !== bNano.length) {
+        return aNano.length - bNano.length
+      }
+      return aNano < bNano ? -1 : aNano > bNano ? 1 : 0
+    })
 
     // Update build with new logs
     await this.db.update(builds)

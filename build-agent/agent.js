@@ -652,15 +652,22 @@ class XCodeBuildAgent {
       let finalArgs = [];
 
       if (executorConfig.type === 'git' || executorConfig.type === 'dependency') {
-        // For dependency nodes, script is already the full command string
-        finalArgs = script.split(' ').filter(arg => arg.trim());
+        // For git/dependency nodes, script is the full command - don't split it
+        // It will be executed via shell
+        finalArgs = [script];
       } else if (executorConfig.type === 'interpreter' && script) {
         finalArgs = [...executorConfig.args];
-        const tempDir = os.tmpdir()
+        const targetWorkingDir = workingDirectory || process.cwd();
+        const resolvedWorkingDir = path.resolve(targetWorkingDir);
         
-        tempFile = path.join(tempDir, `xcode_job_${Date.now()}${executorConfig.extension || '.tmp'}`);
+        // Create temp file in working directory instead of system temp
+        tempFile = path.join(resolvedWorkingDir, `xcode_job_${Date.now()}${executorConfig.extension || '.tmp'}`);
         
         try {
+          // Ensure working directory exists
+          if (!fs.existsSync(resolvedWorkingDir)) {
+            fs.mkdirSync(resolvedWorkingDir, { recursive: true });
+          }
           fs.writeFileSync(tempFile, script, 'utf8');
           finalArgs.push(tempFile);
         } catch (error) {
@@ -681,19 +688,32 @@ class XCodeBuildAgent {
         fs.mkdirSync(resolvedWorkingDir, { recursive: true });
       }
 
-      logger.info(`Executing: ${executorConfig.command} ${finalArgs.join(' ')}`);
-      logger.debug(`Working directory: ${resolvedWorkingDir}`);
-      logger.debug(`Received ${Object.keys(environment || {}).length} environment variables from server`);
-
       const mergedEnv = { ...process.env, ...environment };
-      logger.debug(`Total environment variables for spawn: ${Object.keys(mergedEnv).length}`);
-
-      const child = spawn(executorConfig.command, finalArgs, {
-        cwd: resolvedWorkingDir,
-        env: mergedEnv,
-        stdio: ['inherit', 'pipe', 'pipe'],
-        shell: executorConfig.type === 'git' || executorConfig.type === 'dependency' ? true : (executorConfig.useShell || false)
-      });
+      
+      // For dependency/git nodes, execute command string directly via shell
+      const useShell = executorConfig.type === 'git' || executorConfig.type === 'dependency';
+      
+      if (useShell) {
+        logger.info(`Executing via shell: ${script}`);
+        logger.debug(`Working directory: ${resolvedWorkingDir}`);
+      } else {
+        logger.info(`Executing: ${executorConfig.command} ${finalArgs.join(' ')}`);
+        logger.debug(`Working directory: ${resolvedWorkingDir}`);
+      }
+      
+      const child = useShell
+        ? spawn(script, [], {
+            cwd: resolvedWorkingDir,
+            env: mergedEnv,
+            stdio: ['inherit', 'pipe', 'pipe'],
+            shell: true
+          })
+        : spawn(executorConfig.command, finalArgs, {
+            cwd: resolvedWorkingDir,
+            env: mergedEnv,
+            stdio: ['inherit', 'pipe', 'pipe'],
+            shell: executorConfig.useShell || false
+          });
 
       // Store child process reference for cancellation
       if (jobId && this.currentJobs.has(jobId)) {
@@ -703,6 +723,8 @@ class XCodeBuildAgent {
       let output = '';
       let errorOutput = '';
       let timeoutId = null;
+      const startTime = Date.now();
+      let outputCounter = 0; // Shared counter for both stdout and stderr
 
       child.stdout.on('data', (data) => {
         const chunk = data.toString();
@@ -713,12 +735,13 @@ class XCodeBuildAgent {
           const job = this.currentJobs.get(jobId);
           const lines = chunk.split('\n').filter(line => line.trim());
           
-          lines.forEach(line => {
+          lines.forEach((line) => {
             const outputLine = {
               type: 'info',
               level: 'info',
               message: line.trim(),
               timestamp: new Date().toISOString(),
+              nanotime: (Date.now() * 1000000 + outputCounter++).toString(),
               source: 'Agent'
             };
             
@@ -743,12 +766,13 @@ class XCodeBuildAgent {
           const job = this.currentJobs.get(jobId);
           const lines = chunk.split('\n').filter(line => line.trim());
           
-          lines.forEach(line => {
+          lines.forEach((line) => {
             const outputLine = {
               type: 'error',
               level: 'error',
               message: line.trim(),
               timestamp: new Date().toISOString(),
+              nanotime: (Date.now() * 1000000 + outputCounter++).toString(),
               source: 'Agent'
             };
             
@@ -890,6 +914,9 @@ class XCodeBuildAgent {
   }
 
   buildDependencyCommand(jobType, nodeData, workingDir) {
+    logger.info(`🔧 Building dependency command for ${jobType}`);
+    logger.debug(`Node data keys: ${Object.keys(nodeData).join(', ')}`);
+    
     const getFilename = (type) => {
       const filenames = {
         'npm-install': 'package.json',
@@ -905,6 +932,9 @@ class XCodeBuildAgent {
     const filename = getFilename(jobType)
     const targetDir = path.resolve(workingDir)
     const filePath = path.join(targetDir, filename)
+    
+    logger.info(`📁 Target directory: ${targetDir}`);
+    logger.info(`📄 Target file: ${filePath}`);
 
     // Ensure working directory exists
     if (!fs.existsSync(targetDir)) {
@@ -914,36 +944,48 @@ class XCodeBuildAgent {
 
     // Check if we should use existing file
     if (nodeData.useExistingFile) {
+      logger.info(`🔍 Checking for existing ${filename}...`);
       if (!fs.existsSync(filePath)) {
         throw new Error(`${filename} not found in ${targetDir}. Either provide script content or ensure file exists in repository.`)
       }
       logger.info(`📦 Using existing ${filename} from ${targetDir}`)
     } else {
       // Write user-provided content
+      logger.info(`✍️ Writing ${filename} content...`);
       if (!nodeData.script || nodeData.script.trim() === '') {
         throw new Error(`Script content required for ${filename}. Either provide content or check "Use existing file".`)
       }
       fs.writeFileSync(filePath, nodeData.script, 'utf8')
-      logger.info(`📝 Wrote ${filename} to ${filePath}`)
+      logger.info(`📝 Wrote ${filename} to ${filePath}`);
     }
 
-    // Return install command
+    // Build install command
+    let installCmd = '';
     switch (jobType) {
       case 'npm-install':
-        return `${nodeData.packageManager || 'npm'} install ${nodeData.installArgs || ''}`
+        installCmd = `${nodeData.packageManager || 'npm'} install ${nodeData.installArgs || ''}`
+        break;
       case 'pip-install':
-        return `${nodeData.pythonVersion || 'python3'} -m pip install -r requirements.txt ${nodeData.installArgs || ''}`
+        installCmd = `${nodeData.pythonVersion || 'python3'} -m pip install -r requirements.txt ${nodeData.installArgs || ''}`
+        break;
       case 'go-mod':
-        return `go mod ${nodeData.command || 'download'}`
+        installCmd = `go mod ${nodeData.command || 'download'}`
+        break;
       case 'bundle-install':
-        return `bundle install ${nodeData.installArgs || ''}`
+        installCmd = `bundle install ${nodeData.installArgs || ''}`
+        break;
       case 'composer-install':
-        return `composer install ${nodeData.installArgs || ''}`
+        installCmd = `composer install ${nodeData.installArgs || ''}`
+        break;
       case 'cargo-build':
-        return `cargo build ${nodeData.buildType === 'release' ? '--release' : ''}`
+        installCmd = `cargo build ${nodeData.buildType === 'release' ? '--release' : ''}`
+        break;
       default:
-        return ''
+        installCmd = ''
     }
+    
+    logger.info(`🚀 Install command: ${installCmd}`);
+    return installCmd;
   }
 
   getExecutorConfig(jobType, isWindows) {
@@ -1071,7 +1113,7 @@ class XCodeBuildAgent {
         name: 'NPM Install',
         type: 'dependency',
         command: 'npm',
-        capabilities: ['npm']
+        capabilities: ['npm', 'pnpm', 'yarn', 'bun']
       },
       'pip-install': {
         name: 'Pip Install',

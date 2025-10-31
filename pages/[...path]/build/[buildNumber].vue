@@ -529,7 +529,8 @@ const checkCurrentBuildStatus = async () => {
               logEntry.type || logEntry.level || 'info',
               logEntry.message,
               logEntry.value,
-              logEntry.timestamp // Preserve original timestamp
+              logEntry.timestamp, // Preserve original timestamp
+              logEntry.nanotime // Preserve nanotime for ordering
             )
           })
           // Load execution state from API (gets from memory for active builds)
@@ -650,7 +651,8 @@ onMounted(async () => {
           logEntry.type || logEntry.level || 'info',
           logEntry.message,
           logEntry.value,
-          logEntry.timestamp
+          logEntry.timestamp,
+          logEntry.nanotime
         )
       })
     }
@@ -661,10 +663,21 @@ onMounted(async () => {
   // Load existing terminal messages from WebSocket store
   const existingMessages = webSocketStore.getJobMessages(project.value.id)
   if (existingMessages && existingMessages.length > 0) {
-    terminalMessages.value = existingMessages.map(msg => ({
+    // Sort by nanotime before displaying
+    const sortedMessages = [...existingMessages].sort((a, b) => {
+      const aNano = a.nanotime || '0'
+      const bNano = b.nanotime || '0'
+      if (aNano.length !== bNano.length) {
+        return aNano.length - bNano.length
+      }
+      return aNano < bNano ? -1 : aNano > bNano ? 1 : 0
+    })
+    
+    terminalMessages.value = sortedMessages.map(msg => ({
       level: msg.level,
-      text: `[${new Date(msg.timestamp).toLocaleTimeString()}] ${msg.message}`,
-      timestamp: new Date(msg.timestamp)
+      text: `[${new Date(msg.timestamp).toLocaleTimeString()}] [${msg.nodeLabel}] ${msg.message}`,
+      timestamp: new Date(msg.timestamp),
+      nanotime: msg.nanotime
     }))
   } else {
     // If no messages in WebSocket store, load from database for historical builds
@@ -684,12 +697,33 @@ onMounted(async () => {
 
   // Watch for new WebSocket messages
   watch(() => webSocketStore.getJobMessages(project.value.id), (newMessages) => {
-    if (newMessages && newMessages.length > terminalMessages.value.length) {
-      const latestMessage = newMessages[newMessages.length - 1]
-      addTerminalMessage(latestMessage.level, latestMessage.message, latestMessage.nodeLabel)
+    if (newMessages && newMessages.length > 0) {
+      // Sort all messages by nanotime and rebuild terminal display
+      const sortedMessages = [...newMessages].sort((a, b) => {
+        const aNano = a.nanotime || '0'
+        const bNano = b.nanotime || '0'
+        if (aNano.length !== bNano.length) {
+          return aNano.length - bNano.length
+        }
+        return aNano < bNano ? -1 : aNano > bNano ? 1 : 0
+      })
+      
+      terminalMessages.value = sortedMessages.map(msg => ({
+        level: msg.level,
+        text: `[${new Date(msg.timestamp).toLocaleTimeString()}] [${msg.nodeLabel}] ${msg.message}`,
+        timestamp: new Date(msg.timestamp),
+        nanotime: msg.nanotime
+      }))
+      
+      // Auto-scroll to bottom
+      nextTick(() => {
+        if (terminalRef.value) {
+          terminalRef.value.scrollTop = terminalRef.value.scrollHeight
+        }
+      })
 
       // Node execution state is now tracked server-side via executionStateManager
-      // Just reload the state from the API to get the latest
+      const latestMessage = sortedMessages[sortedMessages.length - 1]
       if (latestMessage.nodeLabel === 'System' && latestMessage.message?.includes('Job completed')) {
         // Reload execution state from API when job completes
         loadExecutionState()

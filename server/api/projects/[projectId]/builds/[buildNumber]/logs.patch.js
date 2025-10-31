@@ -33,6 +33,7 @@ export default defineEventHandler(async (event) => {
         output: body.output,
         source: body.nodeLabel || body.source || 'Agent',
         timestamp: body.timestamp,
+        nanotime: body.nanotime,
         metadata: body.metadata
       })
     }

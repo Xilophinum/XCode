@@ -206,15 +206,15 @@ export const useWebSocketStore = defineStore('websocket', () => {
     
     switch (type) {
       case 'webhook_trigger_fired':
-        addJobMessage(projectId, 'System', 'info', `🎣 Webhook triggered: ${message.webhookNodeLabel || message.endpoint}`)
+        addJobMessage(projectId, 'System', 'info', `🎣 Webhook triggered: ${message.webhookNodeLabel || message.endpoint}`, undefined, message.timestamp, message.nanotime)
         break
 
       case 'webhook_trigger_error':
-        addJobMessage(projectId, 'System', 'error', `Webhook trigger error: ${message.error}`)
+        addJobMessage(projectId, 'System', 'error', `Webhook trigger error: ${message.error}`, undefined, message.timestamp, message.nanotime)
         break
 
       case 'cron_trigger_fired':
-        addJobMessage(projectId, 'System', 'info', `⏰ Cron trigger fired: ${message.cronExpression || message.cronNodeLabel}`)
+        addJobMessage(projectId, 'System', 'info', `⏰ Cron trigger fired: ${message.cronExpression || message.cronNodeLabel}`, undefined, message.timestamp, message.nanotime)
         break
         
       case 'cron_job_starting':
@@ -229,11 +229,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
             nodeId: message.nodeId,
             trigger: 'cron'
           })
-          addJobMessage(projectId, 'System', 'success', `🤖 Job started on agent ${message.agentName || message.agentId}`)
-          addJobMessage(projectId, 'System', 'info', `Build #: ${message.buildNumber}`)
+          addJobMessage(projectId, 'System', 'success', `🤖 Job started on agent ${message.agentName || message.agentId}`, undefined, message.timestamp, message.nanotime)
+          addJobMessage(projectId, 'System', 'info', `Build #: ${message.buildNumber}`, undefined, message.timestamp, message.nanotime)
         } else {
           // Fallback message when job details aren't available yet
-          addJobMessage(projectId, 'System', 'info', `Cron job starting for ${message.cronNodeLabel || 'trigger'}...`)
+          addJobMessage(projectId, 'System', 'info', `Cron job starting for ${message.cronNodeLabel || 'trigger'}...`, undefined, message.timestamp, message.nanotime)
         }
         break
         
@@ -247,10 +247,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
           nodeId: message.cronNodeId,
           trigger: 'cron'
         })
-        addJobMessage(projectId, 'System', 'success', `🤖 Cron job started on agent ${message.agentName}`)
-        addJobMessage(projectId, 'System', 'info', `Job ID: ${message.jobId}`)
+        addJobMessage(projectId, 'System', 'success', `🤖 Cron job started on agent ${message.agentName}`, undefined, message.timestamp, message.nanotime)
+        addJobMessage(projectId, 'System', 'info', `Job ID: ${message.jobId}`, undefined, message.timestamp, message.nanotime)
         if (message.buildNumber) {
-          addJobMessage(projectId, 'System', 'info', `Build #: ${message.buildNumber}`)
+          addJobMessage(projectId, 'System', 'info', `Build #: ${message.buildNumber}`, undefined, message.timestamp, message.nanotime)
         }
         break
         
@@ -275,7 +275,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
           logger.info(`Sub-job created: ${message.jobId} (preserving main job)`)
         }
         // Show the message for all jobs
-        addJobMessage(projectId, 'System', 'success', `Job created: ${message.jobId}`)
+        addJobMessage(projectId, 'System', 'success', `Job created: ${message.jobId}`, undefined, message.timestamp, message.nanotime)
         break
 
       case 'job_started':
@@ -305,7 +305,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
           // Handle job status updates
           if (message.status === 'failed' || message.status === 'cancelled') {
             addJobMessage(projectId, 'System', 'warning',
-              `Job ${message.status}: ${message.message || 'No details provided'}`)
+              `Job ${message.status}: ${message.message || 'No details provided'}`, undefined, message.timestamp, message.nanotime)
             // Remove job and clear messages for failed/cancelled jobs
             currentJobs.value.delete(projectId)
             // Note: Messages are NOT cleared here - user should still see failure logs
@@ -314,7 +314,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
             // and the message contains useful details
             if (message.message && message.message !== 'No details provided') {
               addJobMessage(projectId, 'System', 'success',
-                `Job completed: ${message.message}`)
+                `Job completed: ${message.message}`, undefined, message.timestamp, message.nanotime)
             }
             // Remove job for completed jobs
             currentJobs.value.delete(projectId)
@@ -326,7 +326,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       case 'job_output_line':
         const outputData = message.output || message
         // source contains the nodeLabel
-        addJobMessage(projectId, outputData.source || 'Agent', outputData.level || 'info', outputData.message, outputData.value, outputData.timestamp)
+        addJobMessage(projectId, outputData.source || 'Agent', outputData.level || 'info', outputData.message, outputData.value, outputData.timestamp, outputData.nanotime)
         break
 
       case 'job_output':
@@ -334,14 +334,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
           message.output.forEach(outputLine => {
             // source contains the nodeLabel
             addJobMessage(projectId, outputLine.source || 'Agent', outputLine.level || 'info',
-              outputLine.message, outputLine.value, outputLine.timestamp)
+              outputLine.message, outputLine.value, outputLine.timestamp, outputLine.nanotime)
           })
         }
         break
 
       case 'job_complete':
-        const completionMessage = message.result?.message || message.message || 'Job completed successfully'
-        addJobMessage(projectId, 'System', 'success', `${completionMessage}`)
+        const completionMessage = message.message || 'Job completed successfully (exit code: 0)'
+        addJobMessage(projectId, 'System', 'success', `Job completed: ${completionMessage}`, undefined, message.timestamp, message.nanotime)
         const completedJob = currentJobs.value.get(projectId)
         if (completedJob) {
           completedJob.status = 'completed'
@@ -351,7 +351,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'job_error':
-        addJobMessage(projectId, 'System', 'error', `Job error: ${message.error || 'Unknown error'}`)
+        addJobMessage(projectId, 'System', 'error', `Job error: ${message.error || 'Unknown error'}`, undefined, message.timestamp, message.nanotime)
         const errorJob = currentJobs.value.get(projectId)
         if (errorJob) {
           errorJob.status = 'failed'
@@ -362,7 +362,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       case 'job_started':
         // Job has started execution on agent
-        addJobMessage(projectId, 'System', 'success', `Job started on agent ${message.agentName || message.agentId}`)
+        addJobMessage(projectId, 'System', 'success', `Job started on agent ${message.agentName || message.agentId}`, undefined, message.timestamp, message.nanotime)
         const startedJob = currentJobs.value.get(projectId)
         if (startedJob) {
           startedJob.status = 'running'
@@ -373,7 +373,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       case 'job_cancelled':
         // Job was successfully cancelled
-        addJobMessage(projectId, 'System', 'warning', `🛑 ${message.message || 'Job was cancelled'}`)
+        addJobMessage(projectId, 'System', 'warning', `🛑 ${message.message || 'Job was cancelled'}`, undefined, message.timestamp, message.nanotime)
         const cancelledJob = currentJobs.value.get(projectId)
         if (cancelledJob) {
           cancelledJob.status = 'cancelled'
@@ -384,7 +384,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       case 'job_cancelling':
         // Job is being cancelled
-        addJobMessage(projectId, 'System', 'warning', `⏳ ${message.message || 'Job cancellation initiated'}`)
+        addJobMessage(projectId, 'System', 'warning', `⏳ ${message.message || 'Job cancellation initiated'}`, undefined, message.timestamp, message.nanotime)
         const cancellingJob = currentJobs.value.get(projectId)
         if (cancellingJob) {
           cancellingJob.status = 'cancelling'
@@ -393,7 +393,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       case 'job_cancel_failed':
         // Job cancellation failed
-        addJobMessage(projectId, 'System', 'error', `${message.error || 'Job cancellation failed'}`)
+        addJobMessage(projectId, 'System', 'error', `${message.error || 'Job cancellation failed'}`, undefined, message.timestamp, message.nanotime)
         const cancelFailedJob = currentJobs.value.get(projectId)
         if (cancelFailedJob) {
           cancelFailedJob.status = 'cancel_failed'
@@ -401,7 +401,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'cron_trigger_error':
-        addJobMessage(projectId, 'System', 'error', `Cron trigger error: ${message.error}`)
+        addJobMessage(projectId, 'System', 'error', `Cron trigger error: ${message.error}`, undefined, message.timestamp, message.nanotime)
         break
         
       case 'agent_status_update':
@@ -448,24 +448,22 @@ export const useWebSocketStore = defineStore('websocket', () => {
   
   // Add message to project's message array
   // nodeLabel is now the source/label of the log (e.g., node name, 'System', 'Agent')
-  const addJobMessage = (projectId, nodeLabel, level, message, value = undefined, timestamp = undefined) => {
+  const addJobMessage = (projectId, nodeLabel, level, message, value = undefined, timestamp = undefined, nanotime = undefined) => {
     if (!jobMessages.value.has(projectId)) {
       jobMessages.value.set(projectId, [])
     }
 
     const messages = jobMessages.value.get(projectId)
-    messages.push({
+    const newMessage = {
       nodeLabel,
       level,
       message,
       value,
-      timestamp: timestamp ? new Date(timestamp) : new Date()
-    })
-
-    // Persist System messages to database via API call
-    if (nodeLabel === 'System') {
-      persistSystemMessage(projectId, level, message, timestamp)
+      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      nanotime: nanotime || (typeof process !== 'undefined' && process.hrtime ? process.hrtime.bigint().toString() : Date.now().toString() + '000000')
     }
+    
+    messages.push(newMessage)
 
     // Keep only last 1000 messages to prevent memory issues
     if (messages.length > 1000) {
@@ -473,14 +471,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
   }
   
-  // Persist System message to database
-  const persistSystemMessage = async (projectId, level, message, timestamp) => {
+  // Persist message to database
+  const persistMessage = async (projectId, nodeLabel, level, message, timestamp, nanotime) => {
     try {
-      // Find current running job to get buildNumber
       const currentJob = getCurrentJob(projectId)
 
       if (currentJob?.buildNumber) {
-        
         const buildNumber = currentJob.buildNumber
         await $fetch(`/api/projects/${projectId}/builds/${buildNumber}/logs`, {
           method: 'PATCH',
@@ -488,16 +484,15 @@ export const useWebSocketStore = defineStore('websocket', () => {
             type: 'log',
             level: level,
             message: message,
-            nodeLabel: 'System', // nodeLabel becomes the source in logs
-            timestamp: timestamp || new Date().toISOString()
+            source: nodeLabel,
+            timestamp: timestamp || new Date().toISOString(),
+            nanotime: nanotime
           }
         })
-
-      } else {
-        logger.warn('Cannot persist System message: No buildNumber available yet')
       }
     } catch (error) {
-      logger.error('Failed to persist System message:', error)
+      // Silently fail - don't block UI for database issues
+      logger.debug('Failed to persist message:', error.message)
     }
   }
   
