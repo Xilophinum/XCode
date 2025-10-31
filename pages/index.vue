@@ -327,8 +327,8 @@
               <textarea
                 id="folderDescription"
                 v-model="folderForm.description"
-                rows="3"
-                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+                v-auto-resize
+                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
                 placeholder="Enter folder description"
               ></textarea>
             </div>
@@ -375,8 +375,8 @@
               <textarea
                 id="editFolderDescription"
                 v-model="editForm.description"
-                rows="3"
-                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                v-auto-resize
+                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 resize-none overflow-hidden"
                 placeholder="Enter folder description"
               ></textarea>
             </div>

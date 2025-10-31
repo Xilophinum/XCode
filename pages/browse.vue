@@ -338,8 +338,8 @@
               <textarea
                 id="folderDescription"
                 v-model="folderForm.description"
-                rows="3"
-                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+                v-auto-resize
+                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
                 placeholder="Enter folder description"
               ></textarea>
             </div>
@@ -386,8 +386,8 @@
               <textarea
                 id="projectDescription"
                 v-model="projectForm.description"
-                rows="3"
-                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+                v-auto-resize
+                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
                 placeholder="Enter project description"
               ></textarea>
             </div>
@@ -522,8 +522,8 @@
           <textarea
             id="renameDescription"
             v-model="renameForm.description"
-            rows="3"
-            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+            v-auto-resize
+            class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
             placeholder="Enter description"
           ></textarea>
         </div>

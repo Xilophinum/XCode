@@ -125,8 +125,8 @@
         </label>
         <textarea
           v-model="nodeData.data.emailBody"
-          rows="6"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+          v-auto-resize
+          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white resize-none overflow-hidden"
           placeholder="Enter email message body..."
           :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.emailBody }"
         ></textarea>
@@ -200,8 +200,8 @@
         </label>
         <textarea
           v-model="nodeData.data.slackMessage"
-          rows="4"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+          v-auto-resize
+          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
           placeholder=":white_check_mark: Build #$BuildNumber completed successfully!"
           :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.slackMessage }"
         ></textarea>
@@ -216,8 +216,8 @@
         </label>
         <textarea
           v-model="nodeData.data.slackBlocks"
-          rows="10"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-xs"
+          v-auto-resize
+          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-xs resize-none overflow-hidden"
           placeholder='[{"type":"header","text":{"type":"plain_text","text":"Build #$BuildNumber"}}]'
         ></textarea>
         <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
@@ -264,8 +264,8 @@
         </label>
         <textarea
           v-model="nodeData.data.webhookHeaders"
-          rows="4"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+          v-auto-resize
+          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
           placeholder='{"Content-Type": "application/json", "Authorization": "Bearer token123"}'
         ></textarea>
         <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
@@ -279,8 +279,8 @@
         </label>
         <textarea
           v-model="nodeData.data.webhookBody"
-          rows="6"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+          v-auto-resize
+          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
           placeholder='{"status": "completed", "message": "Job finished"}'
           :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.webhookBody }"
         ></textarea>

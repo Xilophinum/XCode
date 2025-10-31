@@ -124,8 +124,8 @@
                         :id="setting.key"
                         v-model="setting.value"
                         :disabled="setting.readonly === 'true'"
-                        rows="3"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-950 dark:text-white"
+                        v-auto-resize
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-950 dark:text-white resize-none overflow-hidden"
                         @change="updateSetting(setting.key, setting.value)"
                       ></textarea>
                       
@@ -736,8 +736,8 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <textarea
               v-model="credentialForm.description"
-              rows="2"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              v-auto-resize
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
               placeholder="Optional description"
             ></textarea>
           </div>
@@ -773,8 +773,8 @@
               <label class="block text-sm font-medium text-gray-700 mb-2">Token/API Key</label>
               <textarea
                 v-model="credentialForm.token"
-                rows="3"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                v-auto-resize
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
                 placeholder="API token or key"
               ></textarea>
             </div>
@@ -784,8 +784,8 @@
               <label class="block text-sm font-medium text-gray-700 mb-2">SSH Private Key</label>
               <textarea
                 v-model="credentialForm.privateKey"
-                rows="6"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                v-auto-resize
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
                 placeholder="-----BEGIN PRIVATE KEY-----"
               ></textarea>
             </div>
@@ -795,8 +795,8 @@
               <label class="block text-sm font-medium text-gray-700 mb-2">Certificate</label>
               <textarea
                 v-model="credentialForm.certificate"
-                rows="6"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                v-auto-resize
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
                 placeholder="-----BEGIN CERTIFICATE-----"
               ></textarea>
             </div>
@@ -1111,8 +1111,8 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
             <textarea
               v-model="groupForm.description"
-              rows="3"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+              v-auto-resize
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
               placeholder="Optional description"
             ></textarea>
           </div>
@@ -1277,8 +1277,8 @@
               <textarea
                 v-model="templateForm.email_body"
                 :required="templateForm.type === 'email'"
-                rows="6"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                v-auto-resize
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
                 placeholder="Build $BuildNumber completed at $TimestampHuman"
               ></textarea>
             </div>
@@ -1316,8 +1316,8 @@
               <textarea
                 v-model="templateForm.slack_message"
                 :required="templateForm.type === 'slack'"
-                rows="4"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                v-auto-resize
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
                 placeholder=":white_check_mark: *$ProjectName* - Build #$BuildNumber Success"
               ></textarea>
               <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -1329,8 +1329,8 @@
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slack Blocks (JSON)</label>
               <textarea
                 v-model="templateForm.slack_blocks"
-                rows="12"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-xs"
+                v-auto-resize
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-xs resize-none overflow-hidden"
                 placeholder='[{"type":"header","text":{"type":"plain_text","text":"Build Complete"}}]'
               ></textarea>
               <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -1357,8 +1357,8 @@
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Headers (JSON)</label>
               <textarea
                 v-model="templateForm.webhook_headers"
-                rows="3"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                v-auto-resize
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
                 placeholder='{"Content-Type": "application/json"}'
               ></textarea>
             </div>
@@ -1367,8 +1367,8 @@
               <textarea
                 v-model="templateForm.webhook_body"
                 :required="templateForm.type === 'webhook'"
-                rows="8"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
+                v-auto-resize
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
                 placeholder='{"project": "$ProjectName", "buildNumber": "$BuildNumber"}'
               ></textarea>
             </div>
