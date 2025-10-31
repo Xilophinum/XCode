@@ -78,9 +78,9 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Filter to get only executable commands (including orchestrator commands and notifications)
+    // Filter to get only executable commands (including orchestrator commands, notifications, git, and dependencies)
     const executableCommands = executionCommands.filter(cmd =>
-      ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator', 'notification'].includes(cmd.type)
+      ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator', 'notification', 'git-checkout', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build'].includes(cmd.type)
     )
 
     if (executableCommands.length === 0) {
@@ -758,7 +758,14 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
     case 'powershell':
     case 'cmd':
     case 'python':
+    case 'python3':
     case 'node':
+    case 'go':
+    case 'ruby':
+    case 'php':
+    case 'java':
+    case 'rust':
+    case 'perl':
       // These are executable script nodes
       if (node.data.script) {
         // Resolve parameter placeholders in the script
@@ -777,6 +784,47 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
           retryDelay: node.data.retryDelay || 5
         })
       }
+      break
+
+    case 'git-checkout':
+      // Git checkout node - clone/checkout repository
+      commands.push({
+        type: 'git-checkout',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        repositoryUrl: node.data.repositoryUrl,
+        branch: node.data.branch || 'main',
+        checkoutDirectory: node.data.checkoutDirectory || '.',
+        shallowClone: node.data.shallowClone || false,
+        cleanCheckout: node.data.cleanCheckout !== false,
+        workingDirectory: node.data.workingDirectory || '.',
+        timeout: node.data.timeout ? node.data.timeout * 1000 : 600000,
+        requiredAgentId: node.data.agentId,
+        retryEnabled: node.data.retryEnabled || false,
+        maxRetries: node.data.maxRetries || 3,
+        retryDelay: node.data.retryDelay || 5
+      })
+      break
+
+    case 'npm-install':
+    case 'pip-install':
+    case 'go-mod':
+    case 'bundle-install':
+    case 'composer-install':
+    case 'cargo-build':
+      // Dependency installation nodes
+      commands.push({
+        type: nodeType,
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        ...node.data,
+        workingDirectory: node.data.workingDirectory || '.',
+        timeout: node.data.timeout ? node.data.timeout * 1000 : 600000,
+        requiredAgentId: node.data.agentId,
+        retryEnabled: node.data.retryEnabled || false,
+        maxRetries: node.data.maxRetries || 3,
+        retryDelay: node.data.retryDelay || 5
+      })
       break
 
     case 'parallel_execution':
@@ -1114,7 +1162,7 @@ export function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameter
   
   // Handle execution nodes with success/failure routing
   // Note: parallel_execution nodes have no output sockets, so they don't need success/failure routing
-  if (sourceNode && ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(sourceNode.data.nodeType)) {
+  if (sourceNode && ['bash', 'sh', 'powershell', 'cmd', 'python', 'python3', 'node', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_branches', 'git-checkout', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build'].includes(sourceNode.data.nodeType)) {
     return getExecutionResultConnectedNodes(sourceNode, allNodes, allEdges, executionResult)
   }
   

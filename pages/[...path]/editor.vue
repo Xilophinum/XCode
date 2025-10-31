@@ -219,6 +219,23 @@
             <!-- Node Categories -->
             <div class="space-y-4">
               <div>
+                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Source Control</h4>
+                <div class="space-y-2">
+                  <div
+                    v-for="nodeType in sourceControlNodes"
+                    :key="nodeType.type"
+                    class="p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                    :class="[isDragging ? 'cursor-grabbing' : 'cursor-grab']"
+                    :draggable="true" 
+                    @dragstart="onDragStart($event, nodeType)"
+                  >
+                    <div class="font-medium text-sm text-neutral-900 dark:text-white">{{ nodeType.name }}</div>
+                    <div class="text-xs text-neutral-500 dark:text-neutral-400">{{ nodeType.description }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
                 <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Triggers</h4>
                 <div class="space-y-2">
                   <div
@@ -252,6 +269,23 @@
                 </div>
               </div>
               
+              <div>
+                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Dependencies</h4>
+                <div class="space-y-2">
+                  <div
+                    v-for="nodeType in dependencyNodes"
+                    :key="nodeType.type"
+                    class="p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                    :class="[isDragging ? 'cursor-grabbing' : 'cursor-grab']"
+                    :draggable="true" 
+                    @dragstart="onDragStart($event, nodeType)"
+                  >
+                    <div class="font-medium text-sm text-neutral-900 dark:text-white">{{ nodeType.name }}</div>
+                    <div class="text-xs text-neutral-500 dark:text-neutral-400">{{ nodeType.description }}</div>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Execution</h4>
                 <div class="space-y-2">
@@ -557,6 +591,27 @@
                 :placeholderData="executionNodes"
               />
 
+              <!-- Dependency Node Configuration -->
+              <NpmInstallProperties
+                v-if="selectedNode.data?.nodeType === 'npm-install'"
+                :nodeData="selectedNode"
+              />
+
+              <PipInstallProperties
+                v-if="selectedNode.data?.nodeType === 'pip-install'"
+                :nodeData="selectedNode"
+              />
+
+              <DependencyNodeProperties
+                v-if="['go-mod', 'bundle-install', 'composer-install', 'cargo-build'].includes(selectedNode.data?.nodeType)"
+                :nodeData="selectedNode"
+              />
+
+              <GitCheckoutProperties
+                v-if="selectedNode.data?.nodeType === 'git-checkout'"
+                :nodeData="selectedNode"
+              />
+
               <!-- Script Editor for execution nodes -->
               <div v-if="selectedNode.data?.script !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix'].includes(selectedNode.data?.nodeType)">
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Script</label>
@@ -694,6 +749,10 @@ import NotificationProperties from '@/components/property-panels/NotificationPro
 import ParallelBranchesProperties from '@/components/property-panels/ParallelBranchesProperties.vue'
 import ParallelMatrixProperties from '@/components/property-panels/ParallelMatrixProperties.vue'
 import ParallelExecutionProperties from '@/components/property-panels/ParallelExecutionProperties.vue'
+import NpmInstallProperties from '@/components/property-panels/NpmInstallProperties.vue'
+import PipInstallProperties from '@/components/property-panels/PipInstallProperties.vue'
+import DependencyNodeProperties from '@/components/property-panels/DependencyNodeProperties.vue'
+import GitCheckoutProperties from '@/components/property-panels/GitCheckoutProperties.vue'
 import EditorDeleteModal from '@/components/modals/EditorDeleteModal.vue'
 import EditorRetentionModal from '@/components/modals/EditorRetentionModal.vue'
 import CredentialBinding from '@/components/CredentialBinding.vue'
@@ -885,6 +944,19 @@ const executionNodes = [
   { type: 'parallel_execution', name: 'Parallel Execution', description: 'Execution node for parallel branches (no output sockets)'}
 ]
 
+const sourceControlNodes = [
+  { type: 'git-checkout', name: 'Git Checkout', description: 'Clone or checkout a Git repository' }
+]
+
+const dependencyNodes = [
+  { type: 'npm-install', name: 'NPM Install', description: 'Install Node.js dependencies from package.json' },
+  { type: 'pip-install', name: 'Pip Install', description: 'Install Python dependencies from requirements.txt' },
+  { type: 'go-mod', name: 'Go Modules', description: 'Download Go module dependencies' },
+  { type: 'bundle-install', name: 'Bundle Install', description: 'Install Ruby gems from Gemfile' },
+  { type: 'composer-install', name: 'Composer Install', description: 'Install PHP dependencies from composer.json' },
+  { type: 'cargo-build', name: 'Cargo Build', description: 'Build Rust project and fetch dependencies' }
+]
+
 const controlNodes = [
   { type: 'parallel_branches', name: 'Parallel Branches', description: 'Execute multiple different branches in parallel' },
   { type: 'parallel_matrix', name: 'Parallel Matrix', description: 'Execute same job multiple times with different parameters' },
@@ -901,7 +973,7 @@ const availableAgents = computed(() => {
 
 const isExecutionNode = (nodeType) => {
   if (!nodeType) return false
-  return ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_execution'].includes(nodeType)
+  return ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_execution', 'git-checkout', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build'].includes(nodeType)
 }
 
 
@@ -1333,6 +1405,126 @@ const getDefaultNodeData = (type) => {
         retryDelay: 5,
         executionNode: true 
       }
+      
+    // Source control nodes
+    case 'git-checkout':
+      return {
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false }
+        ],
+        repositoryUrl: '',
+        branch: 'main',
+        checkoutDirectory: '.',
+        shallowClone: false,
+        cleanCheckout: true,
+        timeout: 600,
+        executionNode: true
+      }
+      
+    // Dependency nodes
+    case 'npm-install':
+      return {
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false }
+        ],
+        packageManager: 'npm',
+        workingDirectory: '.',
+        installArgs: '',
+        useExistingFile: false,
+        script: '{\n  "name": "my-project",\n  "dependencies": {\n    "express": "^4.18.0"\n  }\n}',
+        timeout: 600,
+        executionNode: true
+      }
+    case 'pip-install':
+      return {
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false }
+        ],
+        pythonVersion: 'python3',
+        workingDirectory: '.',
+        installArgs: '',
+        useExistingFile: false,
+        script: 'requests==2.31.0\nflask==3.0.0',
+        timeout: 600,
+        executionNode: true
+      }
+    case 'go-mod':
+      return {
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false }
+        ],
+        command: 'download',
+        workingDirectory: '.',
+        useExistingFile: false,
+        script: 'module example.com/myapp\n\ngo 1.21\n\nrequire (\n\tgithub.com/gin-gonic/gin v1.9.1\n)',
+        timeout: 600,
+        executionNode: true
+      }
+    case 'bundle-install':
+      return {
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false }
+        ],
+        workingDirectory: '.',
+        installArgs: '',
+        useExistingFile: false,
+        script: 'source "https://rubygems.org"\n\ngem "rails", "~> 7.0"\ngem "pg", "~> 1.5"',
+        timeout: 600,
+        executionNode: true
+      }
+    case 'composer-install':
+      return {
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false }
+        ],
+        workingDirectory: '.',
+        installArgs: '',
+        useExistingFile: false,
+        script: '{\n  "require": {\n    "laravel/framework": "^10.0"\n  }\n}',
+        timeout: 600,
+        executionNode: true
+      }
+    case 'cargo-build':
+      return {
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false }
+        ],
+        buildType: 'release',
+        workingDirectory: '.',
+        useExistingFile: false,
+        script: '[package]\nname = "my-app"\nversion = "0.1.0"\n\n[dependencies]\nactix-web = "4.0"',
+        timeout: 600,
+        executionNode: true
+      }
+      
     // Control nodes
     case 'parallel_branches':
       return {

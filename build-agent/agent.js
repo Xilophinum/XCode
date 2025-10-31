@@ -630,7 +630,15 @@ class XCodeBuildAgent {
       
       // Prepare script/commands based on executor type
       let script;
-      if (executorConfig.type === 'interpreter') {
+      if (executorConfig.type === 'git') {
+        // For git checkout, commands is the node data object
+        const nodeData = typeof commands === 'object' && !Array.isArray(commands) ? commands : {};
+        script = this.buildGitCheckoutCommand(nodeData, workingDirectory || process.cwd(), environment);
+      } else if (executorConfig.type === 'dependency') {
+        // For dependency nodes, commands is the node data object
+        const nodeData = typeof commands === 'object' && !Array.isArray(commands) ? commands : {};
+        script = this.buildDependencyCommand(jobType, nodeData, workingDirectory || process.cwd());
+      } else if (executorConfig.type === 'interpreter') {
         // For interpreters like python/node, commands should be the script content
         script = Array.isArray(commands) ? commands.join('\n') : commands;
       } else {
@@ -641,9 +649,13 @@ class XCodeBuildAgent {
 
       // Create temporary file for interpreters if needed
       let tempFile = null;
-      let finalArgs = [...executorConfig.args];
+      let finalArgs = [];
 
-      if (executorConfig.type === 'interpreter' && script) {
+      if (executorConfig.type === 'git' || executorConfig.type === 'dependency') {
+        // For dependency nodes, script is already the full command string
+        finalArgs = script.split(' ').filter(arg => arg.trim());
+      } else if (executorConfig.type === 'interpreter' && script) {
+        finalArgs = [...executorConfig.args];
         const tempDir = os.tmpdir()
         
         tempFile = path.join(tempDir, `xcode_job_${Date.now()}${executorConfig.extension || '.tmp'}`);
@@ -656,20 +668,31 @@ class XCodeBuildAgent {
           return;
         }
       } else if (executorConfig.type === 'shell') {
+        finalArgs = [...executorConfig.args];
         finalArgs.push(script);
       }
 
+      // Ensure working directory exists before execution
+      const targetWorkingDir = workingDirectory || process.cwd();
+      const resolvedWorkingDir = path.resolve(targetWorkingDir);
+      
+      if (!fs.existsSync(resolvedWorkingDir)) {
+        logger.info(`Creating working directory: ${resolvedWorkingDir}`);
+        fs.mkdirSync(resolvedWorkingDir, { recursive: true });
+      }
+
       logger.info(`Executing: ${executorConfig.command} ${finalArgs.join(' ')}`);
+      logger.debug(`Working directory: ${resolvedWorkingDir}`);
       logger.debug(`Received ${Object.keys(environment || {}).length} environment variables from server`);
 
       const mergedEnv = { ...process.env, ...environment };
       logger.debug(`Total environment variables for spawn: ${Object.keys(mergedEnv).length}`);
 
       const child = spawn(executorConfig.command, finalArgs, {
-        cwd: workingDirectory || process.cwd(),
+        cwd: resolvedWorkingDir,
         env: mergedEnv,
         stdio: ['inherit', 'pipe', 'pipe'],
-        shell: executorConfig.useShell || false
+        shell: executorConfig.type === 'git' || executorConfig.type === 'dependency' ? true : (executorConfig.useShell || false)
       });
 
       // Store child process reference for cancellation
@@ -816,6 +839,113 @@ class XCodeBuildAgent {
     });
   }
 
+  buildGitCheckoutCommand(nodeData, workingDir, environment = {}) {
+    const { repositoryUrl, branch, checkoutDirectory, shallowClone, cleanCheckout } = nodeData;
+
+    if (!repositoryUrl || repositoryUrl.trim() === '') {
+      throw new Error('Repository URL is required for git checkout');
+    }
+
+    // Substitute credential variables in repository URL
+    let processedUrl = repositoryUrl;
+    const credentialPattern = /\$\{([A-Z_][A-Z0-9_]*)\}/g;
+    processedUrl = processedUrl.replace(credentialPattern, (match, varName) => {
+      return environment[varName] || match;
+    });
+
+    const targetDir = path.resolve(workingDir, checkoutDirectory || '.');
+    const isWindows = this.agentInfo.platform === 'windows';
+    const commands = [];
+
+    // Create parent directory if it doesn't exist
+    const parentDir = path.dirname(targetDir);
+    if (isWindows) {
+      commands.push(`if not exist "${parentDir}" mkdir "${parentDir}"`);
+    } else {
+      commands.push(`mkdir -p "${parentDir}"`);
+    }
+
+    // Clean checkout if requested
+    if (cleanCheckout) {
+      if (isWindows) {
+        commands.push(`if exist "${targetDir}" rmdir /s /q "${targetDir}"`);
+      } else {
+        commands.push(`rm -rf "${targetDir}"`);
+      }
+    }
+
+    // Build git clone command
+    let cloneCmd = `git clone`;
+    if (shallowClone) {
+      cloneCmd += ` --depth 1`;
+    }
+    if (branch && branch !== 'main' && branch !== 'master') {
+      cloneCmd += ` --branch "${branch}"`;
+    }
+    cloneCmd += ` "${processedUrl}" "${targetDir}"`;
+    commands.push(cloneCmd);
+
+    // Return as shell command string
+    return commands.join(isWindows ? ' && ' : ' && ');
+  }
+
+  buildDependencyCommand(jobType, nodeData, workingDir) {
+    const getFilename = (type) => {
+      const filenames = {
+        'npm-install': 'package.json',
+        'pip-install': 'requirements.txt',
+        'go-mod': 'go.mod',
+        'bundle-install': 'Gemfile',
+        'composer-install': 'composer.json',
+        'cargo-build': 'Cargo.toml'
+      }
+      return filenames[type] || 'dependency-file'
+    }
+
+    const filename = getFilename(jobType)
+    const targetDir = path.resolve(workingDir)
+    const filePath = path.join(targetDir, filename)
+
+    // Ensure working directory exists
+    if (!fs.existsSync(targetDir)) {
+      logger.info(`Creating directory: ${targetDir}`);
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    // Check if we should use existing file
+    if (nodeData.useExistingFile) {
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`${filename} not found in ${targetDir}. Either provide script content or ensure file exists in repository.`)
+      }
+      logger.info(`📦 Using existing ${filename} from ${targetDir}`)
+    } else {
+      // Write user-provided content
+      if (!nodeData.script || nodeData.script.trim() === '') {
+        throw new Error(`Script content required for ${filename}. Either provide content or check "Use existing file".`)
+      }
+      fs.writeFileSync(filePath, nodeData.script, 'utf8')
+      logger.info(`📝 Wrote ${filename} to ${filePath}`)
+    }
+
+    // Return install command
+    switch (jobType) {
+      case 'npm-install':
+        return `${nodeData.packageManager || 'npm'} install ${nodeData.installArgs || ''}`
+      case 'pip-install':
+        return `${nodeData.pythonVersion || 'python3'} -m pip install -r requirements.txt ${nodeData.installArgs || ''}`
+      case 'go-mod':
+        return `go mod ${nodeData.command || 'download'}`
+      case 'bundle-install':
+        return `bundle install ${nodeData.installArgs || ''}`
+      case 'composer-install':
+        return `composer install ${nodeData.installArgs || ''}`
+      case 'cargo-build':
+        return `cargo build ${nodeData.buildType === 'release' ? '--release' : ''}`
+      default:
+        return ''
+    }
+  }
+
   getExecutorConfig(jobType, isWindows) {
     const executors = {
       // Shell executors
@@ -926,6 +1056,52 @@ class XCodeBuildAgent {
         args: [],
         extension: '.pl',
         capabilities: ['perl']
+      },
+      
+      // Source control executors
+      'git-checkout': {
+        name: 'Git Checkout',
+        type: 'git',
+        command: 'git',
+        capabilities: ['git']
+      },
+      
+      // Dependency installation executors
+      'npm-install': {
+        name: 'NPM Install',
+        type: 'dependency',
+        command: 'npm',
+        capabilities: ['npm']
+      },
+      'pip-install': {
+        name: 'Pip Install',
+        type: 'dependency',
+        command: 'pip',
+        capabilities: ['pip', 'pip3']
+      },
+      'go-mod': {
+        name: 'Go Modules',
+        type: 'dependency',
+        command: 'go',
+        capabilities: ['go']
+      },
+      'bundle-install': {
+        name: 'Bundle Install',
+        type: 'dependency',
+        command: 'bundle',
+        capabilities: ['bundler', 'gem']
+      },
+      'composer-install': {
+        name: 'Composer Install',
+        type: 'dependency',
+        command: 'composer',
+        capabilities: ['composer']
+      },
+      'cargo-build': {
+        name: 'Cargo Build',
+        type: 'dependency',
+        command: 'cargo',
+        capabilities: ['cargo']
       }
     };
 
