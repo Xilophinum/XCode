@@ -106,7 +106,9 @@ export class BuildStatsManager {
   }
 
   /**
-   * Add a log entry to a build
+   * Add a log entry to a build (for manual/external log additions only)
+   * NOTE: During build execution, logs are stored in memory and bulk-saved on completion.
+   * This method should only be used for manual log additions to completed builds.
    * @param {string} projectId - Project ID
    * @param {number} buildNumber - Build number
    * @param {Object} logEntry - Log entry data
@@ -139,7 +141,7 @@ export class BuildStatsManager {
     // Note: source is now the nodeLabel for display purposes
     const newLogEntry = {
       timestamp: logEntry.timestamp || now,
-      nanotime: logEntry.nanotime || process.hrtime.bigint().toString(),
+      nanotime: logEntry.nanotime || (Date.now() * 1000000).toString(),
       level: logEntry.level || 'info',
       message: logEntry.message,
       source: logEntry.source || 'System', // source is the nodeLabel
@@ -208,7 +210,24 @@ export class BuildStatsManager {
     await executionStateManager.persistBuildState(projectId, buildNumber)
     logger.info(`Persisted execution state for build #${buildNumber}`)
 
-    // Update the build record
+    // Get all logs from in-memory job storage and save to database
+    const { jobManager } = await import('./jobManager.js')
+    const memoryLogs = await jobManager.getBuildLogsFromMemory(projectId, buildNumber)
+
+    logger.info(`Saving ${memoryLogs.length} logs from memory to database for build #${buildNumber}`)
+    logger.info(`Sample of last 5 logs:`, memoryLogs.slice(-5).map(log => `[${log.source}] ${log.message.substring(0, 50)}`))
+
+    // Sort logs by nanotime to ensure correct order
+    const sortedLogs = [...memoryLogs].sort((a, b) => {
+      const aNano = a.nanotime || '0'
+      const bNano = b.nanotime || '0'
+      if (aNano.length !== bNano.length) {
+        return aNano.length - bNano.length
+      }
+      return aNano < bNano ? -1 : aNano > bNano ? 1 : 0
+    })
+
+    // Update the build record with final logs
     await this.db.update(builds)
       .set({
         status: result.status,
@@ -216,12 +235,15 @@ export class BuildStatsManager {
         finishedAt: now,
         duration: duration,
         nodesExecuted: result.nodesExecuted || build.nodesExecuted,
+        outputLog: JSON.stringify(sortedLogs),
         updatedAt: now
       })
       .where(and(
         eq(builds.projectId, projectId),
         eq(builds.buildNumber, buildNumber)
       ))
+
+    logger.info(`Successfully saved ${sortedLogs.length} logs to database for build #${buildNumber}`)
 
     // Clean up execution state from memory (already persisted to DB)
     await executionStateManager.cleanupBuildState(projectId, buildNumber)

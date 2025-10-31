@@ -260,6 +260,16 @@ class AgentManager {
             // Update build status if this job is associated with a build
             if (job.buildNumber) {
               try {
+                // Add error completion message to in-memory logs BEFORE finishing build
+                await jobManager.addJobOutput(jobId, {
+                  type: 'log',
+                  level: 'error',
+                  message: `Job failed: ${errorMsg}`,
+                  source: 'System',
+                  timestamp: new Date().toISOString(),
+                  nanotime: (Date.now() * 1000000).toString()
+                })
+
                 const buildStatsManager = await getBuildStatsManager()
                 await buildStatsManager.finishBuild(job.projectId, job.buildNumber, {
                   status: 'failure',
@@ -334,6 +344,16 @@ class AgentManager {
             // Update build status if this job is associated with a build
             if (job.buildNumber) {
               try {
+                // Add error completion message to in-memory logs BEFORE finishing build
+                await jobManager.addJobOutput(jobId, {
+                  type: 'log',
+                  level: 'error',
+                  message: 'Job failed: Failed to dispatch next command in sequence',
+                  source: 'System',
+                  timestamp: new Date().toISOString(),
+                  nanotime: (Date.now() * 1000000).toString()
+                })
+
                 const buildStatsManager = await getBuildStatsManager()
                 await buildStatsManager.finishBuild(job.projectId, job.buildNumber, {
                   status: 'failure',
@@ -361,19 +381,6 @@ class AgentManager {
         message: `Job completed successfully (exit code: ${exitCode || 0})`
       })
 
-      // Ensure UI receives final completion status
-      if (globalThis.broadcastToProject && job.projectId) {
-        globalThis.broadcastToProject(job.projectId, {
-          type: 'job_completed',
-          jobId: jobId,
-          projectId: job.projectId,
-          status: 'completed',
-          exitCode: exitCode || 0,
-          message: `Job completed successfully (exit code: ${exitCode || 0})`,
-          timestamp: new Date().toISOString()
-        })
-      }
-
       // Notify any waiting parallel orchestrators
       this.notifyJobCompletion(jobId, {
         jobId: jobId,
@@ -382,10 +389,23 @@ class AgentManager {
         output: output
       })
 
+      // Add completion message for this job (always, regardless of whether build continues)
+      // Use the node label as the source so it shows which node completed
+      if (job.buildNumber && job.currentNodeLabel) {
+        await jobManager.addJobOutput(jobId, {
+          type: 'log',
+          level: 'success',
+          message: `Job completed: Job completed successfully (exit code: ${exitCode || 0})`,
+          source: job.currentNodeLabel,
+          timestamp: new Date().toISOString(),
+          nanotime: (Date.now() * 1000000).toString()
+        })
+      }
+
       // Trigger next nodes for single-command jobs (external sequential execution)
       // Do NOT trigger for multi-command jobs (internal sequential execution)
       let hasNextNodes = false
-      
+
       if (job.executionCommands && job.executionCommands.length > 1) {
         logger.info(`Multi-command sequential job completed - not triggering next nodes (handled internally)`)
         hasNextNodes = false
@@ -481,6 +501,16 @@ class AgentManager {
         // This ensures the build status is "failure" even if there are failure handler nodes
         if (job && job.buildNumber) {
           try {
+            // Add error completion message to in-memory logs BEFORE finishing build
+            await jobManager.addJobOutput(jobId, {
+              type: 'log',
+              level: 'error',
+              message: `Job failed: ${errorMessage}`,
+              source: 'System',
+              timestamp: new Date().toISOString(),
+              nanotime: (Date.now() * 1000000).toString()
+            })
+
             const buildStatsManager = await getBuildStatsManager()
             await buildStatsManager.finishBuild(job.projectId, job.buildNumber, {
               status: 'failure',
@@ -491,20 +521,6 @@ class AgentManager {
           } catch (buildError) {
             logger.warn('Failed to update build record on job error:', buildError)
           }
-        }
-
-        // Ensure UI knows job is completely finished
-        if (globalThis.broadcastToProject && job.projectId) {
-          globalThis.broadcastToProject(job.projectId, {
-            type: 'job_completed',
-            jobId: jobId,
-            projectId: job.projectId,
-            status: 'failed',
-            exitCode: exitCode || 1,
-            error: errorMessage,
-            message: errorMessage,
-            timestamp: new Date().toISOString()
-          })
         }
       } else {
         logger.info(`Job ${jobId} failed but will retry - failure handlers already triggered by handleJobFailure`)
@@ -935,6 +951,16 @@ class AgentManager {
         // Update build status if applicable
         if (parentJob.buildNumber) {
           try {
+            // Add error completion message to in-memory logs BEFORE finishing build
+            await jobManager.addJobOutput(parentJobId, {
+              type: 'log',
+              level: 'error',
+              message: `Job failed: ${result.message}`,
+              source: 'System',
+              timestamp: new Date().toISOString(),
+              nanotime: (Date.now() * 1000000).toString()
+            })
+
             const buildStatsManager = await getBuildStatsManager()
             await buildStatsManager.finishBuild(parentJob.projectId, parentJob.buildNumber, {
               status: 'failure',
@@ -962,6 +988,16 @@ class AgentManager {
       // Update build status if applicable
       if (parentJob.buildNumber) {
         try {
+          // Add error completion message to in-memory logs BEFORE finishing build
+          await jobManager.addJobOutput(parentJobId, {
+            type: 'log',
+            level: 'error',
+            message: `Job failed: Orchestrator error: ${error.message}`,
+            source: 'System',
+            timestamp: new Date().toISOString(),
+            nanotime: (Date.now() * 1000000).toString()
+          })
+
           const buildStatsManager = await getBuildStatsManager()
           await buildStatsManager.finishBuild(parentJob.projectId, parentJob.buildNumber, {
             status: 'failure',
@@ -1002,6 +1038,16 @@ class AgentManager {
         // Update build status if applicable
         if (parentJob.buildNumber) {
           try {
+            // Add error completion message to in-memory logs BEFORE finishing build
+            await jobManager.addJobOutput(parentJobId, {
+              type: 'log',
+              level: 'error',
+              message: `Job failed: ${result.message}`,
+              source: 'System',
+              timestamp: new Date().toISOString(),
+              nanotime: (Date.now() * 1000000).toString()
+            })
+
             const buildStatsManager = await getBuildStatsManager()
             await buildStatsManager.finishBuild(parentJob.projectId, parentJob.buildNumber, {
               status: 'failure',
@@ -1029,6 +1075,16 @@ class AgentManager {
       // Update build status if applicable
       if (parentJob.buildNumber) {
         try {
+          // Add error completion message to in-memory logs BEFORE finishing build
+          await jobManager.addJobOutput(parentJobId, {
+            type: 'log',
+            level: 'error',
+            message: `Job failed: Orchestrator error: ${error.message}`,
+            source: 'System',
+            timestamp: new Date().toISOString(),
+            nanotime: (Date.now() * 1000000).toString()
+          })
+
           const buildStatsManager = await getBuildStatsManager()
           await buildStatsManager.finishBuild(parentJob.projectId, parentJob.buildNumber, {
             status: 'failure',
@@ -1190,6 +1246,16 @@ class AgentManager {
       // Update build status if this job is associated with a build
       if (parentJobUpdated.buildNumber) {
         try {
+          // Add completion message to in-memory logs BEFORE finishing build
+          await jobManager.addJobOutput(parentJobId, {
+            type: 'log',
+            level: 'success',
+            message: 'Job completed: Job completed successfully with parallel execution',
+            source: 'System',
+            timestamp: new Date().toISOString(),
+            nanotime: (Date.now() * 1000000).toString()
+          })
+
           const buildStatsManager = await getBuildStatsManager()
           await buildStatsManager.finishBuild(parentJobUpdated.projectId, parentJobUpdated.buildNumber, {
             status: 'success',

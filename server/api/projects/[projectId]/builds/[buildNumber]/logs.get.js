@@ -1,6 +1,6 @@
 /**
  * GET /api/projects/[projectId]/builds/[buildNumber]/logs
- * Get build execution logs with normalized format
+ * Get build execution logs - from memory for running builds, from DB for completed builds
  */
 
 import { getDB, builds } from '~/server/utils/database.js'
@@ -21,60 +21,91 @@ export default defineEventHandler(async (event) => {
     }
 
     let logs = []
+    let fromMemory = false
     logger.info(`Getting logs for project ${projectId}, build #${buildNumber}`)
 
-    // Get from database using composite key
+    // First, check build status to determine if we should read from memory or DB
     const db = await getDB()
-    let buildResults = await db.select({ outputLog: builds.outputLog })
+    const buildResults = await db.select({ status: builds.status, outputLog: builds.outputLog })
       .from(builds)
       .where(and(
         eq(builds.projectId, projectId),
         eq(builds.buildNumber, buildNumber)
       ))
 
-    logger.info(`Database query results for build #${buildNumber}:`, buildResults.length > 0 ? 'found' : 'not found')
-
-    if (buildResults[0]?.outputLog) {
-      try {
-        const dbLogs = JSON.parse(buildResults[0].outputLog)
-        logger.info(`Found ${dbLogs.length} logs in database`)
-        // Convert database format to normalized format
-        // Note: source now contains the nodeLabel, not nodeId
-        logs = dbLogs.map(logEntry => ({
-          type: logEntry.type || 'info',
-          level: logEntry.level || 'info',
-          message: logEntry.message || String(logEntry),
-          source: logEntry.source || 'Agent', // source is the nodeLabel
-          timestamp: logEntry.timestamp,
-          nanotime: logEntry.nanotime,
-          value: logEntry.value
-        }))
-        
-        // Sort logs by nanotime to ensure correct order
-        logs.sort((a, b) => {
-          const aNano = a.nanotime || '0'
-          const bNano = b.nanotime || '0'
-          // Use string comparison for BigInt strings to avoid conversion overhead
-          if (aNano.length !== bNano.length) {
-            return aNano.length - bNano.length
-          }
-          return aNano < bNano ? -1 : aNano > bNano ? 1 : 0
-        })
-      } catch (e) {
-        logger.info(`Error parsing database logs:`, e)
-        logs = []
-      }
-    } else {
-      logger.info(`No logs found in database for build #${buildNumber}`)
+    if (buildResults.length === 0) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'Build not found'
+      })
     }
 
-    logger.info(`Returning ${logs.length} logs`)
+    const build = buildResults[0]
+    const isRunning = build.status === 'running'
+
+    if (isRunning) {
+      // Build is running - get logs from in-memory job storage
+      logger.info(`Build #${buildNumber} is running - fetching logs from memory`)
+      const memoryLogs = await jobManager.getBuildLogsFromMemory(projectId, buildNumber)
+      logs = memoryLogs.map(logEntry => ({
+        type: logEntry.type || 'info',
+        level: logEntry.level || 'info',
+        message: logEntry.message || String(logEntry),
+        source: logEntry.source || 'Agent',
+        timestamp: logEntry.timestamp,
+        nanotime: logEntry.nanotime,
+        value: logEntry.value,
+        command: logEntry.command
+      }))
+      fromMemory = true
+      logger.info(`Found ${logs.length} logs in memory`)
+    } else {
+      // Build is completed - get logs from database
+      logger.info(`Build #${buildNumber} is ${build.status} - fetching logs from database`)
+      if (build.outputLog) {
+        try {
+          const dbLogs = JSON.parse(build.outputLog)
+          logger.info(`Found ${dbLogs.length} logs in database`)
+          // Convert database format to normalized format
+          logs = dbLogs.map(logEntry => ({
+            type: logEntry.type || 'info',
+            level: logEntry.level || 'info',
+            message: logEntry.message || String(logEntry),
+            source: logEntry.source || 'Agent', // source is the nodeLabel
+            timestamp: logEntry.timestamp,
+            nanotime: logEntry.nanotime,
+            value: logEntry.value,
+            command: logEntry.command
+          }))
+
+          // Sort logs by nanotime to ensure correct order
+          logs.sort((a, b) => {
+            const aNano = a.nanotime || '0'
+            const bNano = b.nanotime || '0'
+            // Use string comparison for BigInt strings to avoid conversion overhead
+            if (aNano.length !== bNano.length) {
+              return aNano.length - bNano.length
+            }
+            return aNano < bNano ? -1 : aNano > bNano ? 1 : 0
+          })
+        } catch (e) {
+          logger.info(`Error parsing database logs:`, e)
+          logs = []
+        }
+      } else {
+        logger.info(`No logs found in database for build #${buildNumber}`)
+      }
+    }
+
+    logger.info(`Returning ${logs.length} logs (from ${fromMemory ? 'memory' : 'database'})`)
 
     const result = {
       success: true,
       projectId,
       buildNumber,
-      logs: logs || []
+      logs: logs || [],
+      fromMemory,
+      buildStatus: build.status
     }
     return result
 

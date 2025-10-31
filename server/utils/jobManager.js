@@ -93,10 +93,9 @@ class JobManager {
       }
     }
 
-    // Persist "Job created" system message to build logs if this is a build job
+    // Add "Job created" system message to in-memory output (will be saved to DB on build finish)
     if (jobData.buildNumber) {
-      const buildStatsManager = await getBuildStatsManager()
-      await buildStatsManager.addBuildLog(projectId, jobData.buildNumber, {
+      jobRecord.output.push({
         type: 'log',
         level: 'success',
         message: `Job created: ${jobId}`,
@@ -255,7 +254,8 @@ class JobManager {
   }
 
   /**
-   * Add output to a job (real-time streaming with single-row JSON persistence)
+   * Add output to a job (real-time streaming with in-memory storage)
+   * Messages are kept in memory during build execution and bulk-saved to DB on completion
    */
   async addJobOutput(jobId, outputLine) {
     const job = this.jobs.get(jobId)
@@ -265,7 +265,7 @@ class JobManager {
     }
 
     const now = new Date().toISOString()
-    
+
     // Add timestamp if not provided
     if (!outputLine.timestamp) {
       outputLine.timestamp = now
@@ -296,18 +296,13 @@ class JobManager {
       output: outputLine.output || null,
       source: nodeLabel || outputLine.source || 'Agent',
       timestamp: outputLine.timestamp,
-      nanotime: outputLine.nanotime || process.hrtime.bigint().toString()
+      nanotime: outputLine.nanotime || (Date.now() * 1000000).toString()
     }
 
-    // Persist agent output to database (System messages persisted separately in createJob)
-    if (job.buildNumber && outputEntry.source !== 'System') {
-      try {
-        const buildStatsManager = await getBuildStatsManager()
-        await buildStatsManager.addBuildLog(job.projectId, job.buildNumber, outputEntry)
-      } catch (dbError) {
-        logger.warn(`Failed to persist job output to database:`, dbError.message)
-      }
-    }
+    // Store in memory - DO NOT persist to database during build execution
+    // Messages will be bulk-saved to DB when build completes
+    // This prevents missing messages and improves performance
+    job.output.push(outputEntry)
 
     // Update execution state based on output
     // Node execution state is now primarily tracked in updateJob when currentNodeId changes
@@ -321,12 +316,6 @@ class JobManager {
         executionStateManager.markNodeFailed(job.projectId, job.buildNumber, nodeId)
         logger.debug(`Marked node ${nodeId} as failed due to error output`)
       }
-    }
-
-    // Add to memory cache (keep only last 100 lines for performance)
-    job.output.push(outputEntry)
-    if (job.output.length > 100) {
-      job.output = job.output.slice(-100)
     }
 
     // Broadcast output in real-time to subscribed clients
@@ -351,13 +340,50 @@ class JobManager {
     if (!job || !job.output) {
       return []
     }
-    
+
     // Apply limit if specified
     if (limit && job.output.length > limit) {
       return job.output.slice(-limit)
     }
-    
+
     return job.output
+  }
+
+  /**
+   * Get all logs for a build from in-memory jobs (for running builds)
+   * @param {string} projectId - Project ID
+   * @param {number} buildNumber - Build number
+   * @returns {Promise<Array>} - Array of log entries from memory
+   */
+  async getBuildLogsFromMemory(projectId, buildNumber) {
+    const jobs = await this.getJobsForProject(projectId)
+
+    // Find jobs for this specific build
+    const buildJobs = jobs.filter(job => job.buildNumber === buildNumber)
+
+    if (buildJobs.length === 0) {
+      return []
+    }
+
+    // Collect all logs from all jobs for this build
+    const allLogs = []
+    for (const job of buildJobs) {
+      if (job.output && Array.isArray(job.output)) {
+        allLogs.push(...job.output)
+      }
+    }
+
+    // Sort by nanotime to ensure correct order
+    allLogs.sort((a, b) => {
+      const aNano = a.nanotime || '0'
+      const bNano = b.nanotime || '0'
+      if (aNano.length !== bNano.length) {
+        return aNano.length - bNano.length
+      }
+      return aNano < bNano ? -1 : aNano > bNano ? 1 : 0
+    })
+
+    return allLogs
   }
 
   /**
@@ -577,6 +603,10 @@ export const jobManager = {
   async getJobOutput(jobId, limit) {
     const manager = await getJobManager()
     return manager.getJobOutput(jobId, limit)
+  },
+  async getBuildLogsFromMemory(projectId, buildNumber) {
+    const manager = await getJobManager()
+    return manager.getBuildLogsFromMemory(projectId, buildNumber)
   },
   async getJobsForProject(projectId) {
     const manager = await getJobManager()

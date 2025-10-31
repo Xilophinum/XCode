@@ -309,13 +309,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
             // Remove job and clear messages for failed/cancelled jobs
             currentJobs.value.delete(projectId)
             // Note: Messages are NOT cleared here - user should still see failure logs
-          } else if (message.status === 'completed' && !message.suppressMessage) {
-            // Only show completion message if there wasn't already a job_complete message
-            // and the message contains useful details
-            if (message.message && message.message !== 'No details provided') {
-              addJobMessage(projectId, 'System', 'success',
-                `Job completed: ${message.message}`, undefined, message.timestamp, message.nanotime)
-            }
+          } else if (message.status === 'completed') {
             // Remove job for completed jobs
             currentJobs.value.delete(projectId)
             // Note: Messages are NOT cleared here - user should still see completion logs

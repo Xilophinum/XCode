@@ -296,18 +296,6 @@ export default defineEventHandler(async (event) => {
           message: 'Notification sent successfully'
         })
 
-        // Broadcast notification sent event
-        if (globalThis.broadcastToProject) {
-          globalThis.broadcastToProject(projectId, {
-            type: 'job_completed',
-            jobId,
-            buildNumber: currentBuildNumber,
-            status: 'completed',
-            message: 'Notification sent successfully',
-            timestamp: new Date().toISOString()
-          })
-        }
-
         // Mark build as complete if this was the only command
         if (executableCommands.length === 1 && currentBuildNumber) {
           const buildStatsManager = await getBuildStatsManager()
