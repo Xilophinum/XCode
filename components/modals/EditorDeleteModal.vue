@@ -3,9 +3,7 @@
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
       <div class="mt-3">
         <div class="flex items-center justify-center mx-auto w-12 h-12 rounded-full bg-red-100 dark:bg-red-900">
-          <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-          </svg>
+          <Icon name="alertTriangle" class="w-6 h-6 text-red-600 dark:text-red-400" />
         </div>
         <div class="mt-4 text-center">
           <h3 class="text-lg font-medium text-gray-900 dark:text-white">Confirm Deletion</h3>
@@ -46,6 +44,7 @@
 </template>
 
 <script setup>
+import Icon from '~/components/Icon.vue'
 const props = defineProps({
   modelValue: {
     type: Boolean,

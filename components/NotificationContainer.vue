@@ -16,9 +16,7 @@
         >
           <div class="flex items-start">
             <div class="flex-shrink-0">
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getIcon(notification.type)" />
-              </svg>
+              <Icon :name="getIconName(notification.type)" class="h-5 w-5" />
             </div>
             <div class="ml-3 flex-1">
               <h4 v-if="notification.title" class="text-sm font-medium mb-1">
@@ -48,9 +46,7 @@
                 @click="removeNotification(notification.id)"
                 class="rounded-md hover:bg-white/10 p-1 transition-colors"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <Icon name="close" class="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -61,6 +57,7 @@
 </template>
 
 <script setup>
+import Icon from '~/components/Icon.vue'
 const { notifications, removeNotification } = useNotifications()
 
 const getNotificationClasses = (type) => {
@@ -74,15 +71,15 @@ const getNotificationClasses = (type) => {
   return classes[type] || classes.info
 }
 
-const getIcon = (type) => {
-  const iconPaths = {
-    success: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-    error: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    warning: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z',
-    info: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    confirm: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+const getIconName = (type) => {
+  const iconNames = {
+    success: 'checkCircle',
+    error: 'alertCircle',
+    warning: 'alertTriangle',
+    info: 'info',
+    confirm: 'helpCircle'
   }
-  return iconPaths[type] || iconPaths.info
+  return iconNames[type] || iconNames.info
 }
 </script>
 

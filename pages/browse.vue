@@ -1,5 +1,6 @@
 <template>
-  <div class="h-screen overflow-hidden bg-gray-50 dark:bg-gray-950 flex flex-col" @click="closeAllMenus">
+  <div>
+    <div class="h-screen overflow-hidden bg-gray-50 dark:bg-gray-950 flex flex-col" @click="closeAllMenus">
     <!-- Navigation -->
     <AppNavigation :breadcrumbs="pathSegments" />
 
@@ -22,9 +23,7 @@
               @click="showCreateFolderModal = true"
               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
+              <Icon name="plus" class="-ml-1 mr-2 h-5 w-5" />
               New Folder
             </button>
             
@@ -32,9 +31,7 @@
               @click="showCreateProjectModal = true"
               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
+              <Icon name="plus" class="-ml-1 mr-2 h-5 w-5" />
               New Project
             </button>
           </div>
@@ -45,25 +42,19 @@
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-6">
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                <svg class="w-4 h-4 mr-1.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2v0"></path>
-                </svg>
+                <Icon name="folder" class="w-4 h-4 mr-1.5 text-blue-500" />
                 <span class="font-medium">{{ totalProjectsInCurrentPath }}</span>
                 <span class="ml-1">{{ totalProjectsInCurrentPath === 1 ? 'project' : 'projects' }}</span>
               </div>
               
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                <svg class="w-4 h-4 mr-1.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
+                <Icon name="check" class="w-4 h-4 mr-1.5 text-green-500" />
                 <span class="font-medium">{{ onlineAgentsCount }}</span>
                 <span class="ml-1">online agents</span>
               </div>
               
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                <svg class="w-4 h-4 mr-1.5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
+                <Icon name="clock" class="w-4 h-4 mr-1.5 text-yellow-500" />
                 <span class="font-medium">{{ busyAgentsCount }}</span>
                 <span class="ml-1">busy</span>
               </div>
@@ -100,21 +91,18 @@
               <button
                 @click.stop="showAuditHistory(folder)"
                 class="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                v-tooltip:bottomleft="'View history'"
+                v-tooltip:bottomright="'Audit History'"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <Icon name="clock" class="w-5 h-5" />
               </button>
 
               <div class="relative">
                 <button
                   @click.stop="toggleFolderMenu(folder.id)"
                   class="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  v-tooltip:bottomright="'View Actions'"
                 >
-                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                  </svg>
+                  <Icon name="more" class="w-5 h-5" />
                 </button>
                 
                 <!-- Dropdown Menu -->
@@ -158,14 +146,12 @@
               class="cursor-pointer"
             >
               <div class="flex items-center mb-2">
-                <svg class="h-8 w-8 text-blue-600 dark:text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
+                <Icon name="folder" class="h-8 w-8 text-blue-600 dark:text-blue-400 mr-3" />
                 <h3 class="font-medium text-gray-950 dark:text-white">{{ folder.name }}</h3>
               </div>
               <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">{{ folder.description || '' }}</p>
               <div class="text-xs text-gray-500 dark:text-gray-400">
-                {{ formatDate(folder.updatedAt) }}
+                Updated: {{ formatDate(folder.updatedAt) }}
               </div>
             </div>
           </div>
@@ -185,21 +171,18 @@
               <button
                 @click.stop="showAuditHistory(project)"
                 class="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                v-tooltip="'View history'"
+                v-tooltip:bottomright="'Audit History'"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <Icon name="clock" class="w-5 h-5" />
               </button>
 
               <div class="relative">
                 <button
                   @click.stop="toggleProjectMenu(project.id)"
                   class="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  v-tooltip:bottomright="'View Actions'"
                 >
-                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                  </svg>
+                  <Icon name="more" class="w-5 h-5" />
                 </button>
                 
                 <!-- Dropdown Menu -->
@@ -253,7 +236,7 @@
               class="cursor-pointer"
             >
               <div class="flex items-center mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><defs><symbol id="SVGf9bFLczd"><path d="M15.24 6.37C15.65 6.6 16.04 6.88 16.38 7.2C16.6 7.4 16.8 7.61 16.99 7.83C17.46 8.4 17.85 9.05 18.11 9.77C18.2 10.03 18.28 10.31 18.35 10.59C18.45 11.04 18.5 11.52 18.5 12"><animate fill="freeze" attributeName="d" begin="0.9s" dur="0.2s" values="M15.24 6.37C15.65 6.6 16.04 6.88 16.38 7.2C16.6 7.4 16.8 7.61 16.99 7.83C17.46 8.4 17.85 9.05 18.11 9.77C18.2 10.03 18.28 10.31 18.35 10.59C18.45 11.04 18.5 11.52 18.5 12;M15.24 6.37C15.65 6.6 16.04 6.88 16.38 7.2C16.38 7.2 19 6.12 19.01 6.14C19.01 6.14 20.57 8.84 20.57 8.84C20.58 8.87 18.35 10.59 18.35 10.59C18.45 11.04 18.5 11.52 18.5 12"/></path></symbol></defs><g fill="none" stroke="currentColor" stroke-width="2"><g stroke-linecap="round"><path stroke-dasharray="20" stroke-dashoffset="20" d="M12 9c1.66 0 3 1.34 3 3c0 1.66 -1.34 3 -3 3c-1.66 0 -3 -1.34 -3 -3c0 -1.66 1.34 -3 3 -3Z"><animate fill="freeze" attributeName="stroke-dashoffset" dur="0.2s" values="20;0"/></path><path stroke-dasharray="48" stroke-dashoffset="48" d="M12 5.5c3.59 0 6.5 2.91 6.5 6.5c0 3.59 -2.91 6.5 -6.5 6.5c-3.59 0 -6.5 -2.91 -6.5 -6.5c0 -3.59 2.91 -6.5 6.5 -6.5Z"><animate fill="freeze" attributeName="stroke-dashoffset" begin="0.2s" dur="0.6s" values="48;0"/><set fill="freeze" attributeName="opacity" begin="0.9s" to="0"/></path></g><g opacity="0"><use href="#SVGf9bFLczd"/><use href="#SVGf9bFLczd" transform="rotate(60 12 12)"/><use href="#SVGf9bFLczd" transform="rotate(120 12 12)"/><use href="#SVGf9bFLczd" transform="rotate(180 12 12)"/><use href="#SVGf9bFLczd" transform="rotate(240 12 12)"/><use href="#SVGf9bFLczd" transform="rotate(300 12 12)"/><set fill="freeze" attributeName="opacity" begin="0.9s" to="1"/><animateTransform attributeName="transform" dur="30s" repeatCount="indefinite" type="rotate" values="0 12 12;360 12 12"/></g></g></svg>
+                <Icon name="briefcase" class="h-7 w-7 text-blue-600 dark:text-blue-400 mr-3" />
                 <h3 class="font-medium" :class="getProjectTextColor(projectBuildStats.get(project.id))">{{ project.name }}</h3>
                 <span v-if="project.status === 'disabled'" class="ml-2 px-2 py-0.5 text-xs font-medium bg-gray-500 text-white rounded-full">
                   Disabled
@@ -272,9 +255,8 @@
                   @click.stop="viewBuildHistory(project)"
                   class="text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors"
                   :class="getProjectTextColor(projectBuildStats.get(project.id))"
-                  v-tooltip="'View build history'"
                 >
-                  View History
+                  Build History
                 </button>
               </div>
               
@@ -285,14 +267,13 @@
                 <button
                   @click.stop="viewBuildHistory(project)"
                   class="text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors text-gray-500 dark:text-gray-400"
-                  v-tooltip="'View build history'"
                 >
-                  View History
+                  Build History
                 </button>
               </div>
               
               <div class="text-xs" :class="getProjectTextColor(projectBuildStats.get(project.id))">
-                {{ formatDate(project.updatedAt) }}
+                Updated: {{ formatDate(project.updatedAt) }}
               </div>
               
               <!-- Progress Bar -->
@@ -305,9 +286,7 @@
 
           <!-- Empty State -->
           <div v-if="foldersAtCurrentPath.length === 0 && projectsAtCurrentPath.length === 0" class="col-span-full text-center py-8">
-            <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z" />
-            </svg>
+            <Icon name="folder" class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
             <h3 class="mt-2 text-sm font-medium text-gray-950 dark:text-white">No items found</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new folder or project.</p>
           </div>
@@ -643,15 +622,13 @@
     :entityType="selectedEntityForAudit?.type"
     @close="handleAuditModalClose"
   />
+  </div>
 </template>
 
 <script setup>
 import ProjectProgressBar from '@/components/ProjectProgressBar.vue'
 import AuditHistoryModal from '@/components/AuditHistoryModal.vue'
-
-definePageMeta({
-  middleware: 'auth'
-})
+import Icon from '@/components/Icon.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -19,9 +19,7 @@
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-md flex items-center justify-center">
-                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2v0"></path>
-                    </svg>
+                    <Icon name="briefcase" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
                 <div class="ml-5 w-0 flex-1">
@@ -40,9 +38,7 @@
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-md flex items-center justify-center">
-                    <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
+                    <Icon name="check" class="w-5 h-5 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
                 <div class="ml-5 w-0 flex-1">
@@ -61,9 +57,7 @@
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-md flex items-center justify-center">
-                    <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
+                    <Icon name="clock" class="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                   </div>
                 </div>
                 <div class="ml-5 w-0 flex-1">
@@ -82,9 +76,7 @@
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-md flex items-center justify-center">
-                    <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                    </svg>
+                    <Icon name="barChart" class="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
                 <div class="ml-5 w-0 flex-1">
@@ -113,9 +105,7 @@
                 <div class="flex items-center">
                   <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-md flex items-center justify-center">
-                      <svg class="w-7 h-7 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
-                      </svg>
+                      <Icon name="monitor" class="w-7 h-7 text-green-600 dark:text-green-400" />
                     </div>
                   </div>
                   <div class="ml-5 w-0 flex-1">
@@ -138,9 +128,7 @@
                     </div>
                   </div>
                   <div class="flex-shrink-0">
-                    <svg class="w-5 h-5 text-gray-400 group-hover:text-green-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
+                    <Icon name="chevronRight" class="w-5 h-5 text-gray-400 group-hover:text-green-500 transition-colors" />
                   </div>
                 </div>
               </div>
@@ -155,9 +143,7 @@
                 <div class="flex items-center">
                   <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-md flex items-center justify-center">
-                      <svg class="w-7 h-7 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
+                      <Icon name="alertCircle" class="w-7 h-7 text-red-600 dark:text-red-400" />
                     </div>
                   </div>
                   <div class="ml-5 w-0 flex-1">
@@ -169,9 +155,7 @@
                     </p>
                   </div>
                   <div class="flex-shrink-0">
-                    <svg class="w-5 h-5 text-gray-400 group-hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
+                    <Icon name="chevronRight" class="w-5 h-5 text-gray-400 group-hover:text-red-500 transition-colors" />
                   </div>
                 </div>
               </div>
@@ -186,10 +170,7 @@
                 <div class="flex items-center">
                   <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-md flex items-center justify-center">
-                      <svg class="w-7 h-7 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                      </svg>
+                      <Icon name="settings" class="w-7 h-7 text-yellow-600 dark:text-yellow-400" />
                     </div>
                   </div>
                   <div class="ml-5 w-0 flex-1">
@@ -200,16 +181,12 @@
                       System settings, environment variables, security configuration, and user management.
                     </p>
                     <div class="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
-                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0h-2m9-7a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
+                      <Icon name="info" class="w-4 h-4 mr-1" />
                       Admin Access Required
                     </div>
                   </div>
                   <div class="flex-shrink-0">
-                    <svg class="w-5 h-5 text-gray-400 group-hover:text-yellow-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
+                    <Icon name="chevronRight" class="w-5 h-5 text-gray-400 group-hover:text-yellow-500 transition-colors" />
                   </div>
                 </div>
               </div>
@@ -252,10 +229,9 @@
                     <button
                       @click.stop="toggleFolderMenu(folder.id)"
                       class="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-white hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      v-tooltip:bottomright="'View Actions'"
                     >
-                      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                      </svg>
+                      <Icon name="more" class="w-5 h-5" />
                     </button>
                     
                     <!-- Dropdown Menu -->
@@ -406,9 +382,7 @@
       <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div class="mt-3">
           <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 mb-4">
-            <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
+            <Icon name="alertTriangle" class="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
           <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-2 text-center">Delete Folder</h3>
           <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
@@ -498,6 +472,8 @@
 definePageMeta({
   middleware: 'auth'
 })
+
+import Icon from '~/components/Icon.vue'
 
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()

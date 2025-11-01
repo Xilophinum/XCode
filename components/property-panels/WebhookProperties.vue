@@ -2,9 +2,7 @@
     <div>
         <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
             <div class="flex items-center mb-2">
-            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-            </svg>
+            <Icon name="send" class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
             <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200">Webhook Trigger Configuration</h4>
             </div>
             <p class="text-xs text-blue-700 dark:text-blue-300">
@@ -49,11 +47,7 @@
                 class="px-3 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center space-x-1"
                 v-tooltip="'Generate random secure token'"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
-                <circle cx="12" cy="16" r="1"/>
-                <path d="m7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
+                <Icon name="lock" class="w-4 h-4" />
                 <span class="hidden sm:inline">Generate</span>
             </button>
             </div>
@@ -117,15 +111,11 @@
                 class="w-full p-3 bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 transition-colors flex items-center justify-between text-left"
             >
                 <span class="font-medium text-green-800 dark:text-green-200 text-xs">📖 Authentication Methods & Security</span>
-                <svg
+                <Icon
+                    name="chevronDown"
                     class="w-4 h-4 text-green-600 dark:text-green-400 transition-transform"
                     :class="{ 'rotate-180': showAuthDocs }"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
+                />
             </button>
             <div v-show="showAuthDocs" class="p-3 bg-green-50 dark:bg-green-950 border-t border-green-200 dark:border-green-800 text-xs">
                 <div class="text-green-700 dark:text-green-300 space-y-2">
@@ -288,6 +278,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import Icon from '~/components/Icon.vue'
 const logger = useLogger()
 const props = defineProps({
   nodeData: {

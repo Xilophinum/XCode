@@ -27,9 +27,7 @@
           class="absolute top-2 right-2 p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
           v-tooltip="'Remove credential binding'"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-          </svg>
+          <Icon name="delete" class="w-4 h-4" />
         </button>
         
         <div class="grid grid-cols-1 md:grid-cols-1 gap-3 mt-3">
@@ -103,6 +101,7 @@
 </template>
 
 <script setup>
+import Icon from '~/components/Icon.vue'
 const props = defineProps({
   modelValue: { type: Array, default: () => [] }
 })

@@ -2,9 +2,7 @@
   <div>
     <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
       <div class="flex items-center mb-2">
-        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-        </svg>
+        <Icon name="bell" class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
         <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200">Notification Configuration</h4>
       </div>
       <p class="text-xs text-blue-700 dark:text-blue-300">
@@ -297,15 +295,11 @@
         class="w-full p-3 bg-purple-50 dark:bg-purple-950 hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors flex items-center justify-between text-left"
       >
         <span class="font-medium text-purple-800 dark:text-purple-200 text-xs">Available Context Variables</span>
-        <svg
+        <Icon
+          name="chevronDown"
           class="w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform"
           :class="{ 'rotate-180': showVariables }"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
+        />
       </button>
       <div v-show="showVariables" class="p-3 bg-purple-50 dark:bg-purple-950 border-t border-purple-200 dark:border-purple-800 text-xs">
         <div class="text-purple-700 dark:text-purple-300 space-y-1">
@@ -340,15 +334,11 @@
         class="w-full p-3 bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 transition-colors flex items-center justify-between text-left"
       >
         <span class="font-medium text-green-800 dark:text-green-200 text-xs">Available Input Socket Variables</span>
-        <svg
+        <Icon
+          name="chevronDown"
           class="w-4 h-4 text-green-600 dark:text-green-400 transition-transform"
           :class="{ 'rotate-180': showInputSockets }"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
+        />
       </button>
       <div v-show="showInputSockets" class="p-3 bg-green-50 dark:bg-green-950 border-t border-green-200 dark:border-green-800 text-xs">
         <div class="text-green-700 dark:text-green-300 space-y-1">
@@ -369,15 +359,11 @@
         class="w-full p-3 bg-amber-50 dark:bg-amber-950 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors flex items-center justify-between text-left"
       >
         <span class="font-medium text-amber-800 dark:text-amber-200 text-xs">Usage Examples</span>
-        <svg
+        <Icon
+          name="chevronDown"
           class="w-4 h-4 text-amber-600 dark:text-amber-400 transition-transform"
           :class="{ 'rotate-180': showExamples }"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
+        />
       </button>
       <div v-show="showExamples" class="p-3 bg-amber-50 dark:bg-amber-950 border-t border-amber-200 dark:border-amber-800 text-xs">
         <div class="text-amber-700 dark:text-amber-300 space-y-2">
@@ -439,15 +425,11 @@
         class="w-full p-3 bg-blue-50 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors flex items-center justify-between text-left"
       >
         <span class="font-medium text-blue-800 dark:text-blue-200 text-xs">Setup & Configuration Guide</span>
-        <svg
+        <Icon
+          name="chevronDown"
           class="w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform"
           :class="{ 'rotate-180': showSetupGuide }"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
+        />
       </button>
       <div v-show="showSetupGuide" class="p-3 bg-blue-50 dark:bg-blue-950 border-t border-blue-200 dark:border-blue-800 text-xs">
         <!-- Email SMTP Setup -->
@@ -501,6 +483,7 @@
 </template>
 
 <script setup>
+import Icon from '~/components/Icon.vue'
 const props = defineProps({
   nodeData: {
     type: Object,

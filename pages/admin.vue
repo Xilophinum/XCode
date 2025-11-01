@@ -45,36 +45,19 @@
                   <div class="flex items-center">
                     <h3 class="text-md font-medium text-gray-950 dark:text-white flex items-center">
                       <!-- Category Icons -->
-                      <svg v-if="category === 'branding'" class="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
-                      </svg>
-                      <svg v-else-if="category === 'security'" class="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                      </svg>
-                      <svg v-else-if="category === 'authentication'" class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                      </svg>
-                      <svg v-else-if="category === 'notifications'" class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.828 7l5.657-5.657A2 2 0 0112 0h8a2 2 0 012 2v8a2 2 0 01-.586 1.414L15.657 17H12l-5.657-5.657A2 2 0 015 10.828V2a2 2 0 01.828-1.172z"></path>
-                      </svg>
-                      <svg v-else-if="category === 'general'" class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                      </svg>
-                      <svg v-else class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                      </svg>
+                      <Icon v-if="category === 'branding'" name="music" class="w-5 h-5 mr-2 text-purple-600" />
+                      <Icon v-else-if="category === 'security'" name="shield" class="w-5 h-5 mr-2 text-red-600" />
+                      <Icon v-else-if="category === 'authentication'" name="users" class="w-5 h-5 mr-2 text-indigo-600" />
+                      <Icon v-else-if="category === 'notifications'" name="bell" class="w-5 h-5 mr-2 text-blue-600" />
+                      <Icon v-else-if="category === 'general'" name="settings" class="w-5 h-5 mr-2 text-green-600" />
+                      <Icon v-else name="file-text" class="w-5 h-5 mr-2 text-gray-600" />
                       {{ getCategoryTitle(category) }}
                     </h3>
                   </div>
-                  <svg 
-                    :class="expandedCategories.has(category) ? 'rotate-180' : ''"
-                    class="w-5 h-5 text-gray-400 transition-transform duration-200" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                  </svg>
+                  <Icon 
+                    name="chevronDown"
+                    :class="expandedCategories.has(category) ? 'rotate-180 w-5 h-5 text-gray-400 transition-transform duration-200' : 'w-5 h-5 text-gray-400 transition-transform duration-200'"
+                  />
                 </button>
                 
                 <div v-if="expandedCategories.has(category)" class="p-6 bg-white dark:bg-gray-800">
@@ -240,10 +223,7 @@
                         :disabled="!ldapTestForm.username || !ldapTestForm.password || ldapTesting"
                         class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                       >
-                        <svg v-if="ldapTesting" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
+                        <Icon name="loader" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" />
                         {{ ldapTesting ? 'Testing...' : 'Test LDAP Connection' }}
                       </button>
                       
@@ -295,9 +275,7 @@
                 @click="showTemplateModal = true; editingTemplate = null"
                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600"
               >
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
+                <Icon name="plus" class="w-5 h-5 mr-2" />
                 Create Template
               </button>
             </div>
@@ -308,9 +286,7 @@
             </div>
 
             <div v-else-if="notificationTemplates.length === 0" class="text-center py-8">
-              <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-              </svg>
+              <Icon name="bell" class="mx-auto h-12 w-12 text-gray-400" />
               <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No notification templates found</p>
               <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Create your first template to get started</p>
             </div>
@@ -344,9 +320,7 @@
                       class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50 rounded-md transition-colors"
                       v-tooltip="'Delete template'"
                     >
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                      </svg>
+                      <Icon name="delete" class="w-5 h-5" />
                     </button>
                   </div>
                 </div>
@@ -364,9 +338,7 @@
                 @click="showEnvModal = true"
                 class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
               >
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
+                <Icon name="plus" class="w-4 h-4 mr-2" />
                 Add Variable
               </button>
             </div>
@@ -429,9 +401,7 @@
                   @click="showCredentialModal = true"
                   class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
                 >
-                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                  </svg>
+                  <Icon name="plus" class="w-4 h-4 mr-2" />
                   Add Credential
                 </button>
               </div>
@@ -512,9 +482,7 @@
                 @click="showGroupModal = true"
                 class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
               >
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
+                <Icon name="plus" class="w-4 h-4 mr-2" />
                 Create Group
               </button>
             </div>
@@ -1216,9 +1184,7 @@
             {{ editingTemplate ? 'Edit' : 'Create' }} Notification Template
           </h3>
           <button @click="closeTemplateModal" class="text-gray-400 hover:text-gray-500">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
+            <Icon name="close" class="w-6 h-6" />
           </button>
         </div>
 
@@ -1413,6 +1379,7 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
+import Icon from '~/components/Icon.vue'
 const logger = useLogger()
 const { success, error: notifyError } = useNotifications()
 definePageMeta({

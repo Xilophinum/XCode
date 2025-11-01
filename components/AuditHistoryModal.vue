@@ -21,16 +21,14 @@
                 Audit History
               </h3>
               <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ entityName }} - {{ entityType === 'project' ? 'Project' : 'Folder' }}
+                {{ entityName || 'Unknown Entity' }} - {{ entityType === 'project' ? 'Project' : 'Folder' }}
               </p>
             </div>
             <button
               @click="closeModal"
               class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-white"
             >
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Icon name="close" class="h-5 w-5" />
             </button>
           </div>
 
@@ -72,9 +70,7 @@
               </div>
 
               <div v-else-if="auditLogs.length === 0" class="text-center py-8">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+                <Icon name="fileText" class="mx-auto h-12 w-12 text-gray-400" />
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No activity recorded yet</p>
               </div>
 
@@ -85,16 +81,14 @@
                   class="flex gap-4 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                 >
                   <!-- Icon -->
-                  <div class="flex-shrink-0">
-                    <div :class="[
-                      'flex h-10 w-10 items-center justify-center rounded-full',
-                      getActionColor(log.action)
-                    ]">
-                      <component :is="getActionIcon(log.action)" class="h-5 w-5" />
-                    </div>
-                  </div>
-
-                  <!-- Content -->
+                    <div class="flex-shrink-0">
+                      <div :class="[
+                        'flex h-10 w-10 items-center justify-center rounded-full',
+                        getActionColor(log.action)
+                      ]">
+                        <Icon :name="getActionIcon(log.action)" class="h-5 w-5" />
+                      </div>
+                    </div>                  <!-- Content -->
                   <div class="flex-1 min-w-0">
                     <div class="flex items-start justify-between">
                       <div>
@@ -238,9 +232,7 @@
               </div>
 
               <div v-else-if="snapshots.length === 0" class="text-center py-8">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <Icon name="clock" class="mx-auto h-12 w-12 text-gray-400" />
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No versions saved yet</p>
               </div>
 
@@ -252,9 +244,7 @@
                 >
                   <div class="flex items-center gap-4">
                     <div class="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">
-                      <svg class="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                      </svg>
+                      <Icon name="tag" class="h-5 w-5 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
                       <p class="text-sm font-medium text-gray-900 dark:text-white">
@@ -275,9 +265,7 @@
                     :disabled="reverting"
                     class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                    </svg>
+                    <Icon name="arrowLeft" class="mr-1.5 h-4 w-4" />
                     Revert
                   </button>
                 </div>
@@ -302,16 +290,19 @@ const props = defineProps({
   },
   entityId: {
     type: String,
-    required: true
+    required: false,
+    default: ''
   },
   entityName: {
     type: String,
-    required: true
+    required: false,
+    default: ''
   },
   entityType: {
     type: String,
-    required: true,
-    validator: (value) => ['folder', 'project'].includes(value)
+    required: false,
+    default: 'project',
+    validator: (value) => !value || ['folder', 'project'].includes(value)
   }
 })
 
@@ -328,7 +319,7 @@ const logger = useLogger()
 
 // Watch for modal open to fetch data
 watch(() => props.isOpen, async (isOpen) => {
-  if (isOpen) {
+  if (isOpen && props.entityId) {
     activeTab.value = 'logs'
     await fetchAuditLogs()
     if (props.entityType === 'project') {
@@ -338,6 +329,8 @@ watch(() => props.isOpen, async (isOpen) => {
 })
 
 const fetchAuditLogs = async () => {
+  if (!props.entityId) return
+  
   loading.value = true
   try {
     const response = await $fetch(`/api/audit/${props.entityId}`, {
@@ -352,6 +345,8 @@ const fetchAuditLogs = async () => {
 }
 
 const fetchSnapshots = async () => {
+  if (!props.entityId || props.entityType !== 'project') return
+  
   loadingSnapshots.value = true
   try {
     const response = await $fetch(`/api/projects/${props.entityId}/snapshots`, {
@@ -366,6 +361,8 @@ const fetchSnapshots = async () => {
 }
 
 const revertToVersion = async (version) => {
+  if (!props.entityId) return
+  
   // Show confirmation modal instead of browser confirm
   const confirmed = await confirm(`Are you sure you want to revert to version ${version}? This will overwrite the current configuration.`)
   if (!confirmed) {
@@ -406,14 +403,13 @@ const closeModal = () => {
 }
 
 const getActionIcon = (action) => {
-  const icons = {
-    create: 'svg',
-    update: 'svg',
-    delete: 'svg',
-    restore: 'svg'
+  const iconNames = {
+    create: 'plus',
+    update: 'edit',
+    delete: 'delete',
+    restore: 'restore'
   }
-  // Return raw SVG component (simplified for now)
-  return 'svg'
+  return iconNames[action] || 'edit'
 }
 
 const getActionColor = (action) => {

@@ -16,15 +16,10 @@
               class="h-8 w-8 object-contain"
             >
             <!-- Default Icon if no logo -->
-            <svg
-              v-else
+            <Icon
+              name="code"
               class="h-8 w-8 text-blue-600 dark:text-blue-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
-            </svg>
+            />
             <!-- Dynamic Brand Name -->
             <span class="hidden sm:inline">{{ brandName }}</span>
           </NuxtLink>
@@ -62,9 +57,7 @@
               placeholder="Search projects and folders..."
               class="w-64 px-3 py-2 pl-10 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-            <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <Icon name="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
             
             <!-- Search Results Dropdown -->
             <div
@@ -78,12 +71,8 @@
                 class="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0"
               >
                 <div class="flex items-center space-x-2">
-                  <svg v-if="result.type === 'folder'" class="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z" />
-                  </svg>
-                  <svg v-else class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                  <Icon v-if="result.type === 'folder'" name="folder" class="h-4 w-4 text-blue-500" />
+                  <Icon v-else name="fileText" class="h-4 w-4 text-green-500" />
                   <div class="flex-1 min-w-0">
                     <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ result.name }}</div>
                     <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ getResultPath(result) }}</div>
@@ -105,7 +94,7 @@
             @click="handleLogout"
             class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" class="mr-2"><path fill="currentColor" d="M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h7v2H5v14h7v2zm11-4l-1.375-1.45l2.55-2.55H9v-2h8.175l-2.55-2.55L16 7l5 5z"/></svg>
+            <Icon name="logOut" class="mr-2 w-4 h-4" />
             Logout
           </button>
 
@@ -116,25 +105,17 @@
             v-tooltip:bottomright="'Toggle dark mode'"
           >
             <!-- Sun icon for light mode -->
-            <svg
+            <Icon
               v-if="darkMode.isDark.value"
+              name="sun"
               class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
-            </svg>
+            />
             <!-- Moon icon for dark mode -->
-            <svg
+            <Icon
               v-else
+              name="moon"
               class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
-            </svg>
+            />
           </button>
         </div>
 
@@ -146,9 +127,7 @@
             class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             v-tooltip="'Search'"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <Icon name="search" class="w-4 h-4" />
           </button>
           
           <!-- Mobile actions slot - limited to essential buttons only -->
@@ -162,9 +141,7 @@
             class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             v-tooltip="'Menu'"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-            </svg>
+            <Icon name="menu" class="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -179,9 +156,7 @@
             placeholder="Search projects and folders..."
             class="w-full px-3 py-2 pl-10 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-          <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+          <Icon name="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
         </div>
         
         <!-- Mobile Search Results -->
@@ -192,12 +167,8 @@
             @click="navigateToResult(result)"
             class="flex items-center space-x-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md cursor-pointer"
           >
-            <svg v-if="result.type === 'folder'" class="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z" />
-            </svg>
-            <svg v-else class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+            <Icon v-if="result.type === 'folder'" name="folder" class="h-4 w-4 text-blue-500" />
+            <Icon v-else name="fileText" class="h-4 w-4 text-green-500" />
             <div class="flex-1 min-w-0">
               <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ result.name }}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ getResultPath(result) }}</div>
@@ -240,12 +211,11 @@
             Welcome, {{ authStore.user?.name }}
           </div>
 
-          <!-- Logout button -->
           <button
             @click="handleLogout"
             class="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" class="mr-2"><path fill="currentColor" d="M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h7v2H5v14h7v2zm11-4l-1.375-1.45l2.55-2.55H9v-2h8.175l-2.55-2.55L16 7l5 5z"/></svg>
+            <Icon name="logOut" class="mr-2 w-4 h-4" />
             Logout
           </button>
 
@@ -254,24 +224,16 @@
             @click="darkMode.toggle()"
             class="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
           >
-            <svg
+            <Icon
               v-if="darkMode.isDark.value"
+              name="sun"
               class="w-4 h-4 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
-            </svg>
-            <svg
+            />
+            <Icon
               v-else
+              name="moon"
               class="w-4 h-4 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
-            </svg>
+            />
             {{ darkMode.isDark.value ? 'Light Mode' : 'Dark Mode' }}
           </button>
         </div>
@@ -282,6 +244,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import Icon from '~/components/Icon.vue'
 
 const props = defineProps({
   breadcrumbs: {
