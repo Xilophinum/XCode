@@ -39,12 +39,11 @@
     <!-- Dependency file content -->
     <div v-if="!nodeData.data.useExistingFile">
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ getFileLabel() }}</label>
-      <textarea
+      <ScriptEditor
         v-model="nodeData.data.script"
-        v-auto-resize
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
-        :placeholder="getFilePlaceholder()"
-      ></textarea>
+        :language="'plaintext'"
+        class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+      />
       <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
         Will be written to {{ getFileName() }} before execution
       </p>
@@ -89,6 +88,7 @@
 </template>
 
 <script setup>
+import ScriptEditor from '../ScriptEditor.vue'
 const props = defineProps({
   nodeData: {
     type: Object,
@@ -134,21 +134,6 @@ const getFileName = () => {
       return 'Cargo.toml'
     default:
       return 'file'
-  }
-}
-
-const getFilePlaceholder = () => {
-  switch (props.nodeData.data.nodeType) {
-    case 'go-mod':
-      return 'module example.com/myapp\n\ngo 1.21\n\nrequire (\n\tgithub.com/gin-gonic/gin v1.9.1\n)'
-    case 'bundle-install':
-      return 'source "https://rubygems.org"\n\ngem "rails", "~> 7.0"'
-    case 'composer-install':
-      return '{\n  "require": {\n    "laravel/framework": "^10.0"\n  }\n}'
-    case 'cargo-build':
-      return '[package]\nname = "my-app"\nversion = "0.1.0"\n\n[dependencies]\nactix-web = "4.0"'
-    default:
-      return ''
   }
 }
 </script>

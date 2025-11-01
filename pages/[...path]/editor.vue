@@ -622,12 +622,11 @@
               <!-- Script Editor for execution nodes -->
               <div v-if="selectedNode.data?.script !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Script</label>
-                <textarea
+                <ScriptEditor
                   v-model="selectedNode.data.script"
-                  v-auto-resize
-                  class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
-                  placeholder="Enter your script here. Use ${SOCKET_1_INPUT} or ${SocketLabel} to reference input values"
-                ></textarea>
+                  :language="getScriptLanguage(selectedNode.data?.nodeType)"
+                  class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+                />
 
                 <!-- Parameter substitution help -->
                 <div v-if="selectedNode.data.inputSockets && selectedNode.data.inputSockets.length > 0" class="mt-2 p-2 bg-blue-50 dark:bg-blue-950 rounded text-xs">
@@ -788,6 +787,7 @@ import GitCheckoutProperties from '@/components/property-panels/GitCheckoutPrope
 import EditorDeleteModal from '@/components/modals/EditorDeleteModal.vue'
 import EditorRetentionModal from '@/components/modals/EditorRetentionModal.vue'
 import CredentialBinding from '@/components/CredentialBinding.vue'
+import ScriptEditor from '@/components/ScriptEditor.vue'
 // Import Vue Flow styles
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -1971,7 +1971,39 @@ const executeGraph = async () => {
   }
 }
 
-// Remove cancelExecution - this is now handled in build page
+const getScriptLanguage = (nodeType) => {
+  switch (nodeType) {
+    case 'bash':
+      return 'bash'
+    case 'sh':
+      return 'shell'
+    case 'powershell':
+      return 'powershell'
+    case 'cmd':
+      return 'batch'
+    case 'python':
+    case 'python3':
+      return 'python'
+    case 'node':
+      return 'javascript'
+    case 'npm-install':
+      return 'json'
+    case 'ruby':
+      return 'ruby'
+    case 'go':
+      return 'go'
+    case 'php':
+      return 'php'
+    case 'java':
+      return 'java'
+    case 'rust':
+      return 'rust'
+    case 'perl':
+      return 'perl'
+    default:
+      return 'plaintext'
+  }
+}
 
 const onNodeClick = (event) => {
   selectedNode.value = event.node

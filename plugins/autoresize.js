@@ -34,7 +34,9 @@ export default defineNuxtPlugin((nuxtApp) => {
         })
 
         // Restore cursor position
-        el.setSelectionRange(start, end)
+        if (el.setSelectionRange) {
+          el.setSelectionRange(start, end)
+        }
 
         // Restore scroll position to prevent jumping
         if (scrollContainer) {

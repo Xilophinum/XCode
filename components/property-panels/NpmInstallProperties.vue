@@ -26,12 +26,12 @@
 
     <div v-if="!nodeData.data.useExistingFile">
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">package.json Content</label>
-      <textarea
+      <ScriptEditor
         v-model="nodeData.data.script"
-        v-auto-resize
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
-        placeholder='{\n  "name": "my-project",\n  "dependencies": {\n    "express": "^4.18.0"\n  }\n}'
-      ></textarea>
+        :language="'json'"
+        :langSelectionEnabled="false"
+        class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+      />
       <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
         Will be written to package.json before installation
       </p>
@@ -78,6 +78,7 @@
 </template>
 
 <script setup>
+import ScriptEditor from '../ScriptEditor.vue'
 defineProps({
   nodeData: {
     type: Object,
