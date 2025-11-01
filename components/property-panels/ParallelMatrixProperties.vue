@@ -6,13 +6,12 @@
         JavaScript Code
         <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">(must return an array)</span>
       </label>
-      <textarea
+      <ScriptEditor
         v-model="nodeData.data.script"
-        v-auto-resize
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
-        placeholder="return ['item1', 'item2', 'item3']"
-      ></textarea>
-
+        :language="'javascript'"
+        :langSelectionEnabled="false"
+        class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+      />
       <div class="mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded text-xs">
         <div class="font-medium text-blue-800 dark:text-blue-200 mb-1">Examples:</div>
         <div class="space-y-2 text-blue-700 dark:text-blue-300">
@@ -117,6 +116,7 @@
 </template>
 
 <script setup>
+import ScriptEditor from '@/components/ScriptEditor.vue'
 const props = defineProps({
   nodeData: { type: Object, required: true }
 })

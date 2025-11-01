@@ -58,20 +58,12 @@ const executionInputY = computed(() => {
 const getSocketColor = (socket) => {
   if (props.data.nodeType === 'conditional') {
     return socket.id === 'true' ? '#10b981' : '#ef4444'
-  } else if (['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl'].includes(props.data.nodeType)) {
-    if (socket.id === 'success') return '#10b981'
-    else if (socket.id === 'failure') return '#ef4444'
-    else if (socket.id === 'output') return '#3b82f6'
-  } else if (props.data.nodeType === 'parallel_branches') {
-    if (socket.id === 'success') return '#10b981'
-    else if (socket.id === 'failure') return '#ef4444'
-    else if (socket.id === 'output') return '#3b82f6'
-    else return '#8b5cf6'
-  } else if (props.data.nodeType === 'parallel_matrix') {
+  } else if (['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout', 'parallel_branches', ].includes(props.data.nodeType)) {
     if (socket.id === 'success') return '#10b981'
     else if (socket.id === 'failure') return '#ef4444'
     else if (socket.id === 'output') return '#3b82f6'
     else if (socket.id === 'iteration') return '#8b5cf6'
+    else return '#8b5cf6'
   }
   return '#8b5cf6' // Default purple
 }

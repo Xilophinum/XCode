@@ -18,12 +18,11 @@
     <!-- Script Editor -->
     <div class="mb-4">
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Script</label>
-      <textarea
+      <ScriptEditor
         v-model="nodeData.data.script"
-        v-auto-resize
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
-        :placeholder="getPlaceholder()"
-      ></textarea>
+        :language="'javascript'"
+        class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+      />
     </div>
 
     <!-- Working Directory -->
@@ -64,6 +63,7 @@
 </template>
 
 <script setup>
+import ScriptEditor from '@/components/ScriptEditor.vue'
 const props = defineProps({
   nodeData: { 
     type: Object, 
@@ -74,8 +74,4 @@ const props = defineProps({
     required: true
   }
 })
-
-const getPlaceholder = () => {
-  return props.placeholderData.find(item => item.type === props.nodeData.data.executionType)?.placeholder || ''
-}
 </script>

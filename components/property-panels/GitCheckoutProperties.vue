@@ -9,7 +9,7 @@
         placeholder="https://github.com/user/repo.git"
       >
       <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        Supports credential variables: ${CREDENTIAL_NAME} or ${CREDENTIAL_NAME_USERNAME}
+        Supports credential variables
       </p>
     </div>
 
