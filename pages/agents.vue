@@ -223,7 +223,7 @@
                         v-if="!agent.isLocal"
                         @click="confirmDeleteAgent(agent)"
                         class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                        v-tooltip="'Delete agent'"
+                        v-tooltip:left="'Delete agent'"
                       >
                         <Icon name="delete" class="w-4 h-4" />
                       </button>
@@ -238,164 +238,158 @@
     </main>
 
     <!-- Add Agent Modal -->
-    <div v-if="showAddAgentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="mt-3">
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Add New Agent</h3>
+    <ModalWrapper v-model="showAddAgentModal">
+      <div class="m-4">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Add New Agent</h3>
+        
+        <form @submit.prevent="createAgent" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Agent Name</label>
+            <input
+              v-model="newAgent.name"
+              type="text"
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="My Build Agent"
+            >
+          </div>
           
-          <form @submit.prevent="createAgent" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Agent Name</label>
-              <input
-                v-model="newAgent.name"
-                type="text"
-                required
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="My Build Agent"
-              >
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Concurrent Jobs</label>
-              <input
-                v-model.number="newAgent.maxConcurrentJobs"
-                type="number"
-                min="1"
-                required
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="1"
-              >
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</label>
-              <textarea
-                v-model="newAgent.description"
-                v-auto-resize
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none overflow-hidden"
-                placeholder="Description of this agent"
-              ></textarea>
-            </div>
-            
-            <div class="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                @click="showAddAgentModal = false"
-                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                :disabled="creating"
-                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                <span v-if="creating">Creating...</span>
-                <span v-else>Create Agent</span>
-              </button>
-            </div>
-          </form>
-        </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Concurrent Jobs</label>
+            <input
+              v-model.number="newAgent.maxConcurrentJobs"
+              type="number"
+              min="1"
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="1"
+            >
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</label>
+            <textarea
+              v-model="newAgent.description"
+              v-auto-resize
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none overflow-hidden"
+              placeholder="Description of this agent"
+            ></textarea>
+          </div>
+          
+          <div class="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              @click="showAddAgentModal = false"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              :disabled="creating"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              <span v-if="creating">Creating...</span>
+              <span v-else>Create Agent</span>
+            </button>
+          </div>
+        </form>
       </div>
-    </div>
+    </ModalWrapper>
 
     <!-- Edit Agent Modal -->
-    <div v-if="showEditAgentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="mt-3">
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Edit Agent</h3>
-          
-          <form @submit.prevent="updateAgent" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Agent Name</label>
-              <input
-                v-model="editAgentForm.name"
-                type="text"
-                required
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Concurrent Jobs</label>
-              <input
-                v-model.number="editAgentForm.maxConcurrentJobs"
-                type="number"
-                min="1"
-                required
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-            </div>
-            
-            <div class="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                @click="showEditAgentModal = false"
-                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Update Agent
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Agent Token Modal -->
-    <div v-if="showTokenModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="mt-3">
-          <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 mb-4">
-            <Icon name="check" class="h-6 w-6 text-green-600 dark:text-green-400" />
+    <ModalWrapper v-model="showEditAgentModal">
+      <div class="m-4">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Edit Agent</h3>
+        
+        <form @submit.prevent="updateAgent" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Agent Name</label>
+            <input
+              v-model="editAgentForm.name"
+              type="text"
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
           </div>
           
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 text-center">Agent Created Successfully</h3>
-          
-          <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-            Your agent has been created. Use this token to connect your agent to the server:
-          </p>
-          
-          <div class="bg-gray-50 dark:bg-gray-700 rounded-md p-3 mb-4">
-            <div class="flex items-center justify-between">
-              <code class="text-sm font-mono break-all">{{ createdAgentToken }}</code>
-              <button
-                @click="copyToken"
-                class="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                v-tooltip="'Copy token'"
-              >
-                <Icon name="copy" class="w-4 h-4" />
-              </button>
-            </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Concurrent Jobs</label>
+            <input
+              v-model.number="editAgentForm.maxConcurrentJobs"
+              type="number"
+              min="1"
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            >
           </div>
           
-          <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3 mb-4">
-            <p class="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Important:</strong> Save this token securely. You won't be able to see it again. 
-              The agent will use this token to authenticate with the server.
-            </p>
-          </div>
-          
-          <div class="flex justify-end">
+          <div class="flex justify-end space-x-3 pt-4">
             <button
-              @click="closeTokenModal"
+              type="button"
+              @click="showEditAgentModal = false"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
               class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
-              Got it
+              Update Agent
+            </button>
+          </div>
+        </form>
+      </div>
+    </ModalWrapper>
+
+    <!-- Agent Token Modal -->
+    <ModalWrapper v-model="showTokenModal">
+      <div class="m-4">
+        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 mb-4">
+          <Icon name="check" class="h-6 w-6 text-green-600 dark:text-green-400" />
+        </div>
+        
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 text-center">Agent Created Successfully</h3>
+        
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+          Your agent has been created. Use this token to connect your agent to the server:
+        </p>
+        
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-md p-3 mb-4">
+          <div class="flex items-center justify-between">
+            <code class="text-sm font-mono break-all">{{ createdAgentToken }}</code>
+            <button
+              @click="copyToken"
+              class="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              v-tooltip="'Copy token'"
+            >
+              <Icon name="copy" class="w-4 h-4" />
             </button>
           </div>
         </div>
+        
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3 mb-4">
+          <p class="text-sm text-blue-800 dark:text-blue-200">
+            <strong>Important:</strong> Save this token securely. You won't be able to see it again. 
+            The agent will use this token to authenticate with the server.
+          </p>
+        </div>
+        
+        <div class="flex justify-end">
+          <button
+            @click="closeTokenModal"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Got it
+          </button>
+        </div>
       </div>
-    </div>
+    </ModalWrapper>
 
     <!-- Delete Agent Confirmation Modal -->
-    <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" @click="cancelDeleteAgent">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full" @click.stop>
+    <ModalWrapper v-model="showDeleteModal">
+      <div class="m-4">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Delete Agent</h3>
         <p class="text-sm text-gray-600 dark:text-gray-300 mb-6">
           Are you sure you want to delete agent "{{ agentToDelete?.name }}"? This action cannot be undone.
@@ -415,7 +409,7 @@
           </button>
         </div>
       </div>
-    </div>
+    </ModalWrapper>
   </div>
 </template>
 
@@ -425,6 +419,7 @@ definePageMeta({
 })
 
 import Icon from '~/components/Icon.vue'
+import ModalWrapper from '~/components/ModalWrapper.vue'
 
 const { isDark } = useDarkMode()
 const authStore = useAuthStore()

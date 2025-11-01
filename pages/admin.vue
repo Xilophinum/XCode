@@ -592,473 +592,467 @@
     </main>
 
     <!-- Environment Variable Modal -->
-    <div v-if="showEnvModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">
-          {{ editingEnvVariable ? 'Edit Environment Variable' : 'Add Environment Variable' }}
-        </h3>
+    <ModalWrapper v-model="showEnvModal" class="max-w-md">
+      <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">
+        {{ editingEnvVariable ? 'Edit Environment Variable' : 'Add Environment Variable' }}
+      </h3>
+      
+      <form @submit.prevent="saveEnvVariable">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Key</label>
+          <input
+            v-model="envForm.key"
+            type="text"
+            required
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+            placeholder="VARIABLE_NAME"
+          >
+        </div>
         
-        <form @submit.prevent="saveEnvVariable">
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Key</label>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Value</label>
+          <input
+            v-model="envForm.value"
+            type="text"
+            required
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+            placeholder="Variable value"
+          >
+        </div>
+        
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+          <input
+            v-model="envForm.description"
+            type="text"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+            placeholder="Optional description"
+          >
+        </div>
+        
+        <div class="mb-6">
+          <label class="flex items-center">
             <input
-              v-model="envForm.key"
-              type="text"
-              required
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-              placeholder="VARIABLE_NAME"
+              v-model="envForm.isSecret"
+              type="checkbox"
+              class="rounded border-gray-300 dark:border-gray-600 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 dark:bg-gray-700"
             >
-          </div>
-          
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Value</label>
-            <input
-              v-model="envForm.value"
-              type="text"
-              required
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-              placeholder="Variable value"
-            >
-          </div>
-          
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
-            <input
-              v-model="envForm.description"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-              placeholder="Optional description"
-            >
-          </div>
-          
-          <div class="mb-6">
-            <label class="flex items-center">
-              <input
-                v-model="envForm.isSecret"
-                type="checkbox"
-                class="rounded border-gray-300 dark:border-gray-600 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 dark:bg-gray-700"
-              >
-              <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Mark as secret (value will be hidden)</span>
-            </label>
-          </div>
-          
-          <div class="flex justify-end space-x-3">
-            <button
-              type="button"
-              @click="closeEnvModal"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-            >
-              {{ editingEnvVariable ? 'Update' : 'Create' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Mark as secret (value will be hidden)</span>
+          </label>
+        </div>
+        
+        <div class="flex justify-end space-x-3">
+          <button
+            type="button"
+            @click="closeEnvModal"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+          >
+            {{ editingEnvVariable ? 'Update' : 'Create' }}
+          </button>
+        </div>
+      </form>
+    </ModalWrapper>
 
     <!-- Credential Modal -->
-    <div v-if="showCredentialModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">
-          {{ editingCredential ? 'Edit Credential' : 'Add Credential' }}
-        </h3>
-        
-        <form @submit.prevent="saveCredential" class="space-y-4">
-          <!-- Basic Information -->
+    <ModalWrapper v-model="showCredentialModal" class="max-w-md">
+      <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">
+        {{ editingCredential ? 'Edit Credential' : 'Add Credential' }}
+      </h3>
+      
+      <form @submit.prevent="saveCredential" class="space-y-4">
+        <!-- Basic Information -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Name *</label>
+            <input
+              v-model="credentialForm.name"
+              type="text"
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+              placeholder="Credential name"
+            >
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Type *</label>
+            <select
+              v-model="credentialForm.type"
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+            >
+              <option value="password">Password Only</option>
+              <option value="user_pass">Username + Password</option>
+              <option value="token">Token/API Key</option>
+              <option value="ssh_key">SSH Private Key</option>
+              <option value="certificate">Certificate</option>
+              <option value="file">File Upload</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+          <textarea
+            v-model="credentialForm.description"
+            v-auto-resize
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
+            placeholder="Optional description"
+          ></textarea>
+        </div>
+
+        <!-- Credential Fields (shown based on type) -->
+        <div class="border-t pt-4">
+          <h4 class="text-md font-medium text-gray-950 mb-3">Credential Data</h4>
+          
+          <!-- Username (for user_pass, ssh_key) -->
+          <div v-if="['user_pass', 'ssh_key'].includes(credentialForm.type)" class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+            <input
+              v-model="credentialForm.username"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="Username"
+            >
+          </div>
+
+          <!-- Password (for password, user_pass) -->
+          <div v-if="['password', 'user_pass'].includes(credentialForm.type)" class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            <input
+              v-model="credentialForm.password"
+              type="password"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="Password"
+            >
+          </div>
+
+          <!-- Token (for token) -->
+          <div v-if="credentialForm.type === 'token'" class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Token/API Key</label>
+            <textarea
+              v-model="credentialForm.token"
+              v-auto-resize
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
+              placeholder="API token or key"
+            ></textarea>
+          </div>
+
+          <!-- SSH Private Key (for ssh_key) -->
+          <div v-if="credentialForm.type === 'ssh_key'" class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">SSH Private Key</label>
+            <textarea
+              v-model="credentialForm.privateKey"
+              v-auto-resize
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
+              placeholder="-----BEGIN PRIVATE KEY-----"
+            ></textarea>
+          </div>
+
+          <!-- Certificate (for certificate) -->
+          <div v-if="credentialForm.type === 'certificate'" class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Certificate</label>
+            <textarea
+              v-model="credentialForm.certificate"
+              v-auto-resize
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
+              placeholder="-----BEGIN CERTIFICATE-----"
+            ></textarea>
+          </div>
+
+          <!-- File Upload (for file) -->
+          <div v-if="credentialForm.type === 'file'" class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">File Upload</label>
+            <input
+              type="file"
+              @change="handleCredentialFileUpload"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+            <div v-if="credentialForm.fileName" class="mt-2 text-sm text-gray-600">
+              Selected: {{ credentialForm.fileName }} ({{ credentialForm.fileMimeType }})
+            </div>
+          </div>
+        </div>
+
+        <!-- Additional Fields -->
+        <div class="border-t pt-4">
+          <h4 class="text-md font-medium text-gray-950 mb-3">Additional Information</h4>
+          
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Name *</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">URL</label>
               <input
-                v-model="credentialForm.name"
-                type="text"
-                required
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                placeholder="Credential name"
+                v-model="credentialForm.url"
+                type="url"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="https://example.com"
               >
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Type *</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Environment</label>
               <select
-                v-model="credentialForm.type"
-                required
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+                v-model="credentialForm.environment"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
               >
-                <option value="password">Password Only</option>
-                <option value="user_pass">Username + Password</option>
-                <option value="token">Token/API Key</option>
-                <option value="ssh_key">SSH Private Key</option>
-                <option value="certificate">Certificate</option>
-                <option value="file">File Upload</option>
-                <option value="custom">Custom</option>
+                <option value="">Select Environment</option>
+                <option value="development">Development</option>
+                <option value="staging">Staging</option>
+                <option value="production">Production</option>
+                <option value="testing">Testing</option>
               </select>
             </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-            <textarea
-              v-model="credentialForm.description"
-              v-auto-resize
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
-              placeholder="Optional description"
-            ></textarea>
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Expires At</label>
+            <input
+              v-model="credentialForm.expiresAt"
+              type="datetime-local"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
           </div>
 
-          <!-- Credential Fields (shown based on type) -->
-          <div class="border-t pt-4">
-            <h4 class="text-md font-medium text-gray-950 mb-3">Credential Data</h4>
-            
-            <!-- Username (for user_pass, ssh_key) -->
-            <div v-if="['user_pass', 'ssh_key'].includes(credentialForm.type)" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+          <!-- Tags -->
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <span
+                v-for="(tag, index) in credentialForm.tags"
+                :key="index"
+                class="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
+              >
+                {{ tag }}
+                <button
+                  type="button"
+                  @click="removeTag(index)"
+                  class="ml-1 text-blue-600 hover:text-blue-800"
+                >
+                  ×
+                </button>
+              </span>
+            </div>
+            <div class="flex gap-2">
               <input
-                v-model="credentialForm.username"
+                v-model="newTag"
                 type="text"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                placeholder="Username"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Add tag"
+                @keyup.enter="addTag"
               >
-            </div>
-
-            <!-- Password (for password, user_pass) -->
-            <div v-if="['password', 'user_pass'].includes(credentialForm.type)" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-              <input
-                v-model="credentialForm.password"
-                type="password"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                placeholder="Password"
+              <button
+                type="button"
+                @click="addTag"
+                class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
-            </div>
-
-            <!-- Token (for token) -->
-            <div v-if="credentialForm.type === 'token'" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Token/API Key</label>
-              <textarea
-                v-model="credentialForm.token"
-                v-auto-resize
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
-                placeholder="API token or key"
-              ></textarea>
-            </div>
-
-            <!-- SSH Private Key (for ssh_key) -->
-            <div v-if="credentialForm.type === 'ssh_key'" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">SSH Private Key</label>
-              <textarea
-                v-model="credentialForm.privateKey"
-                v-auto-resize
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
-                placeholder="-----BEGIN PRIVATE KEY-----"
-              ></textarea>
-            </div>
-
-            <!-- Certificate (for certificate) -->
-            <div v-if="credentialForm.type === 'certificate'" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Certificate</label>
-              <textarea
-                v-model="credentialForm.certificate"
-                v-auto-resize
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden"
-                placeholder="-----BEGIN CERTIFICATE-----"
-              ></textarea>
-            </div>
-
-            <!-- File Upload (for file) -->
-            <div v-if="credentialForm.type === 'file'" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">File Upload</label>
-              <input
-                type="file"
-                @change="handleCredentialFileUpload"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-              <div v-if="credentialForm.fileName" class="mt-2 text-sm text-gray-600">
-                Selected: {{ credentialForm.fileName }} ({{ credentialForm.fileMimeType }})
-              </div>
+                Add
+              </button>
             </div>
           </div>
 
-          <!-- Additional Fields -->
-          <div class="border-t pt-4">
-            <h4 class="text-md font-medium text-gray-950 mb-3">Additional Information</h4>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">URL</label>
-                <input
-                  v-model="credentialForm.url"
-                  type="url"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="https://example.com"
-                >
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Environment</label>
-                <select
-                  v-model="credentialForm.environment"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Select Environment</option>
-                  <option value="development">Development</option>
-                  <option value="staging">Staging</option>
-                  <option value="production">Production</option>
-                  <option value="testing">Testing</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Expires At</label>
-              <input
-                v-model="credentialForm.expiresAt"
-                type="datetime-local"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+          <!-- Custom Fields -->
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Custom Fields</label>
+            <div class="space-y-2 mb-2">
+              <div
+                v-for="(value, key) in credentialForm.customFields"
+                :key="key"
+                class="flex items-center gap-2 p-2 bg-gray-50 rounded"
               >
-            </div>
-
-            <!-- Tags -->
-            <div class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
-              <div class="flex flex-wrap gap-2 mb-2">
-                <span
-                  v-for="(tag, index) in credentialForm.tags"
-                  :key="index"
-                  class="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
-                >
-                  {{ tag }}
-                  <button
-                    type="button"
-                    @click="removeTag(index)"
-                    class="ml-1 text-blue-600 hover:text-blue-800"
-                  >
-                    ×
-                  </button>
-                </span>
-              </div>
-              <div class="flex gap-2">
-                <input
-                  v-model="newTag"
-                  type="text"
-                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Add tag"
-                  @keyup.enter="addTag"
-                >
+                <span class="font-medium text-sm">{{ key }}:</span>
+                <span class="text-sm">{{ value }}</span>
                 <button
                   type="button"
-                  @click="addTag"
-                  class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  @click="removeCustomField(key)"
+                  class="text-red-600 hover:text-red-800"
                 >
-                  Add
+                  ×
                 </button>
               </div>
             </div>
-
-            <!-- Custom Fields -->
-            <div class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Custom Fields</label>
-              <div class="space-y-2 mb-2">
-                <div
-                  v-for="(value, key) in credentialForm.customFields"
-                  :key="key"
-                  class="flex items-center gap-2 p-2 bg-gray-50 rounded"
-                >
-                  <span class="font-medium text-sm">{{ key }}:</span>
-                  <span class="text-sm">{{ value }}</span>
-                  <button
-                    type="button"
-                    @click="removeCustomField(key)"
-                    class="text-red-600 hover:text-red-800"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-              <div class="grid grid-cols-3 gap-2">
-                <input
-                  v-model="newCustomFieldKey"
-                  type="text"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Field name"
-                >
-                <input
-                  v-model="newCustomFieldValue"
-                  type="text"
-                  class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Field value"
-                >
-                <button
-                  type="button"
-                  @click="addCustomField"
-                  class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-                >
-                  Add Field
-                </button>
-              </div>
-            </div>
-
-            <!-- Active Status -->
-            <div class="mt-4">
-              <label class="flex items-center">
-                <input
-                  v-model="credentialForm.isActive"
-                  type="checkbox"
-                  class="mr-2"
-                >
-                <span class="text-sm font-medium text-gray-700">Active</span>
-              </label>
+            <div class="grid grid-cols-3 gap-2">
+              <input
+                v-model="newCustomFieldKey"
+                type="text"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Field name"
+              >
+              <input
+                v-model="newCustomFieldValue"
+                type="text"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Field value"
+              >
+              <button
+                type="button"
+                @click="addCustomField"
+                class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+              >
+                Add Field
+              </button>
             </div>
           </div>
 
-          <div class="flex justify-end space-x-3 pt-4 border-t">
-            <button
-              type="button"
-              @click="closeCredentialModal"
-              class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
-            >
-              {{ editingCredential ? 'Update' : 'Create' }}
-            </button>
+          <!-- Active Status -->
+          <div class="mt-4">
+            <label class="flex items-center">
+              <input
+                v-model="credentialForm.isActive"
+                type="checkbox"
+                class="mr-2"
+              >
+              <span class="text-sm font-medium text-gray-700">Active</span>
+            </label>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
 
-    <!-- Credential View Modal -->
-    <div v-if="showCredentialViewModal && viewingCredential" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-bold text-gray-950 dark:text-white">View Credential</h3>
+        <div class="flex justify-end space-x-3 pt-4 border-t">
           <button
-            @click="closeCredentialViewModal"
-            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+            type="button"
+            @click="closeCredentialModal"
+            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            ×
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+          >
+            {{ editingCredential ? 'Update' : 'Create' }}
           </button>
         </div>
-        
-        <div class="space-y-4">
+      </form>
+    </ModalWrapper>
+
+    <!-- Credential View Modal -->
+    <ModalWrapper v-model="showCredentialViewModal" class="max-w-2xl">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold text-gray-950 dark:text-white">View Credential</h3>
+        <button
+          @click="closeCredentialViewModal"
+          class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+        >
+          ×
+        </button>
+      </div>
+      
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Name</label>
+            <p class="mt-1 text-sm text-gray-950">{{ viewingCredential.name }}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Type</label>
+            <span 
+              :class="getCredentialTypeColor(viewingCredential.type)"
+              class="inline-block mt-1 px-2 py-1 text-xs font-medium rounded-full"
+            >
+              {{ getCredentialTypeLabel(viewingCredential.type) }}
+            </span>
+          </div>
+        </div>
+
+        <div v-if="viewingCredential.description">
+          <label class="block text-sm font-medium text-gray-700">Description</label>
+          <p class="mt-1 text-sm text-gray-950">{{ viewingCredential.description }}</p>
+        </div>
+
+        <!-- Credential Data (masked for security) -->
+        <div class="border-t pt-4">
+          <h4 class="text-md font-medium text-gray-950 mb-3">Credential Data</h4>
+          
+          <div v-if="viewingCredential.username" class="mb-2">
+            <label class="block text-sm font-medium text-gray-700">Username</label>
+            <p class="mt-1 text-sm font-mono bg-gray-50 p-2 rounded">{{ viewingCredential.username }}</p>
+          </div>
+
+          <div v-if="viewingCredential.password" class="mb-2">
+            <label class="block text-sm font-medium text-gray-700">Password</label>
+            <p class="mt-1 text-sm font-mono bg-gray-50 p-2 rounded">••••••••••••</p>
+          </div>
+
+          <div v-if="viewingCredential.token" class="mb-2">
+            <label class="block text-sm font-medium text-gray-700">Token</label>
+            <p class="mt-1 text-sm font-mono bg-gray-50 p-2 rounded">{{ viewingCredential.token.substring(0, 20) }}...</p>
+          </div>
+
+          <div v-if="viewingCredential.fileName" class="mb-2">
+            <label class="block text-sm font-medium text-gray-700">File</label>
+            <p class="mt-1 text-sm bg-gray-50 p-2 rounded">{{ viewingCredential.fileName }} ({{ viewingCredential.fileMimeType }})</p>
+          </div>
+        </div>
+
+        <!-- Additional Information -->
+        <div class="border-t pt-4">
+          <h4 class="text-md font-medium text-gray-950 mb-3">Additional Information</h4>
+          
           <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Name</label>
-              <p class="mt-1 text-sm text-gray-950">{{ viewingCredential.name }}</p>
+            <div v-if="viewingCredential.url">
+              <label class="block text-sm font-medium text-gray-700">URL</label>
+              <a :href="viewingCredential.url" target="_blank" class="mt-1 text-sm text-blue-600 hover:text-blue-800">
+                {{ viewingCredential.url }}
+              </a>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Type</label>
-              <span 
-                :class="getCredentialTypeColor(viewingCredential.type)"
-                class="inline-block mt-1 px-2 py-1 text-xs font-medium rounded-full"
-              >
-                {{ getCredentialTypeLabel(viewingCredential.type) }}
+            
+            <div v-if="viewingCredential.environment">
+              <label class="block text-sm font-medium text-gray-700">Environment</label>
+              <span class="mt-1 inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                {{ viewingCredential.environment }}
               </span>
             </div>
           </div>
 
-          <div v-if="viewingCredential.description">
-            <label class="block text-sm font-medium text-gray-700">Description</label>
-            <p class="mt-1 text-sm text-gray-950">{{ viewingCredential.description }}</p>
-          </div>
-
-          <!-- Credential Data (masked for security) -->
-          <div class="border-t pt-4">
-            <h4 class="text-md font-medium text-gray-950 mb-3">Credential Data</h4>
-            
-            <div v-if="viewingCredential.username" class="mb-2">
-              <label class="block text-sm font-medium text-gray-700">Username</label>
-              <p class="mt-1 text-sm font-mono bg-gray-50 p-2 rounded">{{ viewingCredential.username }}</p>
-            </div>
-
-            <div v-if="viewingCredential.password" class="mb-2">
-              <label class="block text-sm font-medium text-gray-700">Password</label>
-              <p class="mt-1 text-sm font-mono bg-gray-50 p-2 rounded">••••••••••••</p>
-            </div>
-
-            <div v-if="viewingCredential.token" class="mb-2">
-              <label class="block text-sm font-medium text-gray-700">Token</label>
-              <p class="mt-1 text-sm font-mono bg-gray-50 p-2 rounded">{{ viewingCredential.token.substring(0, 20) }}...</p>
-            </div>
-
-            <div v-if="viewingCredential.fileName" class="mb-2">
-              <label class="block text-sm font-medium text-gray-700">File</label>
-              <p class="mt-1 text-sm bg-gray-50 p-2 rounded">{{ viewingCredential.fileName }} ({{ viewingCredential.fileMimeType }})</p>
+          <div v-if="viewingCredential.tags && viewingCredential.tags.length > 0" class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+            <div class="flex flex-wrap gap-1">
+              <span
+                v-for="tag in viewingCredential.tags"
+                :key="tag"
+                class="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded"
+              >
+                {{ tag }}
+              </span>
             </div>
           </div>
 
-          <!-- Additional Information -->
-          <div class="border-t pt-4">
-            <h4 class="text-md font-medium text-gray-950 mb-3">Additional Information</h4>
-            
-            <div class="grid grid-cols-2 gap-4">
-              <div v-if="viewingCredential.url">
-                <label class="block text-sm font-medium text-gray-700">URL</label>
-                <a :href="viewingCredential.url" target="_blank" class="mt-1 text-sm text-blue-600 hover:text-blue-800">
-                  {{ viewingCredential.url }}
-                </a>
-              </div>
-              
-              <div v-if="viewingCredential.environment">
-                <label class="block text-sm font-medium text-gray-700">Environment</label>
-                <span class="mt-1 inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                  {{ viewingCredential.environment }}
-                </span>
+          <div v-if="Object.keys(viewingCredential.customFields || {}).length > 0" class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Custom Fields</label>
+            <div class="space-y-1">
+              <div
+                v-for="(value, key) in viewingCredential.customFields"
+                :key="key"
+                class="flex gap-2 text-sm"
+              >
+                <span class="font-medium">{{ key }}:</span>
+                <span>{{ value }}</span>
               </div>
             </div>
+          </div>
 
-            <div v-if="viewingCredential.tags && viewingCredential.tags.length > 0" class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
-              <div class="flex flex-wrap gap-1">
-                <span
-                  v-for="tag in viewingCredential.tags"
-                  :key="tag"
-                  class="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded"
-                >
-                  {{ tag }}
-                </span>
-              </div>
+          <div class="mt-4 grid grid-cols-2 gap-4 text-sm text-gray-500">
+            <div>
+              <label class="block font-medium">Created</label>
+              <p>{{ formatDate(viewingCredential.createdAt) }}</p>
             </div>
-
-            <div v-if="Object.keys(viewingCredential.customFields || {}).length > 0" class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Custom Fields</label>
-              <div class="space-y-1">
-                <div
-                  v-for="(value, key) in viewingCredential.customFields"
-                  :key="key"
-                  class="flex gap-2 text-sm"
-                >
-                  <span class="font-medium">{{ key }}:</span>
-                  <span>{{ value }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-4 grid grid-cols-2 gap-4 text-sm text-gray-500">
-              <div>
-                <label class="block font-medium">Created</label>
-                <p>{{ formatDate(viewingCredential.createdAt) }}</p>
-              </div>
-              <div v-if="viewingCredential.expiresAt">
-                <label class="block font-medium">Expires</label>
-                <p>{{ formatDate(viewingCredential.expiresAt) }}</p>
-              </div>
+            <div v-if="viewingCredential.expiresAt">
+              <label class="block font-medium">Expires</label>
+              <p>{{ formatDate(viewingCredential.expiresAt) }}</p>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </ModalWrapper>
 
     <!-- Group Modal -->
-    <div v-if="showGroupModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <ModalWrapper v-model="showGroupModal" class="max-w-md">
+      <div class="m-4">
         <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">
           {{ editingGroup ? 'Edit Group' : 'Create Group' }}
         </h3>
@@ -1102,11 +1096,11 @@
           </div>
         </form>
       </div>
-    </div>
+    </ModalWrapper>
 
     <!-- User Groups Modal -->
-    <div v-if="showUserGroupsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <ModalWrapper v-model="showUserGroupsModal" class="max-w-lg">
+      <div class="m-4">
         <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">
           Manage Groups - {{ selectedUser?.name }}
         </h3>
@@ -1174,11 +1168,11 @@
           </div>
         </form>
       </div>
-    </div>
+    </ModalWrapper>
 
     <!-- Notification Template Modal -->
-    <div v-if="showTemplateModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-10 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <ModalWrapper v-model="showTemplateModal" class="max-w-2xl">
+      <div class="m-4">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-semibold text-gray-950 dark:text-white">
             {{ editingTemplate ? 'Edit' : 'Create' }} Notification Template
@@ -1373,13 +1367,14 @@
           </div>
         </form>
       </div>
-    </div>
+    </ModalWrapper>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import Icon from '~/components/Icon.vue'
+import ModalWrapper from '~/components/ModalWrapper.vue'
 const logger = useLogger()
 const { success, error: notifyError } = useNotifications()
 definePageMeta({

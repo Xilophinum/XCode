@@ -1981,7 +1981,8 @@ onConnect(connection => {
     source: connection.source,
     target: connection.target,
     sourceHandle: connection.sourceHandle,
-    targetHandle: connection.targetHandle
+    targetHandle: connection.targetHandle,
+    type: 'smoothstep'
   })
 })
 
@@ -2044,6 +2045,7 @@ const initializeEditor = async () => {
         const cleanEdge = { ...edge }
         delete cleanEdge.class
         delete cleanEdge.animated
+        cleanEdge.type = 'smoothstep' // Ensure consistent edge type
         return cleanEdge
       })
     } else {

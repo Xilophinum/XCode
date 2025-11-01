@@ -234,82 +234,80 @@
     </main>
 
     <!-- Logs Modal -->
-    <div v-if="showLogsModalState" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" @click="closeLogsModal">
-      <div class="relative top-20 mx-auto p-5 border w-[90%] max-w-4xl shadow-lg rounded-md bg-white dark:bg-gray-800" @click.stop>
-        <div class="mt-3">
-          <!-- Header -->
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <h3 class="text-lg font-medium text-gray-950 dark:text-white">
-                {{ selectedBuild?.projectName }} - Build #{{ selectedBuild?.buildNumber }}
-              </h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Last {{ selectedBuild?.lastLogLines?.length || 0 }} log lines
-              </p>
-            </div>
-            <button
-              @click="closeLogsModal"
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-            >
-              <Icon name="close" class="w-6 h-6" />
-            </button>
+    <ModalWrapper :model-value="showLogsModalState" @update:model-value="closeLogsModal">
+      <div class="m-4">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-lg font-medium text-gray-950 dark:text-white">
+              {{ selectedBuild?.projectName }} - Build #{{ selectedBuild?.buildNumber }}
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Last {{ selectedBuild?.lastLogLines?.length || 0 }} log lines
+            </p>
           </div>
+          <button
+            @click="closeLogsModal"
+            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          >
+            <Icon name="close" class="w-6 h-6" />
+          </button>
+        </div>
 
-          <!-- Error Message -->
-          <div v-if="selectedBuild?.error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <Icon name="alertCircle" class="h-5 w-5 text-red-400" />
-              </div>
-              <div class="ml-3 flex-1 min-w-0">
-                <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
-                <div class="mt-2 text-sm text-red-700 dark:text-red-300 break-words whitespace-pre-wrap">
-                  {{ selectedBuild.error }}
-                </div>
+        <!-- Error Message -->
+        <div v-if="selectedBuild?.error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <Icon name="alertCircle" class="h-5 w-5 text-red-400" />
+            </div>
+            <div class="ml-3 flex-1 min-w-0">
+              <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
+              <div class="mt-2 text-sm text-red-700 dark:text-red-300 break-words whitespace-pre-wrap">
+                {{ selectedBuild.error }}
               </div>
             </div>
-          </div>
-
-          <!-- Logs -->
-          <div class="bg-gray-900 rounded-md p-4 font-mono text-xs text-green-400 max-h-[60vh] overflow-y-auto">
-            <div v-if="selectedBuild?.lastLogLines && selectedBuild.lastLogLines.length > 0">
-              <div v-for="(log, index) in selectedBuild.lastLogLines" :key="index" class="mb-1">
-                <span class="text-gray-500">{{ formatLogTimestamp(log.timestamp) }}</span>
-                <span class="ml-2" :class="getLogLevelClass(log.level)">[{{ log.level.toUpperCase() }}]</span>
-                <span v-if="log.source" class="ml-2 text-blue-400">[{{ log.source }}]</span>
-                <span class="ml-2">{{ log.message }}</span>
-              </div>
-            </div>
-            <div v-else class="text-gray-400 text-center py-8">
-              No log entries available
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="mt-6 flex justify-end space-x-3">
-            <NuxtLink
-              :to="getBuildUrl(selectedBuild)"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-            >
-              View Full Build
-            </NuxtLink>
-            <button
-              @click="rebuildProjectFromModal"
-              :disabled="rebuildingProjects.has(selectedBuild?.projectId)"
-              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span v-if="!rebuildingProjects.has(selectedBuild?.projectId)">
-                Rebuild Project
-              </span>
-              <span v-else class="flex items-center">
-                <Icon name="loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
-                Rebuilding...
-              </span>
-            </button>
           </div>
         </div>
+
+        <!-- Logs -->
+        <div class="bg-gray-900 rounded-md p-4 font-mono text-xs text-green-400 max-h-[60vh] overflow-y-auto">
+          <div v-if="selectedBuild?.lastLogLines && selectedBuild.lastLogLines.length > 0">
+            <div v-for="(log, index) in selectedBuild.lastLogLines" :key="index" class="mb-1">
+              <span class="text-gray-500">{{ formatLogTimestamp(log.timestamp) }}</span>
+              <span class="ml-2" :class="getLogLevelClass(log.level)">[{{ log.level.toUpperCase() }}]</span>
+              <span v-if="log.source" class="ml-2 text-blue-400">[{{ log.source }}]</span>
+              <span class="ml-2">{{ log.message }}</span>
+            </div>
+          </div>
+          <div v-else class="text-gray-400 text-center py-8">
+            No log entries available
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-6 flex justify-end space-x-3">
+          <NuxtLink
+            :to="getBuildUrl(selectedBuild)"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+          >
+            View Full Build
+          </NuxtLink>
+          <button
+            @click="rebuildProjectFromModal"
+            :disabled="rebuildingProjects.has(selectedBuild?.projectId)"
+            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="!rebuildingProjects.has(selectedBuild?.projectId)">
+              Rebuild Project
+            </span>
+            <span v-else class="flex items-center">
+              <Icon name="loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
+              Rebuilding...
+            </span>
+            </button>
+        </div>
       </div>
-    </div>
+    </ModalWrapper>
   </div>
 </template>
 
@@ -319,6 +317,7 @@ definePageMeta({
 })
 
 import Icon from '~/components/Icon.vue'
+import ModalWrapper from '~/components/ModalWrapper.vue'
 
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
@@ -354,6 +353,7 @@ const loadFailedBuilds = async () => {
 }
 
 const formatLastUpdated = () => {
+  if (autoRefreshEnabled.value) return 'Live Updating'
   if (!lastUpdated.value) return 'Never'
   const diffMs = currentTime.value - lastUpdated.value
   const diffSecs = Math.floor(diffMs / 1000)

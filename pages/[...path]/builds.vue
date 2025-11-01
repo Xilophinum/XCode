@@ -290,54 +290,50 @@
     </main>
 
     <!-- Build Logs Modal -->
-    <div v-if="showLogsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="mt-3">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-              Build Logs - {{ selectedBuild?.id?.substring(0, 12) }}...
-            </h3>
-            <button
-              @click="closeLogsModal"
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+    <ModalWrapper v-model="showLogsModal">
+      <div class="flex justify-between items-center m-4">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+          Build Logs - {{ selectedBuild?.id?.substring(0, 12) }}...
+        </h3>
+        <button
+          @click="closeLogsModal"
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        >
+          <Icon name="x" class="w-6 h-6" />
+        </button>
+      </div>
+      
+      <div class="bg-gray-950 rounded-md p-4 max-h-96 overflow-y-auto m-4">
+        <div v-if="loadingLogs" class="text-center py-4">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p class="mt-2 text-gray-400">Loading logs...</p>
+        </div>
+        
+        <div v-else-if="buildLogs.length === 0" class="text-center py-4 text-gray-400">
+          No logs found for this build.
+        </div>
+        
+        <div v-else class="space-y-1">
+          <div v-for="log in buildLogs" :key="log.id" class="text-sm font-mono">
+            <span class="text-neutral-500">{{ formatTimestamp(log.timestamp) }}</span>
+            <span 
+              :class="{
+                'text-red-400': log.level === 'error',
+                'text-yellow-400': log.level === 'warn',
+                'text-green-400': log.level === 'success',
+                'text-blue-400': log.level === 'info',
+                'text-neutral-300': log.level === 'debug'
+              }"
+              class="ml-2"
             >
-              <Icon name="x" class="w-6 h-6" />
-            </button>
-          </div>
-          
-          <div class="bg-gray-950 rounded-md p-4 max-h-96 overflow-y-auto">
-            <div v-if="loadingLogs" class="text-center py-4">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p class="mt-2 text-gray-400">Loading logs...</p>
-            </div>
-            
-            <div v-else-if="buildLogs.length === 0" class="text-center py-4 text-gray-400">
-              No logs found for this build.
-            </div>
-            
-            <div v-else class="space-y-1">
-              <div v-for="log in buildLogs" :key="log.id" class="text-sm font-mono">
-                <span class="text-neutral-500">{{ formatTimestamp(log.timestamp) }}</span>
-                <span 
-                  :class="{
-                    'text-red-400': log.level === 'error',
-                    'text-yellow-400': log.level === 'warn',
-                    'text-green-400': log.level === 'success',
-                    'text-blue-400': log.level === 'info',
-                    'text-neutral-300': log.level === 'debug'
-                  }"
-                  class="ml-2"
-                >
-                  [{{ log.source }}]
-                </span>
-                <span class="text-neutral-300 ml-2">{{ log.message }}</span>
-                <div v-if="log.output" class="mt-1 ml-4 text-cyan-400 whitespace-pre-wrap">{{ log.output }}</div>
-              </div>
-            </div>
+              [{{ log.source }}]
+            </span>
+            <span class="text-neutral-300 ml-2">{{ log.message }}</span>
+            <div v-if="log.output" class="mt-1 ml-4 text-cyan-400 whitespace-pre-wrap">{{ log.output }}</div>
           </div>
         </div>
       </div>
-    </div>
+    </ModalWrapper>
   </div>
 </template>
 
@@ -347,6 +343,7 @@ definePageMeta({
 })
 
 import Icon from '@/components/Icon.vue'
+import ModalWrapper from '@/components/ModalWrapper.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()

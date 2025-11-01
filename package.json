@@ -42,6 +42,7 @@
     "monaco-editor-vue3": "^1.0.4",
     "nodemailer": "^7.0.10",
     "nuxt": "^4.2.0",
+    "nuxt-monaco-editor": "^1.4.0",
     "pinia": "^3.0.3",
     "postgres": "^3.4.7",
     "socket.io": "^4.8.1",

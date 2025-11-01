@@ -296,107 +296,103 @@
     </main>
 
     <!-- Create Folder Modal -->
-    <div v-if="showCreateFolderModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="mt-3">
-          <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Folder</h3>
-          <form @submit.prevent="handleCreateFolder">
-            <div class="mb-4">
-              <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Folder Name</label>
-              <input
-                id="folderName"
-                v-model="folderForm.name"
-                type="text"
-                required
-                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                placeholder="Enter folder name"
-              >
-            </div>
-            <div class="mb-4">
-              <label for="folderDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
-              <textarea
-                id="folderDescription"
-                v-model="folderForm.description"
-                v-auto-resize
-                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
-                placeholder="Enter folder description"
-              ></textarea>
-            </div>
-            <div class="flex justify-end space-x-3">
-              <button
-                type="button"
-                @click="showCreateFolderModal = false"
-                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                :disabled="!folderForm.name.trim()"
-                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50"
-              >
-                Create Folder
-              </button>
-            </div>
-          </form>
-        </div>
+    <ModalWrapper :model-value="showCreateFolderModal" @update:model-value="showCreateFolderModal = $event">
+      <div class="m-4">
+        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Folder</h3>
+        <form @submit.prevent="handleCreateFolder">
+          <div class="mb-4">
+            <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Folder Name</label>
+            <input
+              id="folderName"
+              v-model="folderForm.name"
+              type="text"
+              required
+              class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+              placeholder="Enter folder name"
+            >
+          </div>
+          <div class="mb-4">
+            <label for="folderDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
+            <textarea
+              id="folderDescription"
+              v-model="folderForm.description"
+              v-auto-resize
+              class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
+              placeholder="Enter folder description"
+            ></textarea>
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              @click="showCreateFolderModal = false"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              :disabled="!folderForm.name.trim()"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50"
+            >
+              Create Folder
+            </button>
+          </div>
+        </form>
       </div>
-    </div>
+    </ModalWrapper>
 
     <!-- Create Project Modal -->
-    <div v-if="showCreateProjectModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="mt-3">
-          <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Project</h3>
-          <form @submit.prevent="handleCreateProject">
-            <div class="mb-4">
-              <label for="projectName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Name</label>
-              <input
-                id="projectName"
-                v-model="projectForm.name"
-                type="text"
-                required
-                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                placeholder="Enter project name"
-              >
-            </div>
-            <div class="mb-4">
-              <label for="projectDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
-              <textarea
-                id="projectDescription"
-                v-model="projectForm.description"
-                v-auto-resize
-                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
-                placeholder="Enter project description"
-              ></textarea>
-            </div>
-            <div class="flex justify-end space-x-3">
-              <button
-                type="button"
-                @click="showCreateProjectModal = false"
-                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                :disabled="!projectForm.name.trim()"
-                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50"
-              >
-                Create Project
-              </button>
-            </div>
-          </form>
-        </div>
+    <ModalWrapper :model-value="showCreateProjectModal" @update:model-value="showCreateProjectModal = $event">
+      <div class="m-4">
+        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Project</h3>
+        <form @submit.prevent="handleCreateProject">
+          <div class="mb-4">
+            <label for="projectName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Name</label>
+            <input
+              id="projectName"
+              v-model="projectForm.name"
+              type="text"
+              required
+              class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+              placeholder="Enter project name"
+            >
+          </div>
+          <div class="mb-4">
+            <label for="projectDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
+            <textarea
+              id="projectDescription"
+              v-model="projectForm.description"
+              v-auto-resize
+              class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
+              placeholder="Enter project description"
+            ></textarea>
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              @click="showCreateProjectModal = false"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              :disabled="!projectForm.name.trim()"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50"
+            >
+              Create Project
+            </button>
+          </div>
+        </form>
       </div>
-    </div>
+    </ModalWrapper>
   </div>
   <!-- Delete Project Confirmation Modal -->
-  <div v-if="showDeleteProjectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" @click="cancelDeleteProject">
-    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full" @click.stop>
+  <ModalWrapper :model-value="showDeleteProjectModal" @update:model-value="cancelDeleteProject">
+    <div class="m-4">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Delete {{ projectToDelete?.type === 'folder' ? 'Folder' : 'Project' }}</h3>
       <p class="text-sm text-gray-600 dark:text-gray-300 mb-6">
-        Are you sure you want to delete the {{ projectToDelete?.type === 'folder' ? 'folder' : 'project' }} "{{ projectToDelete?.name }}"? 
+        Are you sure you want to delete the {{ projectToDelete?.type === 'folder' ? 'folder' : 'project' }} "{{ projectToDelete?.name }}"?
         {{ projectToDelete?.type === 'folder' ? 'This will also delete all projects and subfolders within it. ' : '' }}
         This action cannot be undone.
       </p>
@@ -415,11 +411,9 @@
         </button>
       </div>
     </div>
-  </div>
-
-  <!-- Move Item Modal -->
-  <div v-if="showMoveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" @click="cancelMove">
-    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full" @click.stop>
+  </ModalWrapper>  <!-- Move Item Modal -->
+  <ModalWrapper :model-value="showMoveModal" @update:model-value="cancelMove">
+    <div class="m-4">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Move {{ itemToMove?.type === 'folder' ? 'Folder' : 'Project' }}
       </h3>
@@ -427,7 +421,7 @@
         Moving "{{ itemToMove?.name }}" to a new location.
         {{ itemToMove?.type === 'folder' ? 'All contents will move with the folder.' : '' }}
       </p>
-      
+
       <div class="mb-4">
         <label for="destinationPath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Destination Path
@@ -440,7 +434,7 @@
           placeholder="Type to search paths..."
           class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
         >
-        
+
         <!-- Path suggestions dropdown -->
         <div v-if="filteredPaths.length > 0" class="mt-2 max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700">
           <button
@@ -453,7 +447,7 @@
           </button>
         </div>
       </div>
-      
+
       <div class="flex justify-end space-x-4">
         <button
           @click="cancelMove"
@@ -470,15 +464,15 @@
         </button>
       </div>
     </div>
-  </div>
+  </ModalWrapper>
 
   <!-- Rename Item Modal -->
-  <div v-if="showRenameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" @click="cancelRename">
-    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full" @click.stop>
+  <ModalWrapper :model-value="showRenameModal" @update:model-value="cancelRename">
+    <div class="m-4">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Rename {{ itemToRename?.type === 'folder' ? 'Folder' : 'Project' }}
       </h3>
-      
+
       <form @submit.prevent="handleRenameItem">
         <div class="mb-4">
           <label for="renameName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -493,7 +487,7 @@
             placeholder="Enter new name"
           >
         </div>
-        
+
         <div class="mb-4">
           <label for="renameDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Description (Optional)
@@ -506,7 +500,7 @@
             placeholder="Enter description"
           ></textarea>
         </div>
-        
+
         <div class="flex justify-end space-x-4">
           <button
             type="button"
@@ -525,15 +519,15 @@
         </div>
       </form>
     </div>
-  </div>
+  </ModalWrapper>
 
   <!-- Access Settings Modal -->
-  <div v-if="showAccessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" @click="cancelAccessSettings">
-    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full" @click.stop>
+  <ModalWrapper :model-value="showAccessModal" @update:model-value="cancelAccessSettings">
+    <div class="m-4">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Access Settings - {{ itemForAccess?.name }}
       </h3>
-      
+
       <form @submit.prevent="handleAccessUpdate">
         <div class="mb-4">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -548,12 +542,12 @@
             <option value="groups">Groups - Only specified groups can access</option>
           </select>
         </div>
-        
+
         <div v-if="accessForm.access_policy === 'groups'" class="mb-4">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Allowed Groups
           </label>
-          
+
           <!-- Selected Groups -->
           <div v-if="accessForm.allowed_groups.length > 0" class="mb-2">
             <div class="flex flex-wrap gap-2">
@@ -573,7 +567,7 @@
               </span>
             </div>
           </div>
-          
+
           <!-- Available Groups -->
           <div v-if="availableGroups.length > 0">
             <select
@@ -590,12 +584,12 @@
               </option>
             </select>
           </div>
-          
+
           <p v-else class="text-sm text-gray-500 dark:text-gray-400 mt-2">
             No groups available. Groups are created from user LDAP memberships or manual assignment.
           </p>
         </div>
-        
+
         <div class="flex justify-end space-x-4">
           <button
             type="button"
@@ -613,9 +607,10 @@
         </div>
       </form>
     </div>
-  </div>
+  </ModalWrapper>
 
   <AuditHistoryModal
+    v-model="showAuditModal"
     :isOpen="showAuditModal"
     :entityId="selectedEntityForAudit?.id"
     :entityName="selectedEntityForAudit?.name"
@@ -627,8 +622,9 @@
 
 <script setup>
 import ProjectProgressBar from '@/components/ProjectProgressBar.vue'
-import AuditHistoryModal from '@/components/AuditHistoryModal.vue'
+import AuditHistoryModal from '@/components/modals/AuditHistoryModal.vue'
 import Icon from '@/components/Icon.vue'
+import ModalWrapper from '@/components/ModalWrapper.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -1,5 +1,5 @@
 <template>
-    <div class="script-editor-container">
+    <div class="script-editor-container" :style="{height: editorHeight + 'px'}">
         <select 
             v-model="localLanguage" 
             @change="updateLanguage" 
@@ -10,14 +10,14 @@
                 {{ lang }}
             </option>
         </select>
-            <CodeEditor
+            <MonacoEditor
                 ref="editorRef"
-                :value="localValue"
-                theme="vs-dark"
-                :language="localLanguage"
+                v-model="localValue"
+                :lang="localLanguage"
                 :options="{
                     automaticLayout: true,
                     minimap: { enabled: false },
+                    theme: 'vs-dark',
                     fontSize: 14,
                     tabSize: 2,
                     scrollBeyondLastLine: false,
@@ -34,16 +34,15 @@
                     overviewRulerLanes: 0,
                     overviewRulerBorder: false
                 }"
-                :height="editorHeight + 'px'"
+                :style="{ height: '100%', width: '100%' }"
                 @update:modelValue="handleValueUpdate"
-                @editorDidMount="handleEditorDidMount"
+                @load="editorMounted"
             />
     </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, defineProps, defineEmits, nextTick } from 'vue'
-import { CodeEditor } from 'monaco-editor-vue3'
 import { languages } from 'monaco-editor'
 
 const props = defineProps({
@@ -76,7 +75,7 @@ const availableLanguages = computed(() => {
 const updateEditorHeight = () => {
   if (monacoEditor) {
     nextTick(() => {
-        const contentHeight = monacoEditor.getContentHeight()
+        const contentHeight = monacoEditor.getContentHeight() + 50 // Adding some padding for dropdown above editor
         editorHeight.value = Math.max(contentHeight, 100) // Minimum 100px
     })
   }
@@ -102,10 +101,9 @@ const handleValueUpdate = (value) => {
   updateEditorHeight()
 }
 
-const handleEditorDidMount = (editor) => {
+const editorMounted = (editor) => {
   monacoEditor = editor
   updateEditorHeight()
-  
   // Listen to content changes to update height
   monacoEditor.onDidChangeModelContent(() => {
     updateEditorHeight()
@@ -117,5 +115,6 @@ const handleEditorDidMount = (editor) => {
 .script-editor-container {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 </style>

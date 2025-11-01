@@ -128,6 +128,7 @@ const iconMap = {
   more: MoreHorizontal,
   chevronDown: ChevronDown,
   chevronRight: ChevronRight,
+  x: X,
 
   // Visibility icons
   eye: Eye,

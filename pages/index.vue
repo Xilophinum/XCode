@@ -282,138 +282,132 @@
     </main>
 
     <!-- Create Folder Modal -->
-    <div v-if="showCreateFolderModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="mt-3">
-          <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Folder</h3>
-          <form @submit.prevent="handleCreateFolder">
-            <div class="mb-4">
-              <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Folder Name</label>
-              <input
-                id="folderName"
-                v-model="folderForm.name"
-                type="text"
-                required
-                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                placeholder="Enter folder name"
-              >
-            </div>
-            <div class="mb-4">
-              <label for="folderDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
-              <textarea
-                id="folderDescription"
-                v-model="folderForm.description"
-                v-auto-resize
-                class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
-                placeholder="Enter folder description"
-              ></textarea>
-            </div>
-            <div class="flex justify-end space-x-3">
-              <button
-                type="button"
-                @click="showCreateFolderModal = false"
-                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                :disabled="!folderForm.name.trim()"
-                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-              >
-                Create Folder
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Edit Folder Modal -->
-    <div v-if="showEditFolderModal" class="fixed inset-0 bg-gray-600  bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="mt-3">
-          <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Edit Folder</h3>
-          <form @submit.prevent="handleEditFolder">
-            <div class="mb-4">
-              <label for="editFolderName" class="block text-sm font-medium text-gray-700">Folder Name</label>
-              <input
-                id="editFolderName"
-                v-model="editForm.name"
-                type="text"
-                required
-                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                placeholder="Enter folder name"
-              >
-            </div>
-            <div class="mb-4">
-              <label for="editFolderDescription" class="block text-sm font-medium text-gray-700">Description (Optional)</label>
-              <textarea
-                id="editFolderDescription"
-                v-model="editForm.description"
-                v-auto-resize
-                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 resize-none overflow-hidden"
-                placeholder="Enter folder description"
-              ></textarea>
-            </div>
-            <div class="flex justify-end space-x-3">
-              <button
-                type="button"
-                @click="cancelEdit"
-                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                :disabled="!editForm.name.trim()"
-                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-              >
-                Save Changes
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteConfirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
-        <div class="mt-3">
-          <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 mb-4">
-            <Icon name="alertTriangle" class="h-6 w-6 text-red-600 dark:text-red-400" />
+    <ModalWrapper v-model="showCreateFolderModal">
+      <div class="m-4">
+        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Folder</h3>
+        <form @submit.prevent="handleCreateFolder">
+          <div class="mb-4">
+            <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Folder Name</label>
+            <input
+              id="folderName"
+              v-model="folderForm.name"
+              type="text"
+              required
+              class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+              placeholder="Enter folder name"
+            >
           </div>
-          <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-2 text-center">Delete Folder</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
-            Are you sure you want to delete "<strong>{{ folderToDelete?.name }}</strong>"?
-          </p>
-          <p class="text-sm text-red-600 dark:text-red-400 mb-4 text-center">
-            <strong>Warning:</strong> This will also delete all folders and projects inside this folder. This action cannot be undone.
-          </p>
+          <div class="mb-4">
+            <label for="folderDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
+            <textarea
+              id="folderDescription"
+              v-model="folderForm.description"
+              v-auto-resize
+              class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
+              placeholder="Enter folder description"
+            ></textarea>
+          </div>
           <div class="flex justify-end space-x-3">
             <button
               type="button"
-              @click="cancelDelete"
+              @click="showCreateFolderModal = false"
               class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
             >
               Cancel
             </button>
             <button
-              type="button"
-              @click="handleDeleteFolder"
-              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+              type="submit"
+              :disabled="!folderForm.name.trim()"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             >
-              Delete Folder
+              Create Folder
             </button>
           </div>
+        </form>
+      </div>
+    </ModalWrapper>
+
+    <!-- Edit Folder Modal -->
+    <ModalWrapper v-model="showEditFolderModal">
+      <div class="m-4">
+        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Edit Folder</h3>
+        <form @submit.prevent="handleEditFolder">
+          <div class="mb-4">
+            <label for="editFolderName" class="block text-sm font-medium text-gray-700">Folder Name</label>
+            <input
+              id="editFolderName"
+              v-model="editForm.name"
+              type="text"
+              required
+              class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+              placeholder="Enter folder name"
+            >
+          </div>
+          <div class="mb-4">
+            <label for="editFolderDescription" class="block text-sm font-medium text-gray-700">Description (Optional)</label>
+            <textarea
+              id="editFolderDescription"
+              v-model="editForm.description"
+              v-auto-resize
+              class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 resize-none overflow-hidden"
+              placeholder="Enter folder description"
+            ></textarea>
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              @click="cancelEdit"
+              class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              :disabled="!editForm.name.trim()"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+            >
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </ModalWrapper>
+
+    <!-- Delete Confirmation Modal -->
+    <ModalWrapper v-model="showDeleteConfirmModal">
+      <div class="m-4">
+        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 mb-4">
+          <Icon name="alertTriangle" class="h-6 w-6 text-red-600 dark:text-red-400" />
+        </div>
+        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-2 text-center">Delete Folder</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
+          Are you sure you want to delete "<strong>{{ folderToDelete?.name }}</strong>"?
+        </p>
+        <p class="text-sm text-red-600 dark:text-red-400 mb-4 text-center">
+          <strong>Warning:</strong> This will also delete all folders and projects inside this folder. This action cannot be undone.
+        </p>
+        <div class="flex justify-end space-x-3">
+          <button
+            type="button"
+            @click="cancelDelete"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            @click="handleDeleteFolder"
+            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+          >
+            Delete Folder
+          </button>
         </div>
       </div>
-    </div>
+    </ModalWrapper>
 
     <!-- Move Item Modal -->
-    <div v-if="showMoveModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" @click="cancelMove">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full" @click.stop>
+    <ModalWrapper v-model="showMoveModal">
+      <div class="m-4">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
           Move Folder
         </h3>
@@ -464,7 +458,7 @@
           </button>
         </div>
       </div>
-    </div>
+    </ModalWrapper>
   </div>
 </template>
 
@@ -474,6 +468,7 @@ definePageMeta({
 })
 
 import Icon from '~/components/Icon.vue'
+import ModalWrapper from '~/components/ModalWrapper.vue'
 
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()

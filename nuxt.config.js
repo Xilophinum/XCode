@@ -23,7 +23,8 @@ export default defineNuxtConfig({
     '@nuxt/scripts',
     '@nuxt/ui',
     '@pinia/nuxt',
-    '@vueuse/nuxt'
+    '@vueuse/nuxt',
+    'nuxt-monaco-editor'
   ],
   nitro: {
     experimental: {
@@ -35,7 +36,9 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
   vite: {
-      plugins: [tailwindcss()],
+      plugins: [
+        tailwindcss()
+      ],
       server: {
         https: {
           rejectUnauthorized: false
