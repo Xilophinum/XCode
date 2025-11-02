@@ -263,6 +263,233 @@
           </div>
         </div>
 
+        <!-- System Update Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-950 dark:text-white flex items-center">
+                  <Icon name="refresh-cw" class="w-5 h-5 mr-2 text-blue-600" />
+                  System Updates
+                </h2>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Manage application updates from GitHub releases</p>
+              </div>
+              <button
+                @click="checkForUpdates"
+                :disabled="updateChecking"
+                class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Icon name="refresh-cw" :class="updateChecking ? 'animate-spin w-4 h-4 mr-2' : 'w-4 h-4 mr-2'" />
+                Check for Updates
+              </button>
+            </div>
+
+            <!-- Update Status -->
+            <div v-if="updateInfo" class="space-y-4">
+              <!-- Current Version -->
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Current Version</p>
+                    <p class="text-lg font-semibold text-gray-950 dark:text-white mt-1">{{ updateInfo.currentVersion }}</p>
+                  </div>
+                  <div v-if="updateInfo.updateAvailable" class="text-right">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Latest Version</p>
+                    <p class="text-lg font-semibold text-green-600 dark:text-green-400 mt-1">{{ updateInfo.latestVersion }}</p>
+                  </div>
+                </div>
+
+                <!-- Last Check -->
+                <p v-if="updateInfo.lastCheck" class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Last checked: {{ new Date(updateInfo.lastCheck).toLocaleString() }}
+                </p>
+              </div>
+
+              <!-- Update Available -->
+              <div v-if="updateInfo.updateAvailable" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <div class="flex items-start">
+                  <Icon name="check-circle" class="w-5 h-5 text-green-600 dark:text-green-400 mr-3 mt-0.5" />
+                  <div class="flex-1">
+                    <h3 class="text-sm font-medium text-green-900 dark:text-green-200">Update Available!</h3>
+                    <p class="text-sm text-green-700 dark:text-green-300 mt-1">
+                      A new version ({{ updateInfo.latestVersion }}) is available.
+                    </p>
+
+                    <!-- Release Notes -->
+                    <div v-if="updateInfo.releaseNotes" class="mt-3">
+                      <p class="text-xs font-medium text-green-900 dark:text-green-200 mb-1">Release Notes:</p>
+                      <div class="bg-white dark:bg-gray-800 rounded p-3 text-xs text-gray-700 dark:text-gray-300 max-h-32 overflow-y-auto">
+                        <pre class="whitespace-pre-wrap">{{ updateInfo.releaseNotes }}</pre>
+                      </div>
+                    </div>
+
+                    <!-- Update Options -->
+                    <div class="mt-4 space-y-3">
+                      <label class="flex items-start">
+                        <input
+                          v-model="waitForJobs"
+                          type="checkbox"
+                          class="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                        >
+                        <span class="ml-2 text-sm text-green-900 dark:text-green-200">
+                          Wait for running builds to complete before updating
+                          <span class="block text-xs text-green-700 dark:text-green-400 mt-1">
+                            If unchecked, running builds will be paused and can resume after update
+                          </span>
+                        </span>
+                      </label>
+
+                      <button
+                        @click="triggerUpdate"
+                        :disabled="updateTriggering"
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Icon name="download" :class="updateTriggering ? 'animate-pulse w-4 h-4 mr-2' : 'w-4 h-4 mr-2'" />
+                        {{ updateTriggering ? 'Initiating Update...' : 'Update Now' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- No Update Available -->
+              <div v-else class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div class="flex items-center">
+                  <Icon name="check-circle" class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3" />
+                  <div>
+                    <h3 class="text-sm font-medium text-blue-900 dark:text-blue-200">Up to Date</h3>
+                    <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                      You are running the latest version of XCode.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Loading State -->
+            <div v-else-if="updateChecking" class="text-center py-8">
+              <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+              <p class="text-gray-600 dark:text-gray-300 mt-2">Checking for updates...</p>
+            </div>
+
+            <!-- Initial State -->
+            <div v-else class="text-center py-8">
+              <Icon name="refresh-cw" class="mx-auto h-12 w-12 text-gray-400" />
+              <p class="text-gray-600 dark:text-gray-300 mt-2">Click "Check for Updates" to see if a new version is available</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Agent Updates Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-950 dark:text-white flex items-center">
+                  <Icon name="cpu" class="w-5 h-5 mr-2 text-green-600" />
+                  Agent Updates
+                </h2>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Manage build agent versions and updates</p>
+              </div>
+            </div>
+
+            <!-- Agents List -->
+            <div v-if="loadingAgents" class="text-center py-8">
+              <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+              <p class="text-gray-600 dark:text-gray-300 mt-2">Loading agents...</p>
+            </div>
+
+            <div v-else-if="agents.length === 0" class="text-center py-8">
+              <Icon name="cpu" class="mx-auto h-12 w-12 text-gray-400" />
+              <p class="text-gray-600 dark:text-gray-300 mt-2">No agents registered</p>
+            </div>
+
+            <div v-else class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Agent</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Current Version</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Auto Update</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Last Check</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr v-for="agent in agents" :key="agent.id">
+                    <td class="px-4 py-4 whitespace-nowrap">
+                      <div class="flex items-center">
+                        <div class="flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full" :class="agent.status === 'online' ? 'bg-green-100 dark:bg-green-900' : 'bg-gray-100 dark:bg-gray-700'">
+                          <Icon name="cpu" class="w-4 h-4" :class="agent.status === 'online' ? 'text-green-600 dark:text-green-400' : 'text-gray-400'" />
+                        </div>
+                        <div class="ml-3">
+                          <div class="text-sm font-medium text-gray-950 dark:text-white">{{ agent.name }}</div>
+                          <div class="text-xs text-gray-500 dark:text-gray-400">{{ agent.platform }} ({{ agent.architecture }})</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap">
+                      <div class="text-sm text-gray-950 dark:text-white">{{ agent.agentVersion || agent.version || 'Unknown' }}</div>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap">
+                      <span v-if="agent.updateAvailable === 'true'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200">
+                        <Icon name="alert-circle" class="w-3 h-3 mr-1" />
+                        Update Available
+                      </span>
+                      <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                        <Icon name="check-circle" class="w-3 h-3 mr-1" />
+                        Up to Date
+                      </span>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap">
+                      <button
+                        @click="toggleAgentAutoUpdate(agent)"
+                        :disabled="updatingAgentSettings"
+                        class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        :class="agent.autoUpdate === 'true' ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-700'"
+                      >
+                        <span class="sr-only">Enable auto-update</span>
+                        <span
+                          class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                          :class="agent.autoUpdate === 'true' ? 'translate-x-5' : 'translate-x-0'"
+                        ></span>
+                      </button>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      <span v-if="agent.lastVersionCheck">{{ formatDateTime(agent.lastVersionCheck) }}</span>
+                      <span v-else class="text-gray-400 dark:text-gray-500">Never</span>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <button
+                        v-if="agent.updateAvailable === 'true' && agent.status === 'online'"
+                        @click="triggerAgentUpdate(agent)"
+                        :disabled="updatingAgent === agent.id"
+                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Icon v-if="updatingAgent === agent.id" name="refresh-cw" class="animate-spin w-3 h-3 mr-1" />
+                        <span v-else>Update Now</span>
+                      </button>
+                      <span v-else-if="agent.status !== 'online'" class="text-gray-400 dark:text-gray-500 text-xs">Agent offline</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Latest Agent Version Info -->
+            <div class="mt-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+              <div class="flex items-start">
+                <Icon name="info" class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-blue-900 dark:text-blue-200">Latest Agent Version: {{ latestAgentVersion }}</p>
+                  <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">Agents with auto-update enabled will automatically download and install updates when available.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Notification Templates Section -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div class="p-6">
@@ -1393,6 +1620,19 @@ const users = ref([])
 const groups = ref([])
 const loading = ref(false)
 
+// Update-related state
+const updateInfo = ref(null)
+const updateChecking = ref(false)
+const updateTriggering = ref(false)
+const waitForJobs = ref(false)
+
+// Agent update-related state
+const agents = ref([])
+const loadingAgents = ref(false)
+const updatingAgent = ref(null)
+const updatingAgentSettings = ref(false)
+const latestAgentVersion = ref('1.0.0')
+
 // Filter state
 const credentialFilter = ref('')
 
@@ -1654,6 +1894,67 @@ const loadSystemSettings = async () => {
     }
   } finally {
     loading.value = false
+  }
+}
+
+// Update Functions
+const checkForUpdates = async () => {
+  updateChecking.value = true
+  try {
+    const response = await $fetch('/api/admin/system/update/check')
+    if (response.success) {
+      updateInfo.value = response
+      if (response.updateAvailable) {
+        success(`Update available: ${response.latestVersion}`)
+      } else {
+        success('You are running the latest version')
+      }
+    } else {
+      notifyError('Failed to check for updates')
+    }
+  } catch (error) {
+    logger.error('Failed to check for updates:', error)
+    notifyError('Failed to check for updates')
+  } finally {
+    updateChecking.value = false
+  }
+}
+
+const triggerUpdate = async () => {
+  if (!confirm(`Are you sure you want to update to version ${updateInfo.value.latestVersion}? The server will restart during this process.`)) {
+    return
+  }
+
+  updateTriggering.value = true
+  try {
+    const response = await $fetch('/api/admin/system/update/trigger', {
+      method: 'POST',
+      body: {
+        waitForJobs: waitForJobs.value
+      }
+    })
+
+    if (response.success) {
+      success('Update initiated. Server will restart shortly...')
+
+      // Show a countdown notification
+      let countdown = 10
+      const countdownInterval = setInterval(() => {
+        if (countdown > 0) {
+          notifyError(`Server restarting in ${countdown} seconds...`)
+          countdown--
+        } else {
+          clearInterval(countdownInterval)
+        }
+      }, 1000)
+    } else {
+      notifyError(response.error || 'Failed to trigger update')
+      updateTriggering.value = false
+    }
+  } catch (error) {
+    logger.error('Failed to trigger update:', error)
+    notifyError('Failed to trigger update')
+    updateTriggering.value = false
   }
 }
 
@@ -2105,7 +2406,9 @@ onMounted(async () => {
     loadCredentials(),
     loadUsers(),
     loadGroups(),
-    loadNotificationTemplates()
+    loadNotificationTemplates(),
+    loadAgents(),
+    loadLatestAgentVersion()
   ])
 })
 
@@ -2200,5 +2503,93 @@ function formatDate(dateString) {
   if (!dateString) return 'N/A'
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+// Format date and time helper
+function formatDateTime(dateString) {
+  if (!dateString) return 'N/A'
+  const date = new Date(dateString)
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// Load agents
+async function loadAgents() {
+  loadingAgents.value = true
+  try {
+    const response = await $fetch('/api/admin/agents')
+    agents.value = response || []
+  } catch (error) {
+    console.error('Failed to load agents:', error)
+    useToast().error('Failed to load agents')
+  } finally {
+    loadingAgents.value = false
+  }
+}
+
+// Load latest agent version
+async function loadLatestAgentVersion() {
+  try {
+    const fs = await import('fs')
+    const path = await import('path')
+    // This won't work in browser context, so we'll need to create an API endpoint
+    // For now, we'll fetch from a simple endpoint
+    const response = await $fetch('/api/agents/latest-version')
+    latestAgentVersion.value = response.version || '1.0.0'
+  } catch (error) {
+    console.error('Failed to load latest agent version:', error)
+    // Default to 1.0.0 if fetch fails
+    latestAgentVersion.value = '1.0.0'
+  }
+}
+
+// Toggle agent auto-update
+async function toggleAgentAutoUpdate(agent) {
+  updatingAgentSettings.value = true
+  try {
+    const newValue = agent.autoUpdate === 'true' ? 'false' : 'true'
+    await $fetch(`/api/admin/agents/${agent.id}/update-settings`, {
+      method: 'PUT',
+      body: {
+        autoUpdate: newValue
+      }
+    })
+
+    // Update local state
+    agent.autoUpdate = newValue
+    useToast().success(`Auto-update ${newValue === 'true' ? 'enabled' : 'disabled'} for ${agent.name}`)
+  } catch (error) {
+    console.error('Failed to update agent settings:', error)
+    useToast().error('Failed to update agent settings')
+  } finally {
+    updatingAgentSettings.value = false
+  }
+}
+
+// Trigger agent update
+async function triggerAgentUpdate(agent) {
+  updatingAgent.value = agent.id
+  try {
+    await $fetch(`/api/admin/agents/${agent.id}/trigger-update`, {
+      method: 'POST'
+    })
+
+    useToast().success(`Update triggered for ${agent.name}. Agent will update and reconnect shortly.`)
+
+    // Reload agents after a short delay
+    setTimeout(async () => {
+      await loadAgents()
+    }, 3000)
+  } catch (error) {
+    console.error('Failed to trigger agent update:', error)
+    useToast().error('Failed to trigger agent update')
+  } finally {
+    updatingAgent.value = null
+  }
 }
 </script>

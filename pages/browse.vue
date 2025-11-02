@@ -1244,7 +1244,7 @@ const loadAgents = async () => {
 
 // Handle real-time agent status updates
 const handleAgentStatusUpdate = (event) => {
-  const { agentId, status, currentJobs, lastHeartbeat, hostname, platform, architecture, capabilities, version } = event.detail
+  const { agentId, status, currentJobs, lastHeartbeat, hostname, platform, architecture, capabilities, agentVersion } = event.detail
   
   // Find and update the agent in our local array
   const agentIndex = agents.value.findIndex(agent => agent.id === agentId)
@@ -1259,7 +1259,7 @@ const handleAgentStatusUpdate = (event) => {
     if (platform) agent.platform = platform
     if (architecture) agent.architecture = architecture
     if (capabilities) agent.capabilities = capabilities
-    if (version) agent.version = version
+    if (agentVersion) agent.agentVersion = agentVersion
     
     agents.value[agentIndex] = { ...agent } // Trigger reactivity
     logger.info(`🔄 Updated agent ${agentId} status: ${status}`)

@@ -15,11 +15,20 @@
  *   XCODE_SERVER_URL=<url>
  */
 
-import { spawn, execSync } from 'child_process'
+import { spawn, execSync, exec } from 'child_process'
 import { io } from 'socket.io-client'
 import os from 'os'
 import fs from 'fs'
 import path from 'path'
+import https from 'https'
+import crypto from 'crypto'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// Agent version - update this when releasing new agent versions
+const AGENT_VERSION = '1.0.0';
 
 class XCodeBuildAgent {
   constructor(options = {}) {
@@ -34,14 +43,19 @@ class XCodeBuildAgent {
     this.maxReconnectAttempts = 10;
     this.reconnectDelay = 5000; // Start with 5 seconds
     this.reconnectTimeout = null;
-    
+
+    // Auto-update configuration
+    this.autoUpdate = options.autoUpdate ?? (process.env.XCODE_AUTO_UPDATE === 'true');
+    this.updateCheckInterval = options.updateCheckInterval ?? 3600000; // 1 hour
+    this.updateCheckTimer = null;
+
     // Agent metadata
     this.agentInfo = {
       hostname: os.hostname(),
       platform: this.detectPlatform(),
       architecture: os.arch(),
       capabilities: this.detectCapabilities(),
-      version: '1.0.0',
+      agentVersion: AGENT_VERSION,
       systemInfo: this.getSystemInfo()
     };
 
@@ -369,6 +383,7 @@ class XCodeBuildAgent {
         case 'registered':
           logger.info('Agent registered successfully');
           this.startHeartbeat();
+          this.startUpdateChecker();
           break;
 
         case 'execute_job':
@@ -381,6 +396,11 @@ class XCodeBuildAgent {
 
         case 'heartbeat_ack':
           // Heartbeat acknowledged
+          break;
+
+        case 'update_available':
+          logger.info('Update notification received from server');
+          this.handleUpdate(message);
           break;
 
         case 'error':
@@ -1239,6 +1259,273 @@ class XCodeBuildAgent {
     logger.info('👋 Agent stopped');
     process.exit(0);
   }
+
+  // ========================================================================
+  // AUTO-UPDATE METHODS
+  // ========================================================================
+
+  /**
+   * Start periodic version checks
+   */
+  startUpdateChecker() {
+    if (!this.autoUpdate) {
+      logger.info('Auto-update disabled');
+      return;
+    }
+
+    logger.info(`Auto-update enabled - checking every ${this.updateCheckInterval / 1000 / 60} minutes`);
+
+    // Check immediately on start (after connection)
+    setTimeout(() => this.checkForUpdates(), 30000); // 30 seconds after start
+
+    // Then check periodically
+    this.updateCheckTimer = setInterval(() => {
+      this.checkForUpdates();
+    }, this.updateCheckInterval);
+  }
+
+  /**
+   * Stop update checker
+   */
+  stopUpdateChecker() {
+    if (this.updateCheckTimer) {
+      clearInterval(this.updateCheckTimer);
+      this.updateCheckTimer = null;
+    }
+  }
+
+  /**
+   * Check for agent updates from server
+   */
+  async checkForUpdates() {
+    try {
+      logger.info('Checking for agent updates...');
+
+      const httpServerUrl = this.serverUrl.replace(/^wss?:\/\//, 'http://').replace(/:\d+$/, ':3000');
+      const response = await this.httpRequest(`${httpServerUrl}/api/agents/version-check`, {
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        }
+      });
+
+      if (response.updateAvailable) {
+        logger.info(`🎉 Update available: v${response.latestVersion} (current: v${AGENT_VERSION})`);
+
+        if (response.critical) {
+          logger.warn('⚠️  CRITICAL UPDATE REQUIRED');
+        }
+
+        if (this.autoUpdate) {
+          await this.handleUpdate(response);
+        } else {
+          logger.info('Auto-update disabled. Please update manually:');
+          logger.info(`  Download: ${response.downloadUrl}`);
+        }
+      } else {
+        logger.info('✓ Agent is up to date');
+      }
+    } catch (error) {
+      logger.error('Version check failed:', error.message);
+    }
+  }
+
+  /**
+   * Handle agent update
+   */
+  async handleUpdate(updateInfo) {
+    try {
+      logger.info('🔄 Starting agent update...');
+
+      // Notify server of update start
+      if (this.socket && this.socket.connected) {
+        this.socket.emit('agent_updating', {
+          agentId: this.agentId,
+          fromVersion: AGENT_VERSION,
+          toVersion: updateInfo.latestVersion
+        });
+      }
+
+      // Wait for current jobs to complete
+      await this.waitForJobsToComplete();
+
+      // Download new agent code
+      logger.info('📥 Downloading new agent version...');
+      const newAgentCode = await this.downloadAgentCode(updateInfo.downloadUrl);
+
+      // Validate downloaded code
+      if (updateInfo.sha256) {
+        const isValid = await this.validateAgentCode(newAgentCode, updateInfo.sha256);
+        if (!isValid) {
+          throw new Error('Agent code validation failed - SHA256 mismatch');
+        }
+        logger.info('✓ Code validation passed');
+      }
+
+      // Backup current agent
+      logger.info('💾 Backing up current agent...');
+      const backupPath = path.join(__dirname, 'agent.js.backup');
+      fs.copyFileSync(__filename, backupPath);
+
+      // Write new agent code
+      logger.info('📝 Installing new agent version...');
+      fs.writeFileSync(__filename, newAgentCode, 'utf-8');
+
+      // Restart process
+      logger.info('🔄 Restarting agent with new version...');
+      this.restartProcess();
+
+    } catch (error) {
+      logger.error('❌ Update failed:', error.message);
+
+      // Restore backup if available
+      const backupPath = path.join(__dirname, 'agent.js.backup');
+      if (fs.existsSync(backupPath)) {
+        logger.info('↩️  Restoring backup...');
+        fs.copyFileSync(backupPath, __filename);
+        logger.info('✓ Backup restored');
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Wait for current jobs to complete
+   */
+  async waitForJobsToComplete() {
+    if (this.currentJobs.size === 0) {
+      logger.info('✓ No running jobs');
+      return;
+    }
+
+    logger.info(`⏳ Waiting for ${this.currentJobs.size} job(s) to complete...`);
+
+    const maxWaitTime = 600000; // 10 minutes
+    const startTime = Date.now();
+
+    while (this.currentJobs.size > 0) {
+      if (Date.now() - startTime > maxWaitTime) {
+        logger.warn('⚠️  Jobs did not complete in time, proceeding with update');
+        break;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      logger.info(`⏳ ${this.currentJobs.size} job(s) still running...`);
+    }
+
+    logger.info('✓ All jobs completed');
+  }
+
+  /**
+   * Download agent code from server
+   */
+  async downloadAgentCode(downloadUrl) {
+    const httpServerUrl = this.serverUrl.replace(/^wss?:\/\//, 'http://').replace(/:\d+$/, ':3000');
+    const fullUrl = downloadUrl.startsWith('http') ? downloadUrl : `${httpServerUrl}${downloadUrl}`;
+
+    logger.info(`Downloading from: ${fullUrl}`);
+
+    const code = await this.httpRequest(fullUrl, {
+      headers: {
+        'Authorization': `Bearer ${this.token}`
+      }
+    }, true); // true = return as text
+
+    return code;
+  }
+
+  /**
+   * Validate agent code
+   */
+  async validateAgentCode(code, expectedHash) {
+    const actualHash = crypto.createHash('sha256').update(code).digest('hex');
+
+    logger.info(`Expected SHA256: ${expectedHash}`);
+    logger.info(`Actual SHA256:   ${actualHash}`);
+
+    return actualHash === expectedHash;
+  }
+
+  /**
+   * Restart the agent process
+   */
+  restartProcess() {
+    const isPM2 = !!(process.env.PM2_HOME || process.env.pm_id !== undefined);
+
+    if (isPM2) {
+      logger.info('Detected PM2 - using pm2 restart');
+      exec('pm2 restart build-agent', (error) => {
+        if (error) {
+          logger.error('PM2 restart failed, using self-restart:', error.message);
+          this.selfRestart();
+        } else {
+          logger.info('PM2 restart initiated');
+        }
+      });
+    } else {
+      this.selfRestart();
+    }
+  }
+
+  /**
+   * Self-restart the process
+   */
+  selfRestart() {
+    logger.info('Performing self-restart...');
+
+    const child = spawn(process.argv[0], process.argv.slice(1), {
+      detached: true,
+      stdio: 'ignore',
+      env: process.env
+    });
+
+    child.unref();
+    process.exit(0);
+  }
+
+  /**
+   * Make HTTP request
+   */
+  async httpRequest(url, options = {}, asText = false) {
+    return new Promise((resolve, reject) => {
+      const parsedUrl = new URL(url);
+      const requestOptions = {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || 3000,
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: options.method || 'GET',
+        headers: options.headers || {}
+      };
+
+      const req = (parsedUrl.protocol === 'https:' ? https : require('http')).request(requestOptions, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              resolve(asText ? data : JSON.parse(data));
+            } catch (error) {
+              resolve(data);
+            }
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.setTimeout(30000, () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
+
+      req.end();
+    });
+  }
 }
 
 // Parse command line arguments
@@ -1259,26 +1546,32 @@ function parseArgs() {
       case '-s':
         options.serverUrl = value;
         break;
+      case '--auto-update':
+        options.autoUpdate = true;
+        i -= 1; // No value for this flag
+        break;
       case '--help':
       case '-h':
         logger.info(`
 XCode Build Agent v1.0.0
 
 Usage:
-  node agent.js --token <token> --server <server-url>
+  node agent.js --token <token> --server <server-url> [--auto-update]
 
 Options:
-  --token, -t    Agent authentication token (required)
-  --server, -s   XCode server WebSocket URL (required)
-  --help, -h     Show this help message
+  --token, -t       Agent authentication token (required)
+  --server, -s      XCode server WebSocket URL (required)
+  --auto-update     Enable automatic agent updates (default: false)
+  --help, -h        Show this help message
 
 Environment Variables:
-  XCODE_AGENT_TOKEN    Agent token (alternative to --token)
-  XCODE_SERVER_URL     Server URL (alternative to --server)
+  XCODE_AGENT_TOKEN     Agent token (alternative to --token)
+  XCODE_SERVER_URL      Server URL (alternative to --server)
+  XCODE_AUTO_UPDATE     Enable auto-update (true/false)
 
 Examples:
   node agent.js --token abc123def --server ws://localhost:3001
-  node agent.js --token abc123def --server http://localhost:3001
+  node agent.js --token abc123def --server ws://localhost:3001 --auto-update
   XCODE_AGENT_TOKEN=abc123def XCODE_SERVER_URL=ws://localhost:3001 node agent.js
         `);
         process.exit(0);

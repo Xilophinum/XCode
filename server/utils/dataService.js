@@ -811,9 +811,8 @@ export class DataService {
       platform: null,
       architecture: null,
       capabilities: null,
-      version: null,
       systemInfo: null,
-      
+      agentVersion: null,
       // Runtime information
       status: agentData.status || 'offline',
       currentJobs: 0,
@@ -868,7 +867,7 @@ export class DataService {
       platform: systemData.platform,
       architecture: systemData.architecture,
       capabilities: JSON.stringify(systemData.capabilities || []),
-      version: systemData.version,
+      agentVersion: systemData.agentVersion,
       systemInfo: JSON.stringify(systemData.systemInfo || {}),
       ipAddress: systemData.ipAddress,
       status: 'online',

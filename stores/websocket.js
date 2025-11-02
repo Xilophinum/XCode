@@ -414,7 +414,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
               platform: message.platform,
               architecture: message.architecture,
               capabilities: message.capabilities,
-              version: message.version
+              agentVersion: message.agentVersion
             }
           })
           window.dispatchEvent(event)

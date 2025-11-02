@@ -58,7 +58,7 @@ Live execution logs streamed via WebSocket, build performance analytics, success
 pnpm install
 
 # Initialize database
-npm run db:init
+pnpm run db:init
 
 # Start the server
 pnpm dev
@@ -69,7 +69,7 @@ Access the web interface at `http://localhost:3000`
 ### Build Agent Setup
 ```bash
 cd build-agent
-npm install
+pnpm install
 node agent --token YOUR_AGENT_TOKEN --server http://localhost:3000
 ```
 

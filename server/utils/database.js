@@ -205,7 +205,6 @@ export class DatabaseManager {
           platform TEXT,
           architecture TEXT,
           capabilities TEXT,
-          version TEXT,
           system_info TEXT,
           status TEXT NOT NULL DEFAULT 'offline',
           current_jobs INTEGER NOT NULL DEFAULT 0,
@@ -215,6 +214,11 @@ export class DatabaseManager {
           total_builds INTEGER NOT NULL DEFAULT 0,
           tags TEXT,
           notes TEXT,
+          agent_version TEXT,
+          server_version_compatible TEXT,
+          update_available TEXT DEFAULT 'false',
+          last_version_check TEXT,
+          auto_update TEXT DEFAULT 'false',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
@@ -359,6 +363,27 @@ export class DatabaseManager {
         )
       `)
 
+      // System Updates table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS system_updates (
+          id TEXT PRIMARY KEY,
+          current_version TEXT NOT NULL,
+          target_version TEXT NOT NULL,
+          status TEXT NOT NULL,
+          download_progress INTEGER DEFAULT 0,
+          download_url TEXT,
+          release_notes TEXT,
+          error_message TEXT,
+          started_by TEXT,
+          started_by_name TEXT,
+          wait_for_jobs TEXT DEFAULT 'false',
+          started_at TEXT NOT NULL,
+          completed_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+
       // Create indexes for better performance
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_project_id ON builds(project_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_status ON builds(status)`)
@@ -377,6 +402,7 @@ export class DatabaseManager {
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_project_snapshots_project_id ON project_snapshots(project_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_project_snapshots_version ON project_snapshots(project_id, version)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_notification_templates_type ON notification_templates(type)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_system_updates_status ON system_updates(status)`)
 
       // Insert built-in notification templates if they don't exist
       await this.insertBuiltInTemplates()
@@ -692,7 +718,6 @@ export class DatabaseManager {
           platform VARCHAR(50),
           architecture VARCHAR(50),
           capabilities TEXT,
-          version VARCHAR(50),
           system_info TEXT,
           status VARCHAR(50) NOT NULL DEFAULT 'offline',
           current_jobs INTEGER NOT NULL DEFAULT 0,
@@ -702,6 +727,11 @@ export class DatabaseManager {
           total_builds INTEGER NOT NULL DEFAULT 0,
           tags TEXT,
           notes TEXT,
+          agent_version VARCHAR(50),
+          server_version_compatible VARCHAR(50),
+          update_available VARCHAR(10) DEFAULT 'false',
+          last_version_check TEXT,
+          auto_update VARCHAR(10) DEFAULT 'false',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
@@ -822,6 +852,26 @@ export class DatabaseManager {
         )
       `
 
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS system_updates (
+          id VARCHAR(255) PRIMARY KEY,
+          current_version VARCHAR(50) NOT NULL,
+          target_version VARCHAR(50) NOT NULL,
+          status VARCHAR(50) NOT NULL,
+          download_progress INTEGER DEFAULT 0,
+          download_url TEXT,
+          release_notes TEXT,
+          error_message TEXT,
+          started_by VARCHAR(255),
+          started_by_name VARCHAR(255),
+          wait_for_jobs VARCHAR(10) DEFAULT 'false',
+          started_at TEXT NOT NULL,
+          completed_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
       // Create indexes for better performance
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_project_id ON builds(project_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_status ON builds(status)`
@@ -836,10 +886,9 @@ export class DatabaseManager {
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)`
 
-
-
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_snapshots_project_id ON project_snapshots(project_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_snapshots_version ON project_snapshots(project_id, version)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_system_updates_status ON system_updates(status)`
 
       logger.info('PostgreSQL tables created successfully')
     } catch (error) {
@@ -905,4 +954,4 @@ export async function getRawDB() {
 // Export schema tables for direct access
 // These are initialized when getDB() is first called
 const schema = createSchema(process.env.DATABASE_TYPE || 'sqlite')
-export const { users, items, envVariables, credentialVault, passwordVault, systemSettings, agents, builds, cronJobs, auditLogs, projectSnapshots } = schema
+export const { users, items, envVariables, credentialVault, passwordVault, systemSettings, agents, builds, cronJobs, auditLogs, projectSnapshots, systemUpdates } = schema

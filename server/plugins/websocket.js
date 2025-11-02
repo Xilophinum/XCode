@@ -356,7 +356,7 @@ async function handleAgentRegistration(socket, msg, agentManager) {
       platform: msg.platform,
       architecture: msg.architecture,
       capabilities: msg.capabilities || [],
-      version: msg.version,
+      agentVersion: msg.agentVersion,
       systemInfo: msg.systemInfo || {},
       ipAddress: socket.handshake?.address
     })
@@ -377,7 +377,7 @@ async function handleAgentRegistration(socket, msg, agentManager) {
       platform: msg.platform,
       architecture: msg.architecture,
       capabilities: msg.capabilities || [],
-      version: msg.version,
+      agentVersion: msg.agentVersion,
       systemInfo: msg.systemInfo || {},
       registeredAt: new Date(),
       status: 'online'
@@ -408,7 +408,7 @@ async function handleAgentRegistration(socket, msg, agentManager) {
       platform: agentInfo.platform,
       architecture: agentInfo.architecture,
       capabilities: agentInfo.capabilities,
-      version: agentInfo.version,
+      agentVersion: agentInfo.agentVersion,
       currentJobs: 0,
       lastHeartbeat: new Date().toISOString(),
       timestamp: new Date().toISOString()
@@ -461,7 +461,7 @@ async function handleHeartbeat(socket, msg, agentManager) {
         platform: 'Unknown',
         architecture: 'Unknown',
         capabilities: [],
-        version: 'Unknown'
+        agentVersion: 'Unknown'
       })
     }
     
