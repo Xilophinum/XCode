@@ -1,9 +1,8 @@
 <template>
-  <div>
+  <UApp>
     <NuxtRouteAnnouncer />
     <NuxtPage />
-    <NotificationContainer />
-  </div>
+  </UApp>
 </template>
 
 <script setup>

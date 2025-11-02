@@ -14,259 +14,189 @@
         <!-- Dashboard Stats -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <!-- Projects Count -->
-          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-md flex items-center justify-center">
-                    <Icon name="briefcase" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Projects</dt>
-                    <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ totalProjects }}</dd>
-                  </dl>
-                </div>
+          <UCard class="shadow-sm">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <UIcon name="i-lucide-briefcase" class="w-8 h-8 text-blue-500" />
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Projects</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ totalProjects }}</p>
               </div>
             </div>
-          </div>
+          </UCard>
 
           <!-- Online Agents -->
-          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-md flex items-center justify-center">
-                    <Icon name="check" class="w-5 h-5 text-green-600 dark:text-green-400" />
-                  </div>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Online Agents</dt>
-                    <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ onlineAgentsCount }}</dd>
-                  </dl>
-                </div>
+          <UCard class="shadow-sm">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <UIcon name="i-lucide-check-circle" class="w-8 h-8 text-green-500" />
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Online Agents</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ onlineAgentsCount }}</p>
               </div>
             </div>
-          </div>
+          </UCard>
 
           <!-- Busy Agents -->
-          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-md flex items-center justify-center">
-                    <Icon name="clock" class="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-                  </div>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Busy Agents</dt>
-                    <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ busyAgentsCount }}</dd>
-                  </dl>
-                </div>
+          <UCard class="shadow-sm">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <UIcon name="i-lucide-clock" class="w-8 h-8 text-yellow-500" />
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Busy Agents</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ busyAgentsCount }}</p>
               </div>
             </div>
-          </div>
+          </UCard>
 
           <!-- Build Success Rate -->
-          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-md flex items-center justify-center">
-                    <Icon name="barChart" class="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Build Success Rate</dt>
-                    <dd 
-                      :class="['text-lg font-medium', buildSuccessRate > 80 ? 'text-green-600 dark:text-green-400' : buildSuccessRate > 70 ? 'text-yellow-600 dark:text-yellow-400' : buildSuccessRate > 55 ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400']"
-                    >{{ buildSuccessRate }}%</dd>
-                  </dl>
-                </div>
+          <UCard class="shadow-sm">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <UIcon name="i-lucide-bar-chart" class="w-8 h-8 text-purple-500" />
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Build Success Rate</p>
+                <p
+                  class="text-2xl font-bold"
+                  :class="buildSuccessRate > 80 ? 'text-green-600 dark:text-green-400' : buildSuccessRate > 70 ? 'text-yellow-600 dark:text-yellow-400' : buildSuccessRate > 55 ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400'"
+                >
+                  {{ buildSuccessRate }}%
+                </p>
               </div>
             </div>
-          </div>
+          </UCard>
         </div>
 
         <!-- Admin Tools (for admin users only) -->
         <div v-if="authStore.user?.role === 'admin'" class="mb-8">
           <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Admin Tools</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- Agents Management Card -->
-            <NuxtLink
-              to="/agents"
-              class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow group"
-            >
-              <div class="p-6">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-md flex items-center justify-center">
-                      <Icon name="monitor" class="w-7 h-7 text-green-600 dark:text-green-400" />
-                    </div>
-                  </div>
-                  <div class="ml-5 w-0 flex-1">
-                    <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
-                      Build Agents
-                    </h4>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      Manage and monitor your build agents. View agent status, capabilities, and job history.
-                    </p>
-                    <div class="mt-2 flex items-center text-sm text-gray-600 dark:text-gray-300">
-                      <span class="inline-flex items-center">
-                        <div class="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
-                        {{ onlineAgentsCount }} online
-                      </span>
-                      <span class="mx-2">•</span>
-                      <span class="inline-flex items-center">
-                        <div class="w-2 h-2 bg-yellow-500 rounded-full mr-1"></div>
-                        {{ busyAgentsCount }} busy
-                      </span>
-                    </div>
-                  </div>
-                  <div class="flex-shrink-0">
-                    <Icon name="chevronRight" class="w-5 h-5 text-gray-400 group-hover:text-green-500 transition-colors" />
+            <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/agents')">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-md flex items-center justify-center">
+                    <UIcon name="i-lucide-monitor" class="w-7 h-7 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
+                <div class="ml-5 w-0 flex-1">
+                  <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
+                    Build Agents
+                  </h4>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Manage and monitor your build agents. View agent status, capabilities, and job history.
+                  </p>
+                </div>
+                <div class="flex-shrink-0">
+                  <UIcon name="i-lucide-chevron-right" class="w-5 h-5 text-gray-400 group-hover:text-green-500 transition-colors" />
+                </div>
               </div>
-            </NuxtLink>
+            </UCard>
 
             <!-- Failed Builds Card -->
-            <NuxtLink
-              to="/failures"
-              class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow group"
-            >
-              <div class="p-6">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-md flex items-center justify-center">
-                      <Icon name="alertCircle" class="w-7 h-7 text-red-600 dark:text-red-400" />
-                    </div>
-                  </div>
-                  <div class="ml-5 w-0 flex-1">
-                    <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
-                      Failed Projects
-                    </h4>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      Projects where latest build failed. View logs and quickly rebuild.
-                    </p>
-                  </div>
-                  <div class="flex-shrink-0">
-                    <Icon name="chevronRight" class="w-5 h-5 text-gray-400 group-hover:text-red-500 transition-colors" />
+            <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/failures')">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <div class="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-md flex items-center justify-center">
+                    <UIcon name="i-lucide-alert-circle" class="w-7 h-7 text-red-600 dark:text-red-400" />
                   </div>
                 </div>
+                <div class="ml-5 w-0 flex-1">
+                  <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                    Failed Projects
+                  </h4>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Projects where latest build failed. View logs and quickly rebuild.
+                  </p>
+                </div>
+                <div class="flex-shrink-0">
+                  <UIcon name="i-lucide-chevron-right" class="w-5 h-5 text-gray-400 group-hover:text-red-500 transition-colors" />
+                </div>
               </div>
-            </NuxtLink>
+            </UCard>
+
+            <!-- Metrics Panel Card -->
+            <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/metrics')">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-md flex items-center justify-center">
+                    <UIcon name="i-lucide-settings" class="w-7 h-7 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                  <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    System Metrics
+                  </h4>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Monitor server performance, agent metrics, and build statistics in real-time.
+                  </p>
+                </div>
+                <div class="flex-shrink-0">
+                  <UIcon name="i-lucide-chevron-right" class="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                </div>
+              </div>
+            </UCard>
 
             <!-- Admin Panel Card -->
-            <NuxtLink
-              to="/admin"
-              class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow group"
-            >
-              <div class="p-6">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0">
-                    <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-md flex items-center justify-center">
-                      <Icon name="settings" class="w-7 h-7 text-yellow-600 dark:text-yellow-400" />
-                    </div>
-                  </div>
-                  <div class="ml-5 w-0 flex-1">
-                    <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">
-                      Admin Panel
-                    </h4>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      System settings, environment variables, security configuration, and user management.
-                    </p>
-                    <div class="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
-                      <Icon name="info" class="w-4 h-4 mr-1" />
-                      Admin Access Required
-                    </div>
-                  </div>
-                  <div class="flex-shrink-0">
-                    <Icon name="chevronRight" class="w-5 h-5 text-gray-400 group-hover:text-yellow-500 transition-colors" />
+            <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/admin')">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-md flex items-center justify-center">
+                    <UIcon name="i-lucide-settings" class="w-7 h-7 text-yellow-600 dark:text-yellow-400" />
                   </div>
                 </div>
+                <div class="ml-5 w-0 flex-1">
+                  <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">
+                    Admin Panel
+                  </h4>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    System settings, environment variables, security configuration, and user management.
+                  </p>
+                </div>
+                <div class="flex-shrink-0">
+                  <UIcon name="i-lucide-chevron-right" class="w-5 h-5 text-gray-400 group-hover:text-yellow-500 transition-colors" />
+                </div>
               </div>
-            </NuxtLink>
+            </UCard>
           </div>
         </div>
 
         <!-- Folders Section -->
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-          <div class="px-4 py-5 sm:p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg leading-6 font-medium text-gray-950 dark:text-white">
-                Folders
-              </h3>
-              <button
-                @click="showCreateFolderModal = true"
-                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-              >
-                New Folder
-              </button>
-            </div>
+        <UCard class="shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg leading-6 font-medium text-gray-950 dark:text-white">
+              Folders
+            </h3>
+            <UButton
+              @click="showCreateFolderModal = true"
+              class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+            >
+              New Folder
+            </UButton>
+          </div>
 
-            <div v-if="projectsStore.isLoading" class="text-center py-8">
-              <p class="text-gray-600 dark:text-gray-300">Loading folders...</p>
-            </div>
+          <div v-if="projectsStore.isLoading" class="text-center py-8">
+            <p class="text-gray-600 dark:text-gray-300">Loading folders...</p>
+          </div>
 
-            <div v-else-if="rootFolders.length === 0" class="text-center py-8">
-              <p class="text-gray-600 dark:text-gray-300 mb-4">No folders yet. Create your first folder!</p>
-            </div>
+          <div v-else-if="rootFolders.length === 0" class="text-center py-8">
+            <p class="text-gray-600 dark:text-gray-300 mb-4">No folders yet. Create your first folder!</p>
+          </div>
 
-            <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div
-                v-for="folder in rootFolders"
-                :key="folder.id"
-                class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow bg-slate-50 dark:bg-slate-900/20 hover:bg-slate-100 dark:hover:bg-slate-800/30 relative group"
-              >
-                <!-- Folder Actions Menu -->
-                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div class="relative">
-                    <button
-                      @click.stop="toggleFolderMenu(folder.id)"
-                      class="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-white hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      v-tooltip:bottomright="'View Actions'"
-                    >
-                      <Icon name="more" class="w-5 h-5" />
-                    </button>
-                    
-                    <!-- Dropdown Menu -->
-                    <div
-                      v-if="activeFolderMenu === folder.id"
-                      class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-10"
-                    >
-                      <div class="py-1">
-                        <button
-                          @click.stop="startEditFolder(folder)"
-                          class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          @click.stop="confirmMoveItem(folder)"
-                          class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          Move
-                        </button>
-                        <button
-                          @click.stop="confirmDeleteFolder(folder)"
-                          class="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Folder Content (clickable) -->
+          <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <UContextMenu 
+              v-for="folder in rootFolders"
+              :key="folder.id"
+              :items="getFolderMenuItems(folder)"
+            >
+              <UTooltip text="Right Click For More Options" placement="top">
                 <div 
                   @click="openFolder(folder)"
-                  class="cursor-pointer"
+                  class="cursor-pointer border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow bg-slate-50 dark:bg-slate-900/20 hover:bg-slate-100 dark:hover:bg-slate-800/30 relative group"
                 >
                   <h4 class="font-medium text-gray-950 dark:text-white mb-2">{{ folder.name }}</h4>
                   <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">{{ folder.description || '' }}</p>
@@ -274,15 +204,15 @@
                     Updated {{ formatDate(folder.updatedAt) }}
                   </div>
                 </div>
-              </div>
-            </div>
+              </UTooltip>
+            </UContextMenu>
           </div>
-        </div>
+        </UCard>
       </div>
     </main>
 
     <!-- Create Folder Modal -->
-    <ModalWrapper v-model="showCreateFolderModal">
+    <ModalWrapper v-model="showCreateFolderModal" class="max-w-lg">
       <div class="m-4">
         <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Folder</h3>
         <form @submit.prevent="handleCreateFolder">
@@ -326,9 +256,9 @@
         </form>
       </div>
     </ModalWrapper>
-
+    
     <!-- Edit Folder Modal -->
-    <ModalWrapper v-model="showEditFolderModal">
+    <ModalWrapper v-model="showEditFolderModal" class="max-w-lg">
       <div class="m-4">
         <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Edit Folder</h3>
         <form @submit.prevent="handleEditFolder">
@@ -354,30 +284,29 @@
             ></textarea>
           </div>
           <div class="flex justify-end space-x-3">
-            <button
-              type="button"
+            <UButton
               @click="cancelEdit"
               class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               Cancel
-            </button>
-            <button
+            </UButton>
+            <UButton
               type="submit"
               :disabled="!editForm.name.trim()"
               class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             >
               Save Changes
-            </button>
+            </UButton>
           </div>
         </form>
       </div>
     </ModalWrapper>
 
     <!-- Delete Confirmation Modal -->
-    <ModalWrapper v-model="showDeleteConfirmModal">
+    <ModalWrapper v-model="showDeleteConfirmModal" class="max-w-lg">
       <div class="m-4">
         <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 mb-4">
-          <Icon name="alertTriangle" class="h-6 w-6 text-red-600 dark:text-red-400" />
+          <UIcon name="i-lucide-alert-triangle" class="h-6 w-6 text-red-600 dark:text-red-400" />
         </div>
         <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-2 text-center">Delete Folder</h3>
         <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
@@ -387,26 +316,24 @@
           <strong>Warning:</strong> This will also delete all folders and projects inside this folder. This action cannot be undone.
         </p>
         <div class="flex justify-end space-x-3">
-          <button
-            type="button"
+          <UButton
             @click="cancelDelete"
             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
           >
             Cancel
-          </button>
-          <button
-            type="button"
+          </UButton>
+          <UButton
             @click="handleDeleteFolder"
             class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
           >
             Delete Folder
-          </button>
+          </UButton>
         </div>
       </div>
     </ModalWrapper>
 
     <!-- Move Item Modal -->
-    <ModalWrapper v-model="showMoveModal">
+    <ModalWrapper v-model="showMoveModal" class="max-w-lg">
       <div class="m-4">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
           Move Folder
@@ -431,31 +358,31 @@
           
           <!-- Path suggestions dropdown -->
           <div v-if="filteredPaths.length > 0" class="mt-2 max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700">
-            <button
+            <UButton
               v-for="path in filteredPaths.slice(0, 10)"
               :key="path.displayPath"
               @click="destinationPath = path.displayPath"
               class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-600"
             >
               {{ path.displayPath }}
-            </button>
+            </UButton>
           </div>
         </div>
         
         <div class="flex justify-end space-x-4">
-          <button
+          <UButton
             @click="cancelMove"
             class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             Cancel
-          </button>
-          <button
+          </UButton>
+          <UButton
             @click="handleMoveItem"
             :disabled="!destinationPath.trim()"
             class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             Move
-          </button>
+          </UButton>
         </div>
       </div>
     </ModalWrapper>
@@ -467,20 +394,17 @@ definePageMeta({
   middleware: 'auth'
 })
 
-import Icon from '~/components/Icon.vue'
 import ModalWrapper from '~/components/ModalWrapper.vue'
 
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const webSocketStore = useWebSocketStore()
-const { success, error } = useNotifications()
 
 // Modal state
 const showCreateFolderModal = ref(false)
 const showEditFolderModal = ref(false)
 const showDeleteConfirmModal = ref(false)
 const showMoveModal = ref(false)
-const activeFolderMenu = ref(null)
 
 // Form data
 const folderForm = ref({
@@ -579,21 +503,17 @@ const handleCreateFolder = async () => {
   )
   
   if (result.success) {
-    success('Folder created successfully')
+    toast.add({ title: 'Folder created successfully', icon: 'i-lucide-check-circle' })
     folderForm.value = { name: '', description: '' }
     showCreateFolderModal.value = false
   } else {
     logger.error('Failed to create folder:', result.error)
-    error('Failed to create folder. Please try again.')
+    toast.add({ title: 'Failed to create folder. Please try again.', icon: 'i-lucide-x-circle' })
   }
 }
 
-const toggleFolderMenu = (folderId) => {
-  activeFolderMenu.value = activeFolderMenu.value === folderId ? null : folderId
-}
-
 const closeAllMenus = () => {
-  activeFolderMenu.value = null
+  // Cleanup is handled by UDropdown automatically
 }
 
 const startEditFolder = (folder) => {
@@ -603,7 +523,6 @@ const startEditFolder = (folder) => {
     description: folder.description || ''
   }
   showEditFolderModal.value = true
-  activeFolderMenu.value = null
 }
 
 const handleEditFolder = async () => {
@@ -616,11 +535,11 @@ const handleEditFolder = async () => {
   )
   
   if (result.success) {
-    success('Folder updated successfully')
+    toast.add({ title: 'Folder updated successfully', icon: 'i-lucide-check-circle' })
     cancelEdit()
   } else {
     logger.error('Failed to edit folder:', result.error)
-    error('Failed to update folder. Please try again.')
+    toast.add({ title: 'Failed to update folder. Please try again.', icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -632,7 +551,6 @@ const cancelEdit = () => {
 const confirmDeleteFolder = (folder) => {
   folderToDelete.value = folder
   showDeleteConfirmModal.value = true
-  activeFolderMenu.value = null
 }
 
 const handleDeleteFolder = async () => {
@@ -641,11 +559,11 @@ const handleDeleteFolder = async () => {
   const result = await projectsStore.deleteFolder(folderToDelete.value.id)
   
   if (result.success) {
-    success('Folder deleted successfully')
+    toast.add({ title: 'Folder deleted successfully', icon: 'i-lucide-check-circle' })
     cancelDelete()
   } else {
     logger.error('Failed to delete folder:', result.error)
-    error('Failed to delete folder. Please try again.')
+    toast.add({ title: 'Failed to delete folder. Please try again.', icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -660,7 +578,6 @@ const confirmMoveItem = (item) => {
   destinationPath.value = ''
   filteredPaths.value = allAvailablePaths.value
   showMoveModal.value = true
-  activeFolderMenu.value = null
 }
 
 const handleMoveItem = async () => {
@@ -673,7 +590,7 @@ const handleMoveItem = async () => {
   // Check if trying to move item to its current location
   const currentPath = itemToMove.value.path || []
   if (JSON.stringify(currentPath) === JSON.stringify(destination.path)) {
-    error('Item is already in the selected location.')
+    toast.add({ title: 'Item is already in the selected location.', icon: 'i-lucide-x-circle' })
     return
   }
   
@@ -682,7 +599,7 @@ const handleMoveItem = async () => {
     const itemFullPath = [...currentPath, itemToMove.value.name]
     if (destination.path.length >= itemFullPath.length && 
         JSON.stringify(destination.path.slice(0, itemFullPath.length)) === JSON.stringify(itemFullPath)) {
-      error('Cannot move a folder into itself or its children.')
+      toast.add({ title: 'Cannot move a folder into itself or its children.', icon: 'i-lucide-x-circle' })
       return
     }
   }
@@ -690,11 +607,11 @@ const handleMoveItem = async () => {
   const result = await projectsStore.moveItem(itemToMove.value.id, destination.path)
   
   if (result.success) {
-    success('Folder moved successfully')
+    toast.add({ title: 'Folder moved successfully', icon: 'i-lucide-check-circle' })
     cancelMove()
   } else {
     logger.error('Failed to move item:', result.error)
-    error('Failed to move item. Please try again.')
+    toast.add({ title: 'Failed to move item. Please try again.', icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -715,6 +632,28 @@ const filterPaths = () => {
   filteredPaths.value = allAvailablePaths.value.filter(path => 
     path.displayPath.toLowerCase().includes(search)
   )
+}
+
+// Folder menu methods for UDropdown
+const getFolderMenuItems = (folder) => {
+  return [
+    {
+      label: 'Edit',
+      icon: 'i-lucide-edit-2',
+      onSelect: () => startEditFolder(folder)
+    },
+    {
+      label: 'Move',
+      icon: 'i-lucide-move',
+      onSelect: () => confirmMoveItem(folder)
+    },
+    {
+      label: 'Delete',
+      icon: 'i-lucide-trash-2',
+      onSelect: () => confirmDeleteFolder(folder),
+      class: 'text-red-600 dark:text-red-400'
+    }
+  ]
 }
 
 

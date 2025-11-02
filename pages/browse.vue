@@ -23,7 +23,7 @@
               @click="showCreateFolderModal = true"
               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <Icon name="plus" class="-ml-1 mr-2 h-5 w-5" />
+              <UIcon name="i-lucide-plus" class="-ml-1 mr-2 h-5 w-5" />
               New Folder
             </button>
             
@@ -31,7 +31,7 @@
               @click="showCreateProjectModal = true"
               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <Icon name="plus" class="-ml-1 mr-2 h-5 w-5" />
+              <UIcon name="i-lucide-plus" class="-ml-1 mr-2 h-5 w-5" />
               New Project
             </button>
           </div>
@@ -42,19 +42,19 @@
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-6">
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                <Icon name="folder" class="w-4 h-4 mr-1.5 text-blue-500" />
+                <UIcon name="i-lucide-folder" class="w-4 h-4 mr-1.5 text-blue-500" />
                 <span class="font-medium">{{ totalProjectsInCurrentPath }}</span>
                 <span class="ml-1">{{ totalProjectsInCurrentPath === 1 ? 'project' : 'projects' }}</span>
               </div>
               
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                <Icon name="check" class="w-4 h-4 mr-1.5 text-green-500" />
+                <UIcon name="i-lucide-check" class="w-4 h-4 mr-1.5 text-green-500" />
                 <span class="font-medium">{{ onlineAgentsCount }}</span>
                 <span class="ml-1">online agents</span>
               </div>
               
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                <Icon name="clock" class="w-4 h-4 mr-1.5 text-yellow-500" />
+                <UIcon name="i-lucide-clock" class="w-4 h-4 mr-1.5 text-yellow-500" />
                 <span class="font-medium">{{ busyAgentsCount }}</span>
                 <span class="ml-1">busy</span>
               </div>
@@ -80,163 +80,44 @@
           <!-- Content Grid -->
           <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 pb-6">
           <!-- Folders -->
-          <div
+          <UContextMenu
             v-for="folder in foldersAtCurrentPath"
             :key="folder.id"
-            class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/30 relative group"
+            :items="getFolderMenuItems(folder)"
           >
-            <!-- Folder Actions Menu -->
-            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-              <!-- Audit History Button -->
-              <button
-                @click.stop="showAuditHistory(folder)"
-                class="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                v-tooltip:bottomright="'Audit History'"
+            <UTooltip text="Right Click For More Options" placement="top">
+              <div
+                @click="navigateToFolder(folder.name)"
+                class="cursor-pointer border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/30 relative group"
               >
-                <Icon name="clock" class="w-5 h-5" />
-              </button>
-
-              <div class="relative">
-                <button
-                  @click.stop="toggleFolderMenu(folder.id)"
-                  class="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  v-tooltip:bottomright="'View Actions'"
-                >
-                  <Icon name="more" class="w-5 h-5" />
-                </button>
-                
-                <!-- Dropdown Menu -->
-                <div
-                  v-if="activeFolderMenu === folder.id"
-                  class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-10"
-                >
-                  <div class="py-1">
-                    <button
-                      @click.stop="confirmRenameItem(folder)"
-                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Rename
-                    </button>
-                    <button
-                      @click.stop="confirmMoveItem(folder)"
-                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Move
-                    </button>
-                    <button
-                      @click.stop="showAccessSettings(folder)"
-                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Access Settings
-                    </button>
-                    <button
-                      @click.stop="confirmDeleteFolder(folder)"
-                      class="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                <div class="flex items-center mb-2">
+                  <UIcon name="i-lucide-folder" class="h-8 w-8 text-blue-600 dark:text-blue-400 mr-3" />
+                  <h3 class="font-medium text-gray-950 dark:text-white">{{ folder.name }}</h3>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">{{ folder.description || '' }}</p>
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                  Updated: {{ formatDate(folder.updatedAt) }}
                 </div>
               </div>
-            </div>
-
-            <!-- Folder Content (clickable) -->
-            <div 
-              @click.stop="navigateToFolder(folder.name)"
-              class="cursor-pointer"
-            >
-              <div class="flex items-center mb-2">
-                <Icon name="folder" class="h-8 w-8 text-blue-600 dark:text-blue-400 mr-3" />
-                <h3 class="font-medium text-gray-950 dark:text-white">{{ folder.name }}</h3>
-              </div>
-              <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">{{ folder.description || '' }}</p>
-              <div class="text-xs text-gray-500 dark:text-gray-400">
-                Updated: {{ formatDate(folder.updatedAt) }}
-              </div>
-            </div>
-          </div>
+            </UTooltip>
+          </UContextMenu>
 
           <!-- Projects -->
-          <div
+          <UContextMenu
             v-for="project in projectsAtCurrentPath"
             :key="project.id"
-            :class="[
-              'border rounded-lg p-4 hover:shadow-md transition-shadow relative group',
-              project.status === 'disabled' ? 'opacity-60 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800' : getProjectColor(projectBuildStats.get(project.id))
-            ]"
+            :items="getProjectMenuItems(project)"
           >
-            <!-- Project Actions Menu -->
-            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-              <!-- Audit History Button -->
-              <button
-                @click.stop="showAuditHistory(project)"
-                class="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                v-tooltip:bottomright="'Audit History'"
+            <UTooltip text="Right Click For More Options" placement="top">
+              <div
+                @click="openProject(project)"
+                :class="[
+                  'cursor-pointer border rounded-lg p-4 hover:shadow-md transition-shadow relative group',
+                  project.status === 'disabled' ? 'opacity-60 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800' : getProjectColor(projectBuildStats.get(project.id))
+                ]"
               >
-                <Icon name="clock" class="w-5 h-5" />
-              </button>
-
-              <div class="relative">
-                <button
-                  @click.stop="toggleProjectMenu(project.id)"
-                  class="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  v-tooltip:bottomright="'View Actions'"
-                >
-                  <Icon name="more" class="w-5 h-5" />
-                </button>
-                
-                <!-- Dropdown Menu -->
-                <div
-                  v-if="activeProjectMenu === project.id"
-                  class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-10"
-                >
-                  <div class="py-1">
-                    <button
-                      @click.stop="confirmRenameItem(project)"
-                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Rename
-                    </button>
-                    <button
-                      @click.stop="confirmMoveItem(project)"
-                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Move
-                    </button>
-                    <button
-                      @click.stop="showAccessSettings(project)"
-                      class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Access Settings
-                    </button>
-                    <button
-                      @click.stop="toggleProjectStatus(project)"
-                      :class="[
-                        'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700',
-                        project.status === 'disabled' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'
-                      ]"
-                    >
-                      {{ project.status === 'disabled' ? 'Enable' : 'Disable' }}
-                    </button>
-                    <button
-                      @click.stop="confirmDeleteProject(project)"
-                      class="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Delete
-                    </button>
-                    
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Project Content (clickable) -->
-            <div 
-              @click.stop="openProject(project)"
-              class="cursor-pointer"
-            >
               <div class="flex items-center mb-2">
-                <Icon name="briefcase" class="h-7 w-7 text-blue-600 dark:text-blue-400 mr-3" />
+                <UIcon name="i-lucide-cog" class="h-7 w-7 text-blue-600 dark:text-blue-400 mr-3 animate-spin" />
                 <h3 class="font-medium" :class="getProjectTextColor(projectBuildStats.get(project.id))">{{ project.name }}</h3>
                 <span v-if="project.status === 'disabled'" class="ml-2 px-2 py-0.5 text-xs font-medium bg-gray-500 text-white rounded-full">
                   Disabled
@@ -277,16 +158,17 @@
               </div>
               
               <!-- Progress Bar -->
-              <ProjectProgressBar 
+              <ProjectProgressBar
                 :projectId="project.id"
                 :buildStats="projectBuildStats.get(project.id)"
               />
-            </div>
-          </div>
+              </div>
+            </UTooltip>
+          </UContextMenu>
 
           <!-- Empty State -->
           <div v-if="foldersAtCurrentPath.length === 0 && projectsAtCurrentPath.length === 0" class="col-span-full text-center py-8">
-            <Icon name="folder" class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+            <UIcon name="i-lucide-folder" class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
             <h3 class="mt-2 text-sm font-medium text-gray-950 dark:text-white">No items found</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new folder or project.</p>
           </div>
@@ -296,7 +178,7 @@
     </main>
 
     <!-- Create Folder Modal -->
-    <ModalWrapper :model-value="showCreateFolderModal" @update:model-value="showCreateFolderModal = $event">
+    <ModalWrapper :model-value="showCreateFolderModal" @update:model-value="showCreateFolderModal = $event" class="max-w-md">
       <div class="m-4">
         <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Folder</h3>
         <form @submit.prevent="handleCreateFolder">
@@ -342,7 +224,7 @@
     </ModalWrapper>
 
     <!-- Create Project Modal -->
-    <ModalWrapper :model-value="showCreateProjectModal" @update:model-value="showCreateProjectModal = $event">
+    <ModalWrapper :model-value="showCreateProjectModal" @update:model-value="showCreateProjectModal = $event" class="max-w-md">
       <div class="m-4">
         <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Project</h3>
         <form @submit.prevent="handleCreateProject">
@@ -388,7 +270,7 @@
     </ModalWrapper>
   </div>
   <!-- Delete Project Confirmation Modal -->
-  <ModalWrapper :model-value="showDeleteProjectModal" @update:model-value="cancelDeleteProject">
+  <ModalWrapper :model-value="showDeleteProjectModal" @update:model-value="cancelDeleteProject" class="max-w-md">
     <div class="m-4">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Delete {{ projectToDelete?.type === 'folder' ? 'Folder' : 'Project' }}</h3>
       <p class="text-sm text-gray-600 dark:text-gray-300 mb-6">
@@ -412,7 +294,7 @@
       </div>
     </div>
   </ModalWrapper>  <!-- Move Item Modal -->
-  <ModalWrapper :model-value="showMoveModal" @update:model-value="cancelMove">
+  <ModalWrapper :model-value="showMoveModal" @update:model-value="cancelMove" class="max-w-md">
     <div class="m-4">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Move {{ itemToMove?.type === 'folder' ? 'Folder' : 'Project' }}
@@ -467,7 +349,7 @@
   </ModalWrapper>
 
   <!-- Rename Item Modal -->
-  <ModalWrapper :model-value="showRenameModal" @update:model-value="cancelRename">
+  <ModalWrapper :model-value="showRenameModal" @update:model-value="cancelRename" class="max-w-md">
     <div class="m-4">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Rename {{ itemToRename?.type === 'folder' ? 'Folder' : 'Project' }}
@@ -522,7 +404,7 @@
   </ModalWrapper>
 
   <!-- Access Settings Modal -->
-  <ModalWrapper :model-value="showAccessModal" @update:model-value="cancelAccessSettings">
+  <ModalWrapper :model-value="showAccessModal" @update:model-value="cancelAccessSettings" class="max-w-md">
     <div class="m-4">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
         Access Settings - {{ itemForAccess?.name }}
@@ -623,7 +505,6 @@
 <script setup>
 import ProjectProgressBar from '@/components/ProjectProgressBar.vue'
 import AuditHistoryModal from '@/components/modals/AuditHistoryModal.vue'
-import Icon from '@/components/Icon.vue'
 import ModalWrapper from '@/components/ModalWrapper.vue'
 
 const route = useRoute()
@@ -631,7 +512,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const webSocketStore = useWebSocketStore()
-const { success, error } = useNotifications()
+const toast = useToast()
 
 import { nextTick, onMounted, onUnmounted, watch } from 'vue'
 
@@ -778,10 +659,6 @@ const showRenameModal = ref(false)
 const showAuditModal = ref(false)
 const showAccessModal = ref(false)
 
-// Menu states
-const activeProjectMenu = ref(null)
-const activeFolderMenu = ref(null)
-
 // Audit history state
 const selectedEntityForAudit = ref(null)
 
@@ -907,27 +784,126 @@ const viewBuildHistory = (project) => {
   router.push(`/${projectPath.join('/')}/builds`)
 }
 
-// Project menu handlers
-const toggleProjectMenu = (projectId) => {
-  activeProjectMenu.value = activeProjectMenu.value === projectId ? null : projectId
+// Context menu item functions
+const getFolderMenuItems = (folder) => {
+  return [
+    {
+      label: 'Audit History',
+      icon: 'i-lucide-clock',
+      onSelect: () => {
+        selectedEntityForAudit.value = folder
+        showAuditModal.value = true
+      }
+    },
+    {
+      label: 'Rename',
+      icon: 'i-lucide-edit-2',
+      onSelect: () => {
+        itemToRename.value = folder
+        renameForm.value.name = folder.name
+        renameForm.value.description = folder.description || ''
+        showRenameModal.value = true
+      }
+    },
+    {
+      label: 'Move',
+      icon: 'i-lucide-move',
+      onSelect: () => {
+        itemToMove.value = folder
+        destinationPath.value = ''
+        filteredPaths.value = allAvailablePaths.value
+        showMoveModal.value = true
+      }
+    },
+    {
+      label: 'Access Settings',
+      icon: 'i-lucide-shield',
+      onSelect: async () => {
+        itemForAccess.value = folder
+        accessForm.value.access_policy = folder.accessPolicy || 'public'
+        accessForm.value.allowed_groups = folder.allowedGroups || []
+        await loadGroups()
+        showAccessModal.value = true
+      }
+    },
+    {
+      label: 'Delete',
+      icon: 'i-lucide-trash-2',
+      onSelect: () => {
+        projectToDelete.value = folder
+        showDeleteProjectModal.value = true
+      },
+      class: 'text-red-600 dark:text-red-400'
+    }
+  ]
 }
 
-// Folder menu handlers
-const toggleFolderMenu = (folderId) => {
-  activeFolderMenu.value = activeFolderMenu.value === folderId ? null : folderId
-}
-
-const closeAllMenus = () => {
-  activeProjectMenu.value = null
-  activeFolderMenu.value = null
-}
-
-// Audit history handlers
-const showAuditHistory = (entity) => {
-  selectedEntityForAudit.value = entity
-  showAuditModal.value = true
-  activeProjectMenu.value = null
-  activeFolderMenu.value = null
+const getProjectMenuItems = (project) => {
+  return [
+    {
+      label: 'Audit History',
+      icon: 'i-lucide-clock',
+      onSelect: () => {
+        selectedEntityForAudit.value = project
+        showAuditModal.value = true
+      }
+    },
+    {
+      label: 'Rename',
+      icon: 'i-lucide-edit-2',
+      onSelect: () => {
+        itemToRename.value = project
+        renameForm.value.name = project.name
+        renameForm.value.description = project.description || ''
+        showRenameModal.value = true
+      }
+    },
+    {
+      label: 'Move',
+      icon: 'i-lucide-move',
+      onSelect: () => {
+        itemToMove.value = project
+        destinationPath.value = ''
+        filteredPaths.value = allAvailablePaths.value
+        showMoveModal.value = true
+      }
+    },
+    {
+      label: 'Access Settings',
+      icon: 'i-lucide-shield',
+      onSelect: async () => {
+        itemForAccess.value = project
+        accessForm.value.access_policy = project.accessPolicy || 'public'
+        accessForm.value.allowed_groups = project.allowedGroups || []
+        await loadGroups()
+        showAccessModal.value = true
+      }
+    },
+    {
+      label: project.status === 'disabled' ? 'Enable' : 'Disable',
+      icon: project.status === 'disabled' ? 'i-lucide-check-circle' : 'i-lucide-ban',
+      onSelect: async () => {
+        const result = await projectsStore.toggleProjectStatus(project.id)
+        if (result.success) {
+          logger.info(`Project ${result.status}: ${project.name}`)
+          toast.add({ title: `Project ${result.status === 'active' ? 'enabled' : 'disabled'} successfully`, icon: 'i-lucide-check-circle' })
+        } else {
+          logger.error('Failed to toggle project status:', result.error)
+          toast.add({ title: 'Failed to change project status. Please try again.', icon: 'i-lucide-x-circle' })
+        }
+      },
+      class: project.status === 'disabled' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'
+    },
+    {
+      label: 'Delete',
+      icon: 'i-lucide-trash-2',
+      onSelect: () => {
+        projectToDelete.value = project
+        showDeleteProjectModal.value = true
+      },
+      class: 'text-red-600 dark:text-red-400'
+    }
+  ]
 }
 
 const handleAuditModalClose = () => {
@@ -950,14 +926,6 @@ const handleProjectReverted = async (updatedProject) => {
 }
 
 // Move handlers
-const confirmMoveItem = (item) => {
-  itemToMove.value = item
-  destinationPath.value = ''
-  filteredPaths.value = allAvailablePaths.value
-  showMoveModal.value = true
-  activeProjectMenu.value = null
-  activeFolderMenu.value = null
-}
 
 const handleMoveItem = async () => {
   if (!itemToMove.value || !destinationPath.value) return
@@ -986,11 +954,11 @@ const handleMoveItem = async () => {
   const result = await projectsStore.moveItem(itemToMove.value.id, destination.path)
   
   if (result.success) {
-    success('Item moved successfully')
+    toast.add({ title: 'Item moved successfully', icon: 'i-lucide-check-circle' })
     cancelMove()
   } else {
     logger.error('Failed to move item:', result.error)
-    error('Failed to move item. Please try again.')
+    toast.add({ title: 'Failed to move item. Please try again.', icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -1002,15 +970,6 @@ const cancelMove = () => {
 }
 
 // Rename handlers
-const confirmRenameItem = (item) => {
-  itemToRename.value = item
-  renameForm.value.name = item.name
-  renameForm.value.description = item.description || ''
-  showRenameModal.value = true
-  activeProjectMenu.value = null
-  activeFolderMenu.value = null
-}
-
 const handleRenameItem = async () => {
   if (!itemToRename.value || !renameForm.value.name.trim()) return
   
@@ -1020,11 +979,11 @@ const handleRenameItem = async () => {
   })
   
   if (result.success) {
-    success('Item renamed successfully')
+    toast.add({ title: 'Item renamed successfully', icon: 'i-lucide-check-circle' })
     cancelRename()
   } else {
     logger.error('Failed to rename item:', result.error)
-    error('Failed to rename item. Please try again.')
+    toast.add({ title: 'Failed to rename item. Please try again.', icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -1035,18 +994,6 @@ const cancelRename = () => {
 }
 
 // Access settings handlers
-const showAccessSettings = async (item) => {
-  itemForAccess.value = item
-  accessForm.value.access_policy = item.accessPolicy || 'public'
-  accessForm.value.allowed_groups = item.allowedGroups || []
-  
-  await loadGroups()
-  
-  showAccessModal.value = true
-  activeProjectMenu.value = null
-  activeFolderMenu.value = null
-}
-
 const loadGroups = async () => {
   try {
     const settings = await $fetch('/api/admin/system-settings')
@@ -1077,12 +1024,11 @@ const handleAccessUpdate = async () => {
     // Update local item
     itemForAccess.value.accessPolicy = accessForm.value.access_policy
     itemForAccess.value.allowedGroups = accessForm.value.allowed_groups
-    
-    success('Access settings updated successfully')
+    toast.add({ title: 'Access settings updated successfully', icon: 'i-lucide-check-circle' })
     cancelAccessSettings()
   } catch (error) {
     logger.error('Failed to update access settings:', error)
-    error('Failed to update access settings. Please try again.')
+    toast.add({ title: 'Failed to update access settings. Please try again.', icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -1114,38 +1060,19 @@ const filterPaths = () => {
   )
 }
 
-const confirmDeleteProject = (project) => {
-  projectToDelete.value = project
-  activeProjectMenu.value = null
-  showDeleteProjectModal.value = true
-}
-
-const toggleProjectStatus = async (project) => {
-  activeProjectMenu.value = null
-  
-  const result = await projectsStore.toggleProjectStatus(project.id)
-  
-  if (result.success) {
-    logger.info(`Project ${result.status}: ${project.name}`)
-    success(`Project ${result.status === 'enabled' ? 'enabled' : 'disabled'} successfully`)
-  } else {
-    logger.error('Failed to toggle project status:', result.error)
-    error('Failed to change project status. Please try again.')
-  }
-}
-
+// Delete and status handlers
 const handleDeleteProject = async () => {
   if (!projectToDelete.value) return
   
   const result = await projectsStore.deleteItem(projectToDelete.value.id)
   
   if (result.success) {
-    success('Item deleted successfully')
+    toast.add({ title: 'Item deleted successfully', icon: 'i-lucide-check-circle' })
     showDeleteProjectModal.value = false
     projectToDelete.value = null
   } else {
     logger.error('Failed to delete project:', result.error)
-    error('Failed to delete item. Please try again.')
+    toast.add({ title: 'Failed to delete item. Please try again.', icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -1155,12 +1082,6 @@ const cancelDeleteProject = () => {
 }
 
 // Folder delete handlers
-const confirmDeleteFolder = (folder) => {
-  // For now, use the same modal structure - you could create a separate one
-  projectToDelete.value = folder
-  showDeleteProjectModal.value = true
-  activeFolderMenu.value = null
-}
 
 // Form handlers
 const handleCreateFolder = async () => {
@@ -1173,12 +1094,12 @@ const handleCreateFolder = async () => {
   )
   
   if (result.success) {
-    success('Folder created successfully')
+    toast.add({ title: 'Folder created successfully', icon: 'i-lucide-check-circle' })
     folderForm.value = { name: '', description: '' }
     showCreateFolderModal.value = false
   } else {
     logger.error('Failed to create folder:', result.error)
-    error('Failed to create folder. Please try again.')
+    toast.add({ title: 'Failed to create folder. Please try again.', icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -1192,14 +1113,14 @@ const handleCreateProject = async () => {
   )
   
   if (result.success) {
-    success('Project created successfully')
+    toast.add({ title: 'Project created successfully', icon: 'i-lucide-check-circle' })
     projectForm.value = { name: '', description: '' }
     showCreateProjectModal.value = false
     // Navigate to the new project
     openProject(result.project)
   } else {
     logger.error('Failed to create project:', result.error)
-    error('Failed to create project. Please try again.')
+    toast.add({ title: 'Failed to create project. Please try again.', icon: 'i-lucide-x-circle' })
   }
 }
 

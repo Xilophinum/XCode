@@ -3,8 +3,6 @@
  */
 
 import { Cron } from 'croner'
-import { jobManager } from './jobManager.js'
-import { getAgentManager } from './agentManager.js'
 import { cronDbService } from './cronDbService.js'
 import { getDataService } from './dataService.js'
 import { executeProjectFromTrigger } from './triggerExecutor.js'

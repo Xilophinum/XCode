@@ -384,6 +384,19 @@ export class DatabaseManager {
         )
       `)
 
+      // Metrics table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS metrics (
+          id TEXT PRIMARY KEY,
+          timestamp TEXT NOT NULL,
+          metric_type TEXT NOT NULL,
+          agent_id TEXT,
+          value TEXT NOT NULL,
+          metadata TEXT,
+          created_at TEXT NOT NULL
+        )
+      `)
+
       // Create indexes for better performance
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_project_id ON builds(project_id)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_builds_status ON builds(status)`)
@@ -403,6 +416,9 @@ export class DatabaseManager {
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_project_snapshots_version ON project_snapshots(project_id, version)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_notification_templates_type ON notification_templates(type)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_system_updates_status ON system_updates(status)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_metrics_type ON metrics(metric_type)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_metrics_agent_id ON metrics(agent_id)`)
 
       // Insert built-in notification templates if they don't exist
       await this.insertBuiltInTemplates()
@@ -872,6 +888,18 @@ export class DatabaseManager {
         )
       `
 
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS metrics (
+          id VARCHAR(255) PRIMARY KEY,
+          timestamp TEXT NOT NULL,
+          metric_type VARCHAR(100) NOT NULL,
+          agent_id VARCHAR(255),
+          value TEXT NOT NULL,
+          metadata TEXT,
+          created_at TEXT NOT NULL
+        )
+      `
+
       // Create indexes for better performance
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_project_id ON builds(project_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_builds_status ON builds(status)`
@@ -889,6 +917,9 @@ export class DatabaseManager {
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_snapshots_project_id ON project_snapshots(project_id)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_snapshots_version ON project_snapshots(project_id, version)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_system_updates_status ON system_updates(status)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metrics_type ON metrics(metric_type)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metrics_agent_id ON metrics(agent_id)`
 
       logger.info('PostgreSQL tables created successfully')
     } catch (error) {
@@ -954,4 +985,4 @@ export async function getRawDB() {
 // Export schema tables for direct access
 // These are initialized when getDB() is first called
 const schema = createSchema(process.env.DATABASE_TYPE || 'sqlite')
-export const { users, items, envVariables, credentialVault, passwordVault, systemSettings, agents, builds, cronJobs, auditLogs, projectSnapshots, systemUpdates } = schema
+export const { users, items, envVariables, credentialVault, passwordVault, systemSettings, agents, builds, cronJobs, auditLogs, projectSnapshots, systemUpdates, metrics } = schema

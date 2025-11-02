@@ -242,6 +242,22 @@ export function createSchema(dbType = 'sqlite') {
         completedAt: pgText('completed_at'),
         createdAt: pgText('created_at').notNull(),
         updatedAt: pgText('updated_at').notNull(),
+      }),
+
+      metrics: pgTable('metrics', {
+        id: pgVarchar('id', { length: 255 }).primaryKey(),
+        timestamp: pgText('timestamp').notNull(),
+        metricType: pgVarchar('metric_type', { length: 100 }).notNull(),
+        agentId: pgVarchar('agent_id', { length: 255 }),
+        value: pgText('value').notNull(),
+        metadata: pgText('metadata'),
+        createdAt: pgText('created_at').notNull(),
+      }, (table) => {
+        return {
+          timestampIdx: pgIndex('idx_metrics_timestamp').on(table.timestamp),
+          metricTypeIdx: pgIndex('idx_metrics_type').on(table.metricType),
+          agentIdIdx: pgIndex('idx_metrics_agent_id').on(table.agentId),
+        }
       })
     }
   }
@@ -476,6 +492,22 @@ export function createSchema(dbType = 'sqlite') {
       completedAt: text('completed_at'),
       createdAt: text('created_at').notNull(),
       updatedAt: text('updated_at').notNull(),
+    }),
+
+    metrics: sqliteTable('metrics', {
+      id: text('id').primaryKey(),
+      timestamp: text('timestamp').notNull(),
+      metricType: text('metric_type').notNull(),
+      agentId: text('agent_id'),
+      value: text('value').notNull(),
+      metadata: text('metadata'),
+      createdAt: text('created_at').notNull(),
+    }, (table) => {
+      return {
+        timestampIdx: index('idx_metrics_timestamp').on(table.timestamp),
+        metricTypeIdx: index('idx_metrics_type').on(table.metricType),
+        agentIdIdx: index('idx_metrics_agent_id').on(table.agentId),
+      }
     })
   }
 }

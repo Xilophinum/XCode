@@ -292,6 +292,191 @@ class XCodeBuildAgent {
     };
   }
 
+  /**
+   * Get disk usage statistics (cross-platform)
+   */
+  getDiskUsage() {
+    try {
+      const platform = os.platform()
+      let diskUsage = { total: 0, used: 0, free: 0, percent: 0 }
+
+      if (platform === 'win32') {
+        // Windows: Use WMIC command
+        try {
+          const output = execSync('wmic logicaldisk get size,freespace,caption', { encoding: 'utf8', timeout: 5000 })
+          const lines = output.trim().split('\n').slice(1)
+          let totalSize = 0, totalFree = 0
+
+          lines.forEach(line => {
+            const parts = line.trim().split(/\s+/)
+            if (parts.length >= 3 && parts[1] && parts[2]) {
+              totalFree += parseInt(parts[1]) || 0
+              totalSize += parseInt(parts[2]) || 0
+            }
+          })
+
+          diskUsage = {
+            total: Math.round(totalSize / 1024 / 1024 / 1024),
+            free: Math.round(totalFree / 1024 / 1024 / 1024),
+            used: Math.round((totalSize - totalFree) / 1024 / 1024 / 1024),
+            percent: totalSize > 0 ? Math.round(((totalSize - totalFree) / totalSize) * 10000) / 100 : 0
+          }
+        } catch (err) {
+          diskUsage = { total: 0, used: 0, free: 0, percent: 0 }
+        }
+      } else {
+        // Unix/Linux/Mac: Use df command
+        try {
+          const output = execSync('df -k /', { encoding: 'utf8', timeout: 5000 })
+          const lines = output.trim().split('\n')
+          if (lines.length > 1) {
+            const parts = lines[1].trim().split(/\s+/)
+            const total = parseInt(parts[1]) || 0
+            const used = parseInt(parts[2]) || 0
+            const free = parseInt(parts[3]) || 0
+
+            diskUsage = {
+              total: Math.round(total / 1024 / 1024),
+              used: Math.round(used / 1024 / 1024),
+              free: Math.round(free / 1024 / 1024),
+              percent: total > 0 ? Math.round((used / total) * 10000) / 100 : 0
+            }
+          }
+        } catch (err) {
+          diskUsage = { total: 0, used: 0, free: 0, percent: 0 }
+        }
+      }
+
+      return diskUsage
+    } catch (error) {
+      return { total: 0, used: 0, free: 0, percent: 0 }
+    }
+  }
+
+  /**
+   * Get network statistics
+   */
+  getNetworkStats() {
+    try {
+      const networkInterfaces = os.networkInterfaces()
+      const stats = {
+        interfaceCount: 0,
+        activeInterfaces: [],
+        ipv4Count: 0,
+        ipv6Count: 0
+      }
+
+      Object.entries(networkInterfaces).forEach(([name, addresses]) => {
+        stats.interfaceCount++
+        const activeAddresses = addresses.filter(addr => !addr.internal)
+
+        if (activeAddresses.length > 0) {
+          stats.activeInterfaces.push(name)
+          activeAddresses.forEach(addr => {
+            if (addr.family === 'IPv4') stats.ipv4Count++
+            if (addr.family === 'IPv6') stats.ipv6Count++
+          })
+        }
+      })
+
+      return stats
+    } catch (error) {
+      return { interfaceCount: 0, activeInterfaces: [], ipv4Count: 0, ipv6Count: 0 }
+    }
+  }
+
+  /**
+   * Get current system metrics (CPU, memory, disk, network, uptime, etc.)
+   * Called on every heartbeat to report real-time agent performance
+   */
+  getCurrentSystemMetrics() {
+    try {
+      // CPU usage calculation
+      const cpus = os.cpus()
+      let totalIdle = 0
+      let totalTick = 0
+
+      cpus.forEach(cpu => {
+        for (const type in cpu.times) {
+          totalTick += cpu.times[type]
+        }
+        totalIdle += cpu.times.idle
+      })
+
+      const cpuUsage = totalTick > 0 ? 100 - ~~(100 * totalIdle / totalTick) : 0
+
+      // Memory usage
+      const totalMemory = os.totalmem()
+      const freeMemory = os.freemem()
+      const usedMemory = totalMemory - freeMemory
+      const memoryUsage = totalMemory > 0 ? (usedMemory / totalMemory) * 100 : 0
+
+      // Load average (Unix-like systems only, Windows returns [0,0,0])
+      const loadAvg = os.loadavg()
+
+      // Disk usage
+      const diskUsage = this.getDiskUsage()
+
+      // Network statistics
+      const networkStats = this.getNetworkStats()
+
+      // Process memory details
+      const processMemUsage = process.memoryUsage()
+
+      return {
+        cpuUsage: Math.round(cpuUsage * 100) / 100,
+        cpuCount: cpus.length,
+        memoryUsage: Math.round(memoryUsage * 100) / 100,
+        totalMemory: Math.round(totalMemory / 1024 / 1024), // MB
+        usedMemory: Math.round(usedMemory / 1024 / 1024), // MB
+        freeMemory: Math.round(freeMemory / 1024 / 1024), // MB
+        uptime: Math.floor(os.uptime()), // seconds
+        loadAverage: loadAvg,
+        platform: this.agentInfo.platform,
+        hostname: this.agentInfo.hostname,
+        architecture: this.agentInfo.architecture,
+        nodeVersion: process.version,
+        agentVersion: AGENT_VERSION,
+
+        // Disk metrics
+        diskTotal: diskUsage.total,
+        diskUsed: diskUsage.used,
+        diskFree: diskUsage.free,
+        diskUsage: diskUsage.percent,
+
+        // Network metrics
+        networkInterfaceCount: networkStats.interfaceCount,
+        activeNetworkInterfaces: networkStats.activeInterfaces,
+        ipv4AddressCount: networkStats.ipv4Count,
+        ipv6AddressCount: networkStats.ipv6Count,
+
+        // Process metrics
+        processMemory: Math.round(processMemUsage.heapUsed / 1024 / 1024), // MB
+        processMemoryTotal: Math.round(processMemUsage.heapTotal / 1024 / 1024), // MB
+        processMemoryExternal: Math.round(processMemUsage.external / 1024 / 1024), // MB
+
+        timestamp: new Date().toISOString()
+      }
+    } catch (error) {
+      logger.error('Error collecting system metrics:', error)
+      return {
+        cpuUsage: 0,
+        cpuCount: 0,
+        memoryUsage: 0,
+        totalMemory: 0,
+        usedMemory: 0,
+        freeMemory: 0,
+        uptime: 0,
+        loadAverage: [0, 0, 0],
+        diskTotal: 0,
+        diskUsed: 0,
+        diskFree: 0,
+        diskUsage: 0,
+        timestamp: new Date().toISOString()
+      }
+    }
+  }
+
   async connect() {
     logger.info(`Connecting to XCode server: ${this.serverUrl}`);
     logger.info(`Agent Token: ${this.token.substring(0, 8)}...`);
@@ -418,10 +603,14 @@ class XCodeBuildAgent {
 
   startHeartbeat() {
     this.heartbeatInterval = setInterval(() => {
+      // Collect current system metrics
+      const systemMetrics = this.getCurrentSystemMetrics()
+
       this.sendMessage('heartbeat', {
         status: this.currentJobs.size > 0 ? 'busy' : 'online',
         currentJobs: this.currentJobs.size,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        systemMetrics // Include real-time system performance data
       });
     }, 30000); // Send heartbeat every 30 seconds
   }

@@ -1,145 +1,188 @@
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
-      <div>
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-950 dark:text-white">
-          Sign in to your account
-        </h2>
-        <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-300" v-if="userRegistrationEnabled">
-          Or
-          <button 
-            @click="isLoginMode = false"
-            class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
-            type="button"
-          >
-            create a new account
-          </button>
+      <!-- Header -->
+      <div class="text-center">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+          Welcome to XCode
+        </h1>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Sign in to access your automation platform
         </p>
       </div>
-      
+
       <!-- Login Form -->
-      <form v-if="isLoginMode" class="mt-8 space-y-6" @submit.prevent="handleLogin">
-        <div class="rounded-md shadow-sm -space-y-px">
-          <div>
-            <label for="email" class="sr-only">Email or username</label>
-            <input
-              id="email"
-              v-model="loginForm.email"
-              name="email"
-              type="text"
-              autocomplete="email"
-              required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-950 dark:text-white bg-white dark:bg-gray-800 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="Email or username"
-            >
-          </div>
-          <div>
-            <label for="password" class="sr-only">Password</label>
-            <input
-              id="password"
-              v-model="loginForm.password"
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-950 dark:text-white bg-white dark:bg-gray-800 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="Password"
-            >
-          </div>
-        </div>
+      <UCard v-if="isLoginMode" class="shadow-lg">
+        <template #header>
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            Sign In
+          </h2>
+        </template>
 
-        <div v-if="error" class="text-red-600 dark:text-red-400 text-sm text-center">
-          {{ error }}
-        </div>
+        <form class="space-y-6" @submit.prevent="handleLogin">
+          <div class="space-y-4">
+            <UFormField label="Email/Username" name="email" required class="text-center">
+              <UInput
+                v-model="loginForm.email"
+                type="text"
+                autocomplete="email"
+                placeholder="Enter your email or username"
+                size="lg"
+                class="mx-auto w-full"
+                required
+              />
+            </UFormField>
+            <UFormField label="Password" name="password" required class="text-center">
+              <UInput
+                v-model="loginForm.password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Enter your password"
+                size="lg"
+                class="mx-auto w-full"
+                required
+              />
+            </UFormField>
+          </div>
 
-        <div>
-          <button
+          <UAlert
+            v-if="error"
+            color="red"
+            variant="soft"
+            :title="error"
+            icon="i-lucide-triangle-alert"
+            class="mb-4"
+          />
+
+          <UButton
             type="submit"
+            color="primary"
+            size="lg"
+            block
+            :loading="authStore.isLoading"
             :disabled="authStore.isLoading"
-            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span v-if="authStore.isLoading">Signing in...</span>
-            <span v-else>Sign in</span>
-          </button>
-        </div>
-      </form>
+            {{ authStore.isLoading ? 'Signing in...' : 'Sign in' }}
+          </UButton>
+        </form>
+
+        <template #footer v-if="userRegistrationEnabled">
+          <div class="text-center text-sm">
+            <span class="text-gray-600 dark:text-gray-400">Don't have an account? </span>
+            <UButton
+              variant="link"
+              color="primary"
+              size="sm"
+              @click="isLoginMode = false"
+            >
+              Create one
+            </UButton>
+          </div>
+        </template>
+      </UCard>
 
       <!-- Register Form -->
-      <form v-if="!isLoginMode && userRegistrationEnabled" class="mt-8 space-y-6" @submit.prevent="handleRegister">
-        <div class="rounded-md shadow-sm -space-y-px">
-          <div>
-            <label for="name" class="sr-only">Full name</label>
-            <input
-              id="name"
-              v-model="registerForm.name"
-              name="name"
-              type="text"
-              autocomplete="name"
-              required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-950 dark:text-white bg-white dark:bg-gray-800 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="Full name"
-            >
-          </div>
-          <div>
-            <label for="register-email" class="sr-only">Email address</label>
-            <input
-              id="register-email"
-              v-model="registerForm.email"
-              name="email"
-              type="email"
-              autocomplete="email"
-              required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-950 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="Email address"
-            >
-          </div>
-          <div>
-            <label for="register-password" class="sr-only">Password</label>
-            <input
-              id="register-password"
-              v-model="registerForm.password"
-              name="password"
-              type="password"
-              autocomplete="new-password"
-              required
-              class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-950 dark:text-white bg-white dark:bg-gray-800 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="Password"
-            >
-          </div>
-        </div>
+      <UCard v-if="!isLoginMode && userRegistrationEnabled" class="shadow-lg">
+        <template #header>
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            Create Account
+          </h2>
+        </template>
 
-        <div v-if="error" class="text-red-600 dark:text-red-400 text-sm text-center">
-          {{ error }}
-        </div>
+        <form class="space-y-6" @submit.prevent="handleRegister">
+          <div class="space-y-4">
+            <UFormField label="Full name" name="name" required class="text-center">
+              <UInput
+                v-model="registerForm.name"
+                type="text"
+                autocomplete="name"
+                placeholder="Enter your full name"
+                size="lg"
+                class="mx-auto w-full"
+                required
+              />
+            </UFormField>
 
-        <div>
-          <button
+            <UFormField label="Email address" name="email" required class="text-center">
+              <UInput
+                v-model="registerForm.email"
+                type="email"
+                autocomplete="email"
+                placeholder="Enter your email address"
+                size="lg"
+                class="mx-auto w-full"
+                required
+              />
+            </UFormField>
+
+            <UFormField label="Password" name="password" required class="text-center">
+              <UInput
+                v-model="registerForm.password"
+                type="password"
+                autocomplete="new-password"
+                placeholder="Create a password"
+                size="lg"
+                class="mx-auto w-full"
+                required
+              />
+            </UFormField>
+          </div>
+
+          <UAlert
+            v-if="error"
+            color="red"
+            variant="soft"
+            :title="error"
+            icon="i-lucide-triangle-alert"
+            class="mb-4"
+          />
+
+          <UButton
             type="submit"
+            color="primary"
+            size="lg"
+            block
+            :loading="authStore.isLoading"
             :disabled="authStore.isLoading"
-            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span v-if="authStore.isLoading">Creating account...</span>
-            <span v-else>Create account</span>
-          </button>
-        </div>
+            {{ authStore.isLoading ? 'Creating account...' : 'Create account' }}
+          </UButton>
+        </form>
 
-        <div class="text-center" v-if="userRegistrationEnabled">
-          <button 
-            @click="isLoginMode = true"
-            class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
-            type="button"
-          >
-            Already have an account? Sign in
-          </button>
-        </div>
-      </form>
+        <template #footer>
+          <div class="text-center text-sm">
+            <span class="text-gray-600 dark:text-gray-400">Already have an account? </span>
+            <UButton
+              variant="link"
+              color="primary"
+              size="sm"
+              @click="isLoginMode = true"
+            >
+              Sign in
+            </UButton>
+          </div>
+        </template>
+      </UCard>
 
       <!-- Demo Credentials -->
-      <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900 rounded-md">
-        <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">Demo Credentials:</p>
-        <p class="text-sm text-blue-600 dark:text-blue-400">Email: admin@example.com</p>
-        <p class="text-sm text-blue-600 dark:text-blue-400">Password: password</p>
-      </div>
+      <UCard variant="outline" class="shadow-sm">
+        <template #header>
+          <h3 class="text-sm font-medium text-gray-900 dark:text-white text-center">
+            Demo Credentials
+          </h3>
+        </template>
+
+        <div class="text-center space-y-2">
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            <div class="font-medium">Email:</div>
+            <div class="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">admin@example.com</div>
+          </div>
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            <div class="font-medium">Password:</div>
+            <div class="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">password</div>
+          </div>
+        </div>
+      </UCard>
     </div>
   </div>
 </template>
@@ -169,9 +212,9 @@ const registerForm = reactive({
 
 const handleLogin = async () => {
   error.value = ''
-  
+
   const result = await authStore.login(loginForm.email, loginForm.password)
-  
+
   if (result.success) {
     await navigateTo('/')
   } else {
@@ -181,15 +224,15 @@ const handleLogin = async () => {
 
 const handleRegister = async () => {
   error.value = ''
-  
+
   // Double-check if registration is still enabled
   if (!userRegistrationEnabled.value) {
     error.value = 'User registration is currently disabled'
     return
   }
-  
+
   const result = await authStore.register(registerForm.email, registerForm.password, registerForm.name)
-  
+  console.log('Registration result:', result)
   if (result.success) {
     await navigateTo('/')
   } else {
@@ -204,7 +247,7 @@ const loadUserRegistrationSetting = async () => {
     userRegistrationEnabled.value = response?.value === 'true' || response?.value === true
   } catch (error) {
     // If setting doesn't exist or there's an error, default to false for security
-    logger.info('User registration setting not found, defaulting to disabled')
+    console.info('User registration setting not found, defaulting to disabled')
     userRegistrationEnabled.value = false
   }
 }

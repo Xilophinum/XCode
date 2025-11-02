@@ -2,7 +2,7 @@
     <div>
         <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
             <div class="flex items-center mb-2">
-            <Icon name="send" class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
+            <UIcon name="i-lucide-send" class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
             <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200">Webhook Trigger Configuration</h4>
             </div>
             <p class="text-xs text-blue-700 dark:text-blue-300">
@@ -47,7 +47,7 @@
                 class="px-3 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center space-x-1"
                 v-tooltip="'Generate random secure token'"
             >
-                <Icon name="lock" class="w-4 h-4" />
+                <UIcon name="i-lucide-lock" class="w-4 h-4" />
                 <span class="hidden sm:inline">Generate</span>
             </button>
             </div>
@@ -111,8 +111,8 @@
                 class="w-full p-3 bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 transition-colors flex items-center justify-between text-left"
             >
                 <span class="font-medium text-green-800 dark:text-green-200 text-xs">📖 Authentication Methods & Security</span>
-                <Icon
-                    name="chevronDown"
+                <UIcon
+                    name="i-lucide-chevron-down"
                     class="w-4 h-4 text-green-600 dark:text-green-400 transition-transform"
                     :class="{ 'rotate-180': showAuthDocs }"
                 />
@@ -278,7 +278,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import Icon from '~/components/Icon.vue'
 const logger = useLogger()
 const props = defineProps({
   nodeData: {

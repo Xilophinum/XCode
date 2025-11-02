@@ -2,7 +2,7 @@
   <ModalWrapper :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" class="max-w-md">
     <div class="mt-3">
       <div class="flex items-center justify-center mx-auto w-12 h-12 rounded-full bg-red-100 dark:bg-red-900">
-        <Icon name="alertTriangle" class="w-6 h-6 text-red-600 dark:text-red-400" />
+        <UIcon name="i-lucide-triangle-alert" class="w-6 h-6 text-red-600 dark:text-red-400" />
       </div>
       <div class="mt-4 text-center">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white">Confirm Deletion</h3>
@@ -42,7 +42,6 @@
 </template>
 
 <script setup>
-import Icon from '~/components/Icon.vue'
 import ModalWrapper from '~/components/ModalWrapper.vue'
 const props = defineProps({
   modelValue: {

@@ -14,7 +14,7 @@
         @click="closeModal"
         class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-white"
       >
-        <Icon name="close" class="h-5 w-5" />
+        <UIcon name="i-lucide-x" class="h-5 w-5" />
       </button>
     </div>
 
@@ -56,7 +56,7 @@
           </div>
 
           <div v-else-if="auditLogs.length === 0" class="text-center py-8">
-            <Icon name="fileText" class="mx-auto h-12 w-12 text-gray-400" />
+            <UIcon name="i-lucide-file-text" class="mx-auto h-12 w-12 text-gray-400" />
             <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No activity recorded yet</p>
           </div>
 
@@ -66,13 +66,12 @@
               :key="log.id"
               class="flex gap-4 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50"
             >
-              <!-- Icon -->
                 <div class="flex-shrink-0">
                   <div :class="[
                     'flex h-10 w-10 items-center justify-center rounded-full',
                     getActionColor(log.action)
                   ]">
-                    <Icon :name="getActionIcon(log.action)" class="h-5 w-5" />
+                    <UIcon :name="getActionIcon(log.action)" class="h-5 w-5" />
                   </div>
                 </div>                  <!-- Content -->
               <div class="flex-1 min-w-0">
@@ -218,7 +217,7 @@
           </div>
 
           <div v-else-if="snapshots.length === 0" class="text-center py-8">
-            <Icon name="clock" class="mx-auto h-12 w-12 text-gray-400" />
+            <UIcon name="i-lucide-clock" class="mx-auto h-12 w-12 text-gray-400" />
             <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No versions saved yet</p>
           </div>
 
@@ -230,7 +229,7 @@
             >
               <div class="flex items-center gap-4">
                 <div class="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">
-                  <Icon name="tag" class="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <UIcon name="i-lucide-tag" class="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
                   <p class="text-sm font-medium text-gray-900 dark:text-white">
@@ -251,7 +250,7 @@
                 :disabled="reverting"
                 class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Icon name="arrowLeft" class="mr-1.5 h-4 w-4" />
+                <UIcon name="i-lucide-arrow-left" class="mr-1.5 h-4 w-4" />
                 Revert
               </button>
             </div>
@@ -262,7 +261,7 @@
 </template><script setup>
 import { ref, computed, watch } from 'vue'
 import ModalWrapper from '~/components/ModalWrapper.vue'
-const { success, confirm, error } = useNotifications()
+const toast = useToast()
 
 const props = defineProps({
   modelValue: {
@@ -347,32 +346,39 @@ const fetchSnapshots = async () => {
 
 const revertToVersion = async (version) => {
   if (!props.entityId) return
-  
   // Show confirmation modal instead of browser confirm
-  const confirmed = await confirm(`Are you sure you want to revert to version ${version}? This will overwrite the current configuration.`)
-  if (!confirmed) {
-    return
-  }
+  toast.add({
+    title: `Are you sure you want to revert to version ${version}? This will overwrite the current configuration.`,
+    icon: 'i-lucide-alert-circle',
+    actions: [
+      {
+        label: 'Revert',
+        color: 'red',
+        icon: 'i-lucide-check-circle',
+        variant: 'solid',
+        onClick: async () => {
+          reverting.value = true
+          try {
+            const response = await $fetch(`/api/projects/${props.entityId}/revert`, {
+              method: 'POST',
+              body: { version }
+            })
+            toast.add({ title: `Successfully reverted to version ${version}`, icon: 'i-lucide-check-circle' })
+            emit('reverted', response.project)
 
-  reverting.value = true
-  try {
-    const response = await $fetch(`/api/projects/${props.entityId}/revert`, {
-      method: 'POST',
-      body: { version }
-    })
-
-    success(`Successfully reverted to version ${version}`)
-    emit('reverted', response.project)
-
-    // Refresh logs and snapshots
-    await fetchAuditLogs()
-    await fetchSnapshots()
-  } catch (e) {
-    logger.error('Error reverting:', e)
-    error('Failed to revert to version: ' + (e.data?.message || e.message))
-  } finally {
-    reverting.value = false
-  }
+            // Refresh logs and snapshots
+            await fetchAuditLogs()
+            await fetchSnapshots()
+          } catch (e) {
+            logger.error('Error reverting:', e)
+            toast.add({ title: 'Failed to revert to version: ' + (e.data?.message || e.message), icon: 'i-lucide-x-circle' })
+          } finally {
+            reverting.value = false
+          }
+        }
+      }
+    ]
+  })
 }
 
 const toggleDetails = (logId) => {
@@ -389,12 +395,12 @@ const closeModal = () => {
 
 const getActionIcon = (action) => {
   const iconNames = {
-    create: 'plus',
-    update: 'edit',
-    delete: 'delete',
-    restore: 'restore'
+    create: 'i-lucide-plus',
+    update: 'i-lucide-edit',
+    delete: 'i-lucide-trash-2',
+    restore: 'i-lucide-rotate-cw'
   }
-  return iconNames[action] || 'edit'
+  return iconNames[action] || 'i-lucide-edit'
 }
 
 const getActionColor = (action) => {

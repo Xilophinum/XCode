@@ -8,7 +8,7 @@
           :disabled="loading"
           class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
         >
-          <Icon name="refreshCw" class="w-4 h-4 mr-2" :class="{ 'animate-spin': loading }" />
+          <UIcon name="i-lucide-refresh-cw" class="w-4 h-4 mr-2" :class="{ 'animate-spin': loading }" />
           {{ loading ? 'Refreshing...' : 'Refresh' }}
         </button>
         
@@ -16,7 +16,7 @@
           :to="`/${pathSegments.slice(0, -1).join('/')}/editor`"
           class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
-          <Icon name="edit" class="w-4 h-4 mr-2" />
+          <UIcon name="i-lucide-edit" class="w-4 h-4 mr-2" />
           Edit Project
         </NuxtLink>
       </template>
@@ -40,7 +40,7 @@
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-md flex items-center justify-center">
-                    <Icon name="barChart3" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <UIcon name="i-lucide-bar-chart-3" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
                 <div class="ml-5 w-0 flex-1">
@@ -58,7 +58,7 @@
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-md flex items-center justify-center">
-                    <Icon name="check" class="w-5 h-5 text-green-600 dark:text-green-400" />
+                    <UIcon name="i-lucide-check" class="w-5 h-5 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
                 <div class="ml-5 w-0 flex-1">
@@ -78,7 +78,7 @@
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-md flex items-center justify-center">
-                    <Icon name="clock" class="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                    <UIcon name="i-lucide-clock" class="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                   </div>
                 </div>
                 <div class="ml-5 w-0 flex-1">
@@ -98,7 +98,7 @@
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-md flex items-center justify-center">
-                    <Icon name="x" class="w-5 h-5 text-red-600 dark:text-red-400" />
+                    <UIcon name="i-lucide-x" class="w-5 h-5 text-red-600 dark:text-red-400" />
                   </div>
                 </div>
                 <div class="ml-5 w-0 flex-1">
@@ -116,7 +116,7 @@
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-md flex items-center justify-center">
-                    <Icon name="calendar" class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    <UIcon name="i-lucide-calendar" class="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
                 <div class="ml-5 w-0 flex-1">
@@ -198,7 +198,7 @@
           </div>
 
           <div v-else-if="!builds || builds.length === 0" class="text-center py-8">
-            <Icon name="fileText" class="mx-auto h-12 w-12 text-gray-400" />
+            <UIcon name="i-lucide-file-text" class="mx-auto h-12 w-12 text-gray-400" />
             <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No builds found</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {{ filters.status || filters.startDate || filters.endDate ? 'Try adjusting your filters.' : 'No builds have been executed yet.' }}
@@ -299,7 +299,7 @@
           @click="closeLogsModal"
           class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
-          <Icon name="x" class="w-6 h-6" />
+          <UIcon name="i-lucide-x" class="w-6 h-6" />
         </button>
       </div>
       
@@ -342,7 +342,6 @@ definePageMeta({
   middleware: 'auth'
 })
 
-import Icon from '@/components/Icon.vue'
 import ModalWrapper from '@/components/ModalWrapper.vue'
 
 const route = useRoute()

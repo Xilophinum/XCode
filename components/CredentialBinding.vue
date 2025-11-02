@@ -27,7 +27,7 @@
           class="absolute top-2 right-2 p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
           v-tooltip="'Remove credential binding'"
         >
-          <Icon name="delete" class="w-4 h-4" />
+          <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
         </button>
         
         <div class="grid grid-cols-1 md:grid-cols-1 gap-3 mt-3">
@@ -101,7 +101,6 @@
 </template>
 
 <script setup>
-import Icon from '~/components/Icon.vue'
 const props = defineProps({
   modelValue: { type: Array, default: () => [] }
 })

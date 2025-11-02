@@ -1,11 +1,11 @@
 import { Server as Engine } from "engine.io";
 import { Server } from "socket.io";
 import jwt from 'jsonwebtoken'
-import { getAgentManager } from '../utils/agentManager.js'
-import { getDataService } from '../utils/dataService.js'
-import { jobManager } from '../utils/jobManager.js'
-import { getBuildStatsManager } from '../utils/buildStatsManager.js'
-import logger from '../utils/logger.js'
+import { getAgentManager } from '~/server/utils/agentManager.js'
+import { getDataService } from '~/server/utils/dataService.js'
+import { jobManager } from '~/server/utils/jobManager.js'
+import { getBuildStatsManager } from '~/server/utils/buildStatsManager.js'
+import logger from '~/server/utils/logger.js'
 // Store client connections for broadcasting
 const clientConnections = new Map() // clientId -> socket
 const projectSubscriptions = new Map() // projectId -> Set of clientIds
@@ -436,18 +436,39 @@ async function handleHeartbeat(socket, msg, agentManager) {
   try {
     // Update agent status with heartbeat data
     const agentId = socket.agentId
-    const { status, currentJobs, timestamp } = msg
-    
+    const { status, currentJobs, timestamp, systemMetrics } = msg
+
     // Update database heartbeat timestamp
     const dataService = agentManager.dataService || await getDataService()
     await dataService.updateAgentHeartbeat(agentId, status)
-    
+
     // Update agent data
     if (agentManager.agentData.has(agentId)) {
       const agentInfo = agentManager.agentData.get(agentId)
       agentInfo.status = status
       agentInfo.currentJobs = currentJobs || 0
       agentInfo.lastHeartbeat = new Date()
+
+      // Store system metrics from agent
+      if (systemMetrics) {
+        agentInfo.systemMetrics = systemMetrics
+
+        // Also update systemInfo with latest data for compatibility
+        agentInfo.systemInfo = {
+          ...agentInfo.systemInfo,
+          cpuUsage: systemMetrics.cpuUsage,
+          cpuCount: systemMetrics.cpuCount,
+          memoryUsage: systemMetrics.memoryUsage,
+          totalMemory: systemMetrics.totalMemory,
+          usedMemory: systemMetrics.usedMemory,
+          freeMemory: systemMetrics.freeMemory,
+          uptime: systemMetrics.uptime,
+          loadAverage: systemMetrics.loadAverage,
+          processMemory: systemMetrics.processMemory,
+          lastUpdated: systemMetrics.timestamp
+        }
+      }
+
       agentManager.agentData.set(agentId, agentInfo)
     } else {
       logger.info(`Agent ${agentId} not found in agentData during heartbeat - recreating entry`)
@@ -457,27 +478,40 @@ async function handleHeartbeat(socket, msg, agentManager) {
         status: status,
         currentJobs: currentJobs || 0,
         lastHeartbeat: new Date(),
-        hostname: 'Unknown', // Will be updated on next registration
-        platform: 'Unknown',
-        architecture: 'Unknown',
+        hostname: systemMetrics?.hostname || 'Unknown',
+        platform: systemMetrics?.platform || 'Unknown',
+        architecture: systemMetrics?.architecture || 'Unknown',
         capabilities: [],
-        agentVersion: 'Unknown'
+        agentVersion: systemMetrics?.agentVersion || 'Unknown',
+        systemMetrics: systemMetrics || {},
+        systemInfo: systemMetrics ? {
+          cpuUsage: systemMetrics.cpuUsage,
+          cpuCount: systemMetrics.cpuCount,
+          memoryUsage: systemMetrics.memoryUsage,
+          totalMemory: systemMetrics.totalMemory,
+          usedMemory: systemMetrics.usedMemory,
+          freeMemory: systemMetrics.freeMemory,
+          uptime: systemMetrics.uptime,
+          loadAverage: systemMetrics.loadAverage,
+          processMemory: systemMetrics.processMemory,
+          lastUpdated: systemMetrics.timestamp
+        } : {}
       })
     }
-    
+
     // Make sure agent is in connectedAgents
     if (!agentManager.connectedAgents.has(agentId)) {
       logger.info(`Re-adding agent ${agentId} to connectedAgents`)
       agentManager.connectedAgents.set(agentId, socket)
     }
-    
+
     // Send heartbeat acknowledgment
     socket.emit('message', {
       type: 'heartbeat_ack',
       timestamp: new Date().toISOString(),
       status: 'received'
     })
-    
+
   } catch (error) {
     logger.error('Heartbeat error:', error)
     socket.emit('message', {

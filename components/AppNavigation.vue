@@ -1,5 +1,5 @@
 <template>
-  <nav class="bg-white dark:bg-gray-950 shadow-sm border-b border-gray-200 dark:border-gray-700">
+  <nav class="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800">
     <div class="max-w mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16">
         <!-- Left side - Logo and breadcrumbs (desktop) -->
@@ -16,8 +16,8 @@
               class="h-8 w-8 object-contain"
             >
             <!-- Default Icon if no logo -->
-            <Icon
-              name="code"
+            <UIcon
+              name="i-lucide-code"
               class="h-8 w-8 text-blue-600 dark:text-blue-400"
             />
             <!-- Dynamic Brand Name -->
@@ -55,24 +55,24 @@
               @blur="hideSearchResults"
               type="text"
               placeholder="Search projects and folders..."
-              class="w-64 px-3 py-2 pl-10 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              class="w-64 px-3 py-2 pl-10 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-950 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-            <Icon name="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <UIcon name="i-lucide-search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
             
             <!-- Search Results Dropdown -->
             <div
               v-if="showSearchResults && searchResults.length > 0"
-              class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-50 max-h-64 overflow-y-auto"
+              class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg z-50 max-h-64 overflow-y-auto"
             >
               <div
                 v-for="result in searchResults.slice(0, 8)"
                 :key="result.id"
                 @mousedown="navigateToResult(result)"
-                class="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                class="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800 last:border-b-0"
               >
                 <div class="flex items-center space-x-2">
-                  <Icon v-if="result.type === 'folder'" name="folder" class="h-4 w-4 text-blue-500" />
-                  <Icon v-else name="fileText" class="h-4 w-4 text-green-500" />
+                  <UIcon v-if="result.type === 'folder'" name="i-lucide-folder" class="h-4 w-4 text-blue-500" />
+                  <UIcon v-else name="i-lucide-file-text" class="h-4 w-4 text-green-500" />
                   <div class="flex-1 min-w-0">
                     <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ result.name }}</div>
                     <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ getResultPath(result) }}</div>
@@ -92,28 +92,28 @@
           </span>
           <button
             @click="handleLogout"
-            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-700 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            <Icon name="logOut" class="mr-2 w-4 h-4" />
+            <UIcon name="i-lucide-log-out" class="mr-2 w-4 h-4" />
             Logout
           </button>
 
           <!-- Dark Mode Toggle -->
           <button
             @click="darkMode.toggle()"
-            class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-700 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             v-tooltip:bottomright="'Toggle dark mode'"
           >
             <!-- Sun icon for light mode -->
-            <Icon
+            <UIcon
               v-if="darkMode.isDark.value"
-              name="sun"
+              name="i-lucide-sun"
               class="w-4 h-4"
             />
             <!-- Moon icon for dark mode -->
-            <Icon
+            <UIcon
               v-else
-              name="moon"
+              name="i-lucide-moon"
               class="w-4 h-4"
             />
           </button>
@@ -124,10 +124,10 @@
           <!-- Mobile Search Button -->
           <button
             @click="showMobileSearch = !showMobileSearch"
-            class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-700 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             v-tooltip="'Search'"
           >
-            <Icon name="search" class="w-4 h-4" />
+            <UIcon name="i-lucide-search" class="w-4 h-4" />
           </button>
           
           <!-- Mobile actions slot - limited to essential buttons only -->
@@ -138,25 +138,25 @@
           <!-- Mobile hamburger menu -->
           <button
             @click="toggleMobileMenu"
-            class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-700 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             v-tooltip="'Menu'"
           >
-            <Icon name="menu" class="w-5 h-5" />
+            <UIcon name="i-lucide-menu" class="w-5 h-5" />
           </button>
         </div>
       </div>
 
       <!-- Mobile Search -->
-      <div v-if="showMobileSearch" class="md:hidden border-t border-gray-200 dark:border-gray-700 p-4">
+      <div v-if="showMobileSearch" class="md:hidden border-t border-gray-200 dark:border-gray-800 p-4">
         <div class="relative">
           <input
             v-model="searchQuery"
             @input="handleSearch"
             type="text"
             placeholder="Search projects and folders..."
-            class="w-full px-3 py-2 pl-10 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            class="w-full px-3 py-2 pl-10 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-950 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-          <Icon name="search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+          <UIcon name="i-lucide-search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
         </div>
         
         <!-- Mobile Search Results -->
@@ -165,10 +165,10 @@
             v-for="result in searchResults.slice(0, 5)"
             :key="result.id"
             @click="navigateToResult(result)"
-            class="flex items-center space-x-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md cursor-pointer"
+            class="flex items-center space-x-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md cursor-pointer"
           >
-            <Icon v-if="result.type === 'folder'" name="folder" class="h-4 w-4 text-blue-500" />
-            <Icon v-else name="fileText" class="h-4 w-4 text-green-500" />
+            <UIcon v-if="result.type === 'folder'" name="i-lucide-folder" class="h-4 w-4 text-blue-500" />
+            <UIcon v-else name="i-lucide-file-text" class="h-4 w-4 text-green-500" />
             <div class="flex-1 min-w-0">
               <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ result.name }}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ getResultPath(result) }}</div>
@@ -178,9 +178,9 @@
       </div>
 
       <!-- Mobile menu -->
-      <div v-if="showMobileMenu" class="md:hidden border-t border-gray-200 dark:border-gray-700 py-2">
+      <div v-if="showMobileMenu" class="md:hidden border-t border-gray-200 dark:border-gray-800 py-2">
         <!-- Mobile breadcrumbs -->
-        <div v-if="breadcrumbs.length > 0" class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+        <div v-if="breadcrumbs.length > 0" class="px-4 py-2 border-b border-gray-200 dark:border-gray-800">
           <div class="text-sm text-gray-500 dark:text-gray-400 mb-1">Navigation:</div>
           <div class="flex flex-wrap items-center gap-1">
             <template v-for="(crumb, index) in breadcrumbs" :key="index">
@@ -213,25 +213,25 @@
 
           <button
             @click="handleLogout"
-            class="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+            class="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-950 rounded-md transition-colors"
           >
-            <Icon name="logOut" class="mr-2 w-4 h-4" />
+            <UIcon name="i-lucide-log-out" class="mr-2 w-4 h-4" />
             Logout
           </button>
 
           <!-- Dark mode toggle -->
           <button
             @click="darkMode.toggle()"
-            class="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+            class="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-950 rounded-md transition-colors"
           >
-            <Icon
+            <UIcon
               v-if="darkMode.isDark.value"
-              name="sun"
+              name="i-lucide-sun"
               class="w-4 h-4 mr-2"
             />
-            <Icon
+            <UIcon
               v-else
-              name="moon"
+              name="i-lucide-moon"
               class="w-4 h-4 mr-2"
             />
             {{ darkMode.isDark.value ? 'Light Mode' : 'Dark Mode' }}
@@ -244,7 +244,6 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import Icon from '~/components/Icon.vue'
 
 const props = defineProps({
   breadcrumbs: {

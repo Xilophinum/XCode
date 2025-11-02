@@ -780,6 +780,10 @@ class AgentManager {
     return Array.from(this.connectedAgents.keys())
   }
 
+  getAllAgents() {
+    return Array.from(this.agentData.values())
+  }
+
   // Broadcast message to all agents
   broadcastToAgents(type, data) {
     for (const [agentId, socket] of this.connectedAgents) {

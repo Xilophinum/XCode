@@ -10,7 +10,7 @@
             :to="`/${pathSegments.slice(0, -1).join('/')}/build/${currentBuildNumber}`"
             class="relative inline-flex items-center px-2 py-2 border border-transparent text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 rounded-md"
           >
-            <Icon name="loader" class="animate-spin h-4 w-4 text-white" />
+            <UIcon name="i-lucide-loader" class="animate-spin h-4 w-4 text-white" />
           </NuxtLink>
           <button
             v-else
@@ -18,7 +18,7 @@
             :disabled="isExecuting || project?.status === 'disabled'"
             class="relative inline-flex items-center px-2 py-2 border border-transparent text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 rounded-md"
           >
-            <Icon name="play" class="h-4 w-4" />
+            <UIcon name="i-lucide-play" class="h-4 w-4" />
           </button>
 
         </div>
@@ -27,7 +27,7 @@
           :disabled="isSaving"
           class="inline-flex items-center px-2 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
         >
-          <Icon name="save" class="h-4 w-4" />
+          <UIcon name="i-lucide-save" class="h-4 w-4" />
         </button>
       </template>
       <template #actions>
@@ -39,7 +39,7 @@
             :to="`/${pathSegments.slice(0, -1).join('/')}/build/${currentBuildNumber}`"
             class="relative inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 rounded-md"
           >
-            <Icon name="loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
+            <UIcon name="i-lucide-loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
             View Build #{{ currentBuildNumber }}
           </NuxtLink>
           <button
@@ -48,9 +48,9 @@
             :disabled="isExecuting || project?.status === 'disabled'"
             class="relative inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 rounded-md"
           >
-            <Icon v-if="isExecuting" name="loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
+            <UIcon v-if="isExecuting" name="i-lucide-loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
             <span class="inline-flex items-center">
-              <Icon name="play" class="mr-2 h-4 w-4" />Run
+              <UIcon name="i-lucide-play" class="mr-2 h-4 w-4" />Run
             </span>
           </button>
           
@@ -62,10 +62,10 @@
           :disabled="isSaving"
           class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
         >
-          <Icon v-if="isSaving" name="loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
+          <UIcon v-if="isSaving" name="i-lucide-loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
           <span v-if="isSaving">Saving...</span>
           <span v-else class="inline-flex items-center">
-            <Icon name="save" class="mr-2 h-4 w-4" />Save
+            <UIcon name="i-lucide-save" class="mr-2 h-4 w-4" />Save
           </span>
         </button>
 
@@ -80,11 +80,11 @@
               : 'text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 focus:ring-amber-500'
           ]"
         >
-          <Icon v-if="isTogglingStatus" name="loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
+          <UIcon v-if="isTogglingStatus" name="i-lucide-loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
           <span v-if="isTogglingStatus">{{ project?.status === 'disabled' ? 'Enabling...' : 'Disabling...' }}</span>
           <span v-else class="inline-flex items-center">
-            <Icon v-if="project?.status === 'disabled'" name="check" class="mr-2 h-4 w-4" />
-            <Icon v-else name="x" class="mr-2 h-4 w-4" />
+            <UIcon v-if="project?.status === 'disabled'" name="i-lucide-check" class="mr-2 h-4 w-4" />
+            <UIcon v-else name="i-lucide-x" class="mr-2 h-4 w-4" />
             {{ project?.status === 'disabled' ? 'Enable' : 'Disable' }}
           </span>
         </button>
@@ -95,7 +95,7 @@
           class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           v-tooltip:bottom="'View build history'"
         >
-          <Icon name="clock" class="mr-2 h-4 w-4" />
+          <UIcon name="i-lucide-clock" class="mr-2 h-4 w-4" />
           Build History
         </NuxtLink>
 
@@ -105,7 +105,7 @@
           class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           v-tooltip:bottom="'Configure build retention policies'"
         >
-          <Icon name="settings" class="mr-2 h-4 w-4" />
+          <UIcon name="i-lucide-settings" class="mr-2 h-4 w-4" />
           Settings
         </button>
       </template>
@@ -116,7 +116,7 @@
       <div class="px-4 py-3 sm:px-6">
         <div class="flex items-center">
           <div class="flex-shrink-0">
-            <Icon name="loader" class="animate-spin h-5 w-5 text-blue-400" />
+            <UIcon name="i-lucide-loader" class="animate-spin h-5 w-5 text-blue-400" />
           </div>
           <div class="ml-3">
             <p class="text-sm font-medium text-blue-800 dark:text-blue-200">
@@ -143,7 +143,7 @@
       <div class="px-4 py-3 sm:px-6">
         <div class="flex items-center">
           <div class="flex-shrink-0">
-            <Icon name="alertTriangle" class="h-5 w-5 text-amber-400" />
+            <UIcon name="i-lucide-triangle-alert" class="h-5 w-5 text-amber-400" />
           </div>
           <div class="ml-3">
             <p class="text-sm font-medium text-amber-800 dark:text-amber-200">
@@ -181,7 +181,7 @@
                 @click="toggleNodesPanel"
                 class="p-1 rounded-md text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
               >
-                <Icon name="close" class="w-5 h-5" />
+                <UIcon name="i-lucide-x" class="w-5 h-5" />
               </button>
             </div>
             
@@ -303,7 +303,7 @@
                 class="p-2 bg-white dark:bg-neutral-800 shadow-lg rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
                 v-tooltip:bottomleft="'Show Nodes Panel'"
               >
-                <Icon name="menu" class="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                <UIcon name="i-lucide-menu" class="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
               </button>
             </div>
             
@@ -313,7 +313,7 @@
                 class="p-2 bg-white dark:bg-neutral-800 shadow-lg rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
                 v-tooltip:bottomright="'Show Properties Panel'"
               >
-                <Icon name="settings" class="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                <UIcon name="i-lucide-settings" class="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
               </button>
             </div>
             
@@ -377,7 +377,7 @@
                 @click="togglePropertiesPanel"
                 class="p-1 rounded-md text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
               >
-                <Icon name="close" class="w-5 h-5" />
+                <UIcon name="i-lucide-x" class="w-5 h-5" />
               </button>
             </div>
             
@@ -466,7 +466,7 @@
                       class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                       v-tooltip:topright="'Remove socket'"
                     >
-                      <Icon name="delete" class="w-4 h-4" />
+                      <UIcon name="i-lucide-trash" class="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -750,7 +750,6 @@ import EditorDeleteModal from '@/components/modals/EditorDeleteModal.vue'
 import EditorRetentionModal from '@/components/modals/EditorRetentionModal.vue'
 import CredentialBinding from '@/components/CredentialBinding.vue'
 import ScriptEditor from '@/components/ScriptEditor.vue'
-import Icon from '@/components/Icon.vue'
 // Import Vue Flow styles
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -766,7 +765,7 @@ const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const webSocketStore = useWebSocketStore()
 const { isDark: dark } = useDarkMode()
-const { success, error } = useNotifications()
+const toast = useToast()
 const isEditorReady = ref(false)
 const isSaving = ref(false)
 const selectedNode = ref(null)
@@ -1121,13 +1120,13 @@ const handleSaveRetentionSettings = async () => {
     })
 
     if (response.success) {
-      success('Retention settings updated successfully')
+      toast.add({ title: 'Retention settings updated successfully', icon: 'i-lucide-check-circle' })
       showRetentionModal.value = false
       logger.info('Retention settings updated successfully')
     }
   } catch (error) {
     logger.error('Failed to save retention settings:', error)
-    error('Failed to save retention settings. Please try again.')
+    toast.add({ title: 'Failed to save retention settings. Please try again.', icon: 'i-lucide-x-circle' })
   } finally {
     isSavingRetention.value = false
   }
@@ -2132,18 +2131,17 @@ const toggleProjectStatus = async () => {
   
   try {
     const result = await projectsStore.toggleProjectStatus(project.value.id)
-    
     if (result.success) {
       logger.info(`Project ${result.status}: ${project.value.name}`)
-      success(`Project ${result.status === 'enabled' ? 'enabled' : 'disabled'} successfully`)
+      toast.add({ title: `Project ${result.status === 'enabled' ? 'enabled' : 'disabled'} successfully`, icon: 'i-lucide-check-circle' })
       saveProject()
     } else {
       logger.error('Failed to toggle project status:', result.error)
-      error(`Failed to ${project.value.status === 'disabled' ? 'enable' : 'disable'} project: ${result.error}`)
+      toast.add({ title: `Failed to ${project.value.status === 'disabled' ? 'enable' : 'disable'} project: ${result.error}`, icon: 'i-lucide-x-circle' })
     }
   } catch (error) {
     logger.error('Error toggling project status:', error)
-    error(`Error changing project status: ${error.message}`)
+    toast.add({ title: `Error changing project status: ${error.message}`, icon: 'i-lucide-x-circle' })
   } finally {
     isTogglingStatus.value = false
   }

@@ -37,7 +37,7 @@
                     : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700'
                 ]"
               >
-                <Icon name="zap" class="w-4 h-4 mr-2" />
+                <UIcon name="i-lucide-zap" class="w-4 h-4 mr-2" />
                 {{ autoRefreshEnabled ? 'Disable Live' : 'Enable Live' }}
               </button>
               
@@ -48,7 +48,7 @@
                 v-show="!autoRefreshEnabled"
                 class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
-                <Icon name="refreshCw" class="w-4 h-4 mr-2" :class="{ 'animate-spin': isLoading }" />
+                <UIcon name="i-lucide-refresh-cw" class="w-4 h-4 mr-2" :class="{ 'animate-spin': isLoading }" />
                 Refresh Now
               </button>
             </div>
@@ -57,41 +57,31 @@
 
         <!-- Stats Bar -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-md flex items-center justify-center">
-                    <Icon name="close" class="w-5 h-5 text-red-600 dark:text-red-400" />
-                  </div>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Projects with Failures</dt>
-                    <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ failedBuilds.length }}</dd>
-                  </dl>
-                </div>
+          <!-- Projects with Failures -->
+          <UCard class="shadow-sm">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <UIcon name="i-lucide-x-circle" class="w-8 h-8 text-red-500" />
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Projects with Failures</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ failedBuilds.length }}</p>
               </div>
             </div>
-          </div>
+          </UCard>
 
-          <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-md flex items-center justify-center">
-                    <Icon name="clock" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Last Updated</dt>
-                    <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ formatLastUpdated() }}</dd>
-                  </dl>
-                </div>
+          <!-- Last Updated -->
+          <UCard class="shadow-sm">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <UIcon name="i-lucide-clock" class="w-8 h-8 text-blue-500" />
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatLastUpdated() }}</p>
               </div>
             </div>
-          </div>
+          </UCard>
         </div>
 
         <!-- Loading State -->
@@ -105,7 +95,7 @@
         <!-- Empty State -->
         <div v-else-if="!isLoading && failedBuilds.length === 0" class="bg-white dark:bg-gray-800 shadow rounded-lg p-8">
           <div class="text-center">
-            <Icon name="checkCircle" class="mx-auto h-12 w-12 text-green-400" />
+            <UIcon name="i-lucide-check-circle" class="mx-auto h-12 w-12 text-green-400" />
             <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">All Projects Passing!</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Excellent! All projects' latest builds are successful.
@@ -197,7 +187,7 @@
                         class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
                         v-tooltip="'View last logs'"
                       >
-                        <Icon name="fileText" class="w-5 h-5" />
+                        <UIcon name="i-lucide-file-text" class="w-5 h-5" />
                       </button>
 
                       <!-- Go to Build Button -->
@@ -206,7 +196,7 @@
                         class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                         v-tooltip="'Go to build'"
                       >
-                        <Icon name="externalLink" class="w-5 h-5" />
+                        <UIcon name="i-lucide-external-link" class="w-5 h-5" />
                       </NuxtLink>
 
                       <!-- Rebuild Button -->
@@ -216,8 +206,8 @@
                         class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         v-tooltip:left="'Rebuild project'"
                       >
-                        <Icon
-                          name="refreshCw"
+                        <UIcon
+                          name="i-lucide-refresh-cw"
                           class="w-5 h-5"
                           :class="{ 'animate-spin': rebuildingProjects.has(build.projectId) }"
                         />
@@ -250,7 +240,7 @@
             @click="closeLogsModal"
             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
           >
-            <Icon name="close" class="w-6 h-6" />
+            <UIcon name="i-lucide-x" class="w-6 h-6" />
           </button>
         </div>
 
@@ -258,7 +248,7 @@
         <div v-if="selectedBuild?.error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
           <div class="flex">
             <div class="flex-shrink-0">
-              <Icon name="alertCircle" class="h-5 w-5 text-red-400" />
+              <UIcon name="i-lucide-alert-circle" class="h-5 w-5 text-red-400" />
             </div>
             <div class="ml-3 flex-1 min-w-0">
               <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
@@ -301,7 +291,7 @@
               Rebuild Project
             </span>
             <span v-else class="flex items-center">
-              <Icon name="loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
+              <UIcon name="i-lucide-loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
               Rebuilding...
             </span>
             </button>
@@ -316,14 +306,12 @@ definePageMeta({
   middleware: 'auth'
 })
 
-import Icon from '~/components/Icon.vue'
 import ModalWrapper from '~/components/ModalWrapper.vue'
 
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const webSocketStore = useWebSocketStore()
-const { success, error: notifyError } = useNotifications()
-const route = useRoute()
+const toast = useToast()
 
 // State
 const isLoading = ref(false)
@@ -533,26 +521,31 @@ const rebuildProject = async (build) => {
     })
 
     // Show success notification
-    success(`Rebuild started successfully! New build #${response.buildNumber}`, {
+    toast.add({
       title: 'Build Started',
-      actions: [{
-        label: 'View Build',
-        primary: true,
-        handler: () => {
-          const buildUrl = getBuildUrl({ ...build, buildNumber: response.buildNumber })
-          if (buildUrl !== '#') {
-            navigateTo(buildUrl)
+      description: `Rebuild started successfully! New build #${response.buildNumber}`,
+      icon: 'i-lucide-check-circle',
+      actions: [
+        {
+          label: 'View Build',
+          color: 'primary',
+          icon: 'i-lucide-external-link',
+          onClick: () => {
+            const buildUrl = getBuildUrl({ ...build, buildNumber: response.buildNumber })
+            if (buildUrl !== '#') {
+              navigateTo(buildUrl)
+            }
           }
         }
-      }]
+      ]
     })
-
     // Reload the failures list (this project should fall off if the new build succeeds)
     await loadFailedBuilds()
   } catch (error) {
     console.error('Error rebuilding project:', error)
-    notifyError(`Failed to rebuild project: ${error.message || error.data?.error || 'Unknown error'}`, {
-      title: 'Rebuild Failed'
+    toast.add({
+      title: `Failed to rebuild project: ${error.message || error.data?.error || 'Unknown error'}`,
+      icon: 'i-lucide-x-circle'
     })
   } finally {
     rebuildingProjects.value.delete(projectId)

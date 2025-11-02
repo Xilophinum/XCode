@@ -2,7 +2,7 @@
   <ModalWrapper :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" class="max-w-md">
     <div class="mt-3">
       <div class="flex items-center justify-center mx-auto w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900">
-        <Icon name="lock" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <UIcon name="i-lucide-lock" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
       </div>
       <div class="mt-4 text-center">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white">Build Retention Settings</h3>
@@ -69,7 +69,6 @@
 </template>
 
 <script setup>
-import Icon from '~/components/Icon.vue'
 import ModalWrapper from '~/components/ModalWrapper.vue'
 const props = defineProps({
   modelValue: {

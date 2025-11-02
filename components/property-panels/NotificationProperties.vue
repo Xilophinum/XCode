@@ -2,7 +2,7 @@
   <div>
     <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
       <div class="flex items-center mb-2">
-        <Icon name="bell" class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
+        <UIcon name="i-lucide-bell" class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
         <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200">Notification Configuration</h4>
       </div>
       <p class="text-xs text-blue-700 dark:text-blue-300">
@@ -295,8 +295,8 @@
         class="w-full p-3 bg-purple-50 dark:bg-purple-950 hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors flex items-center justify-between text-left"
       >
         <span class="font-medium text-purple-800 dark:text-purple-200 text-xs">Available Context Variables</span>
-        <Icon
-          name="chevronDown"
+        <UIcon
+          name="i-lucide-chevron-down"
           class="w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform"
           :class="{ 'rotate-180': showVariables }"
         />
@@ -334,8 +334,8 @@
         class="w-full p-3 bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 transition-colors flex items-center justify-between text-left"
       >
         <span class="font-medium text-green-800 dark:text-green-200 text-xs">Available Input Socket Variables</span>
-        <Icon
-          name="chevronDown"
+        <UIcon
+          name="i-lucide-chevron-down"
           class="w-4 h-4 text-green-600 dark:text-green-400 transition-transform"
           :class="{ 'rotate-180': showInputSockets }"
         />
@@ -359,8 +359,8 @@
         class="w-full p-3 bg-amber-50 dark:bg-amber-950 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors flex items-center justify-between text-left"
       >
         <span class="font-medium text-amber-800 dark:text-amber-200 text-xs">Usage Examples</span>
-        <Icon
-          name="chevronDown"
+        <UIcon
+          name="i-lucide-chevron-down"
           class="w-4 h-4 text-amber-600 dark:text-amber-400 transition-transform"
           :class="{ 'rotate-180': showExamples }"
         />
@@ -425,8 +425,8 @@
         class="w-full p-3 bg-blue-50 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors flex items-center justify-between text-left"
       >
         <span class="font-medium text-blue-800 dark:text-blue-200 text-xs">Setup & Configuration Guide</span>
-        <Icon
-          name="chevronDown"
+        <UIcon
+          name="i-lucide-chevron-down"
           class="w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform"
           :class="{ 'rotate-180': showSetupGuide }"
         />
@@ -483,7 +483,6 @@
 </template>
 
 <script setup>
-import Icon from '~/components/Icon.vue'
 const props = defineProps({
   nodeData: {
     type: Object,

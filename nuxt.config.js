@@ -5,7 +5,6 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   ssr: false,
-  
   app: {
     pageTransition: { name: 'page', mode: 'out-in' },
   },
@@ -16,7 +15,6 @@ export default defineNuxtConfig({
   imports: {
     dirs: []
   },
-
   modules: [
     '@nuxt/eslint',
     '@nuxt/image',
@@ -26,14 +24,14 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
     'nuxt-monaco-editor'
   ],
+  icon: {
+    provider: 'lucide'
+  },
   nitro: {
     experimental: {
       websocket: true
     }
   },
-  // Remove CSS from here and add it to app.vue instead
-  // css: ['./assets/css/main.css'],
-
   css: ['~/assets/css/main.css'],
   vite: {
       plugins: [
