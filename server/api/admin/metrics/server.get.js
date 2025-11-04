@@ -1,6 +1,6 @@
 /**
  * GET /api/admin/metrics/server
- * Retrieve server metrics (CPU, memory, WebSocket connections, uptime)
+ * Retrieve server metrics from consolidated storage
  *
  * Query params:
  *   from: ISO timestamp (default: 24 hours ago)
@@ -9,7 +9,7 @@
  */
 
 import { getDB, metrics as metricsSchema } from '~/server/utils/database.js'
-import { and, gte, lte, inArray } from 'drizzle-orm'
+import { and, gte, lte, eq } from 'drizzle-orm'
 import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
@@ -39,32 +39,26 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Metric types to fetch
-    const metricTypes = [
-      'server_cpu',
-      'server_memory',
-      'server_websocket_connections',
-      'server_uptime'
+    // Query consolidated server metrics
+    const conditions = [
+      gte(metricsSchema.timestamp, from.toISOString()),
+      lte(metricsSchema.timestamp, to.toISOString()),
+      eq(metricsSchema.entityType, 'server')
     ]
 
-    // Fetch metrics
     const metrics = await db
       .select()
       .from(metricsSchema)
-      .where(and(
-        gte(metricsSchema.timestamp, from.toISOString()),
-        lte(metricsSchema.timestamp, to.toISOString()),
-        inArray(metricsSchema.metricType, metricTypes)
-      ))
-      .orderBy(metricsSchema.timestamp, 'asc')
+      .where(and(...conditions))
+      .orderBy(metricsSchema.timestamp)
       .all()
 
-    // Aggregate by interval
-    const aggregated = aggregateMetrics(metrics, interval)
+    // Transform consolidated storage to frontend format
+    const transformed = transformServerMetrics(metrics, interval)
 
     return {
       success: true,
-      data: aggregated,
+      data: transformed,
       meta: {
         from: from.toISOString(),
         to: to.toISOString(),
@@ -83,91 +77,111 @@ export default defineEventHandler(async (event) => {
 })
 
 /**
- * Aggregate metrics by time interval
+ * Transform consolidated metrics to frontend format
  */
-function aggregateMetrics(metrics, interval) {
-  const intervalMs = parseInterval(interval)
-  const grouped = new Map()
+function transformServerMetrics(serverMetrics, interval) {
+  const result = {
+    server_cpu: [],
+    server_memory: [],
+    server_uptime: [],
+    server_websocket_connections: []
+  }
 
-  metrics.forEach(metric => {
-    const timestamp = new Date(metric.timestamp)
-    const bucketTime = Math.floor(timestamp.getTime() / intervalMs) * intervalMs
-    const bucketKey = `${bucketTime}-${metric.metricType}`
-
-    if (!grouped.has(bucketKey)) {
-      grouped.set(bucketKey, {
-        timestamp: new Date(bucketTime).toISOString(),
-        metricType: metric.metricType,
-        values: []
-      })
-    }
+  serverMetrics.forEach(row => {
+    const timestamp = row.timestamp
 
     try {
-      const value = JSON.parse(metric.value)
-      grouped.get(bucketKey).values.push(value)
+      const metricsData = JSON.parse(row.metrics)
+
+      // CPU metrics
+      if (metricsData.cpu) {
+        result.server_cpu.push({
+          timestamp,
+          percent: metricsData.cpu.percent,
+          cores: metricsData.cpu.cores
+        })
+      }
+
+      // Memory metrics
+      if (metricsData.memory) {
+        result.server_memory.push({
+          timestamp,
+          percent: metricsData.memory.percent,
+          used: metricsData.memory.used,
+          total: metricsData.memory.total
+        })
+      }
+
+      // Uptime
+      if (metricsData.uptime !== undefined) {
+        result.server_uptime.push({
+          timestamp,
+          seconds: metricsData.uptime
+        })
+      }
+
+      // WebSocket connections
+      if (metricsData.wsConnections !== undefined) {
+        result.server_websocket_connections.push({
+          timestamp,
+          count: metricsData.wsConnections
+        })
+      }
+
     } catch (error) {
-      // Ignore parse errors
+      logger.error('Error parsing server metrics:', error)
     }
   })
 
-  // Average the values in each bucket
-  const result = {}
-  grouped.forEach(bucket => {
-    if (!result[bucket.metricType]) {
-      result[bucket.metricType] = []
-    }
-
-    // Calculate average for this bucket
-    const avgValue = averageValues(bucket.values, bucket.metricType)
-    result[bucket.metricType].push({
-      timestamp: bucket.timestamp,
-      ...avgValue
-    })
-  })
+  // Apply interval aggregation if needed
+  if (interval !== '1m') {
+    return aggregateByInterval(result, interval)
+  }
 
   return result
 }
 
 /**
- * Average metric values based on type
+ * Aggregate metrics by time interval
  */
-function averageValues(values, metricType) {
-  if (values.length === 0) return {}
+function aggregateByInterval(data, interval) {
+  const intervalMs = parseInterval(interval)
+  const aggregated = {}
 
-  switch (metricType) {
-    case 'server_cpu':
-      return {
-        percent: average(values.map(v => v.percent))
+  Object.entries(data).forEach(([metricType, dataPoints]) => {
+    const buckets = new Map()
+
+    dataPoints.forEach(point => {
+      const timestamp = new Date(point.timestamp)
+      const bucketTime = Math.floor(timestamp.getTime() / intervalMs) * intervalMs
+      const bucketKey = bucketTime.toString()
+
+      if (!buckets.has(bucketKey)) {
+        buckets.set(bucketKey, [])
       }
+      buckets.get(bucketKey).push(point)
+    })
 
-    case 'server_memory':
-      return {
-        used: average(values.map(v => v.used)),
-        total: values[values.length - 1].total, // Take latest
-        percent: average(values.map(v => v.percent))
-      }
+    // Average values within each bucket
+    aggregated[metricType] = Array.from(buckets.entries()).map(([bucketTime, points]) => {
+      const avgPoint = { ...points[0] } // Start with first point structure
+      avgPoint.timestamp = new Date(parseInt(bucketTime)).toISOString()
 
-    case 'server_websocket_connections':
-      return {
-        count: Math.round(average(values.map(v => v.count)))
-      }
+      // Average numeric values
+      const numericKeys = Object.keys(points[0]).filter(key =>
+        typeof points[0][key] === 'number' && key !== 'timestamp'
+      )
 
-    case 'server_uptime':
-      return {
-        seconds: values[values.length - 1].seconds // Take latest
-      }
+      numericKeys.forEach(key => {
+        const sum = points.reduce((acc, p) => acc + (p[key] || 0), 0)
+        avgPoint[key] = Math.round((sum / points.length) * 100) / 100
+      })
 
-    default:
-      return values[values.length - 1]
-  }
-}
+      return avgPoint
+    })
+  })
 
-/**
- * Calculate average of array
- */
-function average(arr) {
-  if (arr.length === 0) return 0
-  return Math.round((arr.reduce((sum, val) => sum + val, 0) / arr.length) * 100) / 100
+  return aggregated
 }
 
 /**

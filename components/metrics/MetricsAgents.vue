@@ -55,6 +55,7 @@
               </h4>
               <ClientOnly>
                 <apexchart
+                  :key="`cpu-${agentId}`"
                   type="area"
                   height="180"
                   :options="getAgentCPUChartOptions(agentData)"
@@ -70,6 +71,7 @@
               </h4>
               <ClientOnly>
                 <apexchart
+                  :key="`memory-${agentId}`"
                   type="area"
                   height="180"
                   :options="getAgentMemoryChartOptions(agentData)"
@@ -85,6 +87,7 @@
               </h4>
               <ClientOnly>
                 <apexchart
+                  :key="`jobs-${agentId}`"
                   type="area"
                   height="180"
                   :options="getAgentJobsChartOptions(agentData)"
@@ -100,6 +103,7 @@
               </h4>
               <ClientOnly>
                 <apexchart
+                  :key="`disk-${agentId}`"
                   type="area"
                   height="180"
                   :options="getAgentDiskChartOptions(agentData)"
@@ -122,7 +126,7 @@
               </div>
 
               <!-- Network Stats -->
-              <div v-if="hasNetworkStats(agentData)" class="grid grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t dark:border-gray-700">
+              <div class="grid grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t dark:border-gray-700">
                 <div>
                   <span class="text-gray-500 dark:text-gray-400">Network Interfaces:</span>
                   <span class="ml-2 text-gray-900 dark:text-white">{{ getNetworkInterfaces(agentData) }}</span>
@@ -149,20 +153,20 @@
 </template>
 
 <script setup>
-import { computed, watch, ref } from 'vue'
-import { useColorMode } from '@vueuse/core'
+import { computed, watch, ref, onMounted } from 'vue'
 
 const metricsStore = useMetricsStore()
 const darkMode = useDarkMode()
 const isDark = computed(() => darkMode.isDark.value === 'dark')
+const { toLocalTime, toShortTime, cronTimezone } = useTimezone()
 const agentMetrics = computed(() => metricsStore.agentMetrics)
 
 
 // Helper function to create base chart options
 const createBaseChartOptions = (type, colors, yAxisConfig = {}, showToolbar = true) => {
-  return {
+  const options = {
     chart: {
-      id: `${type}-chart-${Date.now()}`,
+      id: `agent-${type}-chart`,
       type,
       toolbar: { show: showToolbar },
       background: 'transparent',
@@ -182,14 +186,6 @@ const createBaseChartOptions = (type, colors, yAxisConfig = {}, showToolbar = tr
       curve: 'smooth',
       width: type === 'line' ? 3 : 2
     },
-    fill: type === 'area' ? {
-      type: 'gradient',
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.7,
-        opacityTo: 0.3
-      }
-    } : undefined,
     colors,
     xaxis: {
       type: 'datetime',
@@ -197,7 +193,8 @@ const createBaseChartOptions = (type, colors, yAxisConfig = {}, showToolbar = tr
         style: {
           colors: isDark.value ? '#9ca3af' : '#6b7280',
           fontSize: '11px'
-        }
+        },
+        datetimeUTC: false,
       }
     },
     yaxis: {
@@ -212,7 +209,14 @@ const createBaseChartOptions = (type, colors, yAxisConfig = {}, showToolbar = tr
     },
     tooltip: {
       theme: isDark.value ? 'dark' : 'light',
-      x: { format: 'HH:mm:ss' }
+      x: {
+        formatter: (val) => toShortTime(val)
+      },
+      style: {
+        fontSize: '12px',
+        fontFamily: 'inherit'
+      },
+      custom: undefined // Ensure no custom tooltip overrides theme
     },
     grid: {
       borderColor: isDark.value ? '#374151' : '#e5e7eb'
@@ -223,6 +227,20 @@ const createBaseChartOptions = (type, colors, yAxisConfig = {}, showToolbar = tr
       }
     }
   }
+
+  // Only add fill for area charts
+  if (type === 'area') {
+    options.fill = {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.7,
+        opacityTo: 0.3
+      }
+    }
+  }
+
+  return options
 }
 
 // Agent status chart (total agents over time)
@@ -233,32 +251,54 @@ const agentStatusChartOptions = ref(createBaseChartOptions('line', ['#10b981', '
 }))
 
 const agentStatusChartSeries = computed(() => {
-  const globalData = agentMetrics.value?.global
+  if (!Object.keys(agentMetrics.value).length) return []
 
-  if (!globalData?.agents_total) return []
+  // Collect all timestamps and status counts
+  const statusByTime = new Map()
+
+  // Process each agent's status data
+  Object.values(agentMetrics.value).forEach(agentData => {
+    if (agentData.agent_status) {
+      agentData.agent_status.forEach(statusEntry => {
+        const timestamp = statusEntry.timestamp
+        if (!statusByTime.has(timestamp)) {
+          statusByTime.set(timestamp, { online: 0, offline: 0 })
+        }
+        const counts = statusByTime.get(timestamp)
+        if (statusEntry.status === 'online') {
+          counts.online++
+        } else {
+          counts.offline++
+        }
+      })
+    }
+  })
+
+  // Convert to series format
+  const sortedTimestamps = Array.from(statusByTime.keys()).sort()
 
   return [
     {
       name: 'Online',
-      data: globalData.agents_total.map(m => ({
-        x: new Date(m.timestamp).getTime(),
-        y: m.online
+      data: sortedTimestamps.map(ts => ({
+        x: new Date(ts).getTime(),
+        y: statusByTime.get(ts).online
       }))
     },
     {
       name: 'Offline',
-      data: globalData.agents_total.map(m => ({
-        x: new Date(m.timestamp).getTime(),
-        y: m.offline
+      data: sortedTimestamps.map(ts => ({
+        x: new Date(ts).getTime(),
+        y: statusByTime.get(ts).offline
       }))
     }
   ]
 })
 
 function getAgentName(agentData) {
-  const firstMetric = Object.values(agentData)[0]
-  if (Array.isArray(firstMetric) && firstMetric[0]?.agentName) {
-    return firstMetric[0].agentName
+  if (agentData.agent_status) {
+    const latest = agentData.agent_status[agentData.agent_status.length - 1]
+    return latest?.agentName || 'Unknown'
   }
   return 'Agent'
 }
@@ -266,29 +306,41 @@ function getAgentName(agentData) {
 function isAgentOnline(agentData) {
   if (agentData.agent_status) {
     const latest = agentData.agent_status[agentData.agent_status.length - 1]
-    return latest?.isOnline || false
+    return latest?.status === 'online'
   }
   return false
 }
 
 function getAgentPlatform(agentData) {
-  const firstMetric = Object.values(agentData)[0]
-  if (Array.isArray(firstMetric) && firstMetric[0]?.agentName) {
-    const metadata = firstMetric.find(m => m.metadata)
-    return metadata?.metadata?.platform || 'Unknown'
+  if (agentData.agent_status) {
+    const latest = agentData.agent_status[agentData.agent_status.length - 1]
+    if (latest?.platform !== undefined) {
+      return latest.platform
+    }
   }
   return 'Unknown'
 }
 
 function getAgentUptime(agentData) {
-  // Get the latest agent_cpu or agent_memory metric which should have uptime info
-  const cpuMetrics = agentData.agent_cpu
-  if (cpuMetrics && cpuMetrics.length > 0) {
-    const latest = cpuMetrics[cpuMetrics.length - 1]
-    // Uptime would be in metadata if available
-    return 'N/A' // Will be populated when we add uptime to metadata
+  if (agentData.agent_status) {
+    const latest = agentData.agent_status[agentData.agent_status.length - 1]
+    if (latest?.uptime !== undefined) {
+      return formatUptime(latest.uptime)
+    }
   }
   return 'N/A'
+}
+
+function formatUptime(seconds) {
+  if (!seconds) return 'N/A'
+
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor((seconds % 86400) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
 }
 
 function getAgentCPUSeries(agentData) {
@@ -400,36 +452,21 @@ function getAgentDiskChartOptions(agentData) {
   return chartOptionsCache.value.get(cacheKey)
 }
 
-function hasNetworkStats(agentData) {
-  const firstMetric = Object.values(agentData)[0]
-  if (Array.isArray(firstMetric) && firstMetric.length > 0) {
-    const latest = firstMetric[firstMetric.length - 1]
-    return latest?.metadata?.networkInterfaceCount !== undefined
-  }
-  return false
-}
-
 function getNetworkInterfaces(agentData) {
-  const firstMetric = Object.values(agentData)[0]
-  if (Array.isArray(firstMetric) && firstMetric.length > 0) {
-    const latest = firstMetric[firstMetric.length - 1]
-    const metadata = latest?.metadata
-    if (metadata?.networkInterfaceCount !== undefined) {
-      return `${metadata.activeInterfaces || 0} / ${metadata.networkInterfaceCount || 0}`
+  if (agentData.agent_network) {
+    const latest = agentData.agent_network[agentData.agent_network.length - 1]
+    if (latest?.interfaceCount !== undefined) {
+      return `${latest.activeInterfaces.length || 0} / ${latest.interfaceCount || 0} [${latest.activeInterfaces?.join(', ') || 'N/A'}]`
     }
   }
   return 'N/A'
 }
 
 function getIPAddresses(agentData) {
-  const firstMetric = Object.values(agentData)[0]
-  if (Array.isArray(firstMetric) && firstMetric.length > 0) {
-    const latest = firstMetric[firstMetric.length - 1]
-    const metadata = latest?.metadata
-    if (metadata?.ipv4Count !== undefined || metadata?.ipv6Count !== undefined) {
-      const ipv4 = metadata.ipv4Count || 0
-      const ipv6 = metadata.ipv6Count || 0
-      return `IPv4: ${ipv4}, IPv6: ${ipv6}`
+  if (agentData.agent_network) {
+    const latest = agentData.agent_network[agentData.agent_network.length - 1]
+    if (latest?.ipv4Count !== undefined || latest?.ipv6Count !== undefined) {
+      return `IPv4: ${latest.ipv4Count || 0} [${latest.ipv4Addresses?.join(', ') || 'N/A'}], IPv6: ${latest.ipv6Count || 0} [${latest.ipv6Addresses?.join(', ') || 'N/A'}]`
     }
   }
   return 'N/A'

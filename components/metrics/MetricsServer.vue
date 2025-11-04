@@ -75,13 +75,14 @@ import { computed, watch, ref } from 'vue'
 const metricsStore = useMetricsStore()
 const darkMode = useDarkMode()
 const isDark = computed(() => darkMode.isDark.value === 'dark')
+const { toShortTime } = useTimezone()
 const serverMetrics = computed(() => metricsStore.serverMetrics)
 
 // Helper function to create chart options
 const createChartOptions = (type, colors, yAxisConfig = {}) => {
-  return {
+  const options = {
     chart: {
-      id: `${type}-chart-${Date.now()}`,
+      id: `server-${type}-chart`,
       type: type === 'cpu' || type === 'memory' ? 'area' : 'line',
       toolbar: { show: true },
       background: 'transparent',
@@ -101,21 +102,14 @@ const createChartOptions = (type, colors, yAxisConfig = {}) => {
       curve: 'smooth',
       width: type === 'ws' ? 3 : 2
     },
-    fill: type !== 'ws' ? {
-      type: 'gradient',
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.7,
-        opacityTo: 0.3
-      }
-    } : undefined,
     colors,
     xaxis: {
       type: 'datetime',
       labels: {
         style: {
           colors: isDark.value ? '#9ca3af' : '#6b7280'
-        }
+        },
+        datetimeUTC: false,
       }
     },
     yaxis: {
@@ -129,12 +123,33 @@ const createChartOptions = (type, colors, yAxisConfig = {}) => {
     },
     tooltip: {
       theme: isDark.value ? 'dark' : 'light',
-      x: { format: 'HH:mm:ss' }
+      x: {
+        formatter: (val) => toShortTime(val)
+      },
+      style: {
+        fontSize: '12px',
+        fontFamily: 'inherit'
+      },
+      custom: undefined // Ensure no custom tooltip overrides theme
     },
     grid: {
       borderColor: isDark.value ? '#374151' : '#e5e7eb'
     }
   }
+
+  // Only add fill for area charts
+  if (type !== 'ws') {
+    options.fill = {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.7,
+        opacityTo: 0.3
+      }
+    }
+  }
+
+  return options
 }
 
 // CPU Chart

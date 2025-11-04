@@ -35,6 +35,7 @@ class XCodeBuildAgent {
     this.token = options.token || process.env.XCODE_AGENT_TOKEN;
     this.serverUrl = options.serverUrl || process.env.XCODE_SERVER_URL;
     this.agentId = null;
+    this.agentName = null;
     this.socket = null;
     this.isConnected = false;
     this.currentJobs = new Map();
@@ -43,6 +44,7 @@ class XCodeBuildAgent {
     this.maxReconnectAttempts = 10;
     this.reconnectDelay = 5000; // Start with 5 seconds
     this.reconnectTimeout = null;
+    this.agentStartTime = process.uptime();
 
     // Auto-update configuration
     this.autoUpdate = options.autoUpdate ?? (process.env.XCODE_AUTO_UPDATE === 'true');
@@ -56,7 +58,8 @@ class XCodeBuildAgent {
       architecture: os.arch(),
       capabilities: this.detectCapabilities(),
       agentVersion: AGENT_VERSION,
-      systemInfo: this.getSystemInfo()
+      systemInfo: this.getSystemInfo(),
+      systemMetrics: this.getCurrentSystemMetrics()
     };
 
     this.validateConfig();
@@ -280,13 +283,15 @@ class XCodeBuildAgent {
   }
 
   getSystemInfo() {
+    let platform = this.detectPlatform();
+    if (platform == 'macos') platform = 'MacOS';
     return {
       hostname: os.hostname(),
-      platform: os.platform(),
+      platform: platform.charAt(0).toUpperCase() + platform.slice(1),
       arch: os.arch(),
       cpus: os.cpus().length,
       memory: Math.round(os.totalmem() / 1024 / 1024 / 1024) + 'GB',
-      uptime: os.uptime(),
+      uptime: Math.floor(process.uptime()),
       nodeVersion: process.version,
       agentVersion: '1.0.0'
     };
@@ -301,28 +306,66 @@ class XCodeBuildAgent {
       let diskUsage = { total: 0, used: 0, free: 0, percent: 0 }
 
       if (platform === 'win32') {
-        // Windows: Use WMIC command
+        // Windows: Check if WMIC exists, otherwise use PowerShell
+        let useWmic = false
         try {
-          const output = execSync('wmic logicaldisk get size,freespace,caption', { encoding: 'utf8', timeout: 5000 })
-          const lines = output.trim().split('\n').slice(1)
-          let totalSize = 0, totalFree = 0
+          execSync('where wmic', { stdio: 'ignore', timeout: 2000 })
+          useWmic = true
+        } catch {
+          // WMIC not available, will use PowerShell
+        }
 
-          lines.forEach(line => {
-            const parts = line.trim().split(/\s+/)
-            if (parts.length >= 3 && parts[1] && parts[2]) {
-              totalFree += parseInt(parts[1]) || 0
-              totalSize += parseInt(parts[2]) || 0
+        if (useWmic) {
+          try {
+            const output = execSync('wmic logicaldisk get size,freespace,caption', { encoding: 'utf8', timeout: 5000 })
+            const lines = output.trim().split('\n').slice(1)
+            let totalSize = 0, totalFree = 0
+
+            lines.forEach(line => {
+              const parts = line.trim().split(/\s+/)
+              if (parts.length >= 3 && parts[1] && parts[2]) {
+                totalFree += parseInt(parts[1]) || 0
+                totalSize += parseInt(parts[2]) || 0
+              }
+            })
+
+            diskUsage = {
+              total: Math.round(totalSize / 1024 / 1024 / 1024),
+              free: Math.round(totalFree / 1024 / 1024 / 1024),
+              used: Math.round((totalSize - totalFree) / 1024 / 1024 / 1024),
+              percent: totalSize > 0 ? Math.round(((totalSize - totalFree) / totalSize) * 10000) / 100 : 0
             }
-          })
-
-          diskUsage = {
-            total: Math.round(totalSize / 1024 / 1024 / 1024),
-            free: Math.round(totalFree / 1024 / 1024 / 1024),
-            used: Math.round((totalSize - totalFree) / 1024 / 1024 / 1024),
-            percent: totalSize > 0 ? Math.round(((totalSize - totalFree) / totalSize) * 10000) / 100 : 0
+          } catch (wmicError) {
+            diskUsage = { total: 0, used: 0, free: 0, percent: 0 }
           }
-        } catch (err) {
-          diskUsage = { total: 0, used: 0, free: 0, percent: 0 }
+        } else {
+          // Use PowerShell using Get-CimInstance
+          try {
+            const psCommand = `powershell -Command "Get-CimInstance -ClassName Win32_LogicalDisk | Where-Object { $_.DriveType -eq 3 } | ForEach-Object { [PSCustomObject]@{ SizeGB = [math]::Round($_.Size / 1GB); FreeSpaceGB = [math]::Round($_.FreeSpace / 1GB) } } | ConvertTo-Csv -NoTypeInformation"`
+            const output = execSync(psCommand, { encoding: 'utf8', timeout: 5000 })
+
+            const lines = output.trim().split('\n').slice(1) // Skip header
+            let totalSize = 0, totalFree = 0
+
+            lines.forEach(line => {
+              const parts = line.split(',')
+              if (parts.length >= 2) {
+                const sizeGB = parseFloat(parts[0].replace(/"/g, '')) || 0
+                const freeGB = parseFloat(parts[1].replace(/"/g, '')) || 0
+                totalSize += sizeGB
+                totalFree += freeGB
+              }
+            })
+
+            diskUsage = {
+              total: Math.round(totalSize),
+              free: Math.round(totalFree),
+              used: Math.round(totalSize - totalFree),
+              percent: totalSize > 0 ? Math.round(((totalSize - totalFree) / totalSize) * 10000) / 100 : 0
+            }
+          } catch (psError) {
+            diskUsage = { total: 0, used: 0, free: 0, percent: 0 }
+          }
         }
       } else {
         // Unix/Linux/Mac: Use df command
@@ -339,17 +382,18 @@ class XCodeBuildAgent {
               total: Math.round(total / 1024 / 1024),
               used: Math.round(used / 1024 / 1024),
               free: Math.round(free / 1024 / 1024),
-              percent: total > 0 ? Math.round((used / total) * 10000) / 100 : 0
+              percent: total > 0 ? Math.round((used / total) * 10000) / 100 : 0,
+              df: true
             }
           }
         } catch (err) {
-          diskUsage = { total: 0, used: 0, free: 0, percent: 0 }
+          diskUsage = { total: 0, used: 0, free: 0, percent: 0, dfError: 'error'}
         }
       }
 
       return diskUsage
     } catch (error) {
-      return { total: 0, used: 0, free: 0, percent: 0 }
+      return { total: 0, used: 0, free: 0, percent: 0, error: 'exception'}
     }
   }
 
@@ -363,7 +407,9 @@ class XCodeBuildAgent {
         interfaceCount: 0,
         activeInterfaces: [],
         ipv4Count: 0,
-        ipv6Count: 0
+        ipv6Count: 0,
+        ipv4Addresses: [],
+        ipv6Addresses: []
       }
 
       Object.entries(networkInterfaces).forEach(([name, addresses]) => {
@@ -373,20 +419,26 @@ class XCodeBuildAgent {
         if (activeAddresses.length > 0) {
           stats.activeInterfaces.push(name)
           activeAddresses.forEach(addr => {
-            if (addr.family === 'IPv4') stats.ipv4Count++
-            if (addr.family === 'IPv6') stats.ipv6Count++
+            if (addr.family === 'IPv4') {
+              stats.ipv4Count++
+              stats.ipv4Addresses.push(addr.address)
+            }
+            if (addr.family === 'IPv6') {
+              stats.ipv6Count++
+              stats.ipv6Addresses.push(addr.address)
+            }
           })
         }
       })
 
       return stats
     } catch (error) {
-      return { interfaceCount: 0, activeInterfaces: [], ipv4Count: 0, ipv6Count: 0 }
+      return { interfaceCount: 0, activeInterfaces: [], ipv4Count: 0, ipv6Count: 0, ipv4Addresses: [], ipv6Addresses: [] }
     }
   }
 
   /**
-   * Get current system metrics (CPU, memory, disk, network, uptime, etc.)
+   * Get current system metrics (CPU, memory, disk, network, etc.)
    * Called on every heartbeat to report real-time agent performance
    */
   getCurrentSystemMetrics() {
@@ -430,13 +482,8 @@ class XCodeBuildAgent {
         totalMemory: Math.round(totalMemory / 1024 / 1024), // MB
         usedMemory: Math.round(usedMemory / 1024 / 1024), // MB
         freeMemory: Math.round(freeMemory / 1024 / 1024), // MB
-        uptime: Math.floor(os.uptime()), // seconds
+        uptime: this.agentStartTime, // Agent uptime in seconds
         loadAverage: loadAvg,
-        platform: this.agentInfo.platform,
-        hostname: this.agentInfo.hostname,
-        architecture: this.agentInfo.architecture,
-        nodeVersion: process.version,
-        agentVersion: AGENT_VERSION,
 
         // Disk metrics
         diskTotal: diskUsage.total,
@@ -445,11 +492,12 @@ class XCodeBuildAgent {
         diskUsage: diskUsage.percent,
 
         // Network metrics
-        networkInterfaceCount: networkStats.interfaceCount,
-        activeNetworkInterfaces: networkStats.activeInterfaces,
-        ipv4AddressCount: networkStats.ipv4Count,
-        ipv6AddressCount: networkStats.ipv6Count,
-
+        interfaceCount: networkStats.interfaceCount,
+        activeInterfaces: networkStats.activeInterfaces,
+        ipv4Count: networkStats.ipv4Count,
+        ipv6Count: networkStats.ipv6Count,
+        ipv4Addresses: networkStats.ipv4Addresses || [],
+        ipv6Addresses: networkStats.ipv6Addresses || [],
         // Process metrics
         processMemory: Math.round(processMemUsage.heapUsed / 1024 / 1024), // MB
         processMemoryTotal: Math.round(processMemUsage.heapTotal / 1024 / 1024), // MB
@@ -562,6 +610,7 @@ class XCodeBuildAgent {
         case 'authenticated':
           logger.info('Authentication successful');
           this.agentId = message.agentId;
+          this.agentName = message.agentName;
           this.registerAgent();
           break;
 
@@ -604,13 +653,12 @@ class XCodeBuildAgent {
   startHeartbeat() {
     this.heartbeatInterval = setInterval(() => {
       // Collect current system metrics
-      const systemMetrics = this.getCurrentSystemMetrics()
-
       this.sendMessage('heartbeat', {
         status: this.currentJobs.size > 0 ? 'busy' : 'online',
         currentJobs: this.currentJobs.size,
         timestamp: new Date().toISOString(),
-        systemMetrics // Include real-time system performance data
+        systemInfo: this.getSystemInfo(),
+        systemMetrics: this.getCurrentSystemMetrics()
       });
     }, 30000); // Send heartbeat every 30 seconds
   }
@@ -687,10 +735,12 @@ class XCodeBuildAgent {
           timestamp: new Date().toISOString()
       });
       
-      this.sendMessage('agent:heartbeat', {
-          status: this.currentJobs.size > 0 ? 'busy' : 'online',
-          currentJobs: this.currentJobs.size,
-          timestamp: new Date().toISOString()
+      this.sendMessage('heartbeat', {
+        status: this.currentJobs.size > 0 ? 'busy' : 'online',
+        currentJobs: this.currentJobs.size,
+        timestamp: new Date().toISOString(),
+        systemInfo: this.getSystemInfo(),
+        systemMetrics: this.getCurrentSystemMetrics()
       });
       
     } catch (error) {
@@ -755,10 +805,12 @@ class XCodeBuildAgent {
         timestamp: new Date().toISOString()
     });
     
-    this.sendMessage('agent:heartbeat', {
-        status: this.currentJobs.size > 0 ? 'busy' : 'online',
-        currentJobs: this.currentJobs.size,
-        timestamp: new Date().toISOString()
+    this.sendMessage('heartbeat', {
+      status: this.currentJobs.size > 0 ? 'busy' : 'online',
+      currentJobs: this.currentJobs.size,
+      timestamp: new Date().toISOString(),
+      systemInfo: this.getSystemInfo(),
+      systemMetrics: this.getCurrentSystemMetrics()
     });
   }
 

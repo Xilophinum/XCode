@@ -123,6 +123,7 @@ import { computed } from 'vue'
 const metricsStore = useMetricsStore()
 const darkMode = useDarkMode()
 const isDark = computed(() => darkMode.isDark.value === 'dark')
+const { toShortTime } = useTimezone()
 const apiMetrics = computed(() => metricsStore.apiMetrics)
 
 
@@ -169,7 +170,8 @@ const requestVolumeChartOptions = computed(() => ({
     labels: {
       style: {
         colors: isDark.value ? '#9ca3af' : '#6b7280'
-      }
+      },
+      datetimeUTC: false,
     }
   },
   yaxis: {
@@ -182,7 +184,14 @@ const requestVolumeChartOptions = computed(() => ({
   },
   tooltip: {
     theme: isDark.value ? 'dark' : 'light',
-    x: { format: 'HH:mm:ss' }
+    x: {
+      formatter: (val) => toShortTime(val)
+    },
+    style: {
+      fontSize: '12px',
+      fontFamily: 'inherit'
+    },
+    custom: undefined
   },
   grid: {
     borderColor: isDark.value ? '#374151' : '#e5e7eb'

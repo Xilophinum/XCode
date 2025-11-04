@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { io } from 'socket.io-client'
-
 export const useWebSocketStore = defineStore('websocket', () => {
   // Connection state
   const socket = ref(null)
@@ -9,7 +8,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const isAuthenticated = ref(false)
   const connectionError = ref(null)
   const lastReconnectAttempt = ref(null)
-  
+  const metricsStore = useMetricsStore()
   // Subscriptions
   const subscribedProjects = ref(new Set())
   
@@ -198,27 +197,24 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const updateInternalState = (message) => {
     const { type, projectId } = message
     
-    // Skip processing if no projectId
-    if (!projectId && (type !== 'agent_status_update')) {
-      logger.warn('Received message without projectId:', message)
-      return
-    }
-    
     switch (type) {
       case 'webhook_trigger_fired':
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         addJobMessage(projectId, 'System', 'info', `🎣 Webhook triggered: ${message.webhookNodeLabel || message.endpoint}`, undefined, message.timestamp, message.nanotime)
         break
 
       case 'webhook_trigger_error':
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         addJobMessage(projectId, 'System', 'error', `Webhook trigger error: ${message.error}`, undefined, message.timestamp, message.nanotime)
         break
 
       case 'cron_trigger_fired':
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         addJobMessage(projectId, 'System', 'info', `⏰ Cron trigger fired: ${message.cronExpression || message.cronNodeLabel}`, undefined, message.timestamp, message.nanotime)
         break
         
       case 'cron_job_starting':
-        // Only create job record if we have the required fields
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         if (message.jobId && message.agentId) {
           currentJobs.value.set(projectId, {
             jobId: message.jobId,
@@ -238,6 +234,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
         
       case 'cron_job_started':
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         currentJobs.value.set(projectId, {
           jobId: message.jobId,
           buildNumber: message.buildNumber,
@@ -255,10 +252,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
         
       case 'job_created':
-        // Check if this is a main job or a sub-job (parallel branch/matrix)
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         const isSubJob = message.jobId.includes('_branch_') || message.jobId.includes('_matrix_')
-        const existingMainJob = currentJobs.value.get(projectId)
-
         if (!isSubJob) {
           currentJobs.value.set(projectId, {
             jobId: message.jobId,
@@ -279,9 +274,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'job_started':
-        // Update or create job when job actually starts
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         const existingJob = currentJobs.value.get(projectId)
-
         currentJobs.value.set(projectId, {
           ...(existingJob || {}),
           jobId: message.jobId,
@@ -297,6 +291,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
         
       case 'job_status_updated':
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         const currentJob = currentJobs.value.get(projectId)
         if (currentJob) {
           currentJob.status = message.status
@@ -318,12 +313,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
         
       case 'job_output_line':
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         const outputData = message.output || message
         // source contains the nodeLabel
         addJobMessage(projectId, outputData.source || 'Agent', outputData.level || 'info', outputData.message, outputData.value, outputData.timestamp, outputData.nanotime)
         break
 
       case 'job_output':
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         if (message.output && Array.isArray(message.output)) {
           message.output.forEach(outputLine => {
             // source contains the nodeLabel
@@ -334,6 +331,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'job_complete':
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         const completionMessage = message.message || 'Job completed successfully (exit code: 0)'
         addJobMessage(projectId, 'System', 'success', `Job completed: ${completionMessage}`, undefined, message.timestamp, message.nanotime)
         const completedJob = currentJobs.value.get(projectId)
@@ -345,6 +343,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'job_error':
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         addJobMessage(projectId, 'System', 'error', `Job error: ${message.error || 'Unknown error'}`, undefined, message.timestamp, message.nanotime)
         const errorJob = currentJobs.value.get(projectId)
         if (errorJob) {
@@ -355,7 +354,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'job_started':
-        // Job has started execution on agent
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         addJobMessage(projectId, 'System', 'success', `Job started on agent ${message.agentName || message.agentId}`, undefined, message.timestamp, message.nanotime)
         const startedJob = currentJobs.value.get(projectId)
         if (startedJob) {
@@ -366,7 +365,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'job_cancelled':
-        // Job was successfully cancelled
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         addJobMessage(projectId, 'System', 'warning', `🛑 ${message.message || 'Job was cancelled'}`, undefined, message.timestamp, message.nanotime)
         const cancelledJob = currentJobs.value.get(projectId)
         if (cancelledJob) {
@@ -377,7 +376,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'job_cancelling':
-        // Job is being cancelled
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         addJobMessage(projectId, 'System', 'warning', `⏳ ${message.message || 'Job cancellation initiated'}`, undefined, message.timestamp, message.nanotime)
         const cancellingJob = currentJobs.value.get(projectId)
         if (cancellingJob) {
@@ -386,7 +385,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'job_cancel_failed':
-        // Job cancellation failed
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         addJobMessage(projectId, 'System', 'error', `${message.error || 'Job cancellation failed'}`, undefined, message.timestamp, message.nanotime)
         const cancelFailedJob = currentJobs.value.get(projectId)
         if (cancelFailedJob) {
@@ -395,6 +394,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'cron_trigger_error':
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         addJobMessage(projectId, 'System', 'error', `Cron trigger error: ${message.error}`, undefined, message.timestamp, message.nanotime)
         break
         
@@ -422,7 +422,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         break
 
       case 'node_execution_state_changed':
-        // Create a custom event for node state changes
+        if (!projectId) return logger.warn('Received message without projectId:', message);
         if (typeof window !== 'undefined') {
           const event = new CustomEvent('nodeExecutionStateChanged', {
             detail: {
@@ -436,6 +436,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
           })
           window.dispatchEvent(event)
         }
+        break
+      case 'agent_metrics_update':
+        // Forward to metrics store for processing
+        metricsStore.handleAgentMetricsUpdate(message)
+        break
+      case 'metrics_update':
+        // Forward to metrics store for processing
+        metricsStore.handleRealtimeUpdate(message)
         break
     }
   }
@@ -462,31 +470,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
     // Keep only last 1000 messages to prevent memory issues
     if (messages.length > 1000) {
       messages.splice(0, messages.length - 1000)
-    }
-  }
-  
-  // Persist message to database
-  const persistMessage = async (projectId, nodeLabel, level, message, timestamp, nanotime) => {
-    try {
-      const currentJob = getCurrentJob(projectId)
-
-      if (currentJob?.buildNumber) {
-        const buildNumber = currentJob.buildNumber
-        await $fetch(`/api/projects/${projectId}/builds/${buildNumber}/logs`, {
-          method: 'PATCH',
-          body: {
-            type: 'log',
-            level: level,
-            message: message,
-            source: nodeLabel,
-            timestamp: timestamp || new Date().toISOString(),
-            nanotime: nanotime
-          }
-        })
-      }
-    } catch (error) {
-      // Silently fail - don't block UI for database issues
-      logger.debug('Failed to persist message:', error.message)
     }
   }
   

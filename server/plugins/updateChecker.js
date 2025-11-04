@@ -36,7 +36,7 @@ export default defineNitroPlugin(async (nitroApp) => {
         logger.info('No updates available')
       }
     } catch (error) {
-      logger.error('Update check failed:', error)
+      logger.error(`Update check failed: ${error.message}`)
     }
   }
 

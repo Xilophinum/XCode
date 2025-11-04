@@ -246,17 +246,17 @@ export function createSchema(dbType = 'sqlite') {
 
       metrics: pgTable('metrics', {
         id: pgVarchar('id', { length: 255 }).primaryKey(),
-        timestamp: pgText('timestamp').notNull(),
-        metricType: pgVarchar('metric_type', { length: 100 }).notNull(),
-        agentId: pgVarchar('agent_id', { length: 255 }),
-        value: pgText('value').notNull(),
-        metadata: pgText('metadata'),
+        timestamp: pgText('timestamp').notNull(), // Rounded to minute
+        entityType: pgVarchar('entity_type', { length: 50 }).notNull(), // 'agent', 'server', 'api', 'builds'
+        entityId: pgVarchar('entity_id', { length: 255 }), // Agent ID, or null for global
+        metrics: pgText('metrics').notNull(), // JSON blob with ALL metrics
         createdAt: pgText('created_at').notNull(),
       }, (table) => {
         return {
           timestampIdx: pgIndex('idx_metrics_timestamp').on(table.timestamp),
-          metricTypeIdx: pgIndex('idx_metrics_type').on(table.metricType),
-          agentIdIdx: pgIndex('idx_metrics_agent_id').on(table.agentId),
+          entityTypeIdx: pgIndex('idx_metrics_entity_type').on(table.entityType),
+          entityIdx: pgIndex('idx_metrics_entity').on(table.entityType, table.entityId),
+          timestampEntityIdx: pgIndex('idx_metrics_timestamp_entity').on(table.timestamp, table.entityType, table.entityId),
         }
       })
     }
@@ -496,17 +496,17 @@ export function createSchema(dbType = 'sqlite') {
 
     metrics: sqliteTable('metrics', {
       id: text('id').primaryKey(),
-      timestamp: text('timestamp').notNull(),
-      metricType: text('metric_type').notNull(),
-      agentId: text('agent_id'),
-      value: text('value').notNull(),
-      metadata: text('metadata'),
+      timestamp: text('timestamp').notNull(), // Rounded to minute
+      entityType: text('entity_type').notNull(), // 'agent', 'server', 'api', 'builds'
+      entityId: text('entity_id'), // Agent ID, or null for global
+      metrics: text('metrics').notNull(), // JSON blob with ALL metrics
       createdAt: text('created_at').notNull(),
     }, (table) => {
       return {
         timestampIdx: index('idx_metrics_timestamp').on(table.timestamp),
-        metricTypeIdx: index('idx_metrics_type').on(table.metricType),
-        agentIdIdx: index('idx_metrics_agent_id').on(table.agentId),
+        entityTypeIdx: index('idx_metrics_entity_type').on(table.entityType),
+        entityIdx: index('idx_metrics_entity').on(table.entityType, table.entityId),
+        timestampEntityIdx: index('idx_metrics_timestamp_entity').on(table.timestamp, table.entityType, table.entityId),
       }
     })
   }

@@ -1,83 +1,100 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950">
-    <!-- Header -->
-    <div class="bg-white dark:bg-gray-800 shadow">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-              System Metrics
-            </h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+    <!-- Navigation -->
+    <AppNavigation :breadcrumbs="['metrics']">
+      <template #mobile-actions>
+        <!-- Mobile: Time Range + Refresh -->
+        <USelect
+          v-model="selectedTimeRange"
+          :items="timeRangeOptions"
+          placeholder="Range"
+          class="w-32"
+        />
+        <UButton
+          icon="i-lucide-refresh-cw"
+          variant="outline"
+          size="sm"
+          :loading="isLoading"
+          @click="refreshAll"
+        />
+      </template>
+      <template #actions>
+        <!-- Desktop: Full Controls -->
+        <USelect
+          v-model="selectedTimeRange"
+          :items="timeRangeOptions"
+          placeholder="Select time range"
+          class="w-48"
+        />
+        <UButton
+          :icon="autoRefresh ? 'i-lucide-refresh-cw' : 'i-lucide-pause'"
+          :variant="autoRefresh ? 'solid' : 'outline'"
+          @click="toggleAutoRefresh"
+        >
+          {{ autoRefresh ? 'Auto-refresh' : 'Paused' }}
+        </UButton>
+        <UButton
+          icon="i-lucide-refresh-cw"
+          variant="outline"
+          :loading="isLoading"
+          @click="refreshAll"
+        >
+          Refresh
+        </UButton>
+      </template>
+    </AppNavigation>
+
+    <!-- Main Content -->
+    <main class="max-w-8xl mx-auto py-4 sm:px-6 lg:px-8">
+      <div class="px-4 sm:px-0">
+        <!-- Page Header -->
+        <div class="mb-6">
+          <h1 class="text-3xl font-bold text-gray-950 dark:text-white">System Metrics</h1>
+          <div class="flex items-center justify-between mt-2">
+            <p class="text-gray-600 dark:text-gray-300">
               Monitor server, agent, and build performance
             </p>
-          </div>
-
-          <div class="flex items-center gap-4">
-            <!-- Time Range Selector -->
-            <USelect
-              v-model="selectedTimeRange"
-              :options="timeRangeOptions"
-              placeholder="Select time range"
-              class="w-48"
-            />
-
-            <!-- Auto-refresh Toggle -->
-            <UButton
-              :icon="autoRefresh ? 'i-lucide-refresh-cw' : 'i-lucide-pause'"
-              :variant="autoRefresh ? 'solid' : 'outline'"
-              :label="autoRefresh ? 'Auto-refresh' : 'Paused'"
-              @click="toggleAutoRefresh"
-            />
-
-            <!-- Manual Refresh -->
-            <UButton
-              icon="i-lucide-refresh-cw"
-              variant="outline"
-              :loading="isLoading"
-              @click="refreshAll"
-            >
-              Refresh
-            </UButton>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Last updated: {{ getReactiveRelativeTime(lastRefresh) }}
+            </div>
           </div>
         </div>
 
-        <!-- Last Updated -->
-        <div v-if="lastRefresh" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-          Last updated: {{ formatTimestamp(lastRefresh) }}
+        <!-- Tabs -->
+        <div class="mb-6">
+          <UTabs
+            :items="tabs"
+            :unmountOnHide="false"
+            @update:modelValue="changTab"
+          />
+        </div>
+
+        <!-- Tab Content - Always mounted, toggled with v-show -->
+        <div class="mt-6">
+          <div v-show="activeTab === 0">
+            <MetricsOverview />
+          </div>
+          <div v-show="activeTab === 1">
+            <MetricsServer />
+          </div>
+          <div v-show="activeTab === 2">
+            <MetricsAgents />
+          </div>
+          <div v-show="activeTab === 3">
+            <MetricsBuilds />
+          </div>
+          <div v-show="activeTab === 4">
+            <MetricsAPI />
+          </div>
+          <div v-show="activeTab === 5">
+            <MetricsAlerts />
+          </div>
+          <div v-show="activeTab === 6">
+            <MetricsComparison />
+          </div>
         </div>
       </div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <UTabs :items="tabs" :unmountOnHide="false" @update:modelValue="changTab" />
-
-      <!-- Tab Content - Always mounted, toggled with v-show -->
-      <div class="mt-6">
-        <div v-show="activeTab === 0">
-          <MetricsOverview />
-        </div>
-        <div v-show="activeTab === 1">
-          <MetricsServer />
-        </div>
-        <div v-show="activeTab === 2">
-          <MetricsAgents />
-        </div>
-        <div v-show="activeTab === 3">
-          <MetricsBuilds />
-        </div>
-        <div v-show="activeTab === 4">
-          <MetricsAPI />
-        </div>
-        <div v-show="activeTab === 5">
-          <MetricsAlerts />
-        </div>
-        <div v-show="activeTab === 6">
-          <MetricsComparison />
-        </div>
-      </div>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -94,7 +111,6 @@ import MetricsComparison from '~/components/metrics/MetricsComparison.vue'
 // Authentication check
 const authStore = useAuthStore()
 const router = useRouter()
-const darkMode = useDarkMode()
 
 if (!authStore.isAuthenticated || authStore.user?.role !== 'admin') {
   router.push('/login')
@@ -109,14 +125,20 @@ definePageMeta({
 const metricsStore = useMetricsStore()
 const wsStore = useWebSocketStore()
 
+// Timezone composable
+const { fetchTimezone } = useTimezone()
+
 // State
 const activeTab = ref(0)
 const refreshIntervalId = ref(null)
+const currentTime = ref(Date.now())
 
 // Time range options
 const timeRangeOptions = [
   { label: 'Last Hour', value: '1h' },
+  { label: 'Last 8 Hours', value: '8h' },
   { label: 'Last 24 Hours', value: '24h' },
+  { label: 'Last 3 Days', value: '3d' },
   { label: 'Last 7 Days', value: '7d' }
 ]
 
@@ -137,16 +159,23 @@ const isLoading = computed(() =>
   metricsStore.apiLoading
 )
 
-// Tabs
-const tabs = [
-  { slot: 'overview', label: 'Overview', icon: 'i-lucide-bar-chart' },
-  { slot: 'server', label: 'Server', icon: 'i-lucide-server' },
-  { slot: 'agents', label: 'Agents', icon: 'i-lucide-cpu' },
-  { slot: 'builds', label: 'Builds', icon: 'i-lucide-box' },
-  { slot: 'api', label: 'API Performance', icon: 'i-lucide-activity' },
-  { slot: 'alerts', label: 'Alerts', icon: 'i-lucide-bell-ring' },
-  { slot: 'comparison', label: 'Comparison', icon: 'i-lucide-grid-2x2' }
-]
+// Tabs - Responsive labels
+const isMobile = ref(false)
+
+// Check viewport width
+const checkViewport = () => {
+  isMobile.value = window.innerWidth < 768 // md breakpoint
+}
+
+const tabs = computed(() => [
+  { slot: 'overview', label: isMobile.value ? '' : 'Overview', icon: 'i-lucide-bar-chart' },
+  { slot: 'server', label: isMobile.value ? '' : 'Server', icon: 'i-lucide-server' },
+  { slot: 'agents', label: isMobile.value ? '' : 'Agents', icon: 'i-lucide-cpu' },
+  { slot: 'builds', label: isMobile.value ? '' : 'Builds', icon: 'i-lucide-box' },
+  { slot: 'api', label: isMobile.value ? '' : 'API Performance', icon: 'i-lucide-activity' },
+  { slot: 'alerts', label: isMobile.value ? '' : 'Alerts', icon: 'i-lucide-bell-ring' },
+  { slot: 'comparison', label: isMobile.value ? '' : 'Comparison', icon: 'i-lucide-grid-2x2' }
+])
 
 // Methods
 function toggleAutoRefresh() {
@@ -184,25 +213,31 @@ function stopAutoRefresh() {
   }
 }
 
-function formatTimestamp(timestamp) {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diff = now - date
+// Reactive version that updates with currentTime ref
+function getReactiveRelativeTime(dateString) {
+  if (!dateString) return 'Never'
 
-  if (diff < 60000) return 'Just now'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
-
-  return date.toLocaleString()
+  const date = new Date(dateString)
+  const diffInSeconds = Math.floor((currentTime.value - date.getTime()) / 1000)
+  if (diffInSeconds < 5) return 'Just now'
+  if (diffInSeconds < 60) return `${diffInSeconds}s ago`
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+  return `${Math.floor(diffInSeconds / 86400)}d ago`
 }
-
-// WebSocket listener for real-time updates
-function handleMetricsUpdate(data) {
-  metricsStore.handleRealtimeUpdate(data)
-}
-
+let timeUpdateInterval = null
 // Lifecycle
 onMounted(async () => {
+  // Check viewport for responsive tabs
+  checkViewport()
+  window.addEventListener('resize', checkViewport)
+  timeUpdateInterval = setInterval(() => {
+    currentTime.value = Date.now()
+  }, 1000)
+
+  // Fetch timezone setting
+  await fetchTimezone()
+
   // Initial fetch
   await metricsStore.fetchAll()
 
@@ -210,19 +245,14 @@ onMounted(async () => {
   if (metricsStore.autoRefresh) {
     startAutoRefresh()
   }
-
-  // Listen for WebSocket metrics updates
-  if (wsStore.socket) {
-    wsStore.socket.on('metrics_update', handleMetricsUpdate)
-  }
 })
 
 onUnmounted(() => {
-  stopAutoRefresh()
-
-  // Remove WebSocket listener
-  if (wsStore.socket) {
-    wsStore.socket.off('metrics_update', handleMetricsUpdate)
+  // Cleanup resize listener
+  window.removeEventListener('resize', checkViewport)
+  if (timeUpdateInterval) {
+    clearInterval(timeUpdateInterval)
   }
+  stopAutoRefresh()
 })
 </script>

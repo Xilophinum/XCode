@@ -5,6 +5,8 @@ import { getAgentManager } from '~/server/utils/agentManager.js'
 import { getDataService } from '~/server/utils/dataService.js'
 import { jobManager } from '~/server/utils/jobManager.js'
 import { getBuildStatsManager } from '~/server/utils/buildStatsManager.js'
+import { MetricsBuffer } from '~/server/utils/metricsBuffer.js'
+import { getDB } from '~/server/utils/database.js'
 import logger from '~/server/utils/logger.js'
 // Store client connections for broadcasting
 const clientConnections = new Map() // clientId -> socket
@@ -24,9 +26,16 @@ export default defineNitroPlugin(async (nitroApp) => {
   const dataService = await getDataService()
   await dataService.markAllAgentsOffline()
   logger.info('All agents marked as offline on server startup - agents must reconnect')
-  
+
   // Handle any jobs that were running when server restarted
   await handleServerRestartOrphanedJobs(agentManager)
+
+  // Initialize metrics buffer
+  const db = await getDB()
+  const metricsBuffer = new MetricsBuffer(db, agentManager)
+  metricsBuffer.start()
+  globalThis.metricsBuffer = metricsBuffer
+  logger.info('MetricsBuffer started')
 
   setInterval(async () => {
     try {
@@ -208,7 +217,6 @@ export default defineNitroPlugin(async (nitroApp) => {
             break
             
           case 'heartbeat':
-          case 'agent:heartbeat':
             if (socket.authenticated) {
               await handleHeartbeat(socket, msg, agentManager)
             } else {
@@ -309,7 +317,7 @@ async function handleAuthentication(socket, msg, agentManager) {
     // Check if token exists in database
     const dataService = agentManager.dataService || await getDataService()
     const agentRecord = await dataService.getAgentByToken(msg.token)
-    
+    console.log('Authenticated agent record:', agentRecord)
     if (!agentRecord) {
       socket.emit('message', {
         type: 'error',
@@ -335,6 +343,7 @@ async function handleAuthentication(socket, msg, agentManager) {
     socket.emit('message', {
       type: 'authenticated',
       agentId: agentId,
+      agentName: agentRecord.name,
       status: 'connected'
     })
     
@@ -379,6 +388,7 @@ async function handleAgentRegistration(socket, msg, agentManager) {
       capabilities: msg.capabilities || [],
       agentVersion: msg.agentVersion,
       systemInfo: msg.systemInfo || {},
+      systemMetrics: {},
       registeredAt: new Date(),
       status: 'online'
     }
@@ -436,8 +446,8 @@ async function handleHeartbeat(socket, msg, agentManager) {
   try {
     // Update agent status with heartbeat data
     const agentId = socket.agentId
-    const { status, currentJobs, timestamp, systemMetrics } = msg
-
+    let agentName = 'Unknown'
+    const { status, currentJobs, systemMetrics, systemInfo } = msg
     // Update database heartbeat timestamp
     const dataService = agentManager.dataService || await getDataService()
     await dataService.updateAgentHeartbeat(agentId, status)
@@ -445,31 +455,27 @@ async function handleHeartbeat(socket, msg, agentManager) {
     // Update agent data
     if (agentManager.agentData.has(agentId)) {
       const agentInfo = agentManager.agentData.get(agentId)
+      agentName = agentInfo.name || agentInfo.agentName
       agentInfo.status = status
       agentInfo.currentJobs = currentJobs || 0
-      agentInfo.lastHeartbeat = new Date()
-
-      // Store system metrics from agent
-      if (systemMetrics) {
-        agentInfo.systemMetrics = systemMetrics
-
-        // Also update systemInfo with latest data for compatibility
-        agentInfo.systemInfo = {
-          ...agentInfo.systemInfo,
-          cpuUsage: systemMetrics.cpuUsage,
-          cpuCount: systemMetrics.cpuCount,
-          memoryUsage: systemMetrics.memoryUsage,
-          totalMemory: systemMetrics.totalMemory,
-          usedMemory: systemMetrics.usedMemory,
-          freeMemory: systemMetrics.freeMemory,
-          uptime: systemMetrics.uptime,
-          loadAverage: systemMetrics.loadAverage,
-          processMemory: systemMetrics.processMemory,
-          lastUpdated: systemMetrics.timestamp
-        }
-      }
-
+      agentInfo.lastHeartbeat = new Date().toISOString()
+      agentInfo.systemInfo = systemInfo || {}
+      agentInfo.systemMetrics = systemMetrics || {}
       agentManager.agentData.set(agentId, agentInfo)
+      // Broadcast real-time agent metrics update to all clients
+      broadcastToClients({
+        type: 'agent_metrics_update',
+        agentId: agentId,
+        agentName: agentName,
+        timestamp: new Date().toISOString(),
+        metrics: {
+          status: status,
+          currentJobs: currentJobs,
+          systemMetrics: systemMetrics,
+          systemInfo: systemInfo,
+          lastHeartbeat: agentInfo.lastHeartbeat
+        }
+      })
     } else {
       logger.info(`Agent ${agentId} not found in agentData during heartbeat - recreating entry`)
       // Recreate the agent data from heartbeat if it's missing
@@ -483,19 +489,8 @@ async function handleHeartbeat(socket, msg, agentManager) {
         architecture: systemMetrics?.architecture || 'Unknown',
         capabilities: [],
         agentVersion: systemMetrics?.agentVersion || 'Unknown',
-        systemMetrics: systemMetrics || {},
-        systemInfo: systemMetrics ? {
-          cpuUsage: systemMetrics.cpuUsage,
-          cpuCount: systemMetrics.cpuCount,
-          memoryUsage: systemMetrics.memoryUsage,
-          totalMemory: systemMetrics.totalMemory,
-          usedMemory: systemMetrics.usedMemory,
-          freeMemory: systemMetrics.freeMemory,
-          uptime: systemMetrics.uptime,
-          loadAverage: systemMetrics.loadAverage,
-          processMemory: systemMetrics.processMemory,
-          lastUpdated: systemMetrics.timestamp
-        } : {}
+        systemInfo: systemInfo || {},
+        systemMetrics: systemMetrics || {}
       })
     }
 
@@ -503,6 +498,18 @@ async function handleHeartbeat(socket, msg, agentManager) {
     if (!agentManager.connectedAgents.has(agentId)) {
       logger.info(`Re-adding agent ${agentId} to connectedAgents`)
       agentManager.connectedAgents.set(agentId, socket)
+    }
+
+    // Add to metrics buffer (event-driven collection)
+    if (globalThis.metricsBuffer) {
+      globalThis.metricsBuffer.addAgentMetrics(
+        agentId,
+        agentName,
+        systemMetrics,
+        systemInfo,
+        status,
+        currentJobs
+      )
     }
 
     // Send heartbeat acknowledgment

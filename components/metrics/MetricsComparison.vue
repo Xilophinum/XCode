@@ -50,7 +50,7 @@
 
               <!-- Status -->
               <td class="px-4 py-3 whitespace-nowrap text-center">
-                <UBadge :color="agent.status === 'online' ? 'green' : 'gray'" size="xs">
+                <UBadge :color="agent.status === 'online' ? 'primary' : 'error'" size="md">
                   {{ agent.status }}
                 </UBadge>
               </td>
@@ -167,16 +167,13 @@
 <script setup>
 import { ref, computed } from 'vue'
 const metricsStore = useMetricsStore()
-
 const sortBy = ref('name')
 const sortDirection = ref('asc')
 
 const agents = computed(() => {
   const agentList = metricsStore.summary?.agents?.agents || []
-
   return agentList.map(agent => {
     const metrics = agent.systemMetrics || {}
-
     return {
       id: agent.id,
       name: agent.name,

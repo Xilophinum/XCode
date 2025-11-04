@@ -286,6 +286,37 @@ nav .has-tooltip:not([data-tooltip-position])::after {
   }
 }
 
+/* ApexCharts dark mode tooltip overrides */
+.dark .apexcharts-tooltip {
+  background: rgb(31 41 55) !important;
+  border-color: rgb(55 65 81) !important;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3) !important;
+}
+
+.dark .apexcharts-tooltip .apexcharts-tooltip-title {
+  background: rgb(17 24 39) !important;
+  border-bottom-color: rgb(55 65 81) !important;
+  color: rgb(243 244 246) !important;
+}
+
+.dark .apexcharts-tooltip-text,
+.dark .apexcharts-tooltip-text-y-label,
+.dark .apexcharts-tooltip-text-y-value,
+.dark .apexcharts-tooltip-text-goals-label,
+.dark .apexcharts-tooltip-text-goals-value,
+.dark .apexcharts-tooltip-text-z-label,
+.dark .apexcharts-tooltip-text-z-value {
+  color: rgb(243 244 246) !important;
+}
+
+.dark .apexcharts-tooltip-series-group {
+  background: transparent !important;
+}
+
+.dark .apexcharts-tooltip-marker {
+  margin-right: 6px !important;
+}
+
 .page-enter-active,
 .page-leave-active {
   transition: all 0.4s;

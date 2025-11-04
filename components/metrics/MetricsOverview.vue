@@ -74,7 +74,7 @@
       <UCard>
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Success Rate (24h)</p>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Success Rate ({{ metricsStore.timeRangeShortLabel }})</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ summary.builds?.last24Hours?.successRate || 0 }}%
             </p>
@@ -95,7 +95,7 @@
       <UCard>
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            Build Statistics (24h)
+            Build Statistics ({{ metricsStore.timeRangeShortLabel }})
           </h3>
         </template>
 
@@ -141,7 +141,7 @@
       <UCard>
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            API Performance (1h)
+            API Performance ({{ metricsStore.timeRangeShortLabel }})
           </h3>
         </template>
 
@@ -149,14 +149,14 @@
           <div class="flex items-center justify-between">
             <span class="text-sm text-gray-600 dark:text-gray-300">Total Requests</span>
             <span class="font-semibold text-gray-900 dark:text-white">
-              {{ summary.api?.lastHour?.totalRequests || 0 }}
+              {{ summary.api?.totalRequests || 0 }}
             </span>
           </div>
 
           <div class="flex items-center justify-between">
             <span class="text-sm text-gray-600 dark:text-gray-300">Avg Latency</span>
             <span class="font-semibold text-gray-900 dark:text-white">
-              {{ summary.api?.lastHour?.avgLatency || 0 }} ms
+              {{ summary.api?.avgLatency.toFixed(2) || 0 }} ms
             </span>
           </div>
 
@@ -170,7 +170,7 @@
           <div class="flex items-center justify-between pt-4 border-t dark:border-gray-700">
             <span class="text-sm text-gray-600 dark:text-gray-300">Server Uptime</span>
             <span class="font-semibold text-gray-900 dark:text-white">
-              {{ formatUptime(summary.server?.uptime?.seconds || 0) }}
+              {{ formatUptime(summary.server?.uptime || 0) }}
             </span>
           </div>
         </div>
@@ -187,44 +187,66 @@
         </template>
 
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead>
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+            <thead class="bg-gray-50 dark:bg-gray-800/50">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Agent
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Status
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Jobs
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Platform
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Last Heartbeat
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Jobs
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Last Seen
                 </th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-for="agent in summary.agents.agents" :key="agent.id">
-                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                  {{ agent.name }}
+            <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+              <tr v-for="agent in agentsList" :key="agent.id" class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0 h-10 w-10">
+                      <div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                        <UIcon name="i-lucide-monitor" class="h-6 w-6 text-gray-600 dark:text-gray-400" />
+                      </div>
+                    </div>
+                    <div class="ml-4">
+                      <div class="text-sm font-medium text-gray-900 dark:text-white">
+                        {{ agent.name }}
+                      </div>
+                      <div class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ agent.hostname || 'Not connected' }}
+                      </div>
+                    </div>
+                  </div>
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <UBadge :color="agent.status === 'online' ? 'green' : 'gray'">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span :class="getStatusBadgeClass(agent.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                    <span :class="getStatusDotClass(agent.status)" class="w-1.5 h-1.5 rounded-full mr-1.5"></span>
                     {{ agent.status }}
-                  </UBadge>
+                  </span>
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                  {{ agent.currentJobs }} / {{ agent.maxJobs }}
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <div class="flex items-center">
+                    <UIcon :name="getPlatformIcon(agent.platform)" class="w-4 h-4 mr-2" />
+                    <span v-if="agent.platform" class="capitalize">{{ agent.platform }}</span>
+                    <span v-else class="text-gray-400 dark:text-gray-500">Unknown</span>
+                  </div>
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                  {{ agent.platform || 'Unknown' }}
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {{ agent.currentJobs }}/{{ agent.maxJobs }}
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                  {{ formatRelativeTime(agent.lastHeartbeat) }}
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  <span v-if="agent.lastHeartbeat" v-tooltip="new Date(agent.lastHeartbeat).toLocaleString()">
+                    {{ getReactiveRelativeTime(agent.lastHeartbeat) }}
+                  </span>
+                  <span v-else>Never</span>
                 </td>
               </tr>
             </tbody>
@@ -236,10 +258,31 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 const metricsStore = useMetricsStore()
 
 const summary = computed(() => metricsStore.summary)
+
+// Stable agents list - computed to prevent recreating on every render
+const agentsList = computed(() => summary.value?.agents?.agents || [])
+
+// Reactive time ticker for "Last Seen" updates (throttled to 10 seconds)
+const currentTime = ref(Date.now())
+let timeUpdateInterval = null
+
+onMounted(() => {
+  // Update current time every 10 seconds instead of every second
+  // This reduces unnecessary re-renders while keeping times reasonably fresh
+  timeUpdateInterval = setInterval(() => {
+    currentTime.value = Date.now()
+  }, 1000)
+})
+
+onUnmounted(() => {
+  if (timeUpdateInterval) {
+    clearInterval(timeUpdateInterval)
+  }
+})
 
 function getCPUColor(percent) {
   if (percent >= 90) return 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400'
@@ -257,6 +300,45 @@ function getSuccessRateColor(rate) {
   if (rate >= 95) return 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
   if (rate >= 80) return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400'
   return 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400'
+}
+
+function getStatusBadgeClass(status) {
+  switch (status) {
+    case 'online':
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+    case 'busy':
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+    case 'offline':
+    case 'disconnected':
+      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+    default:
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+  }
+}
+
+function getStatusDotClass(status) {
+  switch (status) {
+    case 'online':
+      return 'bg-green-400'
+    case 'busy':
+      return 'bg-yellow-400'
+    case 'offline':
+    case 'disconnected':
+      return 'bg-red-400'
+    default:
+      return 'bg-gray-400'
+  }
+}
+
+function getPlatformIcon(platform) {
+  if (!platform) return 'i-lucide-monitor'
+
+  const platformLower = platform.toLowerCase()
+  if (platformLower.includes('win')) return 'i-lucide-pc-case'
+  if (platformLower.includes('linux')) return 'i-lucide-server'
+  if (platformLower.includes('darwin') || platformLower.includes('mac')) return 'i-lucide-laptop'
+
+  return 'i-lucide-monitor'
 }
 
 function formatDuration(seconds) {
@@ -277,17 +359,17 @@ function formatUptime(seconds) {
   return `${minutes}m`
 }
 
-function formatRelativeTime(timestamp) {
-  if (!timestamp) return 'Never'
+// Reactive version that updates with currentTime ref
+function getReactiveRelativeTime(dateString) {
+  if (!dateString) return 'Never'
 
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diff = now - date
+  const date = new Date(dateString)
+  const diffInSeconds = Math.floor((currentTime.value - date.getTime()) / 1000)
 
-  if (diff < 60000) return 'Just now'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
-
-  return date.toLocaleString()
+  if (diffInSeconds < 5) return 'Just now'
+  if (diffInSeconds < 60) return `${diffInSeconds}s ago`
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+  return `${Math.floor(diffInSeconds / 86400)}d ago`
 }
 </script>

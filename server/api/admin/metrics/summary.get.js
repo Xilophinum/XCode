@@ -1,21 +1,17 @@
 /**
  * GET /api/admin/metrics/summary
  * Retrieve current snapshot of all system metrics (real-time dashboard view)
+ * Uses MetricsBuffer for real-time data
  */
 
 import { getAgentManager } from '~/server/utils/agentManager.js'
-import { getMetricsCollector } from '~/server/plugins/metricsCollector.js'
-import { getDB, builds as buildsSchema, metrics as metricsSchema } from '~/server/utils/database.js'
-import { and, gte, eq } from 'drizzle-orm'
+import { getDB, builds as buildsSchema } from '~/server/utils/database.js'
+import { gte } from 'drizzle-orm'
 import logger from '~/server/utils/logger.js'
-import os from 'os'
 
 export default defineEventHandler(async (event) => {
   try {
     const db = await getDB()
-    const agentManager = await getAgentManager()
-    const metricsCollector = getMetricsCollector()
-
     if (!db) {
       return {
         success: false,
@@ -23,31 +19,71 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Get current server metrics
-    const serverMetrics = getCurrentServerMetrics()
+    // Get real-time metrics from buffer
+    const metricsBuffer = globalThis.metricsBuffer
+    const summary = metricsBuffer ? metricsBuffer.getSummary() : null
 
-    // Get current agent metrics
-    const agentMetrics = getCurrentAgentMetrics(agentManager)
+    if (!summary) {
+      return {
+        success: false,
+        error: 'Metrics buffer not initialized'
+      }
+    }
+
+    // Get agent manager for additional agent details
+    const agentManager = await getAgentManager()
+    const agents = agentManager?.getAllAgents() || []
+
+    // Get buffered agent metrics
+    const bufferedAgentMetrics = metricsBuffer ? metricsBuffer.agentMetrics : new Map()
+
+    // Enhance agent data with full details and real-time metrics
+    const agentsList = agents.map(agent => {
+      const agentId = agent.agentId || agent.id
+      const metrics = bufferedAgentMetrics.get(agentId)
+
+      return {
+        id: agentId,
+        name: agent.name,
+        status: agent.status,
+        currentJobs: agent.currentJobs || 0,
+        maxJobs: agent.maxConcurrentJobs || agent.maxJobs || 1,
+        platform: agent.platform,
+        hostname: agent.hostname,
+        lastHeartbeat: agent.lastHeartbeat,
+        systemMetrics: metrics ? {
+          cpuUsage: metrics.cpuUsage || 0,
+          memoryUsage: metrics.memoryUsage || 0,
+          diskUsage: metrics.diskUsage || 0,
+          platform: metrics.platform || agent.platform,
+          uptime: metrics.uptime || 0,
+          cpuCount: metrics.cpuCount,
+          usedMemory: metrics.usedMemory,
+          totalMemory: metrics.totalMemory,
+          diskUsed: metrics.diskUsed,
+          diskTotal: metrics.diskTotal,
+          diskFree: metrics.diskFree
+        } : null
+      }
+    })
 
     // Get recent build statistics (last 24 hours)
     const buildMetrics = await getRecentBuildMetrics(db)
 
-    // Get API performance (last hour)
-    const apiMetrics = await getRecentAPIMetrics(db)
-
-    // Get metrics collector status
-    const collectorStatus = metricsCollector
-      ? metricsCollector.getStatus()
-      : { isRunning: false }
+    // Get metrics buffer status
+    const bufferStatus = metricsBuffer ? metricsBuffer.getStatus() : { isRunning: false }
 
     return {
       success: true,
       data: {
-        server: serverMetrics,
-        agents: agentMetrics,
+        server: summary.server,
+        agents: {
+          ...summary.agents,
+          agents: agentsList
+        },
         builds: buildMetrics,
-        api: apiMetrics,
-        collector: collectorStatus
+        api: summary.api,
+        buffer: bufferStatus
       },
       timestamp: new Date().toISOString()
     }
@@ -60,103 +96,6 @@ export default defineEventHandler(async (event) => {
     }
   }
 })
-
-/**
- * Get current server system metrics
- */
-function getCurrentServerMetrics() {
-  try {
-    // CPU
-    const cpus = os.cpus()
-    let totalIdle = 0
-    let totalTick = 0
-
-    cpus.forEach(cpu => {
-      for (const type in cpu.times) {
-        totalTick += cpu.times[type]
-      }
-      totalIdle += cpu.times.idle
-    })
-
-    const cpuUsage = 100 - ~~(100 * totalIdle / totalTick)
-
-    // Memory
-    const totalMem = os.totalmem()
-    const freeMem = os.freemem()
-    const usedMem = totalMem - freeMem
-    const memPercent = (usedMem / totalMem) * 100
-
-    // WebSocket connections
-    const wsConnections = globalThis.socketIO?.engine?.clientsCount || 0
-
-    return {
-      cpu: {
-        percent: Math.round(cpuUsage * 100) / 100,
-        cores: cpus.length
-      },
-      memory: {
-        used: Math.round(usedMem / 1024 / 1024), // MB
-        total: Math.round(totalMem / 1024 / 1024), // MB
-        percent: Math.round(memPercent * 100) / 100
-      },
-      websocket: {
-        connections: wsConnections
-      },
-      uptime: {
-        seconds: os.uptime()
-      },
-      platform: os.platform(),
-      hostname: os.hostname()
-    }
-  } catch (error) {
-    logger.error('Error getting server metrics:', error)
-    return {}
-  }
-}
-
-/**
- * Get current agent metrics
- */
-function getCurrentAgentMetrics(agentManager) {
-  try {
-    const agents = agentManager?.getAllAgents() || []
-
-    const onlineAgents = agents.filter(a => a.status === 'online')
-    const offlineAgents = agents.filter(a => a.status === 'offline')
-
-    const totalJobs = agents.reduce((sum, a) => sum + (a.currentJobs || 0), 0)
-    const maxJobs = agents.reduce((sum, a) => sum + (a.maxConcurrentJobs || 1), 0)
-
-    return {
-      total: agents.length,
-      online: onlineAgents.length,
-      offline: offlineAgents.length,
-      jobs: {
-        current: totalJobs,
-        max: maxJobs,
-        utilization: maxJobs > 0 ? Math.round((totalJobs / maxJobs) * 100) : 0
-      },
-      agents: agents.map(agent => ({
-        id: agent.id,
-        name: agent.name,
-        status: agent.status,
-        currentJobs: agent.currentJobs || 0,
-        maxJobs: agent.maxConcurrentJobs || 1,
-        platform: agent.platform,
-        lastHeartbeat: agent.lastHeartbeat
-      }))
-    }
-  } catch (error) {
-    logger.error('Error getting agent metrics:', error)
-    return {
-      total: 0,
-      online: 0,
-      offline: 0,
-      jobs: { current: 0, max: 0, utilization: 0 },
-      agents: []
-    }
-  }
-}
 
 /**
  * Get recent build metrics (last 24 hours)
@@ -210,65 +149,6 @@ async function getRecentBuildMetrics(db) {
         cancelled: 0,
         successRate: 0,
         avgDuration: 0
-      }
-    }
-  }
-}
-
-/**
- * Get recent API metrics (last hour)
- */
-async function getRecentAPIMetrics(db) {
-  try {
-    const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-
-    const apiMetrics = await db
-      .select()
-      .from(metricsSchema)
-      .where(and(
-        gte(metricsSchema.timestamp, cutoff),
-        eq(metricsSchema.metricType, 'api_requests')
-      ))
-      .all()
-
-    let totalRequests = 0
-    const allLatencies = []
-
-    apiMetrics.forEach(metric => {
-      try {
-        const value = JSON.parse(metric.value)
-        const metadata = metric.metadata ? JSON.parse(metric.metadata) : null
-
-        totalRequests += value.total || 0
-
-        if (metadata && metadata.endpointData) {
-          Object.values(metadata.endpointData).forEach(stats => {
-            if (stats.avgLatency) {
-              allLatencies.push(stats.avgLatency)
-            }
-          })
-        }
-      } catch (error) {
-        // Ignore parse errors
-      }
-    })
-
-    const avgLatency = allLatencies.length > 0
-      ? Math.round((allLatencies.reduce((sum, l) => sum + l, 0) / allLatencies.length) * 100) / 100
-      : 0
-
-    return {
-      lastHour: {
-        totalRequests,
-        avgLatency
-      }
-    }
-  } catch (error) {
-    logger.error('Error getting API metrics:', error)
-    return {
-      lastHour: {
-        totalRequests: 0,
-        avgLatency: 0
       }
     }
   }

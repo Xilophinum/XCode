@@ -1,6 +1,6 @@
 /**
  * GET /api/admin/metrics/api-performance
- * Retrieve API performance metrics (request counts, latency)
+ * Retrieve API performance metrics from consolidated storage
  *
  * Query params:
  *   from: ISO timestamp (default: 24 hours ago)
@@ -39,16 +39,18 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Fetch API request metrics
+    // Query consolidated API metrics
+    const conditions = [
+      gte(metricsSchema.timestamp, from.toISOString()),
+      lte(metricsSchema.timestamp, to.toISOString()),
+      eq(metricsSchema.entityType, 'api')
+    ]
+
     const metrics = await db
       .select()
       .from(metricsSchema)
-      .where(and(
-        gte(metricsSchema.timestamp, from.toISOString()),
-        lte(metricsSchema.timestamp, to.toISOString()),
-        eq(metricsSchema.metricType, 'api_requests')
-      ))
-      .orderBy(metricsSchema.timestamp, 'asc')
+      .where(and(...conditions))
+      .orderBy(metricsSchema.timestamp)
       .all()
 
     // Aggregate and analyze
@@ -101,14 +103,11 @@ function aggregateAPIMetrics(metrics, interval) {
     }
 
     try {
-      const value = JSON.parse(metric.value)
-      const metadata = metric.metadata ? JSON.parse(metric.metadata) : null
-
+      const metricsData = JSON.parse(metric.metrics)
       const bucket = grouped.get(bucketKey)
-      bucket.totalRequests += value.total || 0
-
-      if (metadata && metadata.endpointData) {
-        bucket.endpoints.push(metadata.endpointData)
+      bucket.totalRequests += metricsData.totalRequests || 0
+      if (metricsData.endpoints) {
+        bucket.endpoints.push(metricsData.endpoints)
       }
     } catch (error) {
       // Ignore parse errors
@@ -136,12 +135,10 @@ function calculateEndpointStats(metrics) {
 
   metrics.forEach(metric => {
     try {
-      const metadata = metric.metadata ? JSON.parse(metric.metadata) : null
-      if (!metadata || !metadata.endpointData) return
+      const metricsData = JSON.parse(metric.metrics)
+      if (!metricsData || !metricsData.endpoints) return
 
-      const endpointData = metadata.endpointData
-
-      Object.entries(endpointData).forEach(([endpoint, stats]) => {
+      Object.entries(metricsData.endpoints).forEach(([endpoint, stats]) => {
         if (!endpointMap.has(endpoint)) {
           endpointMap.set(endpoint, {
             endpoint,
@@ -201,13 +198,11 @@ function calculateAPISummary(metrics) {
 
   metrics.forEach(metric => {
     try {
-      const value = JSON.parse(metric.value)
-      const metadata = metric.metadata ? JSON.parse(metric.metadata) : null
+      const metricsData = JSON.parse(metric.metrics)
+      totalRequests += metricsData.totalRequests || 0
 
-      totalRequests += value.total || 0
-
-      if (metadata && metadata.endpointData) {
-        Object.entries(metadata.endpointData).forEach(([endpoint, stats]) => {
+      if (metricsData.endpoints) {
+        Object.entries(metricsData.endpoints).forEach(([endpoint, stats]) => {
           uniqueEndpoints.add(endpoint)
           if (stats.avgLatency) {
             allLatencies.push(stats.avgLatency)

@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
       ...updateInfo
     }
   } catch (error) {
-    logger.error('Failed to check for updates:', error)
+    logger.error(`Failed to check for updates: ${error.message}`)
 
     return {
       success: false,

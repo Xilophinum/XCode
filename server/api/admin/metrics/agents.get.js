@@ -1,6 +1,6 @@
 /**
  * GET /api/admin/metrics/agents
- * Retrieve agent metrics (CPU, memory, jobs, status, heartbeat)
+ * Retrieve agent metrics from consolidated storage
  *
  * Query params:
  *   from: ISO timestamp (default: 24 hours ago)
@@ -10,7 +10,7 @@
  */
 
 import { getDB, metrics as metricsSchema } from '~/server/utils/database.js'
-import { and, gte, lte, inArray, eq } from 'drizzle-orm'
+import { and, gte, lte, eq } from 'drizzle-orm'
 import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
@@ -40,41 +40,46 @@ export default defineEventHandler(async (event) => {
         error: 'Database not initialized'
       }
     }
-    // Metric types to fetch
-    const metricTypes = [
-      'agent_status',
-      'agent_jobs',
-      'agent_cpu',
-      'agent_memory',
-      'agent_heartbeat',
-      'agents_total'
-    ]
 
-    // Build query conditions
+    // Build query conditions for agent metrics
     const conditions = [
       gte(metricsSchema.timestamp, from.toISOString()),
       lte(metricsSchema.timestamp, to.toISOString()),
-      inArray(metricsSchema.metricType, metricTypes)
+      eq(metricsSchema.entityType, 'agent')
     ]
 
     // Filter by specific agent if requested
     if (agentId) {
-      conditions.push(eq(metricsSchema.agentId, agentId))
+      conditions.push(eq(metricsSchema.entityId, agentId))
     }
 
     const metrics = await db
       .select()
       .from(metricsSchema)
       .where(and(...conditions))
-      .orderBy(metricsSchema.timestamp, 'asc')
+      .orderBy(metricsSchema.timestamp)
       .all()
 
-    // Aggregate by interval and agent
-    const aggregated = aggregateAgentMetrics(metrics, interval, agentId)
+    // Also fetch global agent totals
+    const globalConditions = [
+      gte(metricsSchema.timestamp, from.toISOString()),
+      lte(metricsSchema.timestamp, to.toISOString()),
+      eq(metricsSchema.entityType, 'agents_total')
+    ]
+
+    const globalMetrics = await db
+      .select()
+      .from(metricsSchema)
+      .where(and(...globalConditions))
+      .orderBy(metricsSchema.timestamp)
+      .all()
+
+    // Transform to frontend format
+    const transformed = transformAgentMetrics(metrics, globalMetrics, interval)
 
     return {
       success: true,
-      data: aggregated,
+      data: transformed,
       meta: {
         from: from.toISOString(),
         to: to.toISOString(),
@@ -94,128 +99,175 @@ export default defineEventHandler(async (event) => {
 })
 
 /**
- * Aggregate agent metrics by time interval
+ * Transform consolidated metrics to frontend format
  */
-function aggregateAgentMetrics(metrics, interval, specificAgentId) {
-  const intervalMs = parseInterval(interval)
-  const grouped = new Map()
-
-  metrics.forEach(metric => {
-    const timestamp = new Date(metric.timestamp)
-    const bucketTime = Math.floor(timestamp.getTime() / intervalMs) * intervalMs
-    const agentKey = metric.agentId || 'global'
-    const bucketKey = `${bucketTime}-${agentKey}-${metric.metricType}`
-
-    if (!grouped.has(bucketKey)) {
-      grouped.set(bucketKey, {
-        timestamp: new Date(bucketTime).toISOString(),
-        agentId: metric.agentId,
-        metricType: metric.metricType,
-        values: [],
-        metadata: []
-      })
-    }
-
-    try {
-      const value = JSON.parse(metric.value)
-      const metadata = metric.metadata ? JSON.parse(metric.metadata) : null
-      grouped.get(bucketKey).values.push(value)
-      if (metadata) {
-        grouped.get(bucketKey).metadata.push(metadata)
-      }
-    } catch (error) {
-      // Ignore parse errors
-    }
-  })
-
-  // Organize by agent
+function transformAgentMetrics(agentMetrics, globalMetrics, interval) {
   const result = {}
 
-  grouped.forEach(bucket => {
-    const agentKey = bucket.agentId || 'global'
+  // Process agent metrics
+  agentMetrics.forEach(row => {
+    const agentId = row.entityId
+    const timestamp = row.timestamp
 
-    if (!result[agentKey]) {
-      result[agentKey] = {}
+    try {
+      const metricsData = JSON.parse(row.metrics)
+      if (!result[agentId]) {
+        result[agentId] = {
+          agent_status: [],
+          agent_jobs: [],
+          agent_cpu: [],
+          agent_memory: [],
+          agent_disk: [],
+          agent_network: [],
+          agent_heartbeat: []
+        }
+      }
+
+      const agent = result[agentId]
+
+      // Agent status
+      agent.agent_status.push({
+        timestamp,
+        agentName: metricsData.agentName,
+        platform: metricsData.platform,
+        uptime: metricsData.uptime,
+        status: metricsData.status,
+        isOnline: metricsData.status === 'online'
+      })
+
+      // Agent jobs
+      agent.agent_jobs.push({
+        timestamp,
+        agentName: metricsData.agentName,
+        current: metricsData.currentJobs,
+        max: metricsData.maxJobs
+      })
+
+      // CPU metrics
+      if (metricsData.cpu) {
+        agent.agent_cpu.push({
+          timestamp,
+          agentName: metricsData.agentName,
+          percent: metricsData.cpu.percent
+        })
+      }
+
+      // Memory metrics
+      if (metricsData.memory) {
+        agent.agent_memory.push({
+          timestamp,
+          agentName: metricsData.agentName,
+          percent: metricsData.memory.percent,
+          used: metricsData.memory.used,
+          total: metricsData.memory.total
+        })
+      }
+
+      // Disk metrics
+      if (metricsData.disk) {
+        agent.agent_disk.push({
+          timestamp,
+          agentName: metricsData.agentName,
+          percent: metricsData.disk.percent,
+          used: metricsData.disk.used,
+          total: metricsData.disk.total,
+          free: metricsData.disk.free
+        })
+      }
+
+      // Network metrics
+      if (metricsData.network) {
+        agent.agent_network.push({
+          timestamp,
+          agentName: metricsData.agentName,
+          interfaceCount: metricsData.network.interfaceCount,
+          activeInterfaces: metricsData.network.activeInterfaces || [],
+          ipv4Count: metricsData.network.ipv4Count || 0,
+          ipv6Count: metricsData.network.ipv6Count || 0,
+          ipv4Addresses: metricsData.network.ipv4Addresses || [],
+          ipv6Addresses: metricsData.network.ipv6Addresses || []
+        })
+      }
+
+    } catch (error) {
+      logger.error('Error parsing metrics:', error)
     }
-
-    if (!result[agentKey][bucket.metricType]) {
-      result[agentKey][bucket.metricType] = []
-    }
-
-    // Calculate average/aggregate for this bucket
-    const aggValue = averageAgentValues(bucket.values, bucket.metricType)
-
-    // Include agent name from metadata if available
-    const agentName = bucket.metadata.length > 0 && bucket.metadata[0].name
-      ? bucket.metadata[0].name
-      : null
-
-    result[agentKey][bucket.metricType].push({
-      timestamp: bucket.timestamp,
-      agentName,
-      ...aggValue
-    })
   })
+
+  // Process global metrics (total agent counts)
+  if (globalMetrics.length > 0) {
+    result.global = {
+      agents_total: []
+    }
+
+    globalMetrics.forEach(row => {
+      try {
+        const metricsData = JSON.parse(row.metrics)
+        result.global.agents_total.push({
+          timestamp: row.timestamp,
+          total: metricsData.total,
+          online: metricsData.online,
+          offline: metricsData.offline
+        })
+      } catch (error) {
+        logger.error('Error parsing global metrics:', error)
+      }
+    })
+  }
+
+  // Apply interval aggregation if needed
+  if (interval !== '1m') {
+    return aggregateByInterval(result, interval)
+  }
 
   return result
 }
 
 /**
- * Average agent metric values based on type
+ * Aggregate metrics by time interval
  */
-function averageAgentValues(values, metricType) {
-  if (values.length === 0) return {}
+function aggregateByInterval(data, interval) {
+  const intervalMs = parseInterval(interval)
+  const aggregated = {}
 
-  switch (metricType) {
-    case 'agent_cpu':
-      return {
-        percent: average(values.map(v => v.percent))
-      }
+  Object.entries(data).forEach(([agentId, agentData]) => {
+    aggregated[agentId] = {}
 
-    case 'agent_memory':
-      return {
-        percent: average(values.map(v => v.percent)),
-        used: average(values.map(v => v.used || 0)),
-        total: values[values.length - 1].total
-      }
+    Object.entries(agentData).forEach(([metricType, dataPoints]) => {
+      const buckets = new Map()
 
-    case 'agent_jobs':
-      return {
-        current: Math.round(average(values.map(v => v.current))),
-        max: values[values.length - 1].max
-      }
+      dataPoints.forEach(point => {
+        const timestamp = new Date(point.timestamp)
+        const bucketTime = Math.floor(timestamp.getTime() / intervalMs) * intervalMs
+        const bucketKey = bucketTime.toString()
 
-    case 'agent_status':
-      // Take most recent status
-      return {
-        status: values[values.length - 1].status,
-        isOnline: values[values.length - 1].isOnline
-      }
+        if (!buckets.has(bucketKey)) {
+          buckets.set(bucketKey, [])
+        }
+        buckets.get(bucketKey).push(point)
+      })
 
-    case 'agent_heartbeat':
-      return {
-        ageMs: average(values.map(v => v.ageMs)),
-        lastHeartbeat: values[values.length - 1].lastHeartbeat
-      }
+      // Average values within each bucket
+      aggregated[agentId][metricType] = Array.from(buckets.entries()).map(([bucketTime, points]) => {
+        const avgPoint = { ...points[0] } // Start with first point structure
+        avgPoint.timestamp = new Date(parseInt(bucketTime)).toISOString()
 
-    case 'agents_total':
-      return {
-        total: Math.round(average(values.map(v => v.total))),
-        online: Math.round(average(values.map(v => v.online))),
-        offline: Math.round(average(values.map(v => v.offline)))
-      }
+        // Average numeric values
+        const numericKeys = Object.keys(points[0]).filter(key =>
+          typeof points[0][key] === 'number' && key !== 'timestamp'
+        )
 
-    default:
-      return values[values.length - 1]
-  }
-}
+        numericKeys.forEach(key => {
+          const sum = points.reduce((acc, p) => acc + (p[key] || 0), 0)
+          avgPoint[key] = Math.round((sum / points.length) * 100) / 100
+        })
 
-/**
- * Calculate average of array
- */
-function average(arr) {
-  if (arr.length === 0) return 0
-  return Math.round((arr.reduce((sum, val) => sum + val, 0) / arr.length) * 100) / 100
+        return avgPoint
+      })
+    })
+  })
+
+  return aggregated
 }
 
 /**

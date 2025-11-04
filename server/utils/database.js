@@ -81,19 +81,7 @@ export class DatabaseManager {
   }
 
   async runSQLiteMigrations() {
-    // Migration: Add nodeExecutionStates column to builds table
-    try {
-      const tableInfo = this.sqlite.prepare('PRAGMA table_info(builds)').all()
-      const hasNodeExecutionStates = tableInfo.some(col => col.name === 'node_execution_states')
-
-      if (!hasNodeExecutionStates) {
-        logger.info('Adding node_execution_states column to builds table...')
-        this.sqlite.exec('ALTER TABLE builds ADD COLUMN node_execution_states TEXT')
-        logger.info('Added node_execution_states column to builds table')
-      }
-    } catch (error) {
-      logger.error('Error running SQLite migrations:', error)
-    }
+    // Migration
   }
 
   async createSQLiteTables() {
@@ -384,15 +372,14 @@ export class DatabaseManager {
         )
       `)
 
-      // Metrics table
+      // Metrics table - Consolidated schema
       this.sqlite.exec(`
         CREATE TABLE IF NOT EXISTS metrics (
           id TEXT PRIMARY KEY,
           timestamp TEXT NOT NULL,
-          metric_type TEXT NOT NULL,
-          agent_id TEXT,
-          value TEXT NOT NULL,
-          metadata TEXT,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT,
+          metrics TEXT NOT NULL,
           created_at TEXT NOT NULL
         )
       `)
@@ -417,8 +404,9 @@ export class DatabaseManager {
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_notification_templates_type ON notification_templates(type)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_system_updates_status ON system_updates(status)`)
       this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp)`)
-      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_metrics_type ON metrics(metric_type)`)
-      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_metrics_agent_id ON metrics(agent_id)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_metrics_entity_type ON metrics(entity_type)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_metrics_entity ON metrics(entity_type, entity_id)`)
+      this.sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_metrics_timestamp_entity ON metrics(timestamp, entity_type, entity_id)`)
 
       // Insert built-in notification templates if they don't exist
       await this.insertBuiltInTemplates()
@@ -892,10 +880,9 @@ export class DatabaseManager {
         CREATE TABLE IF NOT EXISTS metrics (
           id VARCHAR(255) PRIMARY KEY,
           timestamp TEXT NOT NULL,
-          metric_type VARCHAR(100) NOT NULL,
-          agent_id VARCHAR(255),
-          value TEXT NOT NULL,
-          metadata TEXT,
+          entity_type VARCHAR(50) NOT NULL,
+          entity_id VARCHAR(255),
+          metrics TEXT NOT NULL,
           created_at TEXT NOT NULL
         )
       `
@@ -918,8 +905,9 @@ export class DatabaseManager {
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_project_snapshots_version ON project_snapshots(project_id, version)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_system_updates_status ON system_updates(status)`
       await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp)`
-      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metrics_type ON metrics(metric_type)`
-      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metrics_agent_id ON metrics(agent_id)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metrics_entity_type ON metrics(entity_type)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metrics_entity ON metrics(entity_type, entity_id)`
+      await this.postgres`CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metrics_timestamp_entity ON metrics(timestamp, entity_type, entity_id)`
 
       logger.info('PostgreSQL tables created successfully')
     } catch (error) {
@@ -928,27 +916,7 @@ export class DatabaseManager {
   }
 
   async runPostgresMigrations() {
-    // Migration: Add nodeExecutionStates column to builds table
-    try {
-      // Check if column exists
-      const result = await this.postgres`
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'builds'
-        AND column_name = 'node_execution_states'
-      `
-
-      if (result.length === 0) {
-        logger.info('Adding node_execution_states column to builds table...')
-        await this.postgres`
-          ALTER TABLE builds
-          ADD COLUMN node_execution_states TEXT
-        `
-        logger.info('Added node_execution_states column to builds table')
-      }
-    } catch (error) {
-      logger.error('Error running PostgreSQL migrations:', error)
-    }
+    // Migration
   }
 
   getDatabase() {

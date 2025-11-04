@@ -58,7 +58,9 @@ export const useMetricsStore = defineStore('metrics', {
       } else {
         const ranges = {
           '1h': 60 * 60 * 1000,
+          '8h': 8 * 60 * 60 * 1000,
           '24h': 24 * 60 * 60 * 1000,
+          '3d': 3 * 24 * 60 * 60 * 1000,
           '7d': 7 * 24 * 60 * 60 * 1000
         }
         from = new Date(now.getTime() - (ranges[state.timeRange] || ranges['24h']))
@@ -76,7 +78,9 @@ export const useMetricsStore = defineStore('metrics', {
     autoInterval: (state) => {
       const intervals = {
         '1h': '1m',
+        '8h': '5m',
         '24h': '5m',
+        '3d': '30m',
         '7d': '1h'
       }
       return intervals[state.timeRange] || state.interval
@@ -97,11 +101,28 @@ export const useMetricsStore = defineStore('metrics', {
     timeRangeLabel: (state) => {
       const labels = {
         '1h': 'Last Hour',
+        '8h': 'Last 8 Hours',
         '24h': 'Last 24 Hours',
+        '3d': 'Last 3 Days',
         '7d': 'Last 7 Days',
         'custom': 'Custom Range'
       }
       return labels[state.timeRange] || 'Unknown'
+    },
+
+    /**
+     * Get short time range label (for display in components)
+     */
+    timeRangeShortLabel: (state) => {
+      const labels = {
+        '1h': '1h',
+        '8h': '8h',
+        '24h': '24h',
+        '3d': '3d',
+        '7d': '7d',
+        'custom': 'Custom'
+      }
+      return labels[state.timeRange] || state.timeRange
     }
   },
 
@@ -198,8 +219,15 @@ export const useMetricsStore = defineStore('metrics', {
 
       try {
         const { from, to } = this.timeRangeBounds
-        // Builds use longer intervals
-        const interval = this.timeRange === '7d' ? '1d' : '1h'
+        // Builds use longer intervals based on time range
+        const intervalMap = {
+          '1h': '5m',
+          '8h': '30m',
+          '24h': '1h',
+          '3d': '6h',
+          '7d': '1d'
+        }
+        const interval = intervalMap[this.timeRange] || '1h'
 
         const response = await $fetch('/api/admin/metrics/builds', {
           params: { from, to, interval }
@@ -304,6 +332,125 @@ export const useMetricsStore = defineStore('metrics', {
         // Merge real-time data with existing summary
         Object.assign(this.summary, data.summary)
       }
+    },
+
+    /**
+     * Handle real-time agent metrics update from WebSocket
+     */
+    handleAgentMetricsUpdate(data) {
+      if (!data || !data.agentId || !data.metrics) return
+
+      const { agentId, agentName, timestamp, metrics } = data
+      const { status, currentJobs, systemMetrics, systemInfo, lastHeartbeat } = metrics
+
+      // Use $patch for optimal reactivity - batches all changes
+      this.$patch((state) => {
+        // Initialize agentMetrics if not present
+        if (!state.agentMetrics) {
+          state.agentMetrics = {}
+        }
+        // Initialize agent entry if not present
+        if (!state.agentMetrics[agentId]) {
+          state.agentMetrics[agentId] = {
+            agent_status: [],
+            agent_jobs: [],
+            agent_cpu: [],
+            agent_memory: [],
+            agent_disk: [],
+            agent_network: [],
+            agent_heartbeat: []
+          }
+        }
+
+        const agent = state.agentMetrics[agentId]
+        const timestampMs = new Date(timestamp).getTime()
+
+        // Helper to add data point and keep only recent entries (last 100 points)
+        const addDataPoint = (array, point) => {
+          array.push(point)
+          // Keep only the last 100 data points to prevent memory issues
+          if (array.length > 100) {
+            array.shift()
+          }
+        }
+
+      // Update agent status
+      addDataPoint(agent.agent_status, {
+        timestamp,
+        agentName: agentName,
+        platform: systemInfo?.platform || 'Unknown',
+        uptime: systemInfo?.uptime || 0,
+        status: status,
+        isOnline: status === 'online'
+      })
+
+      // Update agent jobs
+      addDataPoint(agent.agent_jobs, {
+        timestamp,
+        agentName: agentName,
+        current: currentJobs || 0,
+        max: systemInfo?.maxConcurrentJobs || 1
+      })
+
+      // Update CPU if available
+      if (systemMetrics?.cpuUsage !== undefined) {
+        addDataPoint(agent.agent_cpu, {
+          timestamp,
+          agentName: agentName,
+          percent: systemMetrics.cpuUsage
+        })
+      }
+
+      // Update memory if available
+      if (systemMetrics?.memoryUsage !== undefined) {
+        addDataPoint(agent.agent_memory, {
+          timestamp,
+          agentName: agentName,
+          percent: systemMetrics.memoryUsage,
+          used: systemMetrics.usedMemory || 0,
+          total: systemMetrics.totalMemory || 0
+        })
+      }
+
+      // Update disk if available
+      if (systemMetrics?.diskUsage !== undefined) {
+        addDataPoint(agent.agent_disk, {
+          timestamp,
+          agentName: agentName,
+          percent: systemMetrics.diskUsage,
+          used: systemMetrics.diskUsed || 0,
+          total: systemMetrics.diskTotal || 0,
+          free: systemMetrics.diskFree || 0
+        })
+      }
+
+      // Update network if available
+      if (systemMetrics?.interfaceCount !== undefined) {
+        addDataPoint(agent.agent_network, {
+          timestamp,
+          agentName: agentName,
+          interfaceCount: systemMetrics.interfaceCount,
+          activeInterfaces: systemMetrics.activeInterfaces || [],
+          ipv4Count: systemMetrics.ipv4Count || 0,
+          ipv6Count: systemMetrics.ipv6Count || 0,
+          ipv4Addresses: systemMetrics.ipv4Addresses || [],
+          ipv6Addresses: systemMetrics.ipv6Addresses || []
+        })
+      }
+
+      // Update heartbeat
+      if (lastHeartbeat) {
+        const lastHeartbeatMs = new Date(lastHeartbeat).getTime()
+        const ageMs = timestampMs - lastHeartbeatMs
+
+        addDataPoint(agent.agent_heartbeat, {
+          timestamp,
+          agentName: agentName,
+          ageMs,
+          lastHeartbeat
+        })
+      }
+      }) // End $patch
     },
 
     /**

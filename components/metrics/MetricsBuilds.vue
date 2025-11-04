@@ -88,6 +88,7 @@ import { computed } from 'vue'
 const metricsStore = useMetricsStore()
 const darkMode = useDarkMode()
 const isDark = computed(() => darkMode.isDark.value === 'dark')
+const { toLocalTime } = useTimezone()
 const buildMetrics = computed(() => metricsStore.buildMetrics)
 
 // Throughput Chart
@@ -151,7 +152,19 @@ const throughputChartOptions = computed(() => ({
   },
   tooltip: {
     theme: isDark.value ? 'dark' : 'light',
-    x: { format: 'MMM dd HH:mm' }
+    x: {
+      formatter: (val) => toLocalTime(val, {
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    },
+    style: {
+      fontSize: '12px',
+      fontFamily: 'inherit'
+    },
+    custom: undefined
   },
   grid: {
     borderColor: isDark.value ? '#374151' : '#e5e7eb'
@@ -203,7 +216,19 @@ const successRateChartOptions = computed(() => ({
   },
   tooltip: {
     theme: isDark.value ? 'dark' : 'light',
-    x: { format: 'MMM dd HH:mm' }
+    x: {
+      formatter: (val) => toLocalTime(val, {
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    },
+    style: {
+      fontSize: '12px',
+      fontFamily: 'inherit'
+    },
+    custom: undefined
   },
   grid: {
     borderColor: isDark.value ? '#374151' : '#e5e7eb'

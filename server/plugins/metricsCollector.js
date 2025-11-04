@@ -1,38 +1,16 @@
 /**
  * Metrics Collector Plugin
- * Initializes the metrics collection system
+ * Initializes the metrics buffer system and API request tracking
  */
 
-import { MetricsCollector } from '~/server/utils/metricsCollector.js'
-import { getAgentManager } from '~/server/utils/agentManager.js'
-import { getDB } from '~/server/utils/database.js'
 import logger from '~/server/utils/logger.js'
-
-let metricsCollectorInstance = null
 
 export default defineNitroPlugin(async (nitroApp) => {
   try {
-    logger.info('Initializing metrics collector...')
+    logger.info('Initializing API metrics tracking...')
 
-    // Wait for database and websocket to be ready
-    await new Promise(resolve => setTimeout(resolve, 2000))
-
-    // Get dependencies
-    const db = await getDB()
-    const agentManager = await getAgentManager()
-    const io = globalThis.socketIO
-
-    if (!db) {
-      logger.error('Database manager not available - metrics collection disabled')
-      return
-    }
-
-    if (!io) {
-      logger.warn('WebSocket server not available - metrics will not broadcast real-time updates')
-    }
-
-    // Create metrics collector instance
-    metricsCollectorInstance = new MetricsCollector(db, agentManager, io)
+    // In-memory API request tracking (similar to old collector)
+    const apiMetrics = new Map()
 
     // Add request/response hooks for API tracking
     nitroApp.hooks.hook('request', (event) => {
@@ -52,37 +30,60 @@ export default defineNitroPlugin(async (nitroApp) => {
       if (event.context.metricsStartTime && event.context.metricsPath) {
         const latency = Date.now() - event.context.metricsStartTime
         const endpoint = normalizeEndpoint(event.context.metricsPath)
-        metricsCollectorInstance.trackAPIRequest(endpoint, latency)
+
+        // Track in-memory
+        if (!apiMetrics.has(endpoint)) {
+          apiMetrics.set(endpoint, {
+            count: 0,
+            totalLatency: 0,
+            minLatency: Infinity,
+            maxLatency: 0
+          })
+        }
+
+        const data = apiMetrics.get(endpoint)
+        data.count++
+        data.totalLatency += latency
+        data.minLatency = Math.min(data.minLatency, latency)
+        data.maxLatency = Math.max(data.maxLatency, latency)
       }
     })
 
-    // Start collection
-    metricsCollectorInstance.start()
+    // Periodically flush to MetricsBuffer (every 30 seconds)
+    setInterval(() => {
+      if (globalThis.metricsBuffer && apiMetrics.size > 0) {
+        // Calculate aggregated stats
+        let totalRequests = 0
+        const endpoints = {}
 
-    // Store globally for access from API endpoints
-    globalThis.metricsCollector = metricsCollectorInstance
+        apiMetrics.forEach((data, endpoint) => {
+          totalRequests += data.count
+          endpoints[endpoint] = {
+            count: data.count,
+            avgLatency: data.totalLatency / data.count,
+            minLatency: data.minLatency === Infinity ? 0 : data.minLatency,
+            maxLatency: data.maxLatency
+          }
+        })
 
-    logger.info('Metrics collector initialized and started successfully')
+        const avgLatency = totalRequests > 0
+          ? Array.from(apiMetrics.values()).reduce((sum, d) => sum + d.totalLatency, 0) / totalRequests
+          : 0
 
-    // Handle shutdown
-    nitroApp.hooks.hook('close', () => {
-      if (metricsCollectorInstance) {
-        logger.info('Stopping metrics collector...')
-        metricsCollectorInstance.stop()
+        // Add to buffer
+        globalThis.metricsBuffer.addAPIMetrics(totalRequests, avgLatency, endpoints)
+
+        // Clear the map for next interval
+        apiMetrics.clear()
       }
-    })
+    }, 30000) // 30 seconds
+
+    logger.info('API metrics tracking initialized successfully')
 
   } catch (error) {
-    logger.error('Error initializing metrics collector:', error)
+    logger.error('Error initializing API metrics tracking:', error)
   }
 })
-
-/**
- * Get metrics collector instance
- */
-export function getMetricsCollector() {
-  return metricsCollectorInstance || globalThis.metricsCollector
-}
 
 /**
  * Normalize endpoint path for better aggregation
