@@ -1,21 +1,22 @@
 <template>
-  <div class="space-y-6">
-    <!-- Loading State -->
-    <div v-if="metricsStore.apiLoading" class="flex items-center justify-center py-12">
+  <div class="space-y-6 relative">
+    <!-- Loading State - Overlay -->
+    <div v-show="metricsStore.apiLoading" class="absolute inset-0 flex items-center justify-center py-12 bg-gray-50/80 dark:bg-gray-950/80 backdrop-blur-sm rounded-lg z-10">
       <UIcon name="i-lucide-loader" class="w-8 h-8 animate-spin text-primary-500" />
     </div>
 
     <!-- Error State -->
-    <UAlert
-      v-else-if="metricsStore.apiError"
-      color="red"
-      variant="soft"
-      :title="metricsStore.apiError"
-      icon="i-lucide-triangle-alert"
-    />
+    <div v-show="metricsStore.apiError && !metricsStore.apiLoading">
+      <UAlert
+        color="red"
+        variant="soft"
+        :title="metricsStore.apiError"
+        icon="i-lucide-triangle-alert"
+      />
+    </div>
 
     <!-- Charts and Stats -->
-    <div v-else-if="apiMetrics">
+    <div v-show="!metricsStore.apiLoading && !metricsStore.apiError && apiMetrics">
       <!-- Request Volume -->
       <UCard>
         <template #header>
@@ -23,14 +24,12 @@
             API Request Volume
           </h3>
         </template>
-        <ClientOnly>
-          <apexchart
-            type="area"
-            height="300"
-            :options="requestVolumeChartOptions"
-            :series="requestVolumeChartSeries"
-          />
-        </ClientOnly>
+        <apexchart
+          type="area"
+          height="300"
+          :options="requestVolumeChartOptions"
+          :series="requestVolumeChartSeries"
+        />
       </UCard>
 
       <!-- Summary Cards -->
@@ -39,7 +38,7 @@
           <div class="text-center">
             <p class="text-sm text-gray-500 dark:text-gray-400">Total Requests</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
-              {{ apiMetrics.summary?.totalRequests || 0 }}
+              {{ apiMetrics?.summary?.totalRequests || 0 }}
             </p>
           </div>
         </UCard>
@@ -48,7 +47,7 @@
           <div class="text-center">
             <p class="text-sm text-gray-500 dark:text-gray-400">Avg Latency</p>
             <p class="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-400">
-              {{ apiMetrics.summary?.avgLatency || 0 }} ms
+              {{ apiMetrics?.summary?.avgLatency || 0 }} ms
             </p>
           </div>
         </UCard>
@@ -57,14 +56,14 @@
           <div class="text-center">
             <p class="text-sm text-gray-500 dark:text-gray-400">P95 Latency</p>
             <p class="mt-2 text-3xl font-bold text-orange-600 dark:text-orange-400">
-              {{ apiMetrics.summary?.p95Latency || 0 }} ms
+              {{ apiMetrics?.summary?.p95Latency || 0 }} ms
             </p>
           </div>
         </UCard>
       </div>
 
       <!-- Top Endpoints Table -->
-      <UCard v-if="apiMetrics.endpoints && apiMetrics.endpoints.length > 0" class="mt-6">
+      <UCard v-if="apiMetrics?.endpoints && apiMetrics.endpoints.length > 0" class="mt-6">
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
             Top Endpoints

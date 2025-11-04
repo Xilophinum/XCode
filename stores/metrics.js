@@ -167,8 +167,11 @@ export const useMetricsStore = defineStore('metrics', {
         })
 
         if (response.success) {
-          this.serverMetrics = response.data
-          this.lastRefresh = Date.now()
+          // Use $patch to preserve object identity and ensure reactivity
+          this.$patch({
+            serverMetrics: response.data,
+            lastRefresh: Date.now()
+          })
         } else {
           this.serverError = response.error || 'Failed to fetch server metrics'
         }
@@ -197,8 +200,10 @@ export const useMetricsStore = defineStore('metrics', {
         const response = await $fetch('/api/admin/metrics/agents', { params })
 
         if (response.success) {
-          this.agentMetrics = response.data
-          this.lastRefresh = Date.now()
+          this.$patch({
+            agentMetrics: response.data,
+            lastRefresh: Date.now()
+          })
         } else {
           this.agentError = response.error || 'Failed to fetch agent metrics'
         }
@@ -234,8 +239,10 @@ export const useMetricsStore = defineStore('metrics', {
         })
 
         if (response.success) {
-          this.buildMetrics = response.data
-          this.lastRefresh = Date.now()
+          this.$patch({
+            buildMetrics: response.data,
+            lastRefresh: Date.now()
+          })
         } else {
           this.buildError = response.error || 'Failed to fetch build metrics'
         }
@@ -263,8 +270,10 @@ export const useMetricsStore = defineStore('metrics', {
         })
 
         if (response.success) {
-          this.apiMetrics = response.data
-          this.lastRefresh = Date.now()
+          this.$patch({
+            apiMetrics: response.data,
+            lastRefresh: Date.now()
+          })
         } else {
           this.apiError = response.error || 'Failed to fetch API metrics'
         }

@@ -8,9 +8,19 @@ import { getAgentManager } from '~/server/utils/agentManager.js'
 import { getDB, builds as buildsSchema } from '~/server/utils/database.js'
 import { gte } from 'drizzle-orm'
 import logger from '~/server/utils/logger.js'
+import { getAuthenticatedUser } from '~/server/utils/auth.js'
 
 export default defineEventHandler(async (event) => {
   try {
+    // Verify user is authenticated and is admin
+    const user = await getAuthenticatedUser(event)
+    if (!user || user.role !== 'admin') {
+      throw createError({
+        statusCode: 403,
+        statusMessage: 'Admin access required'
+      })
+    }
+
     const db = await getDB()
     if (!db) {
       return {

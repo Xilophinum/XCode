@@ -11,9 +11,19 @@
 import { getDB, builds as buildsSchema } from '~/server/utils/database.js'
 import logger from '~/server/utils/logger.js'
 import { and, gte, lte } from 'drizzle-orm'
+import { getAuthenticatedUser } from '~/server/utils/auth.js'
 
 export default defineEventHandler(async (event) => {
   try {
+    // Verify user is authenticated and is admin
+    const user = await getAuthenticatedUser(event)
+    if (!user || user.role !== 'admin') {
+      throw createError({
+        statusCode: 403,
+        statusMessage: 'Admin access required'
+      })
+    }
+
     // Get query parameters
     const query = getQuery(event)
     const now = new Date()

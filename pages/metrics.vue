@@ -110,20 +110,15 @@ import MetricsAPI from '~/components/metrics/MetricsAPI.vue'
 import MetricsAlerts from '~/components/metrics/MetricsAlerts.vue'
 import MetricsComparison from '~/components/metrics/MetricsComparison.vue'
 
-// Authentication check
+// Stores
 const authStore = useAuthStore()
 const router = useRouter()
-
-if (!authStore.isAuthenticated || authStore.user?.role !== 'admin') {
-  router.push('/login')
-}
 
 definePageMeta({
   layout: false,
   middleware: ['auth', 'admin']
 })
 
-// Stores
 const metricsStore = useMetricsStore()
 const wsStore = useWebSocketStore()
 
@@ -132,6 +127,7 @@ const { fetchTimezone } = useTimezone()
 
 // State
 const activeTab = ref(0)
+const isAuthorized = ref(false)
 const refreshIntervalId = ref(null)
 const currentTime = ref(Date.now())
 
@@ -230,6 +226,14 @@ function getReactiveRelativeTime(dateString) {
 let timeUpdateInterval = null
 // Lifecycle
 onMounted(async () => {
+  // Check authorization first
+  if (!authStore.isAuthenticated || authStore.user?.role !== 'admin') {
+    router.push('/login')
+    return
+  }
+  
+  isAuthorized.value = true
+
   // Check viewport for responsive tabs
   checkViewport()
   window.addEventListener('resize', checkViewport)
@@ -258,3 +262,9 @@ onUnmounted(() => {
   stopAutoRefresh()
 })
 </script>
+
+<style scoped>
+html {
+  scroll-behavior: smooth;
+}
+</style>

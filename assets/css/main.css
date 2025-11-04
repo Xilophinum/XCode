@@ -326,3 +326,8 @@ nav .has-tooltip:not([data-tooltip-position])::after {
   opacity: 0;
   filter: blur(1rem);
 }
+
+/* Prevent scroll position changes during updates */
+html {
+  scroll-behavior: auto !important;
+}

@@ -1,21 +1,22 @@
 <template>
-  <div class="space-y-6">
-    <!-- Loading State -->
-    <div v-if="metricsStore.agentLoading" class="flex items-center justify-center py-12">
+  <div class="space-y-6 relative">
+    <!-- Loading State - Overlay -->
+    <div v-show="metricsStore.agentLoading" class="absolute inset-0 flex items-center justify-center py-12 bg-gray-50/80 dark:bg-gray-950/80 backdrop-blur-sm rounded-lg z-10">
       <UIcon name="i-lucide-loader" class="w-8 h-8 animate-spin text-primary-500" />
     </div>
 
     <!-- Error State -->
-    <UAlert
-      v-else-if="metricsStore.agentError"
-      color="red"
-      variant="soft"
-      :title="metricsStore.agentError"
-      icon="i-lucide-triangle-alert"
-    />
+    <div v-show="metricsStore.agentError && !metricsStore.agentLoading">
+      <UAlert
+        color="red"
+        variant="soft"
+        :title="metricsStore.agentError"
+        icon="i-lucide-triangle-alert"
+      />
+    </div>
 
     <!-- Charts -->
-    <div v-else-if="agentMetrics && Object.keys(agentMetrics).length > 0">
+    <div v-show="!metricsStore.agentLoading && !metricsStore.agentError && agentMetrics && Object.keys(agentMetrics).length > 0">
       <!-- Agent Status Overview -->
       <UCard>
         <template #header>
@@ -23,14 +24,12 @@
             Agent Status Overview
           </h3>
         </template>
-        <ClientOnly>
-          <apexchart
-            type="line"
-            height="300"
-            :options="agentStatusChartOptions"
-            :series="agentStatusChartSeries"
-          />
-        </ClientOnly>
+        <apexchart
+          type="line"
+          height="300"
+          :options="agentStatusChartOptions"
+          :series="agentStatusChartSeries"
+        />
       </UCard>
 
       <!-- Per-Agent Metrics -->
@@ -58,15 +57,12 @@
               <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
                 CPU Usage
               </h4>
-              <ClientOnly>
-                <apexchart
-                  :key="`cpu-${agentId}`"
-                  type="area"
-                  height="180"
-                  :options="getAgentCPUChartOptions(agentData)"
-                  :series="getAgentCPUSeries(agentData)"
-                />
-              </ClientOnly>
+              <apexchart
+                type="area"
+                height="180"
+                :options="getAgentCPUChartOptions(agentData)"
+                :series="getAgentCPUSeries(agentData)"
+              />
             </div>
 
             <!-- Agent Memory Usage -->
@@ -74,15 +70,12 @@
               <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
                 Memory Usage
               </h4>
-              <ClientOnly>
-                <apexchart
-                  :key="`memory-${agentId}`"
-                  type="area"
-                  height="180"
-                  :options="getAgentMemoryChartOptions(agentData)"
-                  :series="getAgentMemorySeries(agentData)"
-                />
-              </ClientOnly>
+              <apexchart
+                type="area"
+                height="180"
+                :options="getAgentMemoryChartOptions(agentData)"
+                :series="getAgentMemorySeries(agentData)"
+              />
             </div>
 
             <!-- Agent Jobs -->
@@ -90,15 +83,12 @@
               <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
                 Job Load
               </h4>
-              <ClientOnly>
-                <apexchart
-                  :key="`jobs-${agentId}`"
-                  type="area"
-                  height="180"
-                  :options="getAgentJobsChartOptions(agentData)"
-                  :series="getAgentJobsSeries(agentData)"
-                />
-              </ClientOnly>
+              <apexchart
+                type="area"
+                height="180"
+                :options="getAgentJobsChartOptions(agentData)"
+                :series="getAgentJobsSeries(agentData)"
+              />
             </div>
 
             <!-- Agent Disk Usage -->
@@ -106,15 +96,12 @@
               <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
                 Disk Usage
               </h4>
-              <ClientOnly>
-                <apexchart
-                  :key="`disk-${agentId}`"
-                  type="area"
-                  height="180"
-                  :options="getAgentDiskChartOptions(agentData)"
-                  :series="getAgentDiskSeries(agentData)"
-                />
-              </ClientOnly>
+              <apexchart
+                type="area"
+                height="180"
+                :options="getAgentDiskChartOptions(agentData)"
+                :series="getAgentDiskSeries(agentData)"
+              />
             </div>
 
             <!-- Agent Platform Info -->
@@ -144,12 +131,14 @@
     </div>
 
     <!-- No Data -->
-    <UCard v-else>
-      <div class="text-center py-12">
-        <UIcon name="i-lucide-bar-chart" class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
-        <p class="text-gray-500 dark:text-gray-400">No agent metrics available</p>
-      </div>
-    </UCard>
+    <div v-show="!metricsStore.agentLoading && !metricsStore.agentError && (!agentMetrics || Object.keys(agentMetrics).length === 0)">
+      <UCard>
+        <div class="text-center py-12">
+          <UIcon name="i-lucide-bar-chart" class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
+          <p class="text-gray-500 dark:text-gray-400">No agent metrics available</p>
+        </div>
+      </UCard>
+    </div>
   </div>
 </template>
 
@@ -252,7 +241,7 @@ const agentStatusChartOptions = ref(createBaseChartOptions('line', ['#10b981', '
 }))
 
 const agentStatusChartSeries = computed(() => {
-  if (!Object.keys(agentMetrics.value).length) return []
+  if (!agentMetrics.value || !Object.keys(agentMetrics.value).length) return []
 
   // Collect all timestamps and status counts
   const statusByTime = new Map()
@@ -278,6 +267,7 @@ const agentStatusChartSeries = computed(() => {
   // Convert to series format
   const sortedTimestamps = Array.from(statusByTime.keys()).sort()
 
+  // Create series data - only update if structure actually changed
   return [
     {
       name: 'Online',
@@ -294,7 +284,7 @@ const agentStatusChartSeries = computed(() => {
       }))
     }
   ]
-})
+}, { flush: 'post' })
 
 function getAgentName(agentData) {
   if (agentData.agent_status) {
@@ -528,10 +518,14 @@ function getIPAddressesV6(agentData) {
 // Watch for theme changes and clear cache
 watch(isDark, () => {
   chartOptionsCache.value.clear()
-  agentStatusChartOptions.value = createBaseChartOptions('line', ['#10b981', '#ef4444'], {
-    labels: {
-      formatter: (val) => val.toFixed(0)
-    }
-  })
+  // Update theme mode for agent status chart without replacing the object
+  if (agentStatusChartOptions.value) {
+    agentStatusChartOptions.value.theme.mode = isDark.value ? 'dark' : 'light'
+    agentStatusChartOptions.value.xaxis.labels.style.colors = isDark.value ? '#9ca3af' : '#6b7280'
+    agentStatusChartOptions.value.yaxis.labels.style.colors = isDark.value ? '#9ca3af' : '#6b7280'
+    agentStatusChartOptions.value.tooltip.theme = isDark.value ? 'dark' : 'light'
+    agentStatusChartOptions.value.grid.borderColor = isDark.value ? '#374151' : '#e5e7eb'
+    agentStatusChartOptions.value.legend.labels.colors = isDark.value ? '#9ca3af' : '#6b7280'
+  }
 })
 </script>
