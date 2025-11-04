@@ -7,7 +7,9 @@
 import os from 'os'
 import { v4 as uuidv4 } from 'uuid'
 import logger from '~/server/utils/logger.js'
-
+import { metrics } from '~/server/utils/database.js'
+import { lt } from 'drizzle-orm'
+      
 export class MetricsBuffer {
   constructor(db, agentManager) {
     this.db = db
@@ -105,7 +107,8 @@ export class MetricsBuffer {
       ipv4Count: systemMetrics?.ipv4Count || 0,
       ipv6Count: systemMetrics?.ipv6Count || 0,
       ipv4Addresses: systemMetrics?.ipv4Addresses || [],
-      ipv6Addresses: systemMetrics?.ipv6Addresses || []
+      ipv6Addresses: systemMetrics?.ipv6Addresses || [],
+      process: systemMetrics?.process
     })
   }
 
@@ -137,6 +140,19 @@ export class MetricsBuffer {
       // Active connections (will be set by WebSocket plugin)
       const wsConnections = globalThis.socketIO?.engine?.clientsCount || 0
 
+      // Process metrics (server footprint)
+      const processMemUsage = process.memoryUsage()
+      const processCpuUsage = process.cpuUsage(this.lastCpuUsage)
+
+      // Calculate process CPU percentage
+      const totalCpuTime = (processCpuUsage.user + processCpuUsage.system) / 1000 // Convert to ms
+      const elapsedTime = Date.now() - (this.lastCpuCheck || Date.now())
+      const processCpuPercent = elapsedTime > 0 ? Math.min((totalCpuTime / elapsedTime) * 100, 100) : 0
+
+      // Store for next calculation
+      this.lastCpuUsage = process.cpuUsage()
+      this.lastCpuCheck = Date.now()
+
       this.serverMetrics = {
         timestamp: Date.now(),
         cpuUsage: Math.round(cpuUsage * 100) / 100,
@@ -145,7 +161,20 @@ export class MetricsBuffer {
         memoryUsed: Math.round(usedMem / 1024 / 1024), // MB
         memoryTotal: Math.round(totalMem / 1024 / 1024), // MB
         uptime: Math.floor(process.uptime()),
-        wsConnections: wsConnections
+        wsConnections: wsConnections,
+        // Process-specific metrics (server footprint)
+        process: {
+          cpu: Math.round(processCpuPercent * 100) / 100,
+          memory: {
+            rss: Math.round(processMemUsage.rss / 1024 / 1024), // MB
+            heapTotal: Math.round(processMemUsage.heapTotal / 1024 / 1024),
+            heapUsed: Math.round(processMemUsage.heapUsed / 1024 / 1024),
+            external: Math.round(processMemUsage.external / 1024 / 1024),
+            arrayBuffers: Math.round((processMemUsage.arrayBuffers || 0) / 1024 / 1024)
+          },
+          uptime: Math.floor(process.uptime()),
+          pid: process.pid
+        }
       }
     } catch (error) {
       logger.error('Error collecting server metrics:', error)
@@ -189,7 +218,7 @@ export class MetricsBuffer {
 
       // Flush agent metrics
       for (const [agentId, data] of this.agentMetrics) {
-        
+
         batch.push({
           id: uuidv4(),
           timestamp: roundedTimestamp,
@@ -224,14 +253,15 @@ export class MetricsBuffer {
               ipv6Count: data.ipv6Count,
               ipv4Addresses: data.ipv4Addresses,
               ipv6Addresses: data.ipv6Addresses
-            }
+            },
+            process: data.process
           }),
           createdAt: now.toISOString()
         })
       }
-
       // Flush server metrics
       if (this.serverMetrics) {
+
         batch.push({
           id: uuidv4(),
           timestamp: roundedTimestamp,
@@ -248,7 +278,8 @@ export class MetricsBuffer {
               total: this.serverMetrics.memoryTotal
             },
             uptime: this.serverMetrics.uptime,
-            wsConnections: this.serverMetrics.wsConnections
+            wsConnections: this.serverMetrics.wsConnections,
+            process: this.serverMetrics.process
           }),
           createdAt: now.toISOString()
         })
@@ -293,7 +324,7 @@ export class MetricsBuffer {
 
       // Batch insert
       if (batch.length > 0) {
-        const { metrics } = await import('~/server/utils/database.js')
+
         await this.db.insert(metrics).values(batch)
         logger.debug(`Flushed ${batch.length} metric snapshots to database`)
       }
@@ -313,10 +344,6 @@ export class MetricsBuffer {
       const cutoffDate = new Date()
       cutoffDate.setDate(cutoffDate.getDate() - this.retentionDays)
       const cutoffISO = cutoffDate.toISOString()
-
-      const { metrics } = await import('~/server/utils/database.js')
-      const { lt } = await import('drizzle-orm')
-
       const result = await this.db
         .delete(metrics)
         .where(lt(metrics.timestamp, cutoffISO))
@@ -354,7 +381,8 @@ export class MetricsBuffer {
         uptime: this.serverMetrics.uptime,
         websocket: {
           connections: this.serverMetrics.wsConnections
-        }
+        },
+        process: this.serverMetrics.process
       } : null,
       agents: {
         total: this.agentMetrics.size,

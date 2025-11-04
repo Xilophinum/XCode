@@ -119,7 +119,8 @@ function transformAgentMetrics(agentMetrics, globalMetrics, interval) {
           agent_memory: [],
           agent_disk: [],
           agent_network: [],
-          agent_heartbeat: []
+          agent_heartbeat: [],
+          agent_process: []
         }
       }
 
@@ -189,6 +190,16 @@ function transformAgentMetrics(agentMetrics, globalMetrics, interval) {
         })
       }
 
+      // Process metrics
+      if (metricsData.process) {
+        agent.agent_process.push({
+          timestamp,
+          agentName: metricsData.agentName,
+          cpu: metricsData.process.cpu,
+          memory: metricsData.process.memory,
+          pid: metricsData.process.pid
+        })
+      }
     } catch (error) {
       logger.error('Error parsing metrics:', error)
     }

@@ -20,15 +20,15 @@
       <UCard>
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            CPU Usage
+            CPU Usage % / System vs Process
           </h3>
         </template>
         <ClientOnly>
           <apexchart
             type="area"
             height="300"
-            :options="cpuChartOptions"
-            :series="cpuChartSeries"
+            :options="processCpuChartOptions"
+            :series="processCpuChartSeries"
           />
         </ClientOnly>
       </UCard>
@@ -37,21 +37,21 @@
       <UCard>
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            Memory Usage
+            Memory Usage MB / System vs Process
           </h3>
         </template>
         <ClientOnly>
           <apexchart
             type="area"
             height="300"
-            :options="memoryChartOptions"
-            :series="memoryChartSeries"
+            :options="processMemoryChartOptions"
+            :series="processMemoryChartSeries"
           />
         </ClientOnly>
       </UCard>
 
       <!-- WebSocket Connections -->
-      <UCard>
+      <UCard class="col-span-2">
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
             WebSocket Connections
@@ -130,13 +130,14 @@ const createChartOptions = (type, colors, yAxisConfig = {}) => {
         fontSize: '12px',
         fontFamily: 'inherit'
       },
-      custom: undefined // Ensure no custom tooltip overrides theme
+      custom: undefined, // Ensure no custom tooltip overrides theme
+      shared: true
     },
     grid: {
       borderColor: isDark.value ? '#374151' : '#e5e7eb'
     }
   }
-
+  
   // Only add fill for area charts
   if (type !== 'ws') {
     options.fill = {
@@ -151,55 +152,6 @@ const createChartOptions = (type, colors, yAxisConfig = {}) => {
 
   return options
 }
-
-// CPU Chart
-const cpuChartOptions = ref(createChartOptions('cpu', ['#3b82f6'], {
-  min: 0,
-  max: 100,
-  labels: {
-    formatter: (val) => `${val.toFixed(0)}%`
-  }
-}))
-
-const cpuChartSeries = computed(() => {
-  if (!serverMetrics.value?.server_cpu) return []
-
-  return [{
-    name: 'CPU %',
-    data: serverMetrics.value.server_cpu.map(m => ({
-      x: new Date(m.timestamp).getTime(),
-      y: m.percent
-    }))
-  }]
-})
-
-// Memory Chart
-const memoryChartOptions = ref(createChartOptions('memory', ['#10b981', '#6b7280'], {
-  labels: {
-    formatter: (val) => `${val.toFixed(0)} MB`
-  }
-}))
-
-const memoryChartSeries = computed(() => {
-  if (!serverMetrics.value?.server_memory) return []
-
-  return [
-    {
-      name: 'Used MB',
-      data: serverMetrics.value.server_memory.map(m => ({
-        x: new Date(m.timestamp).getTime(),
-        y: m.used
-      }))
-    },
-    {
-      name: 'Total MB',
-      data: serverMetrics.value.server_memory.map(m => ({
-        x: new Date(m.timestamp).getTime(),
-        y: m.total
-      }))
-    }
-  ]
-})
 
 // WebSocket Connections Chart
 const wsChartOptions = ref(createChartOptions('ws', ['#8b5cf6'], {
@@ -220,25 +172,113 @@ const wsChartSeries = computed(() => {
   }]
 })
 
+// Process CPU Chart
+const processCpuChartOptions = ref(createChartOptions('process-cpu', ['#a855f7', '#3b82f6'], {
+  min: 0,
+  max: 100,
+  labels: {
+    formatter: (val) => `${val.toFixed(1)}%`
+  }
+}))
+
+const processCpuChartSeries = computed(() => {
+  if (!serverMetrics.value?.server_process_cpu) return []
+
+  const series = []
+
+  // Process CPU
+  if (serverMetrics.value.server_process_cpu?.length > 0) {
+    series.push({
+      name: 'Process CPU',
+      data: serverMetrics.value.server_process_cpu.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.percent
+      }))
+    })
+  }
+
+  // System CPU for comparison
+  if (serverMetrics.value.server_cpu?.length > 0) {
+    series.push({
+      name: 'System CPU',
+      data: serverMetrics.value.server_cpu.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.percent
+      }))
+    })
+  }
+
+  return series
+})
+
+// Process Memory Chart
+const processMemoryChartOptions = ref(createChartOptions('process-memory', ['#10b981', '#6b7280', '#a855f7', '#ec4899', '#f59e0b'], {
+  labels: {
+    formatter: (val) => `${val.toFixed(0)} MB`
+  }
+}))
+
+const processMemoryChartSeries = computed(() => {
+  if (!serverMetrics.value?.server_memory) return []
+  if (!serverMetrics.value?.server_process_memory) return []
+  return [
+    {
+      name: 'Used MB',
+      data: serverMetrics.value.server_memory.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.used
+      }))
+    },
+    {
+      name: 'Total MB',
+      data: serverMetrics.value.server_memory.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.total
+      }))
+    },
+    {
+      name: 'RSS',
+      data: serverMetrics.value.server_process_memory.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.rss
+      }))
+    },
+    {
+      name: 'Heap Used',
+      data: serverMetrics.value.server_process_memory.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.heapUsed
+      }))
+    },
+    {
+      name: 'Heap Total',
+      data: serverMetrics.value.server_process_memory.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.heapTotal
+      }))
+    }
+  ]
+})
+
 // Watch for theme changes and update chart options
 watch(isDark, () => {
-  cpuChartOptions.value = createChartOptions('cpu', ['#3b82f6'], {
-    min: 0,
-    max: 100,
-    labels: {
-      formatter: (val) => `${val.toFixed(0)}%`
-    }
-  })
-
-  memoryChartOptions.value = createChartOptions('memory', ['#10b981', '#6b7280'], {
-    labels: {
-      formatter: (val) => `${val.toFixed(0)} MB`
-    }
-  })
-
   wsChartOptions.value = createChartOptions('ws', ['#8b5cf6'], {
     labels: {
       formatter: (val) => val.toFixed(0)
+    }
+  })
+
+  processCpuChartOptions.value = createChartOptions('process-cpu', ['#a855f7', '#3b82f6'], {
+    min: 0,
+    max: 100,
+    labels: {
+      formatter: (val) => `${val.toFixed(1)}%`
+    }
+  })
+
+  processMemoryChartOptions.value = createChartOptions('process-memory', ['#10b981', '#6b7280','#a855f7', '#ec4899', '#f59e0b'], {
+    labels: {
+      formatter: (val) => `${val.toFixed(0)} MB`
     }
   })
 })

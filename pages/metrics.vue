@@ -27,13 +27,15 @@
           class="w-48"
         />
         <UButton
-          :icon="autoRefresh ? 'i-lucide-refresh-cw' : 'i-lucide-pause'"
           :variant="autoRefresh ? 'solid' : 'outline'"
           @click="toggleAutoRefresh"
         >
-          {{ autoRefresh ? 'Auto-refresh' : 'Paused' }}
+          <UIcon name="i-lucide-refresh-cw" class="h-5 w-5 text-black animate-spin" v-if="autoRefresh"/>
+          <UIcon name="i-lucide-pause" class="h-5 w-5 text-primary animate-pulse" v-else/>
+          {{ autoRefresh ? 'Auto-Refresh' : 'Paused' }}
         </UButton>
         <UButton
+          v-if ="!autoRefresh"
           icon="i-lucide-refresh-cw"
           variant="outline"
           :loading="isLoading"

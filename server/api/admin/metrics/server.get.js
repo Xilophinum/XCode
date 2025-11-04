@@ -84,7 +84,9 @@ function transformServerMetrics(serverMetrics, interval) {
     server_cpu: [],
     server_memory: [],
     server_uptime: [],
-    server_websocket_connections: []
+    server_websocket_connections: [],
+    server_process_cpu: [],
+    server_process_memory: []
   }
 
   serverMetrics.forEach(row => {
@@ -125,6 +127,26 @@ function transformServerMetrics(serverMetrics, interval) {
         result.server_websocket_connections.push({
           timestamp,
           count: metricsData.wsConnections
+        })
+      }
+
+      // Process CPU metrics
+      if (metricsData.process?.cpu !== undefined) {
+        result.server_process_cpu.push({
+          timestamp,
+          percent: metricsData.process.cpu
+        })
+      }
+      // Process Memory metrics
+      if (metricsData.process?.memory) {
+
+        result.server_process_memory.push({
+          timestamp,
+          rss: metricsData.process.memory.rss,
+          heapTotal: metricsData.process.memory.heapTotal,
+          heapUsed: metricsData.process.memory.heapUsed,
+          external: metricsData.process.memory.external,
+          arrayBuffers: metricsData.process.memory.arrayBuffers
         })
       }
 

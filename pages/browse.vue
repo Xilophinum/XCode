@@ -19,21 +19,21 @@
           </div>
           
           <div class="flex space-x-3">
-            <button
+            <UButton color="secondary"
               @click="showCreateFolderModal = true"
-              class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              icon="i-lucide-plus"
+              class="text-black dark:text-slate-700"
             >
-              <UIcon name="i-lucide-plus" class="-ml-1 mr-2 h-5 w-5" />
               New Folder
-            </button>
+            </UButton>
             
-            <button
+            <UButton
               @click="showCreateProjectModal = true"
-              class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              icon="i-lucide-plus"
+              class="text-black dark:text-slate-700"
             >
-              <UIcon name="i-lucide-plus" class="-ml-1 mr-2 h-5 w-5" />
               New Project
-            </button>
+            </UButton>
           </div>
         </div>
 
@@ -42,11 +42,15 @@
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-6">
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                <UIcon name="i-lucide-folder" class="w-4 h-4 mr-1.5 text-blue-500" />
+                <UIcon name="i-lucide-cog" class="h-4 w-4 text-blue-600 dark:text-blue-400 mr-3 animate-spin" />
                 <span class="font-medium">{{ totalProjectsInCurrentPath }}</span>
                 <span class="ml-1">{{ totalProjectsInCurrentPath === 1 ? 'project' : 'projects' }}</span>
               </div>
-              
+              <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                <UIcon name="i-lucide-folder" class="w-4 h-4 mr-1.5 text-blue-500" />
+                <span class="font-medium">{{ totalFoldersInCurrentPath }}</span>
+                <span class="ml-1">{{ totalFoldersInCurrentPath === 1 ? 'folder' : 'folders' }}</span>
+              </div>
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <UIcon name="i-lucide-check" class="w-4 h-4 mr-1.5 text-green-500" />
                 <span class="font-medium">{{ onlineAgentsCount }}</span>
@@ -752,6 +756,10 @@ const allAvailablePaths = computed(() => {
 // Agent computed properties
 const totalProjectsInCurrentPath = computed(() => {
   return projectsAtCurrentPath.value.length
+})
+
+const totalFoldersInCurrentPath = computed(() => {
+  return foldersAtCurrentPath.value.length
 })
 
 const onlineAgentsCount = computed(() => {

@@ -243,11 +243,11 @@ function getAlertIconColor(severity) {
 
 function getAlertSeverityColor(severity) {
   const colors = {
-    critical: 'red',
-    warning: 'yellow',
+    critical: 'danger',
+    warning: 'warning',
     info: 'blue'
   }
-  return colors[severity] || 'gray'
+  return colors[severity] || 'neutral'
 }
 
 function formatTimestamp(timestamp) {

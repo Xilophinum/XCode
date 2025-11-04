@@ -358,7 +358,8 @@ export const useMetricsStore = defineStore('metrics', {
             agent_memory: [],
             agent_disk: [],
             agent_network: [],
-            agent_heartbeat: []
+            agent_heartbeat: [],
+            agent_process: []
           }
         }
 
@@ -374,82 +375,92 @@ export const useMetricsStore = defineStore('metrics', {
           }
         }
 
-      // Update agent status
-      addDataPoint(agent.agent_status, {
-        timestamp,
-        agentName: agentName,
-        platform: systemInfo?.platform || 'Unknown',
-        uptime: systemInfo?.uptime || 0,
-        status: status,
-        isOnline: status === 'online'
-      })
-
-      // Update agent jobs
-      addDataPoint(agent.agent_jobs, {
-        timestamp,
-        agentName: agentName,
-        current: currentJobs || 0,
-        max: systemInfo?.maxConcurrentJobs || 1
-      })
-
-      // Update CPU if available
-      if (systemMetrics?.cpuUsage !== undefined) {
-        addDataPoint(agent.agent_cpu, {
+        // Update agent status
+        addDataPoint(agent.agent_status, {
           timestamp,
           agentName: agentName,
-          percent: systemMetrics.cpuUsage
+          platform: systemInfo?.platform || 'Unknown',
+          uptime: systemInfo?.uptime || 0,
+          status: status,
+          isOnline: status === 'online'
         })
-      }
 
-      // Update memory if available
-      if (systemMetrics?.memoryUsage !== undefined) {
-        addDataPoint(agent.agent_memory, {
+        // Update agent jobs
+        addDataPoint(agent.agent_jobs, {
           timestamp,
           agentName: agentName,
-          percent: systemMetrics.memoryUsage,
-          used: systemMetrics.usedMemory || 0,
-          total: systemMetrics.totalMemory || 0
+          current: currentJobs || 0,
+          max: systemInfo?.maxConcurrentJobs || 1
         })
-      }
 
-      // Update disk if available
-      if (systemMetrics?.diskUsage !== undefined) {
-        addDataPoint(agent.agent_disk, {
-          timestamp,
-          agentName: agentName,
-          percent: systemMetrics.diskUsage,
-          used: systemMetrics.diskUsed || 0,
-          total: systemMetrics.diskTotal || 0,
-          free: systemMetrics.diskFree || 0
-        })
-      }
+        // Update CPU if available
+        if (systemMetrics?.cpuUsage !== undefined) {
+          addDataPoint(agent.agent_cpu, {
+            timestamp,
+            agentName: agentName,
+            percent: systemMetrics.cpuUsage
+          })
+        }
 
-      // Update network if available
-      if (systemMetrics?.interfaceCount !== undefined) {
-        addDataPoint(agent.agent_network, {
-          timestamp,
-          agentName: agentName,
-          interfaceCount: systemMetrics.interfaceCount,
-          activeInterfaces: systemMetrics.activeInterfaces || [],
-          ipv4Count: systemMetrics.ipv4Count || 0,
-          ipv6Count: systemMetrics.ipv6Count || 0,
-          ipv4Addresses: systemMetrics.ipv4Addresses || [],
-          ipv6Addresses: systemMetrics.ipv6Addresses || []
-        })
-      }
+        // Update memory if available
+        if (systemMetrics?.memoryUsage !== undefined) {
+          addDataPoint(agent.agent_memory, {
+            timestamp,
+            agentName: agentName,
+            percent: systemMetrics.memoryUsage,
+            used: systemMetrics.usedMemory || 0,
+            total: systemMetrics.totalMemory || 0
+          })
+        }
 
-      // Update heartbeat
-      if (lastHeartbeat) {
-        const lastHeartbeatMs = new Date(lastHeartbeat).getTime()
-        const ageMs = timestampMs - lastHeartbeatMs
+        // Update disk if available
+        if (systemMetrics?.diskUsage !== undefined) {
+          addDataPoint(agent.agent_disk, {
+            timestamp,
+            agentName: agentName,
+            percent: systemMetrics.diskUsage,
+            used: systemMetrics.diskUsed || 0,
+            total: systemMetrics.diskTotal || 0,
+            free: systemMetrics.diskFree || 0
+          })
+        }
 
-        addDataPoint(agent.agent_heartbeat, {
-          timestamp,
-          agentName: agentName,
-          ageMs,
-          lastHeartbeat
-        })
-      }
+        // Update network if available
+        if (systemMetrics?.interfaceCount !== undefined) {
+          addDataPoint(agent.agent_network, {
+            timestamp,
+            agentName: agentName,
+            interfaceCount: systemMetrics.interfaceCount,
+            activeInterfaces: systemMetrics.activeInterfaces || [],
+            ipv4Count: systemMetrics.ipv4Count || 0,
+            ipv6Count: systemMetrics.ipv6Count || 0,
+            ipv4Addresses: systemMetrics.ipv4Addresses || [],
+            ipv6Addresses: systemMetrics.ipv6Addresses || []
+          })
+        }
+
+        // Update heartbeat
+        if (lastHeartbeat) {
+          const lastHeartbeatMs = new Date(lastHeartbeat).getTime()
+          const ageMs = timestampMs - lastHeartbeatMs
+
+          addDataPoint(agent.agent_heartbeat, {
+            timestamp,
+            agentName: agentName,
+            ageMs,
+            lastHeartbeat
+          })
+        }
+        // Update process metrics if available
+        if (systemMetrics?.process) {
+          addDataPoint(agent.agent_process, {
+            timestamp,
+            agentName: agentName,
+            cpu: systemMetrics.process.cpu || 0,
+            memory: systemMetrics.process.memory || 0,
+            pid: systemMetrics.process.pid || null
+          })
+        }
       }) // End $patch
     },
 

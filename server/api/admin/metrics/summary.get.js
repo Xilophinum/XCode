@@ -62,7 +62,8 @@ export default defineEventHandler(async (event) => {
           totalMemory: metrics.totalMemory,
           diskUsed: metrics.diskUsed,
           diskTotal: metrics.diskTotal,
-          diskFree: metrics.diskFree
+          diskFree: metrics.diskFree,
+          process: metrics.process
         } : null
       }
     })

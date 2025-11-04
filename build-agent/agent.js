@@ -472,8 +472,18 @@ class XCodeBuildAgent {
       // Network statistics
       const networkStats = this.getNetworkStats()
 
-      // Process memory details
+      // Process metrics
       const processMemUsage = process.memoryUsage()
+      const processCpuUsage = process.cpuUsage(this.lastCpuUsage)
+
+      // Calculate process CPU percentage
+      const totalCpuTime = (processCpuUsage.user + processCpuUsage.system) / 1000 // Convert to ms
+      const elapsedTime = Date.now() - (this.lastCpuCheck || Date.now())
+      const processCpuPercent = elapsedTime > 0 ? Math.min((totalCpuTime / elapsedTime) * 100, 100) : 0
+
+      // Store for next calculation
+      this.lastCpuUsage = process.cpuUsage()
+      this.lastCpuCheck = Date.now()
 
       return {
         cpuUsage: Math.round(cpuUsage * 100) / 100,
@@ -498,10 +508,19 @@ class XCodeBuildAgent {
         ipv6Count: networkStats.ipv6Count,
         ipv4Addresses: networkStats.ipv4Addresses || [],
         ipv6Addresses: networkStats.ipv6Addresses || [],
-        // Process metrics
-        processMemory: Math.round(processMemUsage.heapUsed / 1024 / 1024), // MB
-        processMemoryTotal: Math.round(processMemUsage.heapTotal / 1024 / 1024), // MB
-        processMemoryExternal: Math.round(processMemUsage.external / 1024 / 1024), // MB
+
+        // Process-specific metrics (agent footprint)
+        process: {
+          cpu: Math.round(processCpuPercent * 100) / 100,
+          memory: {
+            rss: Math.round(processMemUsage.rss / 1024 / 1024), // MB - total memory allocated
+            heapTotal: Math.round(processMemUsage.heapTotal / 1024 / 1024), // MB - heap allocated
+            heapUsed: Math.round(processMemUsage.heapUsed / 1024 / 1024), // MB - heap used
+            external: Math.round(processMemUsage.external / 1024 / 1024), // MB - C++ objects
+            arrayBuffers: Math.round((processMemUsage.arrayBuffers || 0) / 1024 / 1024) // MB
+          },
+          pid: process.pid
+        },
 
         timestamp: new Date().toISOString()
       }

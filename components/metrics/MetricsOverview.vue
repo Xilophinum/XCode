@@ -89,6 +89,81 @@
       </UCard>
     </div>
 
+    <!-- Process Footprint Cards -->
+    <div v-if="summary" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- Server Process CPU -->
+      <UCard>
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Server Process CPU</p>
+            <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+              {{ summary.server?.process?.cpu || 0 }}%
+            </p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Process footprint
+            </p>
+          </div>
+          <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
+            <UIcon name="i-lucide-activity" class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          </div>
+        </div>
+      </UCard>
+
+      <!-- Server Process Memory -->
+      <UCard>
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Server Process Memory</p>
+            <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+              {{ summary.server?.process?.memory?.heapUsed || 0 }} MB
+            </p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              RSS: {{ summary.server?.process?.memory?.rss || 0 }} MB
+            </p>
+          </div>
+          <div class="p-3 rounded-full bg-indigo-100 dark:bg-indigo-900">
+            <UIcon name="i-lucide-database" class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+          </div>
+        </div>
+      </UCard>
+
+      <!-- Avg Agent Process CPU -->
+      <UCard>
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Avg Agent Process CPU</p>
+            <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+              {{ getAvgAgentProcessCpu(summary) }}%
+            </p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Across {{ summary.agents?.online || 0 }} agents
+            </p>
+          </div>
+          <div class="p-3 rounded-full bg-pink-100 dark:bg-pink-900">
+            <UIcon name="i-lucide-zap" class="w-6 h-6 text-pink-600 dark:text-pink-400" />
+          </div>
+        </div>
+      </UCard>
+
+      <!-- Avg Agent Process Memory -->
+      <UCard>
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Avg Agent Process Memory</p>
+            <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+              {{ getAvgAgentProcessMemory(summary) }} MB
+            </p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Heap usage average
+            </p>
+          </div>
+          <div class="p-3 rounded-full bg-cyan-100 dark:bg-cyan-900">
+            <UIcon name="i-lucide-hard-drive" class="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+          </div>
+        </div>
+      </UCard>
+    </div>
+
     <!-- Additional Stats -->
     <div v-if="summary" class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Build Stats Card -->
@@ -371,5 +446,33 @@ function getReactiveRelativeTime(dateString) {
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
   return `${Math.floor(diffInSeconds / 86400)}d ago`
+}
+
+// Calculate average process CPU across all online agents
+function getAvgAgentProcessCpu(summary) {
+  if (!summary?.agents?.agents) return 0
+
+  const onlineAgents = summary.agents.agents.filter(a => a.status === 'online')
+  if (onlineAgents.length === 0) return 0
+
+  const totalCpu = onlineAgents.reduce((sum, agent) => {
+    return sum + (agent.systemMetrics?.process?.cpu || 0)
+  }, 0)
+
+  return Math.round((totalCpu / onlineAgents.length) * 100) / 100
+}
+
+// Calculate average process memory across all online agents
+function getAvgAgentProcessMemory(summary) {
+  if (!summary?.agents?.agents) return 0
+
+  const onlineAgents = summary.agents.agents.filter(a => a.status === 'online')
+  if (onlineAgents.length === 0) return 0
+
+  const totalMemory = onlineAgents.reduce((sum, agent) => {
+    return sum + (agent.systemMetrics?.process?.memory?.heapUsed || 0)
+  }, 0)
+
+  return Math.round(totalMemory / onlineAgents.length)
 }
 </script>

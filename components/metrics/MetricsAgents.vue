@@ -34,20 +34,25 @@
       </UCard>
 
       <!-- Per-Agent Metrics -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+      <div class="grid grid-cols-1 lg:grid-cols-1 gap-6 mt-6">
         <UCard v-for="(agentData, agentId) in agentMetrics" :key="agentId">
           <template #header>
             <div class="flex items-center justify-between">
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ getAgentName(agentData) }}
-              </h3>
-              <UBadge :color="isAgentOnline(agentData) ? 'green' : 'gray'">
+              <div class="flex items-center space-x-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                  {{ getAgentName(agentData) }}
+                </h3>
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                  Platform: {{ getAgentPlatform(agentData) }} • Uptime: {{ getAgentUptime(agentData) }}
+                </div>
+              </div>
+              <UBadge :color="isAgentOnline(agentData) ? 'success' : 'error'">
                 {{ isAgentOnline(agentData) ? 'Online' : 'Offline' }}
               </UBadge>
             </div>
           </template>
 
-          <div class="space-y-6">
+          <div  class="grid grid-cols-1 lg:grid-cols-2 space-y-6">
             <!-- Agent CPU Usage -->
             <div v-if="agentData.agent_cpu">
               <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
@@ -113,27 +118,23 @@
             </div>
 
             <!-- Agent Platform Info -->
-            <div class="pt-4 border-t dark:border-gray-700">
-              <div class="grid grid-cols-2 gap-4 text-sm">
+            <div class="pt-4 border-t dark:border-gray-700 col-span-2">
+              <div class="grid grid-cols-4 gap-4 text-sm">
                 <div>
-                  <span class="text-gray-500 dark:text-gray-400">Platform:</span>
-                  <span class="ml-2 text-gray-900 dark:text-white">{{ getAgentPlatform(agentData) }}</span>
+                  <span class="text-gray-500 dark:text-gray-400">Network Interface Total:</span>
+                  <span class="ml-2 text-gray-900 dark:text-white">{{ getNetworkInterfaceTotal(agentData) }}</span>
                 </div>
                 <div>
-                  <span class="text-gray-500 dark:text-gray-400">Uptime:</span>
-                  <span class="ml-2 text-gray-900 dark:text-white">{{ getAgentUptime(agentData) }}</span>
-                </div>
-              </div>
-
-              <!-- Network Stats -->
-              <div class="grid grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t dark:border-gray-700">
-                <div>
-                  <span class="text-gray-500 dark:text-gray-400">Network Interfaces:</span>
-                  <span class="ml-2 text-gray-900 dark:text-white">{{ getNetworkInterfaces(agentData) }}</span>
+                  <span class="text-gray-500 dark:text-gray-400">Network Interface Names:</span>
+                  <span class="ml-2 text-gray-900 dark:text-white">{{ getNetworkInterfaceNames(agentData) }}</span>
                 </div>
                 <div>
-                  <span class="text-gray-500 dark:text-gray-400">IP Addresses:</span>
-                  <span class="ml-2 text-gray-900 dark:text-white">{{ getIPAddresses(agentData) }}</span>
+                  <span class="text-gray-500 dark:text-gray-400">IP Addresses (IPV4):</span>
+                  <span class="ml-2 text-gray-900 dark:text-white">{{ getIPAddressesV4(agentData) }}</span>
+                </div>
+                <div>
+                  <span class="text-gray-500 dark:text-gray-400">IP Addresses (IPV6):</span>
+                  <span class="ml-2 text-gray-900 dark:text-white">{{ getIPAddressesV6(agentData) }}</span>
                 </div>
               </div>
             </div>
@@ -153,7 +154,7 @@
 </template>
 
 <script setup>
-import { computed, watch, ref, onMounted } from 'vue'
+import { computed, watch, ref } from 'vue'
 
 const metricsStore = useMetricsStore()
 const darkMode = useDarkMode()
@@ -346,13 +347,22 @@ function formatUptime(seconds) {
 function getAgentCPUSeries(agentData) {
   if (!agentData.agent_cpu) return []
 
-  return [{
-    name: 'CPU %',
-    data: agentData.agent_cpu.map(m => ({
-      x: new Date(m.timestamp).getTime(),
-      y: m.percent
-    }))
-  }]
+  return [
+    {
+      name: 'CPU %',
+      data: agentData.agent_cpu.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.percent
+      }))
+    },
+        {
+      name: 'Process CPU %',
+      data: agentData.agent_process.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.cpu
+      }))
+    }
+  ]
 }
 
 // Cache chart options to prevent re-rendering
@@ -361,7 +371,7 @@ const chartOptionsCache = ref(new Map())
 function getAgentCPUChartOptions(agentData) {
   const cacheKey = 'cpu'
   if (!chartOptionsCache.value.has(cacheKey)) {
-    chartOptionsCache.value.set(cacheKey, createBaseChartOptions('area', ['#f59e0b'], {
+    chartOptionsCache.value.set(cacheKey, createBaseChartOptions('area', ['#f59e0b', '#ec4899'], {
       min: 0,
       max: 100,
       labels: {
@@ -375,19 +385,42 @@ function getAgentCPUChartOptions(agentData) {
 function getAgentMemorySeries(agentData) {
   if (!agentData.agent_memory) return []
 
-  return [{
-    name: 'Memory %',
-    data: agentData.agent_memory.map(m => ({
-      x: new Date(m.timestamp).getTime(),
-      y: m.percent
-    }))
-  }]
+  return [
+    {
+      name: 'Server Memory %',
+      data: agentData.agent_memory.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.percent
+      }))
+    },
+    {
+      name: 'RSS',
+      data: agentData.agent_process.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.memory.rss
+      }))
+    },
+    {
+      name: 'Heap Used',
+      data: agentData.agent_process.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.memory.heapUsed
+      }))
+    },
+    {
+      name: 'Heap Total',
+      data: agentData.agent_process.map(m => ({
+        x: new Date(m.timestamp).getTime(),
+        y: m.memory.heapTotal
+      }))
+    }
+  ]
 }
 
 function getAgentMemoryChartOptions(agentData) {
   const cacheKey = 'memory'
   if (!chartOptionsCache.value.has(cacheKey)) {
-    chartOptionsCache.value.set(cacheKey, createBaseChartOptions('area', ['#10b981'], {
+    chartOptionsCache.value.set(cacheKey, createBaseChartOptions('area', ['#10b981', '#6b7280', '#a855f7', '#ec4899'], {
       min: 0,
       max: 100,
       labels: {
@@ -452,21 +485,41 @@ function getAgentDiskChartOptions(agentData) {
   return chartOptionsCache.value.get(cacheKey)
 }
 
-function getNetworkInterfaces(agentData) {
+function getNetworkInterfaceTotal(agentData) {
   if (agentData.agent_network) {
     const latest = agentData.agent_network[agentData.agent_network.length - 1]
     if (latest?.interfaceCount !== undefined) {
-      return `${latest.activeInterfaces.length || 0} / ${latest.interfaceCount || 0} [${latest.activeInterfaces?.join(', ') || 'N/A'}]`
+      return `In Use: ${latest.activeInterfaces.length || 0} / ${latest.interfaceCount || 0} Total`
     }
   }
   return 'N/A'
 }
 
-function getIPAddresses(agentData) {
+function getNetworkInterfaceNames(agentData) {
+  if (agentData.agent_network) {
+    const latest = agentData.agent_network[agentData.agent_network.length - 1]
+    if (latest?.interfaceCount !== undefined) {
+      return `${latest.activeInterfaces?.join(', ') || 'N/A'}`
+    }
+  }
+  return 'N/A'
+}
+
+function getIPAddressesV4(agentData) {
   if (agentData.agent_network) {
     const latest = agentData.agent_network[agentData.agent_network.length - 1]
     if (latest?.ipv4Count !== undefined || latest?.ipv6Count !== undefined) {
-      return `IPv4: ${latest.ipv4Count || 0} [${latest.ipv4Addresses?.join(', ') || 'N/A'}], IPv6: ${latest.ipv6Count || 0} [${latest.ipv6Addresses?.join(', ') || 'N/A'}]`
+      return `Total: ${latest.ipv4Count || 0} [${latest.ipv4Addresses?.join(', ') || 'N/A'}]`
+    }
+  }
+  return 'N/A'
+}
+
+function getIPAddressesV6(agentData) {
+  if (agentData.agent_network) {
+    const latest = agentData.agent_network[agentData.agent_network.length - 1]
+    if (latest?.ipv4Count !== undefined || latest?.ipv6Count !== undefined) {
+      return `Total: ${latest.ipv6Count || 0} [${latest.ipv6Addresses?.join(', ') || 'N/A'}]`
     }
   }
   return 'N/A'
