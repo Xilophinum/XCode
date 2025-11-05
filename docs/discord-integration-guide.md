@@ -2,9 +2,9 @@
 
 ## Overview
 
-XCode integrates with Discord using **Discord Webhooks**. This allows you to send build notifications, alerts, and status updates directly to your Discord channels.
+FlowForge integrates with Discord using **Discord Webhooks**. This allows you to send build notifications, alerts, and status updates directly to your Discord channels.
 
-Discord webhooks are simple, require no bot setup, and work perfectly with XCode's **Webhook** notification type.
+Discord webhooks are simple, require no bot setup, and work perfectly with FlowForge's **Webhook** notification type.
 
 ---
 
@@ -17,7 +17,7 @@ Discord webhooks are simple, require no bot setup, and work perfectly with XCode
 3. Go to **Integrations** → **Webhooks**
 4. Click **New Webhook** or **Create Webhook**
 5. Customize the webhook:
-   - **Name**: `XCode Notifications` (or your preference)
+   - **Name**: `FlowForge Notifications` (or your preference)
    - **Channel**: Select your desired channel
    - **Avatar**: Upload an icon (optional)
 6. Click **Copy Webhook URL**
@@ -28,7 +28,7 @@ Your webhook URL will look like:
 https://discord.com/api/webhooks/123456789/abcdefghijklmnopqrstuvwxyz
 ```
 
-### Step 2: Create Webhook Notification in XCode
+### Step 2: Create Webhook Notification in FlowForge
 
 1. Add a **Notification** node to your workflow
 2. Select **"Webhook"** as the notification type
@@ -113,7 +113,7 @@ Discord supports rich message formatting through embeds. Here are examples for d
 
 ```json
 {
-  "username": "XCode CI/CD",
+  "username": "FlowForge CI/CD",
   "avatar_url": "https://your-domain.com/success-icon.png",
   "embeds": [{
     "title": "✅ Build #$BuildNumber Succeeded",
@@ -142,7 +142,7 @@ Discord supports rich message formatting through embeds. Here are examples for d
       }
     ],
     "footer": {
-      "text": "XCode Build System"
+      "text": "FlowForge Build System"
     },
     "timestamp": "$Timestamp"
   }]
@@ -153,7 +153,7 @@ Discord supports rich message formatting through embeds. Here are examples for d
 
 ```json
 {
-  "username": "XCode CI/CD",
+  "username": "FlowForge CI/CD",
   "avatar_url": "https://your-domain.com/error-icon.png",
   "embeds": [{
     "title": "❌ Build #$BuildNumber Failed",
@@ -272,7 +272,7 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123456789/abcdefghijklmnopq
 - You can still specify different webhook URLs directly in each notification node for different channels/scenarios
 - Using ENV variables is more secure and easier to rotate if a webhook is compromised
 
-**Restart XCode** after adding environment variables.
+**Restart FlowForge** after adding environment variables.
 
 ---
 
@@ -369,7 +369,7 @@ If you exceed limits:
 **Solution:**
 - Verify webhook still exists in Discord channel settings
 - Create a new webhook if needed
-- Update URL in XCode notification node
+- Update URL in FlowForge notification node
 
 ### Message Not Appearing
 
@@ -423,7 +423,7 @@ If compromised:
 1. Go to Discord channel → Integrations → Webhooks
 2. Delete the compromised webhook
 3. Create a new webhook
-4. Update XCode configuration
+4. Update FlowForge configuration
 
 ---
 
@@ -434,10 +434,10 @@ If compromised:
 ```bash
 curl -X POST "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"content": "Test message from XCode"}'
+  -d '{"content": "Test message from FlowForge"}'
 ```
 
-### Test in XCode
+### Test in FlowForge
 
 1. Create a simple workflow with just a notification node
 2. Trigger the workflow manually
@@ -468,7 +468,7 @@ Discord supports markdown formatting in the `content` field and embed descriptio
 
 ```json
 {
-  "username": "XCode Build Bot",
+  "username": "FlowForge Build Bot",
   "embeds": [{
     "title": "✅ Build Successful",
     "description": "Build #$BuildNumber of **$ProjectName** completed successfully",
@@ -502,7 +502,7 @@ Discord supports markdown formatting in the `content` field and embed descriptio
 
 ```json
 {
-  "username": "XCode Build Bot",
+  "username": "FlowForge Build Bot",
   "embeds": [{
     "title": "❌ Build Failed",
     "description": "Build #$BuildNumber of **$ProjectName** failed",

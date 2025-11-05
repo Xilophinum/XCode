@@ -267,7 +267,7 @@ const searchResults = ref([])
 const showSearchResults = ref(false)
 
 // Branding settings
-const brandName = ref('XCode')
+const brandName = ref('FlowForge')
 const appLogo = ref(null)
 
 const getBreadcrumbUrl = (index) => {

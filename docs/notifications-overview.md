@@ -1,6 +1,6 @@
 # Notifications Overview
 
-XCode supports multiple notification channels to keep your team informed about build status, failures, and important events.
+FlowForge supports multiple notification channels to keep your team informed about build status, failures, and important events.
 
 ---
 
@@ -49,7 +49,7 @@ Modern Slack integration using Slack Bot Token.
 2. Add `chat:write` scope
 3. Install to workspace
 4. Copy Bot Token (`xoxb-...`)
-5. Add to XCode settings
+5. Add to FlowForge settings
 
 ---
 
@@ -130,7 +130,7 @@ SLACK_BOT_TOKEN=xoxb-your-bot-token-here
 SLACK_DEFAULT_CHANNEL=#general
 ```
 
-Restart XCode after setting environment variables.
+Restart FlowForge after setting environment variables.
 
 ### Discord Webhook Example
 
@@ -168,7 +168,7 @@ Restart XCode after setting environment variables.
 
 ## Templates
 
-XCode includes built-in notification templates:
+FlowForge includes built-in notification templates:
 
 ### Email Templates
 - **Email: Build Success** - Success notification
@@ -329,7 +329,7 @@ All notification settings can be configured in:
 
 ## Summary
 
-XCode provides flexible notification options:
+FlowForge provides flexible notification options:
 
 - **Email** - For formal, detailed reports
 - **Slack** - For team collaboration and rich formatting

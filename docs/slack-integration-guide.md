@@ -2,7 +2,7 @@
 
 ## Overview
 
-XCode provides **Slack App integration** using OAuth and the `chat.postMessage` API. This modern approach allows you to:
+FlowForge provides **Slack App integration** using OAuth and the `chat.postMessage` API. This modern approach allows you to:
 
 - Send notifications to any channel dynamically
 - Use rich Block Kit formatting
@@ -19,7 +19,7 @@ XCode provides **Slack App integration** using OAuth and the `chat.postMessage` 
 - ✅ Added `chat:write` and `chat:write.public` scopes
 - ⚠️ **Did you reinstall the app after adding scopes?** (Most common issue!)
 - ⚠️ **Did you copy the NEW token after reinstalling?**
-- ⚠️ **Did you restart XCode after updating the token?**
+- ⚠️ **Did you restart FlowForge after updating the token?**
 
 See [Troubleshooting](#troubleshooting) for detailed solutions.
 
@@ -31,7 +31,7 @@ See [Troubleshooting](#troubleshooting) for detailed solutions.
 
 1. Go to [Slack Apps](https://api.slack.com/apps)
 2. Click **"Create New App"** → **"From scratch"**
-3. Name your app (e.g., "XCode CI/CD Bot")
+3. Name your app (e.g., "FlowForge CI/CD Bot")
 4. Select your Slack workspace
 5. Click **"Create App"**
 
@@ -68,7 +68,7 @@ SLACK_DEFAULT_CHANNEL=#general
 - `SLACK_BOT_TOKEN` - Your Slack Bot User OAuth Token (required)
 - `SLACK_DEFAULT_CHANNEL` - Default channel if not specified in notification (optional)
 
-**Restart XCode** after adding environment variables.
+**Restart FlowForge** after adding environment variables.
 
 ### Step 5: Create Slack Notification
 
@@ -121,7 +121,7 @@ If you prefer the simplicity of Incoming Webhooks (single-channel, no token mana
 7. Select the channel you want notifications sent to
 8. Copy the webhook URL
 
-### Usage in XCode
+### Usage in FlowForge
 
 1. Add a **Notification** node to your workflow
 2. Select **"Webhook"** as the notification type
@@ -230,7 +230,7 @@ Use [Slack Block Kit Builder](https://app.slack.com/block-kit-builder) to visual
 1. Open the Block Kit Builder
 2. Design your message layout
 3. Copy the JSON
-4. Paste into XCode's "Slack Blocks" field
+4. Paste into FlowForge's "Slack Blocks" field
 5. Replace hardcoded values with context variables (e.g., `$BuildNumber`)
 
 ---
@@ -273,13 +273,13 @@ Use these variables in messages and blocks:
 4. Click **"Reinstall to Workspace"** or **"Reinstall App"**
 5. Copy the **new** Bot User OAuth Token
 6. Update your `SLACK_BOT_TOKEN` environment variable with the new token
-7. **Restart XCode**
+7. **Restart FlowForge**
 
 ⚠️ **Common mistake:** Adding scopes but not reinstalling the app. The old token won't have the new scopes!
 
 ### "Slack Bot Token not configured"
 
-**Solution:** Set the `SLACK_BOT_TOKEN` environment variable and restart XCode:
+**Solution:** Set the `SLACK_BOT_TOKEN` environment variable and restart FlowForge:
 
 ```env
 SLACK_BOT_TOKEN=xoxb-your-token-here
@@ -340,7 +340,7 @@ SLACK_DEFAULT_CHANNEL=#general
 
 **Docker/Container:**
 ```bash
-docker run -e SLACK_BOT_TOKEN=xoxb-... xcode-app
+docker run -e SLACK_BOT_TOKEN=xoxb-... FlowForge-app
 ```
 
 **System Service:**
@@ -365,7 +365,7 @@ Route notifications based on status:
 
 For multiple Slack workspaces:
 - Use webhook notifications (each workspace has its own webhook URL)
-- Or run multiple XCode instances with different `SLACK_BOT_TOKEN` values
+- Or run multiple FlowForge instances with different `SLACK_BOT_TOKEN` values
 
 ### Rich Error Reports
 

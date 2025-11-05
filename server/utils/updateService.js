@@ -23,7 +23,7 @@ class UpdateService {
 
     // GitHub repository configuration
     this.githubOwner = 'Xilophinum'
-    this.githubRepo = 'XCode'
+    this.githubRepo = 'FlowForge'
 
     // Paths
     this.rootDir = resolve(process.cwd())
@@ -98,7 +98,7 @@ class UpdateService {
         path: `/repos/${this.githubOwner}/${this.githubRepo}/releases/latest`,
         method: 'GET',
         headers: {
-          'User-Agent': 'XCode-UpdateService',
+          'User-Agent': 'FlowForge-UpdateService',
           'Accept': 'application/vnd.github.v3+json'
         }
       }
@@ -163,7 +163,7 @@ class UpdateService {
       return new Promise((resolve, reject) => {
         const options = {
           headers: {
-            'User-Agent': 'XCode-UpdateService',
+            'User-Agent': 'FlowForge-UpdateService',
             'Accept': 'application/zip'
           }
         }
@@ -391,7 +391,7 @@ class UpdateService {
 
     const mainPid = process.pid
     const isPM2 = this.isPM2Managed()
-    const pm2AppName = process.env.pm2_name || process.env.name || 'xcode'
+    const pm2AppName = process.env.pm2_name || process.env.name || 'FlowForge'
 
     let scriptContent
 
@@ -418,7 +418,7 @@ class UpdateService {
    */
   generateWindowsUpdaterScript(mainPid, sourceDir, isPM2, pm2AppName) {
     return `@echo off
-echo XCode Updater - Starting update process...
+echo FlowForge Updater - Starting update process...
 echo PM2 Managed: ${isPM2}
 
 REM Wait for main process to exit
@@ -506,7 +506,7 @@ call pm2 start ecosystem.config.cjs
 if errorlevel 1 (
     echo ERROR: PM2 start failed, falling back to direct start...
     cd "${this.rootDir}"
-    start "XCode Server" cmd /c "pnpm run start"
+    start "FlowForge Server" cmd /c "pnpm run start"
 )
 `}
 
@@ -522,7 +522,7 @@ exit
    */
   generateUnixUpdaterScript(mainPid, sourceDir, isPM2, pm2AppName) {
     return `#!/bin/bash
-echo "XCode Updater - Starting update process..."
+echo "FlowForge Updater - Starting update process..."
 echo "PM2 Managed: ${isPM2}"
 
 # Wait for main process to exit

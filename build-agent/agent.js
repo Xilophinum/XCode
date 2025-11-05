@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * Universal Build Agent for XCode CI/CD Platform
+ * Universal Build Agent for FlowForge CI/CD Platform
  * 
- * A standalone Node.js agent that connects to the XCode server via WebSocket
+ * A standalone Node.js agent that connects to the FlowForge server via WebSocket
  * and executes build jobs on distributed machines.
  * 
  * Usage:
@@ -11,8 +11,8 @@
  *   node agent.js --token abc123 --server ws://localhost:3001
  * 
  * Environment Variables (alternative to CLI args):
- *   XCODE_AGENT_TOKEN=<token>
- *   XCODE_SERVER_URL=<url>
+ *   FLOWFORGE_AGENT_TOKEN=<token>
+ *   FLOWFORGE_SERVER_URL=<url>
  */
 
 import { spawn, execSync, exec } from 'child_process'
@@ -30,10 +30,10 @@ const __dirname = path.dirname(__filename)
 // Agent version - update this when releasing new agent versions
 const AGENT_VERSION = '1.0.0';
 
-class XCodeBuildAgent {
+class FlowForgeBuildAgent {
   constructor(options = {}) {
-    this.token = options.token || process.env.XCODE_AGENT_TOKEN;
-    this.serverUrl = options.serverUrl || process.env.XCODE_SERVER_URL;
+    this.token = options.token || process.env.FLOWFORGE_AGENT_TOKEN;
+    this.serverUrl = options.serverUrl || process.env.FLOWFORGE_SERVER_URL;
     this.agentId = null;
     this.agentName = null;
     this.socket = null;
@@ -47,7 +47,7 @@ class XCodeBuildAgent {
     this.agentStartTime = process.uptime();
 
     // Auto-update configuration
-    this.autoUpdate = options.autoUpdate ?? (process.env.XCODE_AUTO_UPDATE === 'true');
+    this.autoUpdate = options.autoUpdate ?? (process.env.FLOWFORGE_AUTO_UPDATE === 'true');
     this.updateCheckInterval = options.updateCheckInterval ?? 3600000; // 1 hour
     this.updateCheckTimer = null;
 
@@ -69,14 +69,14 @@ class XCodeBuildAgent {
     if (!this.token) {
       logger.error('Error: Agent token is required');
       logger.info('Usage: node agent.js --token <token> --server <server-url>');
-      logger.info('Or set XCODE_AGENT_TOKEN environment variable');
+      logger.info('Or set FLOWFORGE_AGENT_TOKEN environment variable');
       process.exit(1);
     }
 
     if (!this.serverUrl) {
       logger.error('Error: Server URL is required');
       logger.info('Usage: node agent.js --token <token> --server <server-url>');
-      logger.info('Or set XCODE_SERVER_URL environment variable');
+      logger.info('Or set FLOWFORGE_SERVER_URL environment variable');
       process.exit(1);
     }
 
@@ -143,11 +143,11 @@ class XCodeBuildAgent {
       if (platform === 'darwin') {
         capabilities.push('macos');
         // macOS-specific tools
-        if (hasCommand('xcode-select --version')) capabilities.push('xcode');
+        if (hasCommand('FlowForge-select --version')) capabilities.push('FlowForge');
         if (hasCommand('xcrun --version')) capabilities.push('xcrun');
         if (hasCommand('brew --version')) capabilities.push('homebrew');
         if (hasCommand('swift --version')) capabilities.push('swift');
-        if (hasPath('/Applications/Xcode.app')) capabilities.push('xcode-full');
+        if (hasPath('/Applications/FlowForge.app')) capabilities.push('FlowForge-full');
         
       } else if (platform === 'linux') {
         capabilities.push('linux');
@@ -545,7 +545,7 @@ class XCodeBuildAgent {
   }
 
   async connect() {
-    logger.info(`Connecting to XCode server: ${this.serverUrl}`);
+    logger.info(`Connecting to FlowForge server: ${this.serverUrl}`);
     logger.info(`Agent Token: ${this.token.substring(0, 8)}...`);
     logger.info(`Platform: ${this.agentInfo.platform} (${this.agentInfo.architecture})`);
     logger.info(`Hostname: ${this.agentInfo.hostname}`);
@@ -554,7 +554,7 @@ class XCodeBuildAgent {
       this.socket = io(this.serverUrl);
 
       this.socket.on('connect', () => {
-        logger.info('Connected to XCode server');
+        logger.info('Connected to FlowForge server');
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.reconnectDelay = 5000;
@@ -941,7 +941,7 @@ class XCodeBuildAgent {
         const resolvedWorkingDir = path.resolve(targetWorkingDir);
         
         // Create temp file in working directory instead of system temp
-        tempFile = path.join(resolvedWorkingDir, `xcode_job_${Date.now()}${executorConfig.extension || '.tmp'}`);
+        tempFile = path.join(resolvedWorkingDir, `flowforge_job_${Date.now()}${executorConfig.extension || '.tmp'}`);
         
         try {
           // Ensure working directory exists
@@ -1480,7 +1480,7 @@ class XCodeBuildAgent {
   }
 
   async start() {
-    logger.info('Starting XCode Build Agent...');
+    logger.info('Starting FlowForge Build Agent...');
     logger.info('════════════════════════════════════════');
     
     // Handle graceful shutdown
@@ -1813,26 +1813,26 @@ function parseArgs() {
       case '--help':
       case '-h':
         logger.info(`
-XCode Build Agent v1.0.0
+FlowForge Build Agent v1.0.0
 
 Usage:
   node agent.js --token <token> --server <server-url> [--auto-update]
 
 Options:
   --token, -t       Agent authentication token (required)
-  --server, -s      XCode server WebSocket URL (required)
+  --server, -s      FlowForge server WebSocket URL (required)
   --auto-update     Enable automatic agent updates (default: false)
   --help, -h        Show this help message
 
 Environment Variables:
-  XCODE_AGENT_TOKEN     Agent token (alternative to --token)
-  XCODE_SERVER_URL      Server URL (alternative to --server)
-  XCODE_AUTO_UPDATE     Enable auto-update (true/false)
+  FLOWFORGE_AGENT_TOKEN     Agent token (alternative to --token)
+  FLOWFORGE_SERVER_URL      Server URL (alternative to --server)
+  FLOWFORGE_AUTO_UPDATE     Enable auto-update (true/false)
 
 Examples:
   node agent.js --token abc123def --server ws://localhost:3001
   node agent.js --token abc123def --server ws://localhost:3001 --auto-update
-  XCODE_AGENT_TOKEN=abc123def XCODE_SERVER_URL=ws://localhost:3001 node agent.js
+  FLOWFORGE_AGENT_TOKEN=abc123def FLOWFORGE_SERVER_URL=ws://localhost:3001 node agent.js
         `);
         process.exit(0);
         break;
@@ -1845,11 +1845,11 @@ Examples:
 // Main execution
 if (import.meta.url === `file://${process.argv[1]}`) {
   const options = parseArgs()
-  const agent = new XCodeBuildAgent(options)
+  const agent = new FlowForgeBuildAgent(options)
   agent.start().catch(error => {
     logger.error('Failed to start agent:', error.message)
     process.exit(1)
   })
 }
 
-export default XCodeBuildAgent
+export default FlowForgeBuildAgent

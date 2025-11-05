@@ -356,7 +356,7 @@
                 <div>
                   <h3 class="text-sm font-medium text-blue-900 dark:text-blue-200">Up to Date</h3>
                   <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                    You are running the latest version of XCode.
+                    You are running the latest version of FlowForge.
                   </p>
                 </div>
               </div>

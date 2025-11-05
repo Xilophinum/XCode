@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto'
-import XCodeBuildAgent from '../../build-agent/agent.js'
+import FlowForgeBuildAgent from '../../build-agent/agent.js'
 import { getDataService } from './dataService.js'
 import logger from './logger.js'
 
@@ -23,7 +23,7 @@ class LocalAgentManager {
       await this.ensureLocalAgentToken()
       
       // Create local agent instance
-      this.localAgent = new XCodeBuildAgent({
+      this.localAgent = new FlowForgeBuildAgent({
         token: this.localAgentToken,
         serverUrl: serverUrl
       })

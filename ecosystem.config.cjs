@@ -1,18 +1,18 @@
 /**
- * PM2 Ecosystem Configuration for XCode
+ * PM2 Ecosystem Configuration for FlowForge
  *
  * Usage:
  *   pm2 start ecosystem.config.cjs
- *   pm2 restart xcode
- *   pm2 stop xcode
- *   pm2 logs xcode
+ *   pm2 restart flowforge
+ *   pm2 stop flowforge
+ *   pm2 logs flowforge
  *   pm2 monit
  */
 
 module.exports = {
   apps: [
     {
-      name: 'xcode',
+      name: 'FlowForge',
       script: '.output/server/index.mjs',
 
       // Environment
@@ -51,7 +51,7 @@ module.exports = {
 
       // Update-related environment variables
       env_update: {
-        XCODE_UPDATING: 'true'
+        FLOWFORGE_UPDATING: 'true'
       }
     }
   ]

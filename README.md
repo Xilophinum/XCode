@@ -1,11 +1,11 @@
 # DISCLAIMER: WIP - NOT PRODUCTION READY - ANYTHING/EVERYTHING COULD/CAN/WILL CHANGE
-# XCode - Modern CI/CD Platform 
+# FlowForge - Modern CI/CD Platform 
 
-**A visual, user-friendly alternative to Jenkins** designed to make continuous integration and delivery accessible to everyone. Built with modern web technologies (Nuxt 3, Vue Flow), XCode eliminates the complexity and learning curve of traditional CI/CD tools while providing enterprise-grade automation capabilities.
+**A visual, user-friendly alternative to Jenkins** designed to make continuous integration and delivery accessible to everyone. Built with modern web technologies (Nuxt 3, Vue Flow), FlowForge eliminates the complexity and learning curve of traditional CI/CD tools while providing enterprise-grade automation capabilities.
 
-## Why XCode?
+## Why FlowForge?
 
-Jenkins is powerful but complex. XCode reimagines CI/CD with three core principles:
+Jenkins is powerful but complex. FlowForge reimagines CI/CD with three core principles:
 
 **1. Visual-First Design** - Drag-and-drop workflow editor instead of XML/Groovy scripting
 **2. Modern Architecture** - Real-time WebSocket updates, cloud-native agents, responsive UI
@@ -40,7 +40,7 @@ Live execution logs streamed via WebSocket, build performance analytics, success
 
 ## How It's Different from Jenkins
 
-| Feature | Jenkins | XCode |
+| Feature | Jenkins | FlowForge |
 |---------|---------|-------|
 | **Pipeline Creation** | Groovy scripts or XML config | Visual drag-and-drop editor |
 | **Real-time Updates** | Requires polling plugins | Native WebSocket streaming |
@@ -129,4 +129,4 @@ Free for personal, educational, and commercial use. Derivative works must remain
 
 ---
 
-**XCode** - Making CI/CD accessible to everyone through visual simplicity and modern architecture.
+**FlowForge** - Making CI/CD accessible to everyone through visual simplicity and modern architecture.
