@@ -4,13 +4,170 @@
  */
 
 import { v4 as uuidv4 } from 'uuid'
+import https from 'https'
+import http from 'http'
 import { jobManager } from '../../utils/jobManager.js'
 import { getAgentManager } from '../../utils/agentManager.js'
 import { getDataService } from '../../utils/dataService.js'
 import { getCredentialResolver } from '../../utils/credentialResolver.js'
 import { getBuildStatsManager } from '../../utils/buildStatsManager.js'
 import { notificationService } from '../../utils/notificationService.js'
+import { executionStateManager } from '../../utils/executionStateManager.js'
 import logger from '../../utils/logger.js'
+
+/**
+ * Execute an API request on the server
+ */
+async function executeApiRequest(command, jobId) {
+  return new Promise(async (resolve) => {
+    const { url, method = 'GET', headers = {}, body = '', timeout = 30000 } = command
+    const startTime = Date.now()
+    let outputCounter = 0
+
+    // Helper to send output via WebSocket
+    const sendOutput = async (message, level = 'info') => {
+      const outputLine = {
+        type: level,
+        level: level,
+        message: message,
+        timestamp: new Date().toISOString(),
+        nanotime: (Date.now() * 1000000 + outputCounter++).toString(),
+        source: 'Backend'
+      }
+      // Store output in job
+      await jobManager.addJobOutput(jobId, outputLine)
+    }
+
+    // Wrap initial setup in async IIFE
+    (async () => {
+      await sendOutput(`Making ${method} request to ${url}`, 'info')
+      if (Object.keys(headers).length > 0) {
+        await sendOutput(`Headers: ${JSON.stringify(headers, null, 2)}`, 'info')
+      }
+      if (body) {
+        await sendOutput(`Body: ${body}`, 'info')
+      }
+
+      if (Object.keys(headers).length > 0) {
+        logger.debug(`Headers: ${JSON.stringify(headers, null, 2)}`)
+      }
+      if (body) {
+        logger.debug(`Body: ${body}`)
+      }
+    })()
+
+    try {
+      // Parse URL
+      const urlObj = new URL(url)
+      const isHttps = urlObj.protocol === 'https:'
+      const httpModule = isHttps ? https : http
+
+      // Prepare request options
+      const options = {
+        method: method,
+        headers: headers,
+        timeout: timeout
+      }
+
+      // Create request
+      const req = httpModule.request(urlObj, options, (res) => {
+        let responseData = ''
+
+        res.on('data', (chunk) => {
+          responseData += chunk
+        })
+
+        res.on('end', async () => {
+          const executionTime = Date.now() - startTime
+          const success = res.statusCode >= 200 && res.statusCode < 300
+
+          await sendOutput(`Response Status: ${res.statusCode} ${res.statusMessage}`, success ? 'info' : 'error')
+          await sendOutput(`Execution time: ${executionTime}ms`, 'info')
+          // Smart output normalization
+          let normalizedOutput = responseData
+          let outputType = 'string'
+
+          try {
+            // Try to parse as JSON
+            const parsed = JSON.parse(responseData)
+            normalizedOutput = parsed
+            outputType = 'object'
+            await sendOutput(`Response (JSON): ${JSON.stringify(parsed, null, 2)}`, 'info')
+            logger.debug(`Response (JSON): ${JSON.stringify(parsed, null, 2)}`)
+          } catch (e) {
+            // Not JSON, keep as string
+            await sendOutput(`Response (Text): ${responseData}`, 'info')
+            logger.debug(`Response (Text): ${responseData}`)
+          }
+
+          resolve({
+            success: success,
+            exitCode: success ? 0 : 1,
+            output: responseData,
+            normalizedOutput: normalizedOutput,
+            outputType: outputType,
+            statusCode: res.statusCode,
+            headers: res.headers,
+            executionTime: executionTime
+          })
+        })
+      })
+
+      // Handle request errors
+      req.on('error', async (error) => {
+        const executionTime = Date.now() - startTime
+        await sendOutput(`Request failed: ${error.message}`, 'error')
+        logger.error(`Request failed: ${error.message}`)
+
+        resolve({
+          success: false,
+          exitCode: 1,
+          output: `Error: ${error.message}`,
+          normalizedOutput: null,
+          outputType: 'string',
+          error: error.message,
+          executionTime: executionTime
+        })
+      })
+
+      // Handle timeout
+      req.on('timeout', async () => {
+        req.destroy()
+        await sendOutput(`Request timed out after ${timeout}ms`, 'error')
+        logger.error(`Request timed out after ${timeout}ms`)
+
+        resolve({
+          success: false,
+          exitCode: 1,
+          output: `Error: Request timed out after ${timeout}ms`,
+          normalizedOutput: null,
+          outputType: 'string',
+          error: 'Timeout',
+          executionTime: timeout
+        })
+      })
+
+      // Send body if present
+      if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+        req.write(body)
+      }
+
+      req.end()
+    } catch (error) {
+      await sendOutput(`Failed to create API request: ${error.message}`, 'error')
+      logger.error(`Failed to create API request: ${error.message}`)
+      resolve({
+        success: false,
+        exitCode: 1,
+        output: `Error: ${error.message}`,
+        normalizedOutput: null,
+        outputType: 'string',
+        error: error.message,
+        executionTime: 0
+      })
+    }
+  })
+}
 
 export default defineEventHandler(async (event) => {
   let currentBuildNumber = null
@@ -68,6 +225,11 @@ export default defineEventHandler(async (event) => {
     // Convert graph to execution commands FIRST to validate
     let executionCommands
     try {
+      // Debug: Log execution outputs being passed
+      if (body.executionOutputs) {
+        logger.info(`[DEBUG] Execution outputs received:`, JSON.stringify(body.executionOutputs, null, 2))
+      }
+
       executionCommands = convertGraphToCommands(nodes, edges, null, body.executionOutputs, body.startNodeId)
       logger.info(`Generated ${executionCommands.length} commands`)
     } catch (error) {
@@ -80,7 +242,7 @@ export default defineEventHandler(async (event) => {
 
     // Filter to get only executable commands (including orchestrator commands, notifications, git, and dependencies)
     const executableCommands = executionCommands.filter(cmd =>
-      ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator', 'notification', 'git-checkout', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build'].includes(cmd.type)
+      ['api-request', 'bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator', 'notification', 'git-checkout', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build'].includes(cmd.type)
     )
 
     if (executableCommands.length === 0) {
@@ -90,9 +252,9 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Validate that all executable commands have agent selection (except orchestrators and notifications which run on the server)
+    // Validate that all executable commands have agent selection (except orchestrators, notifications, and api-request which run on the server)
     const missingAgentCommands = executableCommands.filter(cmd =>
-      !['parallel_branches_orchestrator', 'parallel_matrix_orchestrator', 'notification'].includes(cmd.type) &&
+      !['api-request', 'parallel_branches_orchestrator', 'parallel_matrix_orchestrator', 'notification'].includes(cmd.type) &&
       (!cmd.requiredAgentId || cmd.requiredAgentId === '')
     )
 
@@ -352,6 +514,142 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // Check if first command is an API request
+    if (firstCommand.type === 'api-request') {
+      logger.info(`First command is API request - executing directly on backend`)
+
+      // Update job with API request execution
+      await jobManager.updateJob(jobId, {
+        status: 'running',
+        executionCommands: executableCommands,
+        currentCommandIndex: 0,
+        currentNodeId: firstCommand.nodeId,
+        currentNodeLabel: firstCommand.nodeLabel,
+        buildNumber: currentBuildNumber
+      })
+
+      // Mark node as executing in execution state manager
+      if (currentBuildNumber) {
+        executionStateManager.markNodeExecuting(projectId, currentBuildNumber, firstCommand.nodeId, firstCommand.nodeLabel)
+      }
+
+      // Broadcast job started event to WebSocket clients
+      if (globalThis.broadcastToProject) {
+        globalThis.broadcastToProject(projectId, {
+          type: 'job_started',
+          jobId,
+          buildNumber: currentBuildNumber,
+          agentId: 'backend',
+          agentName: 'Backend Server',
+          nodeId: firstCommand.nodeId,
+          nodeLabel: firstCommand.nodeLabel,
+          status: 'running',
+          timestamp: new Date().toISOString(),
+          message: 'API request started'
+        })
+      }
+
+      const result = await executeApiRequest(firstCommand, jobId)
+
+      if (result.success) {
+        logger.info(`API request completed successfully`)
+
+        // Mark node as completed in execution state manager
+        if (currentBuildNumber) {
+          executionStateManager.markNodeCompleted(projectId, currentBuildNumber, firstCommand.nodeId)
+        }
+
+        // Mark job as completed
+        await jobManager.updateJob(jobId, {
+          status: 'completed',
+          exitCode: 0,
+          completedAt: new Date().toISOString(),
+          message: `API request completed: ${result.statusCode}`
+        })
+
+        // Check if there are more commands to execute
+        const agentManager = await getAgentManager()
+        const updatedJob = await jobManager.getJob(jobId)
+        const hasNextNodes = await agentManager.triggerNextNodes(updatedJob, {
+          success: true,
+          exitCode: 0,
+          output: result.normalizedOutput || result.output
+        })
+
+        // Broadcast job completion
+        if (globalThis.broadcastToProject) {
+          globalThis.broadcastToProject(projectId, {
+            type: 'job_complete',
+            jobId,
+            buildNumber: currentBuildNumber,
+            status: 'completed',
+            exitCode: 0,
+            timestamp: new Date().toISOString(),
+            message: `API request completed: ${result.statusCode}`
+          })
+        }
+
+        // Mark build as complete if this was the last command
+        if (!hasNextNodes && currentBuildNumber) {
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(projectId, currentBuildNumber, {
+            status: 'success',
+            message: `API request completed: ${result.statusCode}`,
+            nodesExecuted: 1
+          })
+        }
+      } else {
+        logger.error(`API request failed:`, result.error)
+
+        // Mark node as failed in execution state manager
+        if (currentBuildNumber) {
+          executionStateManager.markNodeFailed(projectId, currentBuildNumber, firstCommand.nodeId)
+        }
+
+        // Mark job as failed
+        await jobManager.updateJob(jobId, {
+          status: 'failed',
+          error: result.error,
+          exitCode: 1,
+          failedAt: new Date().toISOString()
+        })
+
+        // Broadcast API request failed event
+        if (globalThis.broadcastToProject) {
+          globalThis.broadcastToProject(projectId, {
+            type: 'job_failed',
+            jobId,
+            buildNumber: currentBuildNumber,
+            status: 'failed',
+            error: result.error,
+            timestamp: new Date().toISOString()
+          })
+        }
+
+        // Mark build as failed
+        if (currentBuildNumber) {
+          const buildStatsManager = await getBuildStatsManager()
+          await buildStatsManager.finishBuild(projectId, currentBuildNumber, {
+            status: 'failure',
+            message: `API request failed: ${result.error}`,
+            nodesExecuted: 1
+          })
+        }
+      }
+
+      return {
+        success: result.success,
+        jobId,
+        buildNumber: currentBuildNumber,
+        agentId: 'backend',
+        agentName: 'API Request',
+        startTime: job.startTime,
+        message: result.success
+          ? `API request completed: ${result.statusCode}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`
+          : `API request failed: ${result.error}`
+      }
+    }
+
     // Find agent for regular execution commands
     const requiresSpecificAgent = firstCommand.requiredAgentId && firstCommand.requiredAgentId !== 'any'
     const agentRequirements = requiresSpecificAgent ? { agentId: firstCommand.requiredAgentId } : {}
@@ -386,8 +684,8 @@ export default defineEventHandler(async (event) => {
       buildNumber: currentBuildNumber
     })
 
-    // For dependency and git nodes, send the entire command object; for script nodes, send just the script
-    const isDependencyOrGitNode = ['npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(firstCommand.type)
+    // For dependency, git, and api-request nodes, send the entire command object; for script nodes, send just the script
+    const isDependencyOrGitNode = ['api-request', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(firstCommand.type)
     
     const dispatchResult = await agentManager.dispatchJobWithQueue(selectedAgent.agentId, {
       jobId,
@@ -714,7 +1012,7 @@ function buildExecutionFlow(startNode, allNodes, allEdges, parameterValues, visi
   }
 
   // Check if this node has success/failure routing (branching point)
-  const isExecutionNode = ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(startNode.data.nodeType)
+  const isExecutionNode = ['api-request', 'bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(startNode.data.nodeType)
   const hasSuccessSocket = isExecutionNode && allEdges.some(edge => edge.source === startNode.id && edge.sourceHandle === 'success')
   const hasFailureSocket = isExecutionNode && allEdges.some(edge => edge.source === startNode.id && edge.sourceHandle === 'failure')
 
@@ -744,6 +1042,37 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
   const nodeType = node.data.nodeType
 
   switch (nodeType) {
+    case 'api-request':
+      // API Request node - make HTTP requests with custom headers
+      const resolvedUrl = resolveScriptPlaceholders(node, allEdges, parameterValues, node.data.url)
+      const resolvedBody = node.data.body ? resolveScriptPlaceholders(node, allEdges, parameterValues, node.data.body) : ''
+
+      // Resolve headers
+      const resolvedHeaders = {}
+      if (node.data.headers && Array.isArray(node.data.headers)) {
+        for (const header of node.data.headers) {
+          if (header.key && header.value) {
+            resolvedHeaders[header.key] = resolveScriptPlaceholders(node, allEdges, parameterValues, header.value)
+          }
+        }
+      }
+
+      commands.push({
+        type: 'api-request',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        url: resolvedUrl,
+        method: node.data.method || 'GET',
+        headers: resolvedHeaders,
+        body: resolvedBody,
+        timeout: node.data.timeout ? node.data.timeout * 1000 : 30000, // Default 30 seconds
+        requiredAgentId: node.data.agentId,
+        retryEnabled: node.data.retryEnabled || false,
+        maxRetries: node.data.maxRetries || 3,
+        retryDelay: node.data.retryDelay || 5
+      })
+      break
+
     case 'bash':
     case 'sh':
     case 'powershell':
@@ -761,7 +1090,7 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
       if (node.data.script) {
         // Resolve parameter placeholders in the script
         const resolvedScript = resolveScriptPlaceholders(node, allEdges, parameterValues)
-        
+
         commands.push({
           type: nodeType,
           script: resolvedScript,
@@ -1116,20 +1445,26 @@ function getNestedProperty(obj, path) {
 /**
  * Resolve parameter placeholders in script text
  */
-function resolveScriptPlaceholders(node, allEdges, parameterValues) {
-  let script = node.data.script || ''
+function resolveScriptPlaceholders(node, allEdges, parameterValues, customText = null) {
+  let script = customText !== null ? customText : (node.data.script || '')
   // Find all input connections to this node
   const inputConnections = allEdges.filter(edge => edge.target === node.id)
+
+  // Debug: Log parameter values available
+  logger.debug(`[DEBUG] Resolving placeholders for node ${node.id} (${node.data?.label || 'unknown'})`)
+  logger.debug(`[DEBUG] Available parameter values:`, Array.from(parameterValues.entries()).map(([k, v]) => `${k}: ${JSON.stringify(v)}`))
 
   // Process each input socket placeholder
   if (node.data.inputSockets && node.data.inputSockets.length > 0) {
     node.data.inputSockets.forEach((socket, index) => {
-      
+
       // Find the edge connected to this socket
       const connection = inputConnections.find(edge => edge.targetHandle === socket.id)
       let parameterData = null
 
       if (connection) {
+        logger.debug(`[DEBUG] Socket ${socket.label} (${socket.id}) has connection from ${connection.source} (sourceHandle: ${connection.sourceHandle})`)
+
         // Check if the source is a parameter node
         parameterData = parameterValues.get(connection.source)
 
@@ -1137,12 +1472,14 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
         if (!parameterData && connection.sourceHandle) {
           const webhookSocketKey = `${connection.source}_${connection.sourceHandle}`
           parameterData = parameterValues.get(webhookSocketKey)
+          logger.debug(`[DEBUG] Tried webhook key: ${webhookSocketKey}, found: ${!!parameterData}`)
         }
 
         // If still not found, check if it's an execution output connection
         if (!parameterData && connection.sourceHandle === 'output') {
           const executionOutputKey = `${connection.target}_${connection.targetHandle}`
           parameterData = parameterValues.get(executionOutputKey)
+          logger.debug(`[DEBUG] Tried execution output key: ${executionOutputKey}, found: ${!!parameterData}`)
         }
       }
 
@@ -1159,13 +1496,17 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
       if (parameterData) {
           // Handle socket label that may or may not start with $
           const cleanLabel = socket.label.startsWith('$') ? socket.label.substring(1) : socket.label
-          
+
           // Escape special regex characters in the socket label
           const escapedLabel = cleanLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-          
+
+          logger.debug(`[DEBUG] Processing socket: ${socket.label}, cleanLabel: ${cleanLabel}, escapedLabel: ${escapedLabel}`)
+          logger.debug(`[DEBUG] Script before replacement: "${script}"`)
+          logger.debug(`[DEBUG] Parameter value type: ${typeof parameterData.value}, isObject: ${typeof parameterData.value === 'object' && parameterData.value !== null}`)
+
           // Check if the parameter value is an object (webhook data)
           const isObjectValue = typeof parameterData.value === 'object' && parameterData.value !== null
-          
+
           if (isObjectValue) {
             
             // Handle property access patterns FIRST, including patterns outside ${} like $INPUT_1.property
@@ -1181,11 +1522,24 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
               }
             })
 
-            // Pattern 2: $INPUT_1.property.path (without braces - fallback)
-            const propertyAccessRegex2 = new RegExp(`\\$${escapedLabel}\\.(\\S+?)(?=\\s|"|'|$)`, 'g')
+            // Pattern 2: $INPUT_1.property.path or $INPUT_1[0].property (without braces - fallback)
+            // This regex captures everything after $INPUT_1 that looks like property/array access
+            const propertyAccessRegex2 = new RegExp(`\\$${escapedLabel}([.\\[][^\\s"']*?)(?=\\s|"|'|$)`, 'g')
             script = script.replace(propertyAccessRegex2, (match, propertyPath) => {
               try {
-                const value = getNestedProperty(parameterData.value, propertyPath)
+                logger.debug(`[DEBUG] Property access match: "${match}", propertyPath: "${propertyPath}"`)
+                // Clean the path:
+                // - Remove leading dot if followed by bracket: .[0] -> [0]
+                // - Remove leading dot for regular properties: .property -> property
+                let cleanPath = propertyPath
+                if (cleanPath.startsWith('.[')) {
+                  cleanPath = cleanPath.substring(1) // Remove the dot before bracket
+                } else if (cleanPath.startsWith('.')) {
+                  cleanPath = cleanPath.substring(1) // Remove leading dot
+                }
+                logger.debug(`[DEBUG] Clean path: "${cleanPath}"`)
+                const value = getNestedProperty(parameterData.value, cleanPath)
+                logger.debug(`[DEBUG] Property access result: ${value !== undefined ? String(value).substring(0, 100) : 'undefined'}`)
                 return value !== undefined ? String(value) : match
               } catch (error) {
                 logger.warn(`Failed to access property ${propertyPath} on ${cleanLabel}:`, error)
@@ -1195,21 +1549,43 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues) {
             
             // Then handle simple references like ${INPUT_1} with the whole object as JSON
             const simpleSocketPlaceholder = `\\$\\{\\$?${escapedLabel}\\}`
-            script = script.replace(new RegExp(simpleSocketPlaceholder, 'g'), JSON.stringify(parameterData.value))
-            
+            const simpleRegex = new RegExp(simpleSocketPlaceholder, 'g')
+            logger.debug(`[DEBUG] Simple placeholder regex: ${simpleSocketPlaceholder}`)
+            logger.debug(`[DEBUG] Matches found: ${script.match(simpleRegex)}`)
+            script = script.replace(simpleRegex, JSON.stringify(parameterData.value))
+            logger.debug(`[DEBUG] Script after simple replacement: "${script}"`)
+
+            // Fallback: Also handle $INPUT_1 without braces for objects
+            if (!cleanLabel.includes(' ')) {
+              const fallbackPlaceholder = `\\$${escapedLabel}\\b` // \b ensures word boundary
+              const fallbackRegex = new RegExp(fallbackPlaceholder, 'g')
+              logger.debug(`[DEBUG] Object fallback placeholder regex: ${fallbackPlaceholder}`)
+              logger.debug(`[DEBUG] Matches found: ${script.match(fallbackRegex)}`)
+              script = script.replace(fallbackRegex, JSON.stringify(parameterData.value))
+              logger.debug(`[DEBUG] Script after object fallback replacement: "${script}"`)
+            }
+
           } else {
             // For simple values, use the existing logic
             // Primary format: ${socketLabel} - this is the main format users should use
             // Also handle ${$socketLabel} in case there's an extra $ inside the braces
             const socketLabelPlaceholder = `\\$\\{\\$?${escapedLabel}\\}`
-            script = script.replace(new RegExp(socketLabelPlaceholder, 'g'), String(parameterData.value))
-            
+            const primaryRegex = new RegExp(socketLabelPlaceholder, 'g')
+            logger.debug(`[DEBUG] Primary placeholder regex: ${socketLabelPlaceholder}`)
+            logger.debug(`[DEBUG] Matches found: ${script.match(primaryRegex)}`)
+            script = script.replace(primaryRegex, String(parameterData.value))
+            logger.debug(`[DEBUG] Script after primary replacement: "${script}"`)
+
             // Fallback format: $socketLabel (without {}) - for error recovery
             // This helps when users forget to wrap the socket label in {}
             // Only apply if the label doesn't contain spaces (to avoid false matches)
             if (!cleanLabel.includes(' ')) {
               const fallbackPlaceholder = `\\$${escapedLabel}\\b` // \b ensures word boundary
-              script = script.replace(new RegExp(fallbackPlaceholder, 'g'), String(parameterData.value))
+              const fallbackRegex = new RegExp(fallbackPlaceholder, 'g')
+              logger.debug(`[DEBUG] Fallback placeholder regex: ${fallbackPlaceholder}`)
+              logger.debug(`[DEBUG] Matches found: ${script.match(fallbackRegex)}`)
+              script = script.replace(fallbackRegex, String(parameterData.value))
+              logger.debug(`[DEBUG] Script after fallback replacement: "${script}"`)
             }
           }
 
@@ -1236,7 +1612,7 @@ export function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameter
   
   // Handle execution nodes with success/failure routing
   // Note: parallel_execution nodes have no output sockets, so they don't need success/failure routing
-  if (sourceNode && ['bash', 'sh', 'powershell', 'cmd', 'python', 'python3', 'node', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_branches', 'git-checkout', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build'].includes(sourceNode.data.nodeType)) {
+  if (sourceNode && ['api-request', 'bash', 'sh', 'powershell', 'cmd', 'python', 'python3', 'node', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_branches', 'git-checkout', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build'].includes(sourceNode.data.nodeType)) {
     return getExecutionResultConnectedNodes(sourceNode, allNodes, allEdges, executionResult)
   }
   

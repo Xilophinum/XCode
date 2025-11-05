@@ -1134,7 +1134,7 @@ const handleCreateProject = async () => {
 
 const formatDate = (date) => {
   const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
+  const diffMs = now.getTime() - (date instanceof Date ? date.getTime() : new Date(date).getTime())
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
   const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44)) // Average days per month

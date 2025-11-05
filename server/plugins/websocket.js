@@ -317,7 +317,6 @@ async function handleAuthentication(socket, msg, agentManager) {
     // Check if token exists in database
     const dataService = agentManager.dataService || await getDataService()
     const agentRecord = await dataService.getAgentByToken(msg.token)
-    console.log('Authenticated agent record:', agentRecord)
     if (!agentRecord) {
       socket.emit('message', {
         type: 'error',

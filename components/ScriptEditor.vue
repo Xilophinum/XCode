@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, defineProps, defineEmits, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { languages } from 'monaco-editor'
 
 const props = defineProps({
@@ -104,10 +104,21 @@ const handleValueUpdate = (value) => {
 const editorMounted = (editor) => {
   monacoEditor = editor
   updateEditorHeight()
+
   // Listen to content changes to update height
   monacoEditor.onDidChangeModelContent(() => {
     updateEditorHeight()
   })
+
+  // Fix space key issue by preventing event propagation
+  const domNode = monacoEditor.getDomNode()
+  if (domNode) {
+    domNode.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.code === 'Space') {
+        e.stopPropagation()
+      }
+    }, true)
+  }
 }
 </script>
 

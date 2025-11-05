@@ -541,6 +541,12 @@
                 :nodeData="selectedNode"
               />
 
+              <!-- API Request Configuration -->
+              <ApiRequestProperties
+                v-if="selectedNode.data?.nodeType === 'api-request'"
+                :nodeData="selectedNode"
+              />
+
               <!-- Parallel Branches Configuration -->
               <ParallelBranchesProperties
                 v-if="selectedNode.data?.nodeType === 'parallel_branches'"
@@ -582,7 +588,7 @@
               />
 
               <!-- Script Editor for execution nodes -->
-              <div v-if="selectedNode.data?.script !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
+              <div v-if="selectedNode.data?.script !== undefined && !['api-request', 'parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Script</label>
                 <ScriptEditor
                   v-model="selectedNode.data.script"
@@ -602,7 +608,7 @@
               </div>
 
               <!-- Working Directory for execution nodes -->
-              <div v-if="selectedNode.data?.workingDirectory !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
+              <div v-if="selectedNode.data?.workingDirectory !== undefined && !['api-request', 'parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
                 <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Working Directory</label>
                 <input
                   v-model="selectedNode.data.workingDirectory"
@@ -729,7 +735,7 @@
 import { VueFlow, useVueFlow, Handle, Position, ConnectionMode } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
-import { ref, computed, onMounted, onUnmounted, nextTick, defineComponent, h, markRaw, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, markRaw, watch } from 'vue'
 import WebHookProperties from '@/components/property-panels/WebhookProperties.vue'
 import CronProperties from '@/components/property-panels/CronProperties.vue'
 import JobTriggerProperties from '@/components/property-panels/JobTriggerProperties.vue'
@@ -746,6 +752,7 @@ import NpmInstallProperties from '@/components/property-panels/NpmInstallPropert
 import PipInstallProperties from '@/components/property-panels/PipInstallProperties.vue'
 import DependencyNodeProperties from '@/components/property-panels/DependencyNodeProperties.vue'
 import GitCheckoutProperties from '@/components/property-panels/GitCheckoutProperties.vue'
+import ApiRequestProperties from '@/components/property-panels/ApiRequestProperties.vue'
 import EditorDeleteModal from '@/components/modals/EditorDeleteModal.vue'
 import EditorRetentionModal from '@/components/modals/EditorRetentionModal.vue'
 import CredentialBinding from '@/components/CredentialBinding.vue'
@@ -926,6 +933,7 @@ const parameterNodes = [
 ]
 
 const executionNodes = [
+  { type: 'api-request', name: 'API Request', description: 'Make HTTP API requests with custom headers' },
   { type: 'bash', name: 'Bash Script', description: 'Execute bash commands', placeholder: '#!/bin/bash\necho "Hello from bash"'},
   { type: 'sh', name: 'Shell Script', description: 'Execute POSIX shell commands', placeholder: '#!/bin/sh\necho "Hello from shell"'},
   { type: 'powershell', name: 'PowerShell Script', description: 'Execute PowerShell commands', placeholder: 'Write-Host "Hello from PowerShell"'},
@@ -971,6 +979,7 @@ const availableAgents = computed(() => {
 
 const isExecutionNode = (nodeType) => {
   if (!nodeType) return false
+  // api-request runs on server, doesn't need agent
   return ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_execution', 'git-checkout', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build'].includes(nodeType)
 }
 
@@ -1185,14 +1194,14 @@ const getDefaultNodeData = (type) => {
   switch (type) {
     // Trigger nodes
     case 'cron':
-      return { 
+      return {
         ...baseData,
         hasExecutionInput: false, // Triggers don't have execution input
         cronExpression: '0 0 * * *', // Daily at midnight
         timezone: 'UTC'
       }
     case 'webhook':
-      return { 
+      return {
         ...baseData,
         hasExecutionInput: false,
         hasDataOutput: true, // Webhook provides data output
@@ -1207,14 +1216,14 @@ const getDefaultNodeData = (type) => {
         active: true
       }
     case 'job-trigger':
-      return { 
+      return {
         ...baseData,
         hasExecutionInput: false,
         sourceProjectId: '',
         triggerOn: 'success', // success, failure, always
         waitForCompletion: true
       }
-      
+
     // Parameter nodes
     case 'string-param':
       return { 
@@ -1254,6 +1263,26 @@ const getDefaultNodeData = (type) => {
       }
       
     // Execution nodes
+    case 'api-request':
+      return {
+        ...baseData,
+        hasExecutionOutput: false,
+        hasDataOutput: true,
+        outputSockets: [
+          { id: 'success', label: 'Success', connected: false },
+          { id: 'failure', label: 'Failure', connected: false },
+          { id: 'output', label: 'Output', connected: false }
+        ],
+        url: 'https://api.example.com/endpoint',
+        method: 'GET',
+        headers: [],
+        body: '',
+        timeout: 30,
+        retryEnabled: false,
+        maxRetries: 3,
+        retryDelay: 5,
+        executionNode: true
+      }
     case 'bash':
       return {
         ...baseData,
@@ -1986,11 +2015,11 @@ onConnect(connection => {
 })
 
 // WebSocket setup for execution state tracking
-const setupWebSocket = () => {
+const setupWebSocket = async () => {
   if (!webSocketStore.socket) {
-    webSocketStore.connect()
+    await webSocketStore.connect()
   }
-  
+  await webSocketStore.subscribeToProject(project.value?.id)
   // Listen for execution state changes
   webSocketStore.socket?.on('executionStarted', (data) => {
     if (data.projectId === project.value?.id) {

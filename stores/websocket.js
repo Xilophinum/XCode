@@ -80,13 +80,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
       // Handle all real-time messages and events
       socket.value.on('message', handleWebSocketMessage)
-      socket.value.on('client_authenticated', (data) => {
+      socket.value.on('client_authenticated', async (data) => {
         isAuthenticated.value = true
         connectionError.value = null
         
         // Re-subscribe to any previously subscribed projects after authentication
         for (const projectId of subscribedProjects.value) {
-          subscribeToProject(projectId)
+          await subscribeToProject(projectId)
         }
       })
       socket.value.on('client_auth_error', (data) => {

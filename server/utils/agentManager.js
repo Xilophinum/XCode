@@ -823,7 +823,7 @@ class AgentManager {
       // Fallback: find any execution node if we can't determine the current one
       if (!currentNode) {
         currentNode = nodes.find(node =>
-          ['bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(node.data?.nodeType)
+          ['api-request', 'bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(node.data?.nodeType)
         )
         logger.warn(`🔗 Using fallback current node: ${currentNode?.data?.label || 'NOT FOUND'}`)
       }
@@ -852,13 +852,15 @@ class AgentManager {
         try {
           // Create parameter values map including execution outputs
           const parameterValues = new Map()
-          
+
           // Add execution output if available
           if (executionResult && executionResult.output) {
+            logger.info(`[DEBUG] Execution result output available:`, typeof executionResult.output === 'object' ? JSON.stringify(executionResult.output).substring(0, 200) : executionResult.output.substring(0, 200))
+
             // Find edges connecting current node's output to next node's input
-            const outputConnection = edges.find(edge => 
-              edge.source === currentNode.id && 
-              edge.target === nextNode.id && 
+            const outputConnection = edges.find(edge =>
+              edge.source === currentNode.id &&
+              edge.target === nextNode.id &&
               edge.sourceHandle === 'output'
             )
 
@@ -868,12 +870,19 @@ class AgentManager {
               const targetSocket = nextNode.data.inputSockets?.find(s => s.id === outputConnection.targetHandle)
               const socketLabel = targetSocket?.label || outputConnection.targetHandle
 
-              parameterValues.set(`${nextNode.id}_${outputConnection.targetHandle}`, {
+              const executionOutputKey = `${nextNode.id}_${outputConnection.targetHandle}`
+              logger.info(`[DEBUG] Storing execution output with key: ${executionOutputKey}, label: ${socketLabel}`)
+
+              parameterValues.set(executionOutputKey, {
                 label: socketLabel, // Use the actual socket label, not the socket ID
                 value: executionResult.output,
                 nodeType: 'execution-output'
               })
+            } else {
+              logger.warn(`[DEBUG] No output connection found from ${currentNode.id} to ${nextNode.id}`)
             }
+          } else {
+            logger.warn(`[DEBUG] No execution result output available`)
           }
           
           // Create execution data for the next node
