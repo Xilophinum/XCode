@@ -24,7 +24,6 @@ export function createSchema(dbType = 'sqlite') {
         role: pgVarchar('role', { length: 50 }),
         userType: pgVarchar('user_type', { length: 50 }).notNull().default('local'),
         externalId: pgVarchar('external_id', { length: 255 }),
-        groups: pgText('groups'),
         lastLogin: pgText('last_login'),
         isActive: pgVarchar('is_active', { length: 10 }).notNull().default('true'),
         createdAt: pgText('created_at').notNull(),
@@ -244,6 +243,25 @@ export function createSchema(dbType = 'sqlite') {
         updatedAt: pgText('updated_at').notNull(),
       }),
 
+      groups: pgTable('groups', {
+        id: pgVarchar('id', { length: 255 }).primaryKey(),
+        name: pgVarchar('name', { length: 255 }).notNull().unique(),
+        description: pgText('description'),
+        ldapMappings: pgText('ldap_mappings'), // JSON array of LDAP group CNs/DNs
+        createdAt: pgText('created_at').notNull(),
+        updatedAt: pgText('updated_at').notNull(),
+      }),
+
+      userGroupMemberships: pgTable('user_group_memberships', {
+        userId: pgVarchar('user_id', { length: 255 }).notNull(),
+        groupId: pgVarchar('group_id', { length: 255 }).notNull(),
+        createdAt: pgText('created_at').notNull(),
+      }, (table) => {
+        return {
+          pk: pgPrimaryKey({ columns: [table.userId, table.groupId] })
+        }
+      }),
+
       metrics: pgTable('metrics', {
         id: pgVarchar('id', { length: 255 }).primaryKey(),
         timestamp: pgText('timestamp').notNull(), // Rounded to minute
@@ -274,7 +292,6 @@ export function createSchema(dbType = 'sqlite') {
       role: text('role'),
       userType: text('user_type').notNull().default('local'),
       externalId: text('external_id'),
-      groups: text('groups'),
       lastLogin: text('last_login'),
       isActive: text('is_active').notNull().default('true'),
       createdAt: text('created_at').notNull(),
@@ -492,6 +509,25 @@ export function createSchema(dbType = 'sqlite') {
       completedAt: text('completed_at'),
       createdAt: text('created_at').notNull(),
       updatedAt: text('updated_at').notNull(),
+    }),
+
+    groups: sqliteTable('groups', {
+      id: text('id').primaryKey(),
+      name: text('name').notNull().unique(),
+      description: text('description'),
+      ldapMappings: text('ldap_mappings'), // JSON array of LDAP group CNs/DNs
+      createdAt: text('created_at').notNull(),
+      updatedAt: text('updated_at').notNull(),
+    }),
+
+    userGroupMemberships: sqliteTable('user_group_memberships', {
+      userId: text('user_id').notNull(),
+      groupId: text('group_id').notNull(),
+      createdAt: text('created_at').notNull(),
+    }, (table) => {
+      return {
+        pk: primaryKey({ columns: [table.userId, table.groupId] })
+      }
     }),
 
     metrics: sqliteTable('metrics', {

@@ -3,7 +3,7 @@ import { eq, desc, and, gte, lte, count, avg, min, max } from 'drizzle-orm'
 import { broadcastBuildCompletion } from '../plugins/websocket.js'
 import logger, { createBuildLogger, closeBuildLogger } from './logger.js'
 import { executionStateManager } from './executionStateManager.js'
-
+import { jobManager } from './jobManager.js'
 export class BuildStatsManager {
   constructor() {
     this.db = null
@@ -211,7 +211,6 @@ export class BuildStatsManager {
     logger.info(`Persisted execution state for build #${buildNumber}`)
 
     // Get all logs from in-memory job storage and save to database
-    const { jobManager } = await import('./jobManager.js')
     const memoryLogs = await jobManager.getBuildLogsFromMemory(projectId, buildNumber)
 
     logger.info(`Saving ${memoryLogs.length} logs from memory to database for build #${buildNumber}`)

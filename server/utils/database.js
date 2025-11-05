@@ -372,6 +372,28 @@ export class DatabaseManager {
         )
       `)
 
+      // Groups table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS groups (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL UNIQUE,
+          description TEXT,
+          ldap_mappings TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `)
+
+      // User Group Memberships table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS user_group_memberships (
+          user_id TEXT NOT NULL,
+          group_id TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, group_id)
+        )
+      `)
+
       // Metrics table - Consolidated schema
       this.sqlite.exec(`
         CREATE TABLE IF NOT EXISTS metrics (
@@ -877,6 +899,26 @@ export class DatabaseManager {
       `
 
       await this.postgres`
+        CREATE TABLE IF NOT EXISTS groups (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL UNIQUE,
+          description TEXT,
+          ldap_mappings TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `
+
+      await this.postgres`
+        CREATE TABLE IF NOT EXISTS user_group_memberships (
+          user_id VARCHAR(255) NOT NULL,
+          group_id VARCHAR(255) NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, group_id)
+        )
+      `
+
+      await this.postgres`
         CREATE TABLE IF NOT EXISTS metrics (
           id VARCHAR(255) PRIMARY KEY,
           timestamp TEXT NOT NULL,
@@ -953,4 +995,4 @@ export async function getRawDB() {
 // Export schema tables for direct access
 // These are initialized when getDB() is first called
 const schema = createSchema(process.env.DATABASE_TYPE || 'sqlite')
-export const { users, items, envVariables, credentialVault, passwordVault, systemSettings, agents, builds, cronJobs, auditLogs, projectSnapshots, systemUpdates, metrics } = schema
+export const { users, items, envVariables, credentialVault, passwordVault, systemSettings, agents, builds, cronJobs, auditLogs, projectSnapshots, systemUpdates, groups, userGroupMemberships, metrics } = schema

@@ -438,11 +438,11 @@
           <div v-if="accessForm.allowed_groups.length > 0" class="mb-2">
             <div class="flex flex-wrap gap-2">
               <span
-                v-for="(group, index) in accessForm.allowed_groups"
+                v-for="(groupId, index) in accessForm.allowed_groups"
                 :key="index"
                 class="inline-flex items-center px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full"
               >
-                {{ group }}
+                {{ groups.find(g => g.id === groupId)?.name || groupId }}
                 <button
                   type="button"
                   @click="removeGroupFromAccess(index)"
@@ -455,18 +455,18 @@
           </div>
 
           <!-- Available Groups -->
-          <div v-if="availableGroups.length > 0">
+          <div v-if="availableGroupsForAccess.length > 0">
             <select
               @change="addGroupToAccess($event.target.value); $event.target.value = ''"
               class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
             >
               <option value="">Select a group to add...</option>
               <option
-                v-for="group in availableGroups.filter(g => !accessForm.allowed_groups.includes(g))"
-                :key="group"
-                :value="group"
+                v-for="group in availableGroupsForAccess"
+                :key="group.id"
+                :value="group.id"
               >
-                {{ group }}
+                {{ group.name }}
               </option>
             </select>
           </div>
@@ -699,8 +699,8 @@ const accessForm = ref({
   allowed_groups: []
 })
 const groups = ref([])
-const availableGroups = computed(() => {
-  return groups.value.map(g => g.name)
+const availableGroupsForAccess = computed(() => {
+  return groups.value.filter(g => !accessForm.value.allowed_groups.includes(g.id))
 })
 
 // Get items at current path
@@ -1004,13 +1004,7 @@ const cancelRename = () => {
 // Access settings handlers
 const loadGroups = async () => {
   try {
-    const settings = await $fetch('/api/admin/system-settings')
-    const groupsSetting = Object.values(settings).flat().find(s => s.key === 'user_groups')
-    if (groupsSetting?.value) {
-      groups.value = JSON.parse(groupsSetting.value).map((name, index) => ({ id: index, name }))
-    } else {
-      groups.value = []
-    }
+    groups.value = await $fetch('/api/admin/groups')
   } catch (error) {
     logger.error('Failed to load groups:', error)
     groups.value = []

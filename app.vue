@@ -26,10 +26,14 @@ onMounted(async () => {
     logger.error('Failed to initialize global WebSocket:', error)
   }
 
-  const logLevel = await $fetch('/api/admin/system-settings/log_level')
-  if (logLevel?.value) {
-    logger.setLevel(logLevel.value)
-    logger.info('Client Log level set to:', logLevel.value)
+  try {
+    const logLevel = await $fetch('/api/public/system-settings/log_level')
+    if (logLevel?.value) {
+      logger.setLevel(logLevel.value)
+      logger.info('Client Log level set to:', logLevel.value)
+    }
+  } catch (error) {
+    logger.warn('Failed to load log level setting:', error)
   }
 })
 

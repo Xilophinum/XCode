@@ -5,6 +5,7 @@ import { getAgentManager } from '~/server/utils/agentManager.js'
 import { getDataService } from '~/server/utils/dataService.js'
 import { jobManager } from '~/server/utils/jobManager.js'
 import { getBuildStatsManager } from '~/server/utils/buildStatsManager.js'
+import { getJobQueueManager } from '../utils/jobQueueManager.js'
 import { MetricsBuffer } from '~/server/utils/metricsBuffer.js'
 import { getDB } from '~/server/utils/database.js'
 import logger from '~/server/utils/logger.js'
@@ -985,7 +986,6 @@ async function handleOrphanedJobs(agentId, agentManager) {
         const currentCommand = job.executionCommands[job.currentCommandIndex]
 
         // Get job queue manager
-        const { getJobQueueManager } = await import('../utils/jobQueueManager.js')
         const jobQueueManager = getJobQueueManager()
 
         // Queue the job with high priority (it was already running)
@@ -1069,7 +1069,6 @@ async function handleOrphanedJobs(agentId, agentManager) {
             } else {
               logger.error(`Failed to reassign job ${job.jobId} - queuing for any available agent`)
               // Queue for ANY agent (will be picked up when any agent has capacity)
-              const { getJobQueueManager } = await import('../utils/jobQueueManager.js')
               const jobQueueManager = getJobQueueManager()
 
               // Find all online agents and queue for the first one
@@ -1123,7 +1122,6 @@ async function handleOrphanedJobs(agentId, agentManager) {
 
           const currentCommand = job.executionCommands?.[job.currentCommandIndex || 0]
           if (currentCommand) {
-            const { getJobQueueManager } = await import('../utils/jobQueueManager.js')
             const jobQueueManager = getJobQueueManager()
 
             // Queue for ANY agent that comes online
@@ -1270,7 +1268,6 @@ async function handleServerRestartOrphanedJobs(agentManager) {
     logger.info(`🚨 Found ${activeJobs.length} orphaned jobs on server restart`)
 
     // Get job queue manager
-    const { getJobQueueManager } = await import('../utils/jobQueueManager.js')
     const jobQueueManager = getJobQueueManager()
 
     for (const job of activeJobs) {

@@ -36,6 +36,7 @@
 import nodemailer from 'nodemailer'
 import { getDataService } from './dataService.js'
 import logger, { getBuildLogPath } from './logger.js'
+import fs from 'fs'
 import FormData from 'form-data'
 
 export class NotificationService {
@@ -128,7 +129,6 @@ export class NotificationService {
       if (logPath) {
         buildLogPath = logPath
         try {
-          const fs = await import('fs')
           buildLogContent = fs.readFileSync(logPath, 'utf-8')
         } catch (error) {
           logger.warn(`Failed to read build log for context variables: ${error.message}`)
@@ -405,7 +405,6 @@ export class NotificationService {
       if (logPath) {
         try {
           logger.info(`Uploading build log to Slack: ${logPath}`)
-          const fs = await import('fs')
           const fileContent = fs.readFileSync(logPath)
           const fileName = `build_${context.projectId}_${context.buildNumber}.log`
 
@@ -539,8 +538,6 @@ export class NotificationService {
     // If attaching a file to Discord webhook, use multipart/form-data
     if (logPath && isDiscordWebhook) {
       logger.info(`Attaching build log to Discord webhook: ${logPath}`)
-      const fs = await import('fs')
-      const FormData = (await import('form-data')).default
       const formData = new FormData()
 
       // Parse the JSON body and add as payload_json for Discord

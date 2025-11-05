@@ -2,6 +2,7 @@ import { getDB, users, items, envVariables, credentialVault, systemSettings, age
 import { eq } from 'drizzle-orm'
 import crypto from 'crypto'
 import { AuditLogger, generateChangesSummary, analyzeDiagramChanges } from './audit-logger.js'
+import { AccessControl } from './accessControl.js'
 import logger from './logger.js'
 
 export class DataService {
@@ -141,8 +142,6 @@ export class DataService {
     
     // Regular users see items based on access control
     const allItems = await this.getAllItems()
-    const { AccessControl } = await import('./accessControl.js')
-    
     return await AccessControl.filterAccessibleItems(allItems, userId)
   }
 
@@ -754,7 +753,6 @@ export class DataService {
       role: user.role,
       userType: user.userType || 'local',
       externalId: user.externalId,
-      groups: user.groups || '',
       lastLogin: user.lastLogin,
       isActive: user.isActive || 'true',
       createdAt: user.createdAt,

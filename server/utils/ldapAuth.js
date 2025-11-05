@@ -63,6 +63,12 @@ export class LDAPAuthenticator {
       // Get user attributes
       const userInfo = await this.getUserInfo(userDN.dn)
 
+      // Normalize groups to always be an array
+      let groups = []
+      if (userInfo.memberOf) {
+        groups = Array.isArray(userInfo.memberOf) ? userInfo.memberOf : [userInfo.memberOf]
+      }
+
       return {
         success: true,
         user: {
@@ -70,7 +76,7 @@ export class LDAPAuthenticator {
           username: userInfo.uid || userInfo.sAMAccountName || username,
           email: userInfo.mail || userInfo.email,
           name: userInfo.displayName || userInfo.cn || userInfo.name || username,
-          groups: userInfo.memberOf || []
+          groups: groups
         }
       }
     } catch (error) {

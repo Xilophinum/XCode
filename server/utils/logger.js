@@ -7,6 +7,7 @@ import winston from 'winston'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
+import { getDataService } from './dataService.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -178,7 +179,6 @@ export function getBuildLogger(projectId, buildNumber) {
  */
 export async function initializeLogger() {
   try {
-    const { getDataService } = await import('./dataService.js')
     const dataService = await getDataService()
     const settings = await dataService.getSystemSettings('general')
     const logLevelSetting = settings.find(s => s.key === 'log_level')

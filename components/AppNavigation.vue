@@ -386,7 +386,7 @@ const hideSearchResults = () => {
 const loadBrandingSettings = async () => {
   try {
     // Try to load branding settings, but don't fail if we can't
-    const response = await $fetch('/api/admin/system-settings/brand_name')
+    const response = await $fetch('/api/public/system-settings/brand_name')
     if (response?.value) {
       brandName.value = response.value
     }
@@ -396,7 +396,7 @@ const loadBrandingSettings = async () => {
   }
 
   try {
-    const logoResponse = await $fetch('/api/admin/system-settings/app_logo')
+    const logoResponse = await $fetch('/api/public/system-settings/app_logo')
     if (logoResponse?.value) {
       appLogo.value = logoResponse.value
     }

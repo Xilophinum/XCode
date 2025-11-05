@@ -1,5 +1,6 @@
 import { getDataService } from '~/server/utils/dataService.js'
 import { authenticateWithLDAP } from '~/server/utils/ldapAuth.js'
+import { syncUserGroupMemberships } from '~/server/utils/groupManager.js'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import logger from '~/server/utils/logger.js'
@@ -41,22 +42,28 @@ export default defineEventHandler(async (event) => {
               passwordHash: null,
               role: 'user', // Default role for LDAP users
               userType: 'ldap',
-              externalId: ldapResult.user.dn,
-              groups: (ldapResult.user.groups || []).join(',')
+              externalId: ldapResult.user.dn
             })
+
+            // Sync group memberships for new LDAP user
+            const syncResult = await syncUserGroupMemberships(user.id, ldapResult.user.groups || [])
+            logger.info(`Synced LDAP group memberships for new user ${user.email}: ${syncResult.total} groups`)
           } catch (createError) {
             throw createError
           }
         }
         
         if (user) {
-          // Update existing LDAP user info and groups
+          // Update existing LDAP user info
           await dataService.updateUser(user.id, {
             name: ldapResult.user.name,
-            groups: (ldapResult.user.groups || []).join(','),
             lastLogin: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           })
+
+          // Sync group memberships based on LDAP groups
+          const syncResult = await syncUserGroupMemberships(user.id, ldapResult.user.groups || [])
+          logger.info(`Synced LDAP group memberships for ${user.email}: +${syncResult.added} -${syncResult.removed} (total: ${syncResult.total})`)
         }
       } else {
         // LDAP auth failed

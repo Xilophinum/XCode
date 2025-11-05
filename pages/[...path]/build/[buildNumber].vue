@@ -628,7 +628,7 @@ onMounted(async () => {
       webSocketStore.subscribeToProject(project.value.id)
     }, 2000)
   } else {
-    logger.info(`✅ Successfully subscribed to project ${project.value.id}`)
+    logger.debug(`✅ Successfully subscribed to project ${project.value.id}`)
   }
 
   // After subscribing, reload logs from database to catch any messages generated before subscription

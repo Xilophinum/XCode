@@ -242,7 +242,7 @@
                       <div><strong>DN:</strong> {{ ldapTestResult.user.dn }}</div>
                       <div><strong>Name:</strong> {{ ldapTestResult.user.name }}</div>
                       <div><strong>Email:</strong> {{ ldapTestResult.user.email }}</div>
-                      <div v-if="ldapTestResult.user.groups?.length"><strong>Groups:</strong> {{ ldapTestResult.user.groups.join(', ') }}</div>
+                      <div v-if="Array.isArray(ldapTestResult.user.groups) && ldapTestResult.user.groups.length > 0"><strong>Groups:</strong> {{ ldapTestResult.user.groups.join(', ') }}</div>
                     </div>
                   </div>
                   
@@ -713,6 +713,8 @@
                 <div class="text-xs text-gray-500 dark:text-gray-400">{{ group.description || 'No description' }}</div>
                 <div class="text-xs text-gray-600 dark:text-gray-300 mt-1">
                   {{ group.memberCount || 0 }} members
+                  <br />
+                  {{ group.ldapMappings.length }} LDAP Groups
                 </div>
               </div>
               <div class="flex space-x-2">
@@ -784,7 +786,6 @@
                         {{ user.role === 'admin' ? 'Make User' : 'Make Admin' }}
                       </button>
                       <button
-                        v-if="user.userType !== 'ldap'"
                         @click="manageUserGroups(user)"
                         class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300"
                       >
@@ -1284,7 +1285,7 @@
             >
           </div>
           
-          <div class="mb-6">
+          <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
             <textarea
               v-model="groupForm.description"
@@ -1293,7 +1294,78 @@
               placeholder="Optional description"
             ></textarea>
           </div>
-          
+
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              LDAP Group Mappings
+              <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">(optional)</span>
+            </label>
+            <div class="space-y-2">
+              <div v-for="(mapping, index) in groupForm.ldapMappings" :key="index" class="flex gap-2">
+                <input
+                  v-model="groupForm.ldapMappings[index]"
+                  type="text"
+                  class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white text-sm"
+                  placeholder="DL-Admin-Group"
+                >
+                <button
+                  type="button"
+                  @click="groupForm.ldapMappings.splice(index, 1)"
+                  class="px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
+                >
+                  <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
+                </button>
+              </div>
+              <button
+                type="button"
+                @click="groupForm.ldapMappings = [...(groupForm.ldapMappings || []), '']"
+                class="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+              >
+                + Add LDAP Group
+              </button>
+            </div>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Enter distribution list or group names (e.g., DL-Admin-Group). Users with these LDAP groups will automatically be added on login.
+            </p>
+          </div>
+
+          <!-- Group Members Section (only show when editing) -->
+          <div v-if="editingGroup" class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Group Members
+              <span class="text-xs text-gray-500 dark:text-gray-400 font-normal">({{ groupMembers.length }})</span>
+            </label>
+
+            <div v-if="groupMembers.length > 0" class="border border-gray-300 dark:border-gray-600 rounded-md max-h-48 overflow-y-auto">
+              <div
+                v-for="member in groupMembers"
+                :key="member.userId"
+                class="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+              >
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    {{ member.name }}
+                  </div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {{ member.email }}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  @click="removeGroupMember(member)"
+                  class="ml-2 p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                  title="Remove member"
+                >
+                  <UIcon name="i-lucide-x" class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div v-else class="text-sm text-gray-500 dark:text-gray-400 italic">
+              No members in this group yet
+            </div>
+          </div>
+
           <div class="flex justify-end space-x-3">
             <button
               type="button"
@@ -1328,11 +1400,11 @@
             <div v-if="userGroupForm.groups.length > 0" class="mb-3">
               <div class="flex flex-wrap gap-2">
                 <span
-                  v-for="(group, index) in userGroupForm.groups"
+                  v-for="(groupId, index) in userGroupForm.groups"
                   :key="index"
                   class="inline-flex items-center px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full"
                 >
-                  {{ group }}
+                  {{ groups.find(g => g.id === groupId)?.name || groupId }}
                   <button
                     type="button"
                     @click="removeUserGroup(index)"
@@ -1343,7 +1415,7 @@
                 </span>
               </div>
             </div>
-            
+
             <!-- Available Groups -->
             <div v-if="availableGroupsForUser.length > 0">
               <select
@@ -1353,8 +1425,8 @@
                 <option value="">Select a group to add...</option>
                 <option
                   v-for="group in availableGroupsForUser"
-                  :key="group.name"
-                  :value="group.name"
+                  :key="group.id"
+                  :value="group.id"
                 >
                   {{ group.name }}
                 </option>
@@ -1644,6 +1716,8 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import ModalWrapper from '~/components/ModalWrapper.vue'
+import fs  from 'fs'
+import path  from 'path'
 const logger = useLogger()
 const toast = useToast()
 definePageMeta({
@@ -1750,6 +1824,8 @@ const groupForm = ref({
   description: ''
 })
 
+const groupMembers = ref([])
+
 const userGroupForm = ref({
   groups: []
 })
@@ -1770,7 +1846,7 @@ const templateForm = ref({
 })
 
 const availableGroupsForUser = computed(() => {
-  return groups.value.filter(group => !userGroupForm.value.groups.includes(group.name))
+  return groups.value.filter(group => !userGroupForm.value.groups.includes(group.id))
 })
 
 // LDAP test state
@@ -1821,27 +1897,10 @@ const loadUsers = async () => {
 
 const loadGroups = async () => {
   try {
-    const [settings, users] = await Promise.all([
-      $fetch('/api/admin/system-settings'),
-      $fetch('/api/admin/users')
-    ])
-    
-    const groupsSetting = Object.values(settings).flat().find(s => s.key === 'user_groups')
-    if (groupsSetting?.value) {
-      const groupNames = JSON.parse(groupsSetting.value)
-      groups.value = groupNames.map((name, index) => {
-        const memberCount = users.filter(user => {
-          if (!user.groups) return false
-          const userGroups = user.groups.split(',').map(g => g.trim()).filter(g => g)
-          return userGroups.includes(name)
-        }).length
-        return { id: index, name, memberCount }
-      })
-    } else {
-      groups.value = []
-    }
+    groups.value = await $fetch('/api/admin/groups')
   } catch (error) {
     logger.error('Failed to load groups:', error)
+    groups.value = []
   }
 }
 
@@ -2326,34 +2385,54 @@ const testLdapConnection = async () => {
 // Group management methods
 const saveGroup = async () => {
   try {
-    const currentGroups = groups.value.map(g => g.name)
-    let updatedGroups
-    
     if (editingGroup.value) {
-      updatedGroups = currentGroups.map(name => name === editingGroup.value.name ? groupForm.value.name : name)
+      await $fetch(`/api/admin/groups/${editingGroup.value.id}`, {
+        method: 'PUT',
+        body: {
+          name: groupForm.value.name,
+          description: groupForm.value.description,
+          ldapMappings: groupForm.value.ldapMappings || []
+        }
+      })
+      toast.add({ title: 'Group updated successfully', icon: 'i-lucide-check-circle' })
     } else {
-      updatedGroups = [...currentGroups, groupForm.value.name]
+      await $fetch('/api/admin/groups', {
+        method: 'POST',
+        body: {
+          name: groupForm.value.name,
+          description: groupForm.value.description,
+          ldapMappings: groupForm.value.ldapMappings || []
+        }
+      })
+      toast.add({ title: 'Group created successfully', icon: 'i-lucide-check-circle' })
     }
-    
-    await $fetch('/api/admin/system-settings/user_groups', {
-      method: 'PUT',
-      body: { value: JSON.stringify(updatedGroups) }
-    })
-    
+
     closeGroupModal()
     await loadGroups()
-    await loadUsers()
   } catch (error) {
     logger.error('Failed to save group:', error)
+    toast.add({ title: 'Failed to save group', icon: 'i-lucide-x-circle', color: 'red' })
   }
 }
 
-const editGroup = (group) => {
+const editGroup = async (group) => {
   editingGroup.value = group
   groupForm.value = {
     name: group.name,
-    description: group.description
+    description: group.description,
+    ldapMappings: group.ldapMappings || []
   }
+
+  // Load group members if editing
+  if (group.id) {
+    try {
+      groupMembers.value = await $fetch(`/api/admin/groups/${group.id}/members`)
+    } catch (error) {
+      logger.error('Failed to load group members:', error)
+      groupMembers.value = []
+    }
+  }
+
   showGroupModal.value = true
 }
 
@@ -2367,22 +2446,18 @@ const confirmDeleteGroup = (group) => {
 
 const deleteGroup = async () => {
   if (!groupToDelete.value) return
-  
+
   try {
-    const updatedGroups = groups.value.filter(g => g.id !== groupToDelete.value.id).map(g => g.name)
-    
-    await $fetch('/api/admin/system-settings/user_groups', {
-      method: 'PUT',
-      body: { value: JSON.stringify(updatedGroups) }
+    await $fetch(`/api/admin/groups/${groupToDelete.value.id}`, {
+      method: 'DELETE'
     })
     toast.add({ title: 'Group deleted successfully', icon: 'i-lucide-check-circle' })
     showDeleteGroupModal.value = false
     groupToDelete.value = null
     await loadGroups()
-    await loadUsers()
   } catch (error) {
     logger.error('Failed to delete group:', error)
-    toast.add({ title: 'Failed to delete group', icon: 'i-lucide-x-circle' })
+    toast.add({ title: 'Failed to delete group', icon: 'i-lucide-x-circle', color: 'red' })
   }
 }
 
@@ -2394,25 +2469,59 @@ const cancelDeleteGroup = () => {
 const closeGroupModal = () => {
   showGroupModal.value = false
   editingGroup.value = null
+  groupMembers.value = []
   groupForm.value = {
     name: '',
-    description: ''
+    description: '',
+    ldapMappings: []
+  }
+}
+
+const removeGroupMember = async (member) => {
+  if (!editingGroup.value) return
+
+  try {
+    await $fetch(`/api/admin/groups/${editingGroup.value.id}/members/${member.userId}`, {
+      method: 'DELETE'
+    })
+    toast.add({ title: 'Member removed successfully', icon: 'i-lucide-check-circle' })
+
+    // Reload members
+    groupMembers.value = await $fetch(`/api/admin/groups/${editingGroup.value.id}/members`)
+    await loadGroups()
+  } catch (error) {
+    logger.error('Failed to remove member:', error)
+    toast.add({ title: 'Failed to remove member', icon: 'i-lucide-x-circle', color: 'red' })
   }
 }
 
 // User group management methods
-const manageUserGroups = (user) => {
+const manageUserGroups = async (user) => {
   selectedUser.value = user
+
+  // Load user's current group memberships
+  const userMemberships = []
+  for (const group of groups.value) {
+    try {
+      const members = await $fetch(`/api/admin/groups/${group.id}/members`)
+      if (members.some(m => m.userId === user.id)) {
+        userMemberships.push(group.id)
+      }
+    } catch (error) {
+      logger.error(`Failed to check membership for group ${group.id}:`, error)
+    }
+  }
+
   userGroupForm.value = {
-    groups: user.groups ? user.groups.split(',').filter(g => g.trim()) : []
+    groups: userMemberships
   }
   showUserGroupsModal.value = true
 }
 
-const addUserGroup = (groupName) => {
-  if (groupName && !userGroupForm.value.groups.includes(groupName)) {
-    userGroupForm.value.groups.push(groupName)
-  }
+const addUserGroup = async (groupId) => {
+  if (!groupId || userGroupForm.value.groups.includes(groupId)) return
+
+  userGroupForm.value.groups.push(groupId)
 }
 
 const removeUserGroup = (index) => {
@@ -2420,16 +2529,47 @@ const removeUserGroup = (index) => {
 }
 
 const saveUserGroups = async () => {
+  if (!selectedUser.value) return
+
   try {
-    await $fetch(`/api/admin/users/${selectedUser.value.id}/groups`, {
-      method: 'PUT',
-      body: { groups: userGroupForm.value.groups.join(',') }
-    })
+    // Get current memberships
+    const currentMemberships = []
+    for (const group of groups.value) {
+      try {
+        const members = await $fetch(`/api/admin/groups/${group.id}/members`)
+        if (members.some(m => m.userId === selectedUser.value.id)) {
+          currentMemberships.push(group.id)
+        }
+      } catch (error) {
+        logger.error(`Failed to check membership:`, error)
+      }
+    }
+
+    // Determine which groups to add and remove
+    const toAdd = userGroupForm.value.groups.filter(gid => !currentMemberships.includes(gid))
+    const toRemove = currentMemberships.filter(gid => !userGroupForm.value.groups.includes(gid))
+
+    // Add new memberships
+    for (const groupId of toAdd) {
+      await $fetch(`/api/admin/groups/${groupId}/members`, {
+        method: 'POST',
+        body: { userId: selectedUser.value.id }
+      })
+    }
+
+    // Remove old memberships
+    for (const groupId of toRemove) {
+      await $fetch(`/api/admin/groups/${groupId}/members/${selectedUser.value.id}`, {
+        method: 'DELETE'
+      })
+    }
+
+    toast.add({ title: 'User groups updated successfully', icon: 'i-lucide-check-circle' })
     closeUserGroupsModal()
-    await loadUsers()
     await loadGroups()
   } catch (error) {
     logger.error('Failed to update user groups:', error)
+    toast.add({ title: 'Failed to update user groups', icon: 'i-lucide-x-circle', color: 'red' })
   }
 }
 
@@ -2577,8 +2717,7 @@ async function loadAgents() {
 // Load latest agent version
 async function loadLatestAgentVersion() {
   try {
-    const fs = await import('fs')
-    const path = await import('path')
+
     // This won't work in browser context, so we'll need to create an API endpoint
     // For now, we'll fetch from a simple endpoint
     const response = await $fetch('/api/agents/latest-version')
