@@ -245,17 +245,6 @@ const addBuildLog = async (level, message, command = null) => {
   }
 }
 
-// Legacy functions for backward compatibility
-const recordBuildEvent = async (status, message, logs = []) => {
-  if (status === 'failure' || status === 'cancelled') {
-    await finishBuild(status === 'cancelled' ? 'cancelled' : 'failure', message)
-  }
-}
-
-const recordTerminalLog = async (level, message, command = null) => {
-  await addBuildLog(level, message, command)
-}
-
 const getMessageClass = (level) => {
   switch (level) {
     case 'error': return 'text-red-400'
@@ -300,8 +289,14 @@ const loadBuildData = async () => {
     if (buildData.success) {
       const build = buildData.build
       buildStatus.value = build.status
-      // Load graph from project
-      if (project.value.diagramData) {
+      // Load graph from build data (with modified parameter values) or fall back to project diagram data
+      if (build.nodes && build.edges) {
+        nodes.value = JSON.parse(JSON.stringify(build.nodes || []))
+        edges.value = JSON.parse(JSON.stringify(build.edges || []))
+        // Apply visual states based on build execution
+        applyBuildVisualStates()
+      } else if (project.value.diagramData) {
+        // Fallback to project diagram data for older builds that don't have stored nodes/edges
         const diagramData = project.value.diagramData
         nodes.value = JSON.parse(JSON.stringify(diagramData.nodes || []))
         edges.value = JSON.parse(JSON.stringify(diagramData.edges || []))

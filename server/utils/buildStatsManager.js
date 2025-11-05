@@ -54,6 +54,8 @@ export class BuildStatsManager {
       startedAt: now,
       nodeCount: buildData.nodeCount || 0,
       nodesExecuted: 0,
+      nodes: buildData.nodes ? JSON.stringify(buildData.nodes) : null,
+      edges: buildData.edges ? JSON.stringify(buildData.edges) : null,
       gitBranch: buildData.branch || null,
       gitCommit: buildData.commit || null,
       metadata: buildData.metadata ? JSON.stringify(buildData.metadata) : null,
@@ -288,7 +290,23 @@ export class BuildStatsManager {
       ))
       .limit(1)
 
-    return build || null
+    if (!build) return null
+
+    // Parse JSON fields
+    if (build.nodes && typeof build.nodes === 'string') {
+      build.nodes = JSON.parse(build.nodes)
+    }
+    if (build.edges && typeof build.edges === 'string') {
+      build.edges = JSON.parse(build.edges)
+    }
+    if (build.metadata && typeof build.metadata === 'string') {
+      build.metadata = JSON.parse(build.metadata)
+    }
+    if (build.nodeExecutionStates && typeof build.nodeExecutionStates === 'string') {
+      build.nodeExecutionStates = JSON.parse(build.nodeExecutionStates)
+    }
+
+    return build
   }
 
   /**

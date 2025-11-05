@@ -728,6 +728,14 @@
       @save="handleSaveRetentionSettings"
       @cancel="handleCancelRetentionSettings"
     />
+
+    <!-- Parameter Input Modal -->
+    <ParameterInputModal
+      v-model="showParameterModal"
+      :parameters="buildParameters"
+      @confirm="handleParameterConfirm"
+      @cancel="handleParameterCancel"
+    />
   </div>
 </template>
 
@@ -755,6 +763,7 @@ import GitCheckoutProperties from '@/components/property-panels/GitCheckoutPrope
 import ApiRequestProperties from '@/components/property-panels/ApiRequestProperties.vue'
 import EditorDeleteModal from '@/components/modals/EditorDeleteModal.vue'
 import EditorRetentionModal from '@/components/modals/EditorRetentionModal.vue'
+import ParameterInputModal from '@/components/modals/ParameterInputModal.vue'
 import CredentialBinding from '@/components/CredentialBinding.vue'
 import ScriptEditor from '@/components/ScriptEditor.vue'
 // Import Vue Flow styles
@@ -791,6 +800,10 @@ const retentionSettings = ref({
   maxBuildsToKeep: 50,
   maxLogDays: 30
 })
+
+// Parameter input modal state
+const showParameterModal = ref(false)
+const buildParameters = ref([])
 
 // Agent state
 const agents = ref([])
@@ -1241,6 +1254,7 @@ const getDefaultNodeData = (type) => {
         hasExecutionOutput: false,
         hasDataOutput: true,
         defaultValue: '',
+        language: 'plaintext',
         description: 'Multi-line text parameter'
       }
     case 'choice-param':
@@ -1894,7 +1908,7 @@ const saveProject = async () => {
 
 const validateExecutionNodes = () => {
   const errors = []
-  
+
   // Check all nodes for execution nodes without agent selection
   for (const node of nodes.value) {
     if (isExecutionNode(node.data?.nodeType)) {
@@ -1902,7 +1916,7 @@ const validateExecutionNodes = () => {
         errors.push(`🚨 "${node.data.label || 'Unnamed Node'}" has no executor selected. Agent selection is required to run.`)
       }
     }
-    
+
     // Check webhook nodes for required secret token
     if (node.data?.nodeType === 'webhook') {
       if (!node.data.customEndpoint || node.data.customEndpoint.trim() === '') {
@@ -1913,8 +1927,28 @@ const validateExecutionNodes = () => {
       }
     }
   }
-  
+
   return errors
+}
+
+const gatherParameterNodes = () => {
+  const parameterNodes = nodes.value.filter(node =>
+    node.data?.nodeType &&
+    (node.data.nodeType === 'string-param' ||
+     node.data.nodeType === 'text-param' ||
+     node.data.nodeType === 'choice-param' ||
+     node.data.nodeType === 'boolean-param')
+  )
+  
+  return parameterNodes.map(node => ({
+    id: node.id,
+    label: node.data.label || 'Unnamed Parameter',
+    type: node.data.nodeType,
+    description: node.data.description || '',
+    defaultValue: node.data.defaultValue,
+    language: node.data.language || 'plaintext',
+    choices: node.data.choices || [] // For choice-param
+  }))
 }
 
 // Remove execution result functions - these are now handled in build page
@@ -1925,7 +1959,7 @@ const executeGraph = async () => {
     error('Project is disabled. Manual execution is blocked.')
     return
   }
-  
+
   // Validate that all execution nodes have agent selection
   const validationErrors = validateExecutionNodes()
   if (validationErrors.length > 0) {
@@ -1933,6 +1967,20 @@ const executeGraph = async () => {
     return
   }
 
+  // Gather parameter nodes
+  const parameters = gatherParameterNodes()
+
+  // If there are parameters, show the modal
+  if (parameters.length > 0) {
+    buildParameters.value = parameters
+    showParameterModal.value = true
+  } else {
+    // No parameters, execute directly
+    await startBuildExecution()
+  }
+}
+
+const startBuildExecution = async (parameterValues = null) => {
   try {
     // Convert the graph to execution data for the agent
     const executionData = {
@@ -1940,6 +1988,24 @@ const executeGraph = async () => {
       nodes: nodes.value,
       edges: edges.value,
       startTime: new Date().toISOString()
+    }
+
+    // Add parameter values if provided
+    if (parameterValues) {
+      for (const [paramId, value] of Object.entries(parameterValues)) {
+        executionData.nodes = executionData.nodes.map(node => {
+          if (node.id === paramId) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                defaultValue: value // Override default with provided value
+              }
+            }
+          }
+          return node
+        })
+      }
     }
 
     // Dispatch job and redirect to build page
@@ -1955,11 +2021,21 @@ const executeGraph = async () => {
     } else {
       error(`Failed to start execution: ${response.message || 'Unknown error'}`)
     }
-    
+
   } catch (error) {
     logger.error('Execution dispatch error:', error)
     error(`Failed to start execution: ${error.message}`)
   }
+}
+
+const handleParameterConfirm = async (parameterValues) => {
+  await startBuildExecution(parameterValues)
+}
+
+const handleParameterCancel = () => {
+  // Just close the modal, do nothing
+  showParameterModal.value = false
+  buildParameters.value = []
 }
 
 const getScriptLanguage = (nodeType) => {

@@ -403,7 +403,7 @@ const showCreateFolderModal = ref(false)
 const showEditFolderModal = ref(false)
 const showDeleteConfirmModal = ref(false)
 const showMoveModal = ref(false)
-
+const toast = useToast()
 // Form data
 const folderForm = ref({
   name: '',

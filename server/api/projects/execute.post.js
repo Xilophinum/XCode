@@ -287,6 +287,8 @@ export default defineEventHandler(async (event) => {
         trigger: 'manual',
         message: 'Manual execution',
         nodeCount: nodes.length,
+        nodes: nodes, // Store the actual nodes used for this build (with modified parameter values)
+        edges: edges, // Store the edges
         branch: null,
         commit: null,
         metadata: null

@@ -26,6 +26,12 @@ onMounted(async () => {
     logger.error('Failed to initialize global WebSocket:', error)
   }
 
+  window.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.code === 'Space') {
+      e.stopPropagation()
+    }
+  }, true)
+  
   try {
     const logLevel = await $fetch('/api/public/system-settings/log_level')
     if (logLevel?.value) {
