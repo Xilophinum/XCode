@@ -1,4 +1,7 @@
 # DISCLAIMER: WIP - NOT PRODUCTION READY - ANYTHING/EVERYTHING COULD/CAN/WILL CHANGE
+
+![FlowForge Banner](logo-banner.png)
+
 # FlowForge - Modern CI/CD Platform 
 
 **A visual, user-friendly alternative to Jenkins** designed to make continuous integration and delivery accessible to everyone. Built with modern web technologies (Nuxt 3, Vue Flow), FlowForge eliminates the complexity and learning curve of traditional CI/CD tools while providing enterprise-grade automation capabilities.

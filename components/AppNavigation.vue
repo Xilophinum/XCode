@@ -15,11 +15,12 @@
               :alt="brandName + ' Logo'"
               class="h-8 w-8 object-contain"
             >
-            <!-- Default Icon if no logo -->
-            <UIcon
-              name="i-lucide-code"
-              class="h-8 w-8 text-blue-600 dark:text-blue-400"
-            />
+            <img
+              v-else
+              src="/public/logo.png"
+              :alt="brandName + ' Logo'"
+              class="h-8 w-8 object-contain"
+            >
             <!-- Dynamic Brand Name -->
             <span class="hidden sm:inline">{{ brandName }}</span>
           </NuxtLink>
