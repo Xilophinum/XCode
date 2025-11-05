@@ -203,8 +203,6 @@ class CronDatabaseService {
       const result = await this.db
         .delete(cronJobs)
         .where(eq(cronJobs.projectId, projectId))
-
-      logger.info(`🗑️ Deleted cron jobs for project ${projectId}`)
       return result
     } catch (error) {
       logger.error('Error deleting project cron jobs:', error)

@@ -20,8 +20,6 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    logger.info(`🔄 Updating cron jobs for project ${projectId}`)
-
     // Check project status before updating cron jobs
     const dataService = await getDataService()
     const project = await dataService.getItemById(projectId)

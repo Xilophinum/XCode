@@ -1,5 +1,6 @@
 import { getDataService } from '../../utils/dataService.js'
 import { getAuthenticatedUser } from '../../utils/auth.js'
+import { AccessControl } from '../../utils/accessControl.js'
 import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
@@ -18,6 +19,27 @@ export default defineEventHandler(async (event) => {
     }
 
     const dataService = await getDataService()
+
+    // Check if user can delete this item
+    const existingItem = await dataService.getItemById(itemId)
+    if (!existingItem) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'Item not found'
+      })
+    }
+
+    // Check if user has access to this item (includes owner, admin, and group permissions)
+    const hasAccess = await AccessControl.checkItemAccess(itemId, userAuth.userId)
+    if (!hasAccess) {
+      logger.warn(`User ${userAuth.email} (${userAuth.userId}) denied access to delete item ${itemId}`)
+      throw createError({
+        statusCode: 403,
+        statusMessage: 'Access denied'
+      })
+    }
+
+    logger.info(`User ${userAuth.email} deleting item ${existingItem.name} (${itemId})`)
 
     // Use cascade delete for both folders and projects
     await dataService.deleteItemWithCascade(itemId, userInfo)

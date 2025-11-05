@@ -72,11 +72,11 @@
         </div>
 
         <!-- Admin Tools (for admin users only) -->
-        <div v-if="authStore.user?.role === 'admin'" class="mb-8">
-          <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Admin Tools</h3>
+        <div class="mb-8">
+          <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Quick Links</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- Agents Management Card -->
-            <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/agents')">
+            <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/agents')" v-show="authStore.user?.role === 'admin'">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-md flex items-center justify-center">
@@ -96,7 +96,6 @@
                 </div>
               </div>
             </UCard>
-
             <!-- Failed Builds Card -->
             <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/failures')">
               <div class="flex items-center">
@@ -118,9 +117,8 @@
                 </div>
               </div>
             </UCard>
-
             <!-- Metrics Panel Card -->
-            <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/metrics')">
+            <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/metrics')" v-show="authStore.user?.role === 'admin'">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-md flex items-center justify-center">
@@ -142,7 +140,7 @@
             </UCard>
 
             <!-- Admin Panel Card -->
-            <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/admin')">
+            <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/admin')" v-show="authStore.user?.role === 'admin'">
               <div class="flex items-center">
                 <div class="flex-shrink-0">
                   <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-md flex items-center justify-center">

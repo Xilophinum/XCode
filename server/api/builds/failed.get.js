@@ -3,18 +3,32 @@
  *
  * Returns only projects where the most recent build has failed.
  * When a project's next build succeeds, it automatically falls off this list.
+ * Filters results based on user's access permissions.
  */
 
 import { getDB, builds } from '../../utils/database.js'
 import { eq, desc } from 'drizzle-orm'
 import { defineEventHandler, createError } from 'h3'
+import { getAuthenticatedUser } from '../../utils/auth.js'
+import { getDataService } from '../../utils/dataService.js'
+import { AccessControl } from '../../utils/accessControl.js'
 import logger from '../../utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
-    const db = await getDB()
+    // Get authenticated user
+    const user = await getAuthenticatedUser(event)
+    if (!user) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: 'Authentication required'
+      })
+    }
 
-    logger.info(`Fetching projects with failed latest builds`)
+    const db = await getDB()
+    const dataService = await getDataService()
+
+    logger.info(`Fetching failed builds for user: ${user.email} (${user.userId})`)
 
     // Get all unique project IDs that have builds
     const allProjectsWithBuilds = await db
@@ -22,12 +36,17 @@ export default defineEventHandler(async (event) => {
       .from(builds)
       .groupBy(builds.projectId)
 
-    logger.info(`Found ${allProjectsWithBuilds.length} projects with builds`)
-
     // For each project, get the latest build and check if it failed
     const projectsWithFailedBuilds = []
 
     for (const { projectId } of allProjectsWithBuilds) {
+      // Check if user has access to this project
+      const hasAccess = await AccessControl.checkItemAccess(projectId, user.userId)
+
+      if (!hasAccess) {
+        continue
+      }
+
       // Get the most recent build for this project
       const [latestBuild] = await db
         .select()
@@ -63,7 +82,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    logger.info(`Found ${projectsWithFailedBuilds.length} projects with failed latest builds`)
+    logger.info(`Found ${projectsWithFailedBuilds.length} accessible failed builds for ${user.email}`)
 
     // Sort by most recent failure first
     projectsWithFailedBuilds.sort((a, b) => {
@@ -79,8 +98,8 @@ export default defineEventHandler(async (event) => {
   } catch (error) {
     logger.error('Error fetching projects with failed builds:', error)
     throw createError({
-      statusCode: 500,
-      statusMessage: 'Failed to fetch failed projects',
+      statusCode: error.statusCode || 500,
+      statusMessage: error.statusMessage || 'Failed to fetch failed projects',
       data: { error: error.message }
     })
   }

@@ -1,5 +1,7 @@
 import { getDataService } from '../../utils/dataService.js'
 import { getAuthenticatedUser } from '../../utils/auth.js'
+import { AccessControl } from '../../utils/accessControl.js'
+import logger from '../../utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -18,7 +20,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const dataService = await getDataService()
-    
+
     // Check if user can modify this item
     const existingItem = await dataService.getItemById(itemId)
     if (!existingItem) {
@@ -27,15 +29,18 @@ export default defineEventHandler(async (event) => {
         statusMessage: 'Item not found'
       })
     }
-    
-    // Only owner or admin can modify items
-    if (existingItem.userId !== userAuth.userId && userAuth.role !== 'admin') {
+
+    // Check if user has access to this item (includes owner, admin, and group permissions)
+    const hasAccess = await AccessControl.checkItemAccess(itemId, userAuth.userId)
+    if (!hasAccess) {
+      logger.warn(`User ${userAuth.email} (${userAuth.userId}) denied access to modify item ${itemId}`)
       throw createError({
         statusCode: 403,
         statusMessage: 'Access denied'
       })
     }
-    
+
+    logger.info(`User ${userAuth.email} updating item ${existingItem.name} (${itemId})`)
     const item = await dataService.updateItem(itemId, body, userInfo)
     return item
   } catch (error) {

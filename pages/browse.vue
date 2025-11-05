@@ -502,6 +502,7 @@
     :entityName="selectedEntityForAudit?.name"
     :entityType="selectedEntityForAudit?.type"
     @close="handleAuditModalClose"
+    @reverted="handleProjectReverted"
   />
   </div>
 </template>
@@ -847,6 +848,7 @@ const getFolderMenuItems = (folder) => {
 }
 
 const getProjectMenuItems = (project) => {
+  const hasPermissions = authStore.getCurrentUser.role === 'admin' || authStore.getCurrentUser.id === project.ownerId
   return [
     {
       label: 'Audit History',
@@ -864,7 +866,8 @@ const getProjectMenuItems = (project) => {
         renameForm.value.name = project.name
         renameForm.value.description = project.description || ''
         showRenameModal.value = true
-      }
+      },
+      disabled: !hasPermissions
     },
     {
       label: 'Move',
@@ -874,7 +877,8 @@ const getProjectMenuItems = (project) => {
         destinationPath.value = ''
         filteredPaths.value = allAvailablePaths.value
         showMoveModal.value = true
-      }
+      },
+      disabled: !hasPermissions
     },
     {
       label: 'Access Settings',
@@ -885,7 +889,8 @@ const getProjectMenuItems = (project) => {
         accessForm.value.allowed_groups = project.allowedGroups || []
         await loadGroups()
         showAccessModal.value = true
-      }
+      },
+      disabled: !hasPermissions
     },
     {
       label: project.status === 'disabled' ? 'Enable' : 'Disable',
@@ -909,6 +914,7 @@ const getProjectMenuItems = (project) => {
         projectToDelete.value = project
         showDeleteProjectModal.value = true
       },
+      disabled: !hasPermissions,
       class: 'text-red-600 dark:text-red-400'
     }
   ]

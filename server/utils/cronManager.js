@@ -107,8 +107,6 @@ class CronManager {
    * Schedule a cron job from project data
    */
   async scheduleCronJob(projectId, nodes, edges) {
-    logger.info(`Scheduling cron jobs for project ${projectId}`)
-    
     // Find all cron trigger nodes
     const cronTriggerNodes = nodes.filter(node => 
       node.data.nodeType === 'cron' && node.data.cronExpression

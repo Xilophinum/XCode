@@ -47,7 +47,6 @@ export class AccessControl {
       allowedGroups = JSON.parse(item.allowedGroups)
     } catch (error) {
       // If parse fails, it might be a single value - wrap it in an array
-      logger.debug(`Invalid allowedGroups JSON for item ${item.id}: ${item.allowedGroups}`)
       allowedGroups = [item.allowedGroups]
     }
 
