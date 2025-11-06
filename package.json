@@ -52,6 +52,7 @@
     "lucide-vue-next": "^0.552.0",
     "monaco-editor": "^0.54.0",
     "monaco-editor-vue3": "^1.0.4",
+    "mysql2": "^3.15.3",
     "nodemailer": "^7.0.10",
     "nuxt": "^4.2.0",
     "nuxt-monaco-editor": "^1.4.0",

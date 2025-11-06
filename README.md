@@ -69,6 +69,30 @@ pnpm dev
 
 Access the web interface at `http://localhost:3000`
 
+### Database Configuration
+
+FlowForge supports three database backends that can be configured via environment variables:
+
+**SQLite (Default)**
+```bash
+# No configuration needed - uses local file storage
+# Default path: data/projects.db
+```
+
+**PostgreSQL**
+```bash
+DATABASE_TYPE=postgres
+DATABASE_URL=postgres://user:password@localhost:5432/flowforge
+```
+
+**MySQL**
+```bash
+DATABASE_TYPE=mysql
+DATABASE_URL=mysql://user:password@localhost:3306/flowforge
+```
+
+The database will be automatically initialized with all required tables and indexes on first startup. For reference, the complete MySQL schema is available in [database-schema-mysql.sql](database-schema-mysql.sql).
+
 ### Build Agent Setup
 ```bash
 cd build-agent
@@ -82,7 +106,7 @@ Generate agent tokens from the Admin panel in the web interface.
 
 **Frontend**: Nuxt 3, Vue 3, Vue Flow, Tailwind CSS, Socket.IO
 **Backend**: Node.js, Nitro, Drizzle ORM
-**Database**: SQLite (primary), PostgreSQL (supported)
+**Database**: SQLite (default), PostgreSQL, MySQL (all supported)
 **Agents**: Cross-platform Node.js executors with WebSocket communication
 
 ### Project Structure
