@@ -1,6 +1,7 @@
 import { getDataService } from './dataService.js'
 import { jobManager } from './jobManager.js'
 import { getBuildStatsManager } from './buildStatsManager.js'
+import { executionStateManager } from './executionStateManager.js'
 import { getExecutionConnectedNodes } from '../api/projects/execute.post.js'
 import { executeParallelBranches } from './orchestrators/parallelBranchesOrchestrator.js'
 import { executeParallelMatrix } from './orchestrators/parallelMatrixOrchestrator.js'
@@ -153,6 +154,40 @@ class AgentManager {
       if (!job) {
         logger.error(`Job ${jobId} not found during completion handling`)
         return
+      }
+
+      // Mark the current node as completed
+      // For parent jobs: use executionCommands[currentCommandIndex]
+      // For sub-jobs: use currentNodeId directly
+      let nodeIdToMark = null
+      let nodeLabel = null
+      
+      if (job.executionCommands && job.currentCommandIndex !== undefined) {
+        const currentCommand = job.executionCommands[job.currentCommandIndex]
+        if (currentCommand?.nodeId) {
+          nodeIdToMark = currentCommand.nodeId
+          nodeLabel = currentCommand.nodeLabel
+        }
+      } else if (job.currentNodeId) {
+        // Sub-job: use currentNodeId directly
+        nodeIdToMark = job.currentNodeId
+        nodeLabel = job.currentNodeLabel
+      }
+
+      if (nodeIdToMark && job.buildNumber && job.projectId) {
+        if (exitCode === 0 || exitCode === undefined) {
+          executionStateManager.markNodeCompleted(
+            job.projectId,
+            job.buildNumber,
+            nodeIdToMark
+          )
+        } else {
+          executionStateManager.markNodeFailed(
+            job.projectId,
+            job.buildNumber,
+            nodeIdToMark
+          )
+        }
       }
 
       // Check if this is a sequential execution job with more commands
@@ -404,9 +439,13 @@ class AgentManager {
 
       // Trigger next nodes for single-command jobs (external sequential execution)
       // Do NOT trigger for multi-command jobs (internal sequential execution)
+      // Do NOT trigger for sub-jobs (they are managed by their parent orchestrator)
       let hasNextNodes = false
 
-      if (job.executionCommands && job.executionCommands.length > 1) {
+      if (job.parentJobId) {
+        logger.info(`Sub-job completed - not triggering next nodes (managed by parent orchestrator)`)
+        hasNextNodes = false
+      } else if (job.executionCommands && job.executionCommands.length > 1) {
         logger.info(`Multi-command sequential job completed - not triggering next nodes (handled internally)`)
         hasNextNodes = false
       } else {
@@ -416,7 +455,8 @@ class AgentManager {
 
       // Only mark build as complete if there are no more nodes to execute
       // Don't finish the build as "success" if this was a failure handler node
-      if (job.buildNumber && !hasNextNodes && !job.triggeredByFailure) {
+      // Don't finish the build if this is a sub-job (managed by parent orchestrator)
+      if (job.buildNumber && !hasNextNodes && !job.triggeredByFailure && !job.parentJobId) {
         try {
           const buildStatsManager = await getBuildStatsManager()
           await buildStatsManager.finishBuild(job.projectId, job.buildNumber, {
@@ -474,7 +514,8 @@ class AgentManager {
 
         // Trigger failure handlers only for final failure (not during retries)
         // Retries are handled by handleJobFailure which triggers handlers immediately
-        if (job) {
+        // Do NOT trigger for sub-jobs (managed by parent orchestrator)
+        if (job && !job.parentJobId) {
           // Get the failed node label if available
           let failedNodeLabel = null
           if (job.executionCommands && job.currentCommandIndex !== undefined) {
@@ -495,11 +536,14 @@ class AgentManager {
             maxAttempts: data.maxAttempts,
             isRetrying: false
           })
+        } else if (job && job.parentJobId) {
+          logger.info(`Sub-job failed - not triggering failure handlers (managed by parent orchestrator)`)
         }
 
         // Mark build as failed IMMEDIATELY when a node fails
         // This ensures the build status is "failure" even if there are failure handler nodes
-        if (job && job.buildNumber) {
+        // Do NOT finish the build if this is a sub-job (managed by parent orchestrator)
+        if (job && job.buildNumber && !job.parentJobId) {
           try {
             // Add error completion message to in-memory logs BEFORE finishing build
             await jobManager.addJobOutput(jobId, {
@@ -823,7 +867,7 @@ class AgentManager {
       // Fallback: find any execution node if we can't determine the current one
       if (!currentNode) {
         currentNode = nodes.find(node =>
-          ['api-request', 'bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(node.data?.nodeType)
+          ['api-request', 'bash', 'powershell', 'cmd', 'python', 'node', 'parallel_branches', 'parallel_matrix'].includes(node.data?.nodeType)
         )
         logger.warn(`🔗 Using fallback current node: ${currentNode?.data?.label || 'NOT FOUND'}`)
       }
@@ -942,10 +986,37 @@ class AgentManager {
     logger.info(`Executing parallel branches orchestrator for job ${parentJobId}`)
 
     try {
+      // Mark the branches node as executing
+      if (parentJob.buildNumber && parentJob.projectId && orchestratorCommand.nodeId) {
+        executionStateManager.markNodeExecuting(
+          parentJob.projectId,
+          parentJob.buildNumber,
+          orchestratorCommand.nodeId,
+          orchestratorCommand.nodeLabel
+        )
+      }
+
       // Execute the orchestrator
       const result = await executeParallelBranches(orchestratorCommand, parentJob)
 
       logger.info(`Parallel branches orchestrator completed: ${result.message}`)
+
+      // Mark the branches node as completed or failed based on result
+      if (parentJob.buildNumber && parentJob.projectId && orchestratorCommand.nodeId) {
+        if (result.success) {
+          executionStateManager.markNodeCompleted(
+            parentJob.projectId,
+            parentJob.buildNumber,
+            orchestratorCommand.nodeId
+          )
+        } else {
+          executionStateManager.markNodeFailed(
+            parentJob.projectId,
+            parentJob.buildNumber,
+            orchestratorCommand.nodeId
+          )
+        }
+      }
 
       // Update parent job with aggregated results
       await jobManager.updateJob(parentJobId, {
@@ -1029,10 +1100,37 @@ class AgentManager {
     logger.info(`Executing parallel matrix orchestrator for job ${parentJobId}`)
 
     try {
+      // Mark the matrix node as executing
+      if (parentJob.buildNumber && parentJob.projectId && orchestratorCommand.nodeId) {
+        executionStateManager.markNodeExecuting(
+          parentJob.projectId,
+          parentJob.buildNumber,
+          orchestratorCommand.nodeId,
+          orchestratorCommand.nodeLabel
+        )
+      }
+
       // Execute the orchestrator
       const result = await executeParallelMatrix(orchestratorCommand, parentJob)
 
       logger.info(`Parallel matrix orchestrator completed: ${result.message}`)
+
+      // Mark the matrix node as completed or failed based on result
+      if (parentJob.buildNumber && parentJob.projectId && orchestratorCommand.nodeId) {
+        if (result.success) {
+          executionStateManager.markNodeCompleted(
+            parentJob.projectId,
+            parentJob.buildNumber,
+            orchestratorCommand.nodeId
+          )
+        } else {
+          executionStateManager.markNodeFailed(
+            parentJob.projectId,
+            parentJob.buildNumber,
+            orchestratorCommand.nodeId
+          )
+        }
+      }
 
       // Update parent job with aggregated results
       await jobManager.updateJob(parentJobId, {
@@ -1254,10 +1352,11 @@ class AgentManager {
       })
 
       // Trigger next nodes based on success
-      await this.triggerNextNodes(parentJobUpdated, { success: true, exitCode: 0, output: parentJobUpdated.finalOutput })
+      const hasNextNodes = await this.triggerNextNodes(parentJobUpdated, { success: true, exitCode: 0, output: parentJobUpdated.finalOutput })
 
       // Update build status if this job is associated with a build
-      if (parentJobUpdated.buildNumber) {
+      // Only finish the build if there are NO next nodes to execute
+      if (parentJobUpdated.buildNumber && !hasNextNodes) {
         try {
           // Add completion message to in-memory logs BEFORE finishing build
           await jobManager.addJobOutput(parentJobId, {
@@ -1279,6 +1378,8 @@ class AgentManager {
         } catch (buildError) {
           logger.warn('Failed to update build record on job completion:', buildError)
         }
+      } else if (hasNextNodes) {
+        logger.info(`Build #${parentJobUpdated.buildNumber} continues - next nodes triggered after orchestrator, not finishing build yet`)
       }
     }
   }

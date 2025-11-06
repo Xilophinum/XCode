@@ -1,52 +1,60 @@
 <template>
   <div>
-    <!-- JavaScript Code Editor -->
+    <!-- Array Parameter Instructions -->
     <div class="mb-4">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-        JavaScript Code
-        <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">(must return an array)</span>
-      </label>
-      <ScriptEditor
-        v-model="nodeData.data.script"
-        :language="'javascript'"
-        :langSelectionEnabled="false"
-        class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
-      />
-      <div class="mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded text-xs">
-        <div class="font-medium text-blue-800 dark:text-blue-200 mb-1">Examples:</div>
-        <div class="space-y-2 text-blue-700 dark:text-blue-300">
-          <div>
-            <code class="block bg-white dark:bg-neutral-800 p-2 rounded">return ['node-18', 'node-20', 'node-22']</code>
-            <span class="text-neutral-600 dark:text-neutral-400">Simple array of strings</span>
-          </div>
-          <div>
-            <code class="block bg-white dark:bg-neutral-800 p-2 rounded">return [1, 2, 3, 4, 5]</code>
-            <span class="text-neutral-600 dark:text-neutral-400">Array of numbers</span>
-          </div>
-          <div>
-            <code class="block bg-white dark:bg-neutral-800 p-2 rounded">return [
-  { version: 'node-18', os: 'ubuntu' },
-  { version: 'node-20', os: 'windows' }
-]</code>
-            <span class="text-neutral-600 dark:text-neutral-400">Array of objects</span>
+      <div class="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <div class="flex items-start gap-2">
+          <span class="text-blue-600 dark:text-blue-400 text-lg">📥</span>
+          <div class="text-sm text-blue-800 dark:text-blue-200">
+            <p class="font-semibold mb-2">Array Parameter Input Required:</p>
+            <ol class="list-decimal list-inside space-y-1">
+              <li>Create an <strong>Array Parameter</strong> node</li>
+              <li>Connect it to this node's <code class="bg-blue-100 dark:bg-blue-900 px-1 rounded">$ARRAY_VALUES</code> input socket</li>
+              <li>The array values will be used to execute the connected job multiple times</li>
+            </ol>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Item Variable Name -->
+    <!-- Execution Name Template -->
     <div class="mb-4">
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-        Item Variable Name
+        Execution Name Template
+        <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">(optional)</span>
       </label>
       <input
-        v-model="nodeData.data.itemVariableName"
+        v-model="nodeData.data.nameTemplate"
         type="text"
         class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono"
-        placeholder="ITEM"
+        placeholder="Matrix-${INDEX}"
       >
       <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        Variable name to use in downstream nodes. For objects, use dot notation: ${ITEM.version}
+        Template for naming each execution. Available: ${INDEX}, ${ITEM}, ${ITEM_KEY}
+      </p>
+      <div class="mt-2 p-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded text-xs">
+        <div class="font-medium text-neutral-700 dark:text-neutral-300 mb-1">Examples:</div>
+        <div class="space-y-1 text-neutral-600 dark:text-neutral-400">
+          <div><code class="bg-white dark:bg-neutral-700 px-1 rounded">Build-${ITEM}</code> → Build-production</div>
+          <div><code class="bg-white dark:bg-neutral-700 px-1 rounded">Deploy-${ITEM_ENV}-${ITEM_REGION}</code> → Deploy-prod-us-east</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Additional Parameters -->
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+        Additional Parameters
+        <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">(JSON object, optional)</span>
+      </label>
+      <ScriptEditor
+        v-model="nodeData.data.additionalParams"
+        :language="'json'"
+        :langSelectionEnabled="false"
+        class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+      />
+      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        Static parameters passed to all executions. Example: {"BUILD_TYPE": "Release", "ENABLE_CACHE": true}
       </p>
     </div>
 
@@ -104,10 +112,11 @@
         <div class="text-sm text-purple-800 dark:text-purple-200">
           <p class="font-semibold mb-1">How it works:</p>
           <ol class="list-decimal list-inside space-y-1">
-            <li>Your JavaScript code runs on the server and must return an array</li>
-            <li>For each item in the array, the connected job is executed once</li>
-            <li>Each item is available as <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">${{nodeData.data.itemVariableName}}</code> in downstream nodes</li>
-            <li>Results are aggregated in the output socket</li>
+            <li>Connect an Array Parameter node to the <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">$ARRAY_VALUES</code> input socket</li>
+            <li>Connect execution nodes to the <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">For Each Item</code> execution socket</li>
+            <li>Connect the <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">$ITEM_VALUE</code> output to execution node inputs to access current item</li>
+            <li>Optionally connect <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">$ADDITIONAL_PARAMS</code> output for static parameters</li>
+            <li>Results are aggregated in the output sockets after all iterations complete</li>
           </ol>
         </div>
       </div>

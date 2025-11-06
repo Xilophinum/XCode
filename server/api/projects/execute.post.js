@@ -359,10 +359,10 @@ export default defineEventHandler(async (event) => {
         currentCommandIndex: 0,
         buildNumber: currentBuildNumber
       })
-      
-      // Execute orchestrator directly
+
+      // Execute orchestrator directly (will mark node as executing/completed internally)
       await agentManager.executeParallelBranches(jobId, firstCommand, job)
-      
+
       // Broadcast orchestrator started event to WebSocket clients
       if (globalThis.broadcastToProject) {
         globalThis.broadcastToProject(projectId, {
@@ -397,10 +397,10 @@ export default defineEventHandler(async (event) => {
         currentCommandIndex: 0,
         buildNumber: currentBuildNumber
       })
-      
-      // Execute orchestrator directly
+
+      // Execute orchestrator directly (will mark node as executing/completed internally)
       await agentManager.executeParallelMatrix(jobId, firstCommand, job)
-      
+
       // Broadcast orchestrator started event to WebSocket clients
       if (globalThis.broadcastToProject) {
         globalThis.broadcastToProject(projectId, {
@@ -928,6 +928,9 @@ function getParameterNodeValue(paramNode) {
       return data.defaultValue || (data.choices?.[0] || '')
     case 'boolean-param':
       return data.defaultValue || false
+    case 'array-param':
+      // Return array value - will be parsed based on format when consumed
+      return data.defaultValue || '[]'
     default:
       return ''
   }
@@ -1014,7 +1017,7 @@ function buildExecutionFlow(startNode, allNodes, allEdges, parameterValues, visi
   }
 
   // Check if this node has success/failure routing (branching point)
-  const isExecutionNode = ['api-request', 'bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'parallel_branches'].includes(startNode.data.nodeType)
+  const isExecutionNode = ['api-request', 'bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'parallel_branches', 'parallel_matrix'].includes(startNode.data.nodeType)
   const hasSuccessSocket = isExecutionNode && allEdges.some(edge => edge.source === startNode.id && edge.sourceHandle === 'success')
   const hasFailureSocket = isExecutionNode && allEdges.some(edge => edge.source === startNode.id && edge.sourceHandle === 'failure')
 
@@ -1276,23 +1279,58 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
       break
 
     case 'parallel_matrix':
-      // Parallel matrix node - executes same job multiple times with JS-generated parameters
+      // Parallel matrix node - executes same job multiple times with array from parameter
       logger.info(`Parallel Matrix node: ${node.data.label}`)
 
-      // Evaluate JavaScript to generate array
+      // Get array items from connected parameter node
       let items = []
       try {
-        const evalFunction = new Function(node.data.script)
-        items = evalFunction()
+        logger.info(`Getting array from parameter input`)
+
+        // Find the edge connected to array-input socket
+        const arrayInputEdge = allEdges.find(edge =>
+          edge.target === node.id && edge.targetHandle === 'array-input'
+        )
+
+        if (!arrayInputEdge) {
+          throw new Error('No array parameter connected to $ARRAY_VALUES socket')
+        }
+
+        const sourceNodeId = arrayInputEdge.source
+        const parameterData = parameterValues.get(sourceNodeId)
+
+        if (!parameterData || !parameterData.value) {
+          throw new Error('Array parameter has no value')
+        }
+
+        const arrayValue = parameterData.value
+
+        // Parse based on parameter node's arrayFormat
+        const sourceNode = allNodes.find(n => n.id === sourceNodeId)
+        const arrayFormat = sourceNode?.data?.arrayFormat || 'json'
+
+        if (arrayFormat === 'json') {
+          // Parse JSON array
+          items = typeof arrayValue === 'string' ? JSON.parse(arrayValue) : arrayValue
+        } else if (arrayFormat === 'lines') {
+          // Parse line-separated values
+          items = typeof arrayValue === 'string'
+            ? arrayValue.split('\n').map(line => line.trim()).filter(line => line.length > 0)
+            : arrayValue
+        }
 
         if (!Array.isArray(items)) {
-          throw new Error('Script must return an array')
+          throw new Error('Parameter value must be an array')
         }
-        logger.info(`Matrix generated ${items.length} items:`, items)
+
+        logger.info(`Matrix received ${items.length} items from parameter node`)
       } catch (error) {
-        logger.error(`Failed to evaluate parallel_matrix script:`, error)
+        logger.error(`Failed to get parallel_matrix array:`, error)
         throw error
       }
+
+      // Get iteration target with socket mappings
+      const iterationTargetInfo = getIterationTargetNode(node, allNodes, allEdges)
 
       // Create a parallel matrix orchestration command
       commands.push({
@@ -1300,15 +1338,17 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
         nodeId: node.id,
         nodeLabel: node.data.label,
         items: items,
-        itemVariableName: node.data.itemVariableName || 'ITEM',
+        nameTemplate: node.data.nameTemplate || '', // Execution name template
+        additionalParams: node.data.additionalParams || '', // Additional static parameters
         maxConcurrency: node.data.maxConcurrency,
         failFast: node.data.failFast,
         continueOnError: node.data.continueOnError,
         retryEnabled: node.data.retryEnabled,
         maxRetries: node.data.maxRetries,
         retryDelay: node.data.retryDelay,
-        // Get node connected to iteration socket
-        iterationTarget: getIterationTargetNode(node, allNodes, allEdges)
+        // Iteration target node and socket mappings
+        iterationTarget: iterationTargetInfo?.node || null,
+        socketMappings: iterationTargetInfo?.socketMappings || {}
       })
       break
 
@@ -1448,7 +1488,7 @@ function getNestedProperty(obj, path) {
  * Resolve parameter placeholders in script text
  */
 function resolveScriptPlaceholders(node, allEdges, parameterValues, customText = null) {
-  let script = customText !== null ? customText : (node.data.script || '')
+  let resolvedScript = customText !== null ? customText : (node.data.script || '')
   // Find all input connections to this node
   const inputConnections = allEdges.filter(edge => edge.target === node.id)
 
@@ -1503,7 +1543,7 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues, customText =
           const escapedLabel = cleanLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
           logger.debug(`[DEBUG] Processing socket: ${socket.label}, cleanLabel: ${cleanLabel}, escapedLabel: ${escapedLabel}`)
-          logger.debug(`[DEBUG] Script before replacement: "${script}"`)
+          logger.debug(`[DEBUG] Script before replacement: "${resolvedScript}"`)
           logger.debug(`[DEBUG] Parameter value type: ${typeof parameterData.value}, isObject: ${typeof parameterData.value === 'object' && parameterData.value !== null}`)
 
           // Check if the parameter value is an object (webhook data)
@@ -1511,23 +1551,10 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues, customText =
 
           if (isObjectValue) {
             
-            // Handle property access patterns FIRST, including patterns outside ${} like $INPUT_1.property
-            // Pattern 1: ${INPUT_1.property.path} (preferred format)
-            const propertyAccessRegex1 = new RegExp(`\\$\\{\\$?${escapedLabel}\\.(.*?)\\}`, 'g')
-            script = script.replace(propertyAccessRegex1, (match, propertyPath) => {
-              try {
-                const value = getNestedProperty(parameterData.value, propertyPath)
-                return value !== undefined ? String(value) : match
-              } catch (error) {
-                logger.warn(`Failed to access property ${propertyPath} on ${cleanLabel}:`, error)
-                return match
-              }
-            })
-
-            // Pattern 2: $INPUT_1.property.path or $INPUT_1[0].property (without braces - fallback)
-            // This regex captures everything after $INPUT_1 that looks like property/array access
-            const propertyAccessRegex2 = new RegExp(`\\$${escapedLabel}([.\\[][^\\s"']*?)(?=\\s|"|'|$)`, 'g')
-            script = script.replace(propertyAccessRegex2, (match, propertyPath) => {
+            // Handle property access patterns for objects with $ prefix
+            // Pattern: $INPUT_1.property.path or $INPUT_1[0].property
+            const propertyAccessRegex = new RegExp(`\\$${escapedLabel}([.\\[][^\\s"']*?)(?=\\s|"|'|$)`, 'g')
+            resolvedScript = resolvedScript.replace(propertyAccessRegex, (match, propertyPath) => {
               try {
                 logger.debug(`[DEBUG] Property access match: "${match}", propertyPath: "${propertyPath}"`)
                 // Clean the path:
@@ -1549,46 +1576,20 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues, customText =
               }
             })
             
-            // Then handle simple references like ${INPUT_1} with the whole object as JSON
-            const simpleSocketPlaceholder = `\\$\\{\\$?${escapedLabel}\\}`
-            const simpleRegex = new RegExp(simpleSocketPlaceholder, 'g')
-            logger.debug(`[DEBUG] Simple placeholder regex: ${simpleSocketPlaceholder}`)
-            logger.debug(`[DEBUG] Matches found: ${script.match(simpleRegex)}`)
-            script = script.replace(simpleRegex, JSON.stringify(parameterData.value))
-            logger.debug(`[DEBUG] Script after simple replacement: "${script}"`)
-
-            // Fallback: Also handle $INPUT_1 without braces for objects
-            if (!cleanLabel.includes(' ')) {
-              const fallbackPlaceholder = `\\$${escapedLabel}\\b` // \b ensures word boundary
-              const fallbackRegex = new RegExp(fallbackPlaceholder, 'g')
-              logger.debug(`[DEBUG] Object fallback placeholder regex: ${fallbackPlaceholder}`)
-              logger.debug(`[DEBUG] Matches found: ${script.match(fallbackRegex)}`)
-              script = script.replace(fallbackRegex, JSON.stringify(parameterData.value))
-              logger.debug(`[DEBUG] Script after object fallback replacement: "${script}"`)
-            }
+            // Then handle simple references like $INPUT_1 with the whole object as JSON
+            const simpleRegex = new RegExp(`\\$${escapedLabel}\\b`, 'g')
+            logger.debug(`[DEBUG] Simple placeholder regex: \\$${escapedLabel}\\b`)
+            logger.debug(`[DEBUG] Matches found: ${resolvedScript.match(simpleRegex)}`)
+            resolvedScript = resolvedScript.replace(simpleRegex, JSON.stringify(parameterData.value))
+            logger.debug(`[DEBUG] Script after simple replacement: "${resolvedScript}"`)
 
           } else {
-            // For simple values, use the existing logic
-            // Primary format: ${socketLabel} - this is the main format users should use
-            // Also handle ${$socketLabel} in case there's an extra $ inside the braces
-            const socketLabelPlaceholder = `\\$\\{\\$?${escapedLabel}\\}`
-            const primaryRegex = new RegExp(socketLabelPlaceholder, 'g')
-            logger.debug(`[DEBUG] Primary placeholder regex: ${socketLabelPlaceholder}`)
-            logger.debug(`[DEBUG] Matches found: ${script.match(primaryRegex)}`)
-            script = script.replace(primaryRegex, String(parameterData.value))
-            logger.debug(`[DEBUG] Script after primary replacement: "${script}"`)
-
-            // Fallback format: $socketLabel (without {}) - for error recovery
-            // This helps when users forget to wrap the socket label in {}
-            // Only apply if the label doesn't contain spaces (to avoid false matches)
-            if (!cleanLabel.includes(' ')) {
-              const fallbackPlaceholder = `\\$${escapedLabel}\\b` // \b ensures word boundary
-              const fallbackRegex = new RegExp(fallbackPlaceholder, 'g')
-              logger.debug(`[DEBUG] Fallback placeholder regex: ${fallbackPlaceholder}`)
-              logger.debug(`[DEBUG] Matches found: ${script.match(fallbackRegex)}`)
-              script = script.replace(fallbackRegex, String(parameterData.value))
-              logger.debug(`[DEBUG] Script after fallback replacement: "${script}"`)
-            }
+            // For simple values, use $socketLabel format
+            const simpleRegex = new RegExp(`\\$${escapedLabel}\\b`, 'g')
+            logger.debug(`[DEBUG] Simple placeholder regex: \\$${escapedLabel}\\b`)
+            logger.debug(`[DEBUG] Matches found: ${resolvedScript.match(simpleRegex)}`)
+            resolvedScript = resolvedScript.replace(simpleRegex, String(parameterData.value))
+            logger.debug(`[DEBUG] Script after simple replacement: "${resolvedScript}"`)
           }
 
       } else {
@@ -1597,8 +1598,8 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues, customText =
     })
   }
 
-  logger.debug(`Final script: "${script}"`)
-  return script
+  logger.debug(`Final script: "${resolvedScript}"`)
+  return resolvedScript
 }
 
 /**
@@ -1614,7 +1615,7 @@ export function getExecutionConnectedNodes(nodeId, allNodes, allEdges, parameter
   
   // Handle execution nodes with success/failure routing
   // Note: parallel_execution nodes have no output sockets, so they don't need success/failure routing
-  if (sourceNode && ['api-request', 'bash', 'sh', 'powershell', 'cmd', 'python', 'python3', 'node', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_branches', 'git-checkout', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build'].includes(sourceNode.data.nodeType)) {
+  if (sourceNode && ['api-request', 'bash', 'sh', 'powershell', 'cmd', 'python', 'python3', 'node', 'go', 'ruby', 'php', 'java', 'rust', 'perl', 'parallel_branches', 'parallel_matrix', 'git-checkout', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build'].includes(sourceNode.data.nodeType)) {
     return getExecutionResultConnectedNodes(sourceNode, allNodes, allEdges, executionResult)
   }
   
@@ -1780,6 +1781,7 @@ function getBranchTargetNodes(parallelNode, allNodes, allEdges) {
 
 /**
  * Get target node connected to iteration socket of a parallel_matrix node
+ * and map matrix output sockets to target node input sockets
  */
 function getIterationTargetNode(matrixNode, allNodes, allEdges) {
   // Find edge connected to 'iteration' socket
@@ -1791,7 +1793,36 @@ function getIterationTargetNode(matrixNode, allNodes, allEdges) {
     const targetNode = allNodes.find(n => n.id === iterationEdge.target)
     if (targetNode) {
       logger.debug(`Found iteration target for matrix node "${matrixNode.data.label}": ${targetNode.data.label}`)
-      return targetNode
+
+      // Find socket mappings: which matrix output sockets connect to which target input sockets
+      const socketMappings = {}
+
+      // Check for $ITEM_VALUE connection
+      const itemValueEdge = allEdges.find(edge =>
+        edge.source === matrixNode.id &&
+        edge.sourceHandle === 'item-value' &&
+        edge.target === targetNode.id
+      )
+      if (itemValueEdge) {
+        socketMappings.itemValueSocket = itemValueEdge.targetHandle
+        logger.debug(`Matrix $ITEM_VALUE connects to target socket: ${itemValueEdge.targetHandle}`)
+      }
+
+      // Check for $ADDITIONAL_PARAMS connection
+      const additionalParamsEdge = allEdges.find(edge =>
+        edge.source === matrixNode.id &&
+        edge.sourceHandle === 'additional-params' &&
+        edge.target === targetNode.id
+      )
+      if (additionalParamsEdge) {
+        socketMappings.additionalParamsSocket = additionalParamsEdge.targetHandle
+        logger.debug(`Matrix $ADDITIONAL_PARAMS connects to target socket: ${additionalParamsEdge.targetHandle}`)
+      }
+
+      return {
+        node: targetNode,
+        socketMappings
+      }
     }
   }
 

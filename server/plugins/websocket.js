@@ -815,19 +815,30 @@ async function handleAgentJobStatus(socket, msg, agentManager) {
     const agent = agentManager.agentData.get(socket.agentId)
     const agentName = agent?.name || socket.agentId
 
-    // Get current nodeId from job's execution commands
+    // Get current nodeId from job's execution commands OR from sub-job's currentNodeId
     let currentNodeId = null
     if (job.executionCommands && job.currentCommandIndex !== undefined) {
       const currentCommand = job.executionCommands[job.currentCommandIndex]
       if (currentCommand) {
         currentNodeId = currentCommand.nodeId
       }
+    } else if (job.currentNodeId) {
+      // For sub-jobs (matrix iterations), currentNodeId is stored directly
+      currentNodeId = job.currentNodeId
     }
 
     // Handle different job status types
     switch (status) {
       case 'started':
         // Job has started execution on the agent
+        // Mark the current node as executing
+        if (currentNodeId && job.buildNumber) {
+          const { executionStateManager } = await import('../utils/executionStateManager.js')
+          const currentCommand = job.executionCommands?.[job.currentCommandIndex]
+          const nodeLabel = currentCommand?.nodeLabel || job.currentNodeLabel || 'Unknown Node'
+          executionStateManager.markNodeExecuting(projectId, job.buildNumber, currentNodeId, nodeLabel)
+        }
+
         broadcastToProject(projectId, {
           type: 'job_started',
           jobId,

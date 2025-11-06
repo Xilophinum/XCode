@@ -10,6 +10,7 @@
 
 import { getAgentManager } from '../agentManager.js'
 import { jobManager } from '../jobManager.js'
+import { executionStateManager } from '../executionStateManager.js'
 import { v4 as uuidv4 } from 'uuid'
 import logger from '../logger.js'
 
@@ -48,6 +49,21 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
 
   const agentManager = await getAgentManager()
 
+  // Mark all branch target nodes as executing
+  if (parentJob.buildNumber && parentJob.projectId) {
+    for (const target of branchTargets) {
+      if (target.targetNode?.id) {
+        executionStateManager.markNodeExecuting(
+          parentJob.projectId,
+          parentJob.buildNumber,
+          target.targetNode.id,
+          target.targetNode.data.label
+        )
+        logger.info(`Marked branch target node "${target.targetNode.data.label}" as executing`)
+      }
+    }
+  }
+
   // Create execution promises for each branch
   const branchPromises = branchTargets.map(async (target) => {
     const branchStartTime = new Date().toISOString()
@@ -59,6 +75,10 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
       const subJobId = `${parentJob.jobId}_branch_${target.branchId}_${uuidv4().split('-')[0]}`
 
       // Create sub-job record with parent's buildNumber
+      // NOTE: We do NOT set currentNodeId/currentNodeLabel because:
+      // - Branch sub-jobs should not mark individual nodes
+      // - Only the parent parallel branches orchestrator node gets marked
+      // - This prevents all sub-jobs from trying to mark the same target node
       await jobManager.createJob({
         jobId: subJobId,
         projectId: parentJob.projectId,
@@ -72,9 +92,9 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
         edges: [],
         startTime: branchStartTime,
         createdAt: branchStartTime,
-        output: [],
-        currentNodeId: target.targetNode.id,
-        currentNodeLabel: target.targetNode.data.label
+        output: []
+        // currentNodeId: NOT SET - prevents execution state marking
+        // currentNodeLabel: NOT SET - prevents execution state marking
       })
 
       // Convert target node to command
@@ -262,10 +282,30 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
 
   logger.info(`${allSucceeded ? '✅' : '⚠️'} Parallel branches complete: ${successCount} succeeded, ${failureCount} failed`)
 
-  // Log individual branch results
+  // Log individual branch results and mark nodes as completed/failed
   for (const branch of branchResults) {
     const icon = branch.success ? '✅' : '❌'
     logger.info(`  ${icon} Branch "${branch.branchName}": ${branch.success ? 'Success' : `Failed - ${branch.error}`}`)
+
+    // Find the corresponding branch target to get the node ID
+    const branchTarget = branchTargets.find(t => t.branchId === branch.branchId)
+    if (branchTarget && branchTarget.targetNode?.id && parentJob.buildNumber && parentJob.projectId) {
+      if (branch.success) {
+        executionStateManager.markNodeCompleted(
+          parentJob.projectId,
+          parentJob.buildNumber,
+          branchTarget.targetNode.id
+        )
+        logger.info(`Marked branch target node "${branchTarget.targetNode.data.label}" as completed`)
+      } else {
+        executionStateManager.markNodeFailed(
+          parentJob.projectId,
+          parentJob.buildNumber,
+          branchTarget.targetNode.id
+        )
+        logger.info(`Marked branch target node "${branchTarget.targetNode.data.label}" as failed`)
+      }
+    }
   }
 
   return {

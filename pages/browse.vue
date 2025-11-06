@@ -1174,7 +1174,6 @@ const handleCreateProject = async () => {
 }
 
 const formatDate = (date) => {
-  console.log('Formatting date:', date, typeof date)
   const dateObj = date instanceof Date ? date : typeof date === 'string' ? new Date(date) : new Date()
   const now = new Date()
   const diffMs = now.getTime() - dateObj.getTime()
