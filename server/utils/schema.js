@@ -209,6 +209,16 @@ export function createSchema(dbType = 'sqlite') {
         createdAt: pgText('created_at').notNull(),
       }),
 
+      projectTemplates: pgTable('project_templates', {
+        id: pgVarchar('id', { length: 255 }).primaryKey(),
+        name: pgVarchar('name', { length: 255 }).notNull(),
+        description: pgText('description'),
+        diagramData: pgText('diagram_data').notNull(),
+        userId: pgVarchar('user_id', { length: 255 }).notNull(),
+        createdAt: pgText('created_at').notNull(),
+        updatedAt: pgText('updated_at').notNull(),
+      }),
+
       projectSnapshots: pgTable('project_snapshots', {
         id: pgVarchar('id', { length: 255 }).primaryKey(),
         projectId: pgVarchar('project_id', { length: 255 }).notNull(),
@@ -475,6 +485,16 @@ export function createSchema(dbType = 'sqlite') {
       ipAddress: text('ip_address'),
       userAgent: text('user_agent'),
       createdAt: text('created_at').notNull(),
+    }),
+
+    projectTemplates: sqliteTable('project_templates', {
+      id: text('id').primaryKey(),
+      name: text('name').notNull(),
+      description: text('description'),
+      diagramData: text('diagram_data').notNull(),
+      userId: text('user_id').notNull(),
+      createdAt: text('created_at').notNull(),
+      updatedAt: text('updated_at').notNull(),
     }),
 
     projectSnapshots: sqliteTable('project_snapshots', {

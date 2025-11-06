@@ -244,6 +244,22 @@
             >
           </div>
           <div class="mb-4">
+            <label for="projectTemplate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Template (Optional)</label>
+            <select
+              id="projectTemplate"
+              v-model="projectForm.templateId"
+              class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
+            >
+              <option :value="null">Blank Project</option>
+              <option v-for="template in availableTemplates" :key="template.id" :value="template.id">
+                {{ template.name }}
+              </option>
+            </select>
+            <p v-if="selectedTemplate" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ selectedTemplate.description || 'No description' }}
+            </p>
+          </div>
+          <div class="mb-4">
             <label for="projectDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
             <textarea
               id="projectDescription"
@@ -675,7 +691,14 @@ const folderForm = ref({
 
 const projectForm = ref({
   name: '',
-  description: ''
+  description: '',
+  templateId: null
+})
+
+// Templates
+const availableTemplates = ref([])
+const selectedTemplate = computed(() => {
+  return availableTemplates.value.find(t => t.id === projectForm.value.templateId)
 })
 
 // Project to delete
@@ -1113,16 +1136,34 @@ const handleCreateFolder = async () => {
 
 const handleCreateProject = async () => {
   if (!projectForm.value.name.trim()) return
-  
+
   const result = await projectsStore.createProject(
     projectForm.value.name.trim(),
     projectForm.value.description.trim(),
     pathSegments.value
   )
-  
+
   if (result.success) {
-    toast.add({ title: 'Project created successfully', icon: 'i-lucide-check-circle' })
-    projectForm.value = { name: '', description: '' }
+    // If a template was selected, apply it to the project
+    if (projectForm.value.templateId) {
+      try {
+        const templateResponse = await $fetch(`/api/templates/${projectForm.value.templateId}`)
+        if (templateResponse.success && templateResponse.template) {
+          // Update the project with the template's diagram data
+          await projectsStore.updateProject(result.project.id, {
+            diagramData: templateResponse.template.diagramData
+          })
+          toast.add({ title: 'Project created from template successfully', icon: 'i-lucide-check-circle' })
+        }
+      } catch (error) {
+        logger.error('Failed to apply template:', error)
+        toast.add({ title: 'Project created but failed to apply template', icon: 'i-lucide-alert-circle' })
+      }
+    } else {
+      toast.add({ title: 'Project created successfully', icon: 'i-lucide-check-circle' })
+    }
+
+    projectForm.value = { name: '', description: '', templateId: null }
     showCreateProjectModal.value = false
     // Navigate to the new project
     openProject(result.project)
@@ -1133,14 +1174,16 @@ const handleCreateProject = async () => {
 }
 
 const formatDate = (date) => {
+  console.log('Formatting date:', date, typeof date)
+  const dateObj = date instanceof Date ? date : typeof date === 'string' ? new Date(date) : new Date()
   const now = new Date()
-  const diffMs = now.getTime() - (date instanceof Date ? date.getTime() : new Date(date).getTime())
+  const diffMs = now.getTime() - dateObj.getTime()
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
   const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44)) // Average days per month
   
   // Format time as HH:MM AM/PM
-  const timeString = date.toLocaleTimeString('en-US', { 
+  const timeString = dateObj.toLocaleTimeString('en-US', { 
     hour: 'numeric', 
     minute: '2-digit', 
     hour12: true 
@@ -1240,6 +1283,20 @@ watch(
   },
   { deep: true }
 )
+
+// Watch for create project modal opening to load templates
+watch(showCreateProjectModal, async (isOpen) => {
+  if (isOpen) {
+    try {
+      const response = await $fetch('/api/templates')
+      if (response.success) {
+        availableTemplates.value = response.templates
+      }
+    } catch (error) {
+      logger.error('Failed to load templates:', error)
+    }
+  }
+})
 
 // Load data on mount
 onMounted(async () => {

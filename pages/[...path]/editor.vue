@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen bg-neutral-50 dark:bg-neutral-900 overflow-hidden">
+  <div class="h-screen bg-neutral-50 dark:bg-neutral-900 overflow-hidden" @click="closeDropdowns">
     <!-- Navigation -->
     <AppNavigation :breadcrumbs="pathSegments">
       <template #mobile-actions>
@@ -57,17 +57,57 @@
 
         </div>
 
-        <button
-          @click="saveProject"
-          :disabled="isSaving"
-          class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-        >
-          <UIcon v-if="isSaving" name="i-lucide-loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
-          <span v-if="isSaving">Saving...</span>
-          <span v-else class="inline-flex items-center">
-            <UIcon name="i-lucide-save" class="mr-2 h-4 w-4" />Save
-          </span>
-        </button>
+        <!-- Split Save Button -->
+        <div class="inline-flex rounded-md shadow-sm relative">
+          <!-- Main Save Button -->
+          <button
+            @click="saveProject"
+            :disabled="isSaving"
+            class="relative inline-flex items-center px-3 py-2 rounded-l-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+          >
+            <UIcon v-if="isSaving" name="i-lucide-loader" class="animate-spin ml-1 mr-2 h-4 w-4 text-white" />
+            <span v-if="isSaving">Saving...</span>
+            <span v-else class="inline-flex items-center">
+              <UIcon name="i-lucide-save" class="mr-2 h-4 w-4" />Save
+            </span>
+          </button>
+
+          <!-- Dropdown Button -->
+          <button
+            @click.stop="showSaveDropdown = !showSaveDropdown"
+            :disabled="isSaving"
+            class="relative inline-flex items-center px-2 py-2 rounded-r-md border-l border-green-700 dark:border-green-400 text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+          >
+            <UIcon name="i-lucide-chevron-down" class="h-4 w-4" />
+          </button>
+
+          <!-- Dropdown Menu -->
+          <Transition
+            enter-active-class="transition ease-out duration-100"
+            enter-from-class="transform opacity-0 scale-95"
+            enter-to-class="transform opacity-100 scale-100"
+            leave-active-class="transition ease-in duration-75"
+            leave-from-class="transform opacity-100 scale-100"
+            leave-to-class="transform opacity-0 scale-95"
+          >
+            <div
+              v-if="showSaveDropdown"
+              @click.stop
+              class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+              style="top: 100%;"
+            >
+              <div class="py-1">
+                <button
+                  @click="openSaveAsTemplate"
+                  class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                >
+                  <UIcon name="i-lucide-save-all" class="mr-2 h-4 w-4" />
+                  Save as Template
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </div>
 
         <!-- Project Status Toggle -->
         <button
@@ -298,23 +338,23 @@
           <div class="relative h-full">
             <!-- Floating toggle buttons when panels are hidden -->
             <div v-if="!showNodesPanel" class="absolute top-4 left-4 z-40">
-              <button
-                @click="toggleNodesPanel"
-                class="p-2 bg-white dark:bg-neutral-800 shadow-lg rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-                v-tooltip:bottomleft="'Show Nodes Panel'"
-              >
-                <UIcon name="i-lucide-menu" class="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
-              </button>
+              <UTooltip text="Show Nodes Panel">
+                <UButton
+                  @click="toggleNodesPanel"
+                  class="text-stone-200 bg-neutral-400 dark:bg-neutral-600 shadow-lg rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                  icon="i-lucide-menu"
+                />
+              </UTooltip>
             </div>
             
             <div v-if="!showPropertiesPanel" class="absolute top-4 right-4 z-40">
-              <button
-                @click="togglePropertiesPanel"
-                class="p-2 bg-white dark:bg-neutral-800 shadow-lg rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
-                v-tooltip:bottomright="'Show Properties Panel'"
-              >
-                <UIcon name="i-lucide-settings" class="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
-              </button>
+              <UTooltip text="Show Properties Panel">
+                <UButton
+                  @click="togglePropertiesPanel"
+                  class="text-stone-200 bg-neutral-400 dark:bg-neutral-700 shadow-lg rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                  icon="i-lucide-settings"
+                />
+              </UTooltip>
             </div>
             
             <div class="w-full h-full" @keydown="handleKeyDown" tabindex="0" @drop="addNode">
@@ -736,6 +776,14 @@
       @confirm="handleParameterConfirm"
       @cancel="handleParameterCancel"
     />
+
+    <!-- Save Template Modal -->
+    <SaveTemplateModal
+      v-model="showTemplateModal"
+      :existing-templates="existingTemplates"
+      @save="handleSaveTemplate"
+      @cancel="handleCancelTemplate"
+    />
   </div>
 </template>
 
@@ -764,6 +812,7 @@ import ApiRequestProperties from '@/components/property-panels/ApiRequestPropert
 import EditorDeleteModal from '@/components/modals/EditorDeleteModal.vue'
 import EditorRetentionModal from '@/components/modals/EditorRetentionModal.vue'
 import ParameterInputModal from '@/components/modals/ParameterInputModal.vue'
+import SaveTemplateModal from '@/components/modals/SaveTemplateModal.vue'
 import CredentialBinding from '@/components/CredentialBinding.vue'
 import ScriptEditor from '@/components/ScriptEditor.vue'
 // Import Vue Flow styles
@@ -804,6 +853,16 @@ const retentionSettings = ref({
 // Parameter input modal state
 const showParameterModal = ref(false)
 const buildParameters = ref([])
+
+// Template modal state
+const showSaveDropdown = ref(false)
+const showTemplateModal = ref(false)
+const existingTemplates = ref([])
+
+// Close all dropdowns when clicking outside
+const closeDropdowns = () => {
+  showSaveDropdown.value = false
+}
 
 // Agent state
 const agents = ref([])
@@ -1166,6 +1225,65 @@ watch(showRetentionModal, (newValue) => {
     loadRetentionSettings()
   }
 })
+
+// Template Functions
+const loadTemplates = async () => {
+  try {
+    const response = await $fetch('/api/templates')
+    if (response.success) {
+      existingTemplates.value = response.templates
+    }
+  } catch (error) {
+    logger.error('Failed to load templates:', error)
+  }
+}
+
+const openSaveAsTemplate = async () => {
+  showSaveDropdown.value = false
+  await loadTemplates()
+  showTemplateModal.value = true
+}
+
+const handleSaveTemplate = async (templateData) => {
+  try {
+    const response = await $fetch('/api/templates', {
+      method: 'POST',
+      body: {
+        id: templateData.id || null,
+        name: templateData.name,
+        description: templateData.description,
+        diagramData: {
+          nodes: nodes.value,
+          edges: edges.value
+        }
+      }
+    })
+
+    if (response.success) {
+      toast.add({
+        title: templateData.id ? 'Template updated successfully' : 'Template saved successfully',
+        icon: 'i-lucide-check-circle'
+      })
+      showTemplateModal.value = false
+      await loadTemplates()
+    } else {
+      toast.add({
+        title: 'Failed to save template: ' + (response.message || 'Unknown error'),
+        icon: 'i-lucide-x-circle'
+      })
+    }
+  } catch (err) {
+    logger.error('Error saving template:', err)
+    toast.add({
+      title: 'Failed to save template: ' + err.message,
+      icon: 'i-lucide-x-circle'
+    })
+  }
+}
+
+const handleCancelTemplate = () => {
+  showTemplateModal.value = false
+}
 
 const addInputSocketToSelectedNode = () => {
   if (!selectedNode.value) return

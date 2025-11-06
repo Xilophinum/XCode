@@ -309,6 +309,20 @@ export class DatabaseManager {
         )
       `)
 
+      // Project Templates table
+      this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS project_templates (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          diagram_data TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+      `)
+
       // Project Snapshots table
       this.sqlite.exec(`
         CREATE TABLE IF NOT EXISTS project_snapshots (
@@ -839,6 +853,19 @@ export class DatabaseManager {
       `
 
       await this.postgres`
+        CREATE TABLE IF NOT EXISTS project_templates (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          description TEXT,
+          diagram_data TEXT NOT NULL,
+          user_id VARCHAR(255) NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+      `
+
+      await this.postgres`
         CREATE TABLE IF NOT EXISTS project_snapshots (
           id VARCHAR(255) PRIMARY KEY,
           project_id VARCHAR(255) NOT NULL,
@@ -995,4 +1022,4 @@ export async function getRawDB() {
 // Export schema tables for direct access
 // These are initialized when getDB() is first called
 const schema = createSchema(process.env.DATABASE_TYPE || 'sqlite')
-export const { users, items, envVariables, credentialVault, passwordVault, systemSettings, agents, builds, cronJobs, auditLogs, projectSnapshots, systemUpdates, groups, userGroupMemberships, metrics } = schema
+export const { users, items, envVariables, credentialVault, passwordVault, systemSettings, agents, builds, cronJobs, auditLogs, projectTemplates, projectSnapshots, systemUpdates, groups, userGroupMemberships, metrics } = schema

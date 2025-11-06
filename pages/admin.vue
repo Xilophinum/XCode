@@ -535,14 +535,72 @@
                 </div>
                 <div class="flex items-center gap-2 ml-4">
                   <button
+                    @click="viewNotificationTemplate(template)"
+                    class="pl-2 pr-2 pt-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-md transition-colors"
+                    v-tooltip="'View template'"
+                  >
+                    <UIcon name="i-lucide-eye" class="w-5 h-5" />
+                  </button>
+                  <button
+                    v-if="!template.is_built_in"
+                    @click="editNotificationTemplate(template)"
+                    class="pl-2 pr-2 pt-1 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/50 rounded-md transition-colors"
+                    v-tooltip="'Edit template'"
+                  >
+                    <UIcon name="i-lucide-edit" class="w-5 h-5" />
+                  </button>
+                  <button
                     v-if="!template.is_built_in"
                     @click="confirmDeleteTemplate(template)"
-                    class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50 rounded-md transition-colors"
+                    class="pl-2 pr-2 pt-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50 rounded-md transition-colors"
                     v-tooltip="'Delete template'"
                   >
                     <UIcon name="i-lucide-trash-2" class="w-5 h-5" />
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </UCard>
+
+        <!-- Project Templates Section -->
+        <UCard class="shadow-md">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-950 dark:text-white">Project Templates</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Manage saved project templates</p>
+            </div>
+          </div>
+
+          <div v-if="loadingTemplates" class="text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <p class="text-gray-600 dark:text-gray-300 mt-2">Loading templates...</p>
+          </div>
+
+          <div v-else class="space-y-3">
+            <div v-if="templates.length === 0" class="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
+              No templates saved yet
+            </div>
+            <div
+              v-for="template in templates"
+              :key="template.id"
+              class="flex items-center justify-between p-4 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              <div class="flex-1">
+                <div class="font-medium text-sm text-gray-950 dark:text-white">{{ template.name }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ template.description || 'No description' }}</div>
+                <div class="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                  Created {{ formatDate(new Date(template.createdAt)) }}
+                </div>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button
+                  @click="confirmDeleteProjectTemplate(template)"
+                  class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+                >
+                  <UIcon name="i-lucide-trash-2" class="w-3 h-3 mr-1" />
+                  Delete
+                </button>
               </div>
             </div>
           </div>
@@ -1462,7 +1520,7 @@
       <UCard class="shadow-md">
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-semibold text-gray-950 dark:text-white">
-            {{ editingTemplate ? 'Edit' : 'Create' }} Notification Template
+            {{ editingTemplate?.readOnly ? 'View' : (editingTemplate ? 'Edit' : 'Create') }} Notification Template
           </h3>
           <button @click="closeTemplateModal" class="text-gray-400 hover:text-gray-500">
             <UIcon name="i-lucide-x" class="w-6 h-6" />
@@ -1477,7 +1535,8 @@
               v-model="templateForm.name"
               type="text"
               required
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              :disabled="editingTemplate?.readOnly"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
               placeholder="e.g., Production Deploy Success"
             />
           </div>
@@ -1488,7 +1547,8 @@
             <input
               v-model="templateForm.description"
               type="text"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              :disabled="editingTemplate?.readOnly"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
               placeholder="Brief description of this template"
             />
           </div>
@@ -1499,7 +1559,8 @@
             <select
               v-model="templateForm.type"
               required
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              :disabled="editingTemplate?.readOnly"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="email">Email</option>
               <option value="slack">Slack</option>
@@ -1517,6 +1578,7 @@
                 :required="templateForm.type === 'email'"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="e.g., [$ProjectName] Build #$BuildNumber - $Status"
+                :disabled="editingTemplate?.readOnly"
               />
             </div>
             <div>
@@ -1527,6 +1589,7 @@
                 v-auto-resize
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
                 placeholder="Build $BuildNumber completed at $TimestampHuman"
+                :disabled="editingTemplate?.readOnly"
               ></textarea>
             </div>
             <div class="flex items-center">
@@ -1535,6 +1598,7 @@
                 type="checkbox"
                 id="template-html"
                 class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                :disabled="editingTemplate?.readOnly"
               />
               <label for="template-html" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Send as HTML</label>
             </div>
@@ -1545,6 +1609,7 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slack Message Mode</label>
               <select
+                :disabled="editingTemplate?.readOnly"
                 v-model="templateForm.slack_mode"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
@@ -1566,6 +1631,7 @@
                 v-auto-resize
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
                 placeholder=":white_check_mark: *$ProjectName* - Build #$BuildNumber Success"
+                :disabled="editingTemplate?.readOnly"
               ></textarea>
               <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 {{ templateForm.slack_mode === 'blocks' ? 'Used as fallback text for notifications when blocks cannot be displayed' : 'Simple markdown-formatted text message' }}
@@ -1579,6 +1645,7 @@
                 v-auto-resize
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-xs resize-none overflow-hidden"
                 placeholder='[{"type":"header","text":{"type":"plain_text","text":"Build Complete"}}]'
+                :disabled="editingTemplate?.readOnly"
               ></textarea>
               <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 JSON array of Slack Block Kit blocks. <a href="https://app.slack.com/block-kit-builder" target="_blank" class="text-purple-600 dark:text-purple-400 hover:underline">Use Block Kit Builder</a> to design your layout.
@@ -1592,6 +1659,7 @@
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">HTTP Method</label>
               <select
                 v-model="templateForm.webhook_method"
+                :disabled="editingTemplate?.readOnly"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="POST">POST</option>
@@ -1605,6 +1673,7 @@
               <textarea
                 v-model="templateForm.webhook_headers"
                 v-auto-resize
+                :disabled="editingTemplate?.readOnly"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
                 placeholder='{"Content-Type": "application/json"}'
               ></textarea>
@@ -1615,6 +1684,7 @@
                 v-model="templateForm.webhook_body"
                 :required="templateForm.type === 'webhook'"
                 v-auto-resize
+                :disabled="editingTemplate?.readOnly"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
                 placeholder='{"project": "$ProjectName", "buildNumber": "$BuildNumber"}'
               ></textarea>
@@ -1644,9 +1714,10 @@
               @click="closeTemplateModal"
               class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              Cancel
+              {{ editingTemplate?.readOnly ? 'Close' : 'Cancel' }}
             </button>
             <button
+              v-if="!editingTemplate?.readOnly"
               type="submit"
               class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
             >
@@ -1706,6 +1777,33 @@
             class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
           >
             Update Role
+          </UButton>
+        </div>
+      </UCard>
+    </ModalWrapper>
+
+    <!-- Delete Template Modal -->
+    <ModalWrapper v-model="showDeleteTemplateModal" class="max-w-md">
+      <UCard class="shadow-md">
+        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 mb-4">
+          <UIcon name="i-lucide-alert-triangle" class="h-6 w-6 text-red-600 dark:text-red-400" />
+        </div>
+        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-2 text-center">Delete Template</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
+          Are you sure you want to delete the template "<strong>{{ templateToDelete?.name }}</strong>"? This action cannot be undone.
+        </p>
+        <div class="flex justify-end space-x-3">
+          <UButton
+            @click="showDeleteTemplateModal = false"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+          >
+            Cancel
+          </UButton>
+          <UButton
+            @click="deleteProjectTemplate"
+            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+          >
+            Delete Template
           </UButton>
         </div>
       </UCard>
@@ -1786,6 +1884,11 @@ const editingTemplate = ref(null)
 // Template data
 const notificationTemplates = ref([])
 const loadingTemplates = ref(false)
+
+// Project Templates
+const templates = ref([])
+const showDeleteTemplateModal = ref(false)
+const templateToDelete = ref(null)
 
 // Form data
 const envForm = ref({
@@ -2590,6 +2693,7 @@ onMounted(async () => {
     loadUsers(),
     loadGroups(),
     loadNotificationTemplates(),
+    loadProjectTemplates(),
     loadAgents(),
     loadLatestAgentVersion()
   ])
@@ -2607,6 +2711,61 @@ async function loadNotificationTemplates() {
     logger.error('Failed to load notification templates:', error)
   } finally {
     loadingTemplates.value = false
+  }
+}
+
+// Load project templates
+async function loadProjectTemplates() {
+  try {
+    const response = await $fetch('/api/templates')
+    if (response.success) {
+      templates.value = response.templates
+    }
+  } catch (error) {
+    logger.error('Failed to load project templates:', error)
+    toast.add({
+      title: 'Failed to load templates',
+      icon: 'i-lucide-x-circle'
+    })
+  }
+}
+
+// Confirm delete PROJECT template
+function confirmDeleteProjectTemplate(template) {
+  templateToDelete.value = template
+  showDeleteTemplateModal.value = true
+}
+
+// Delete PROJECT template
+async function deleteProjectTemplate() {
+  if (!templateToDelete.value) return
+
+  try {
+    const response = await $fetch(`/api/templates/${templateToDelete.value.id}`, {
+      method: 'DELETE'
+    })
+
+    if (response.success) {
+      toast.add({
+        title: 'Template deleted successfully',
+        icon: 'i-lucide-check-circle'
+      })
+      await loadProjectTemplates()
+    } else {
+      toast.add({
+        title: 'Failed to delete template',
+        icon: 'i-lucide-x-circle'
+      })
+    }
+  } catch (error) {
+    logger.error('Failed to delete template:', error)
+    toast.add({
+      title: 'Failed to delete template',
+      icon: 'i-lucide-x-circle'
+    })
+  } finally {
+    showDeleteTemplateModal.value = false
+    templateToDelete.value = null
   }
 }
 
@@ -2628,10 +2787,6 @@ async function saveTemplate() {
     toast.add({ title: 'Failed to save template' + (error.data?.message || error.message), icon: 'i-lucide-x-circle' })
   }
 }
-
-// Delete notification template
-const showDeleteTemplateModal = ref(false)
-const templateToDelete = ref(null)
 
 const confirmDeleteTemplate = (template) => {
   templateToDelete.value = template
@@ -2655,11 +2810,6 @@ async function deleteTemplate() {
   }
 }
 
-const cancelDeleteTemplate = () => {
-  showDeleteTemplateModal.value = false
-  templateToDelete.value = null
-}
-
 // Close template modal and reset form
 function closeTemplateModal() {
   showTemplateModal.value = false
@@ -2678,6 +2828,46 @@ function closeTemplateModal() {
     webhook_headers: '{"Content-Type": "application/json"}',
     webhook_body: ''
   }
+}
+
+// View notification template (read-only)
+function viewNotificationTemplate(template) {
+  editingTemplate.value = { ...template, readOnly: true }
+  templateForm.value = {
+    name: template.name,
+    description: template.description || '',
+    type: template.type,
+    email_subject: template.email_subject || '',
+    email_body: template.email_body || '',
+    email_html: template.email_html || false,
+    slack_message: template.slack_message || '',
+    slack_blocks: template.slack_blocks || '',
+    slack_mode: template.slack_mode || 'simple',
+    webhook_method: template.webhook_method || 'POST',
+    webhook_headers: template.webhook_headers || '{"Content-Type": "application/json"}',
+    webhook_body: template.webhook_body || ''
+  }
+  showTemplateModal.value = true
+}
+
+// Edit notification template
+function editNotificationTemplate(template) {
+  editingTemplate.value = { ...template }
+  templateForm.value = {
+    name: template.name,
+    description: template.description || '',
+    type: template.type,
+    email_subject: template.email_subject || '',
+    email_body: template.email_body || '',
+    email_html: template.email_html || false,
+    slack_message: template.slack_message || '',
+    slack_blocks: template.slack_blocks || '',
+    slack_mode: template.slack_mode || 'simple',
+    webhook_method: template.webhook_method || 'POST',
+    webhook_headers: template.webhook_headers || '{"Content-Type": "application/json"}',
+    webhook_body: template.webhook_body || ''
+  }
+  showTemplateModal.value = true
 }
 
 // Format date helper
