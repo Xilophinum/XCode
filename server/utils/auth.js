@@ -1,6 +1,12 @@
 import jwt from 'jsonwebtoken'
 
 export async function getAuthenticatedUser(event) {
+  // First check if middleware already authenticated the user
+  if (event.context.auth) {
+    return event.context.auth
+  }
+
+  // Fallback: verify token directly (for endpoints that bypass middleware)
   try {
     // Get token from cookie
     const token = getCookie(event, 'auth-token')

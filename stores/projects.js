@@ -131,14 +131,13 @@ export const useProjectsStore = defineStore('projects', {
       this.isLoading = true
       try {
         const authStore = useAuthStore()
-        if (!authStore.user) {
+        if (!authStore.isAuthenticated || !authStore.user) {
           logger.warn('No authenticated user, cannot load data')
           this.items = [] // Ensure items is always an array
           this.isLoading = false
           return
         }
         
-        // JWT-based authentication - no need to pass userId
         const items = await $fetch('/api/items', {
           timeout: 30000
         })

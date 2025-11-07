@@ -697,13 +697,10 @@ const loadAgents = async () => {
 
 // Load data on page mount
 onMounted(async () => {
-  // Ensure authentication is initialized before loading data
-  if (!authStore.isAuthenticated) {
-    await authStore.initializeAuth()
-  }
-  
+  // Always re-initialize auth to ensure we have fresh user data
+  await authStore.initializeAuth()
   // Only load data if authenticated
-  if (authStore.isAuthenticated) {
+  if (authStore.isAuthenticated && authStore.user) {
     await projectsStore.loadData()
     await loadAgents()
   }

@@ -31,6 +31,26 @@ export function createSchema(dbType = 'sqlite') {
         updatedAt: pgText('updated_at').notNull(),
       }),
 
+      refreshTokens: pgTable('refresh_tokens', {
+        id: pgVarchar('id', { length: 255 }).primaryKey(),
+        userId: pgVarchar('user_id', { length: 255 }).notNull(),
+        tokenHash: pgVarchar('token_hash', { length: 255 }).notNull().unique(),
+        deviceInfo: pgText('device_info'),
+        ipAddress: pgVarchar('ip_address', { length: 45 }),
+        userAgent: pgText('user_agent'),
+        expiresAt: pgText('expires_at').notNull(),
+        isRevoked: pgVarchar('is_revoked', { length: 10 }).notNull().default('false'),
+        revokedAt: pgText('revoked_at'),
+        revokedReason: pgVarchar('revoked_reason', { length: 255 }),
+        lastUsedAt: pgText('last_used_at'),
+        createdAt: pgText('created_at').notNull(),
+      }, (table) => {
+        return {
+          userIdIdx: pgIndex('idx_refresh_tokens_user_id').on(table.userId),
+          expiresAtIdx: pgIndex('idx_refresh_tokens_expires_at').on(table.expiresAt),
+        }
+      }),
+
       items: pgTable('items', {
         id: pgVarchar('id', { length: 255 }).primaryKey(),
         name: pgVarchar('name', { length: 255 }).notNull(),
@@ -308,6 +328,26 @@ export function createSchema(dbType = 'sqlite') {
         isActive: mysqlVarchar('is_active', { length: 10 }).notNull().default('true'),
         createdAt: mysqlText('created_at').notNull(),
         updatedAt: mysqlText('updated_at').notNull(),
+      }),
+
+      refreshTokens: mysqlTable('refresh_tokens', {
+        id: mysqlVarchar('id', { length: 255 }).primaryKey(),
+        userId: mysqlVarchar('user_id', { length: 255 }).notNull(),
+        tokenHash: mysqlVarchar('token_hash', { length: 255 }).notNull().unique(),
+        deviceInfo: mysqlText('device_info'),
+        ipAddress: mysqlVarchar('ip_address', { length: 45 }),
+        userAgent: mysqlText('user_agent'),
+        expiresAt: mysqlText('expires_at').notNull(),
+        isRevoked: mysqlVarchar('is_revoked', { length: 10 }).notNull().default('false'),
+        revokedAt: mysqlText('revoked_at'),
+        revokedReason: mysqlVarchar('revoked_reason', { length: 255 }),
+        lastUsedAt: mysqlText('last_used_at'),
+        createdAt: mysqlText('created_at').notNull(),
+      }, (table) => {
+        return {
+          userIdIdx: mysqlIndex('idx_refresh_tokens_user_id').on(table.userId),
+          expiresAtIdx: mysqlIndex('idx_refresh_tokens_expires_at').on(table.expiresAt),
+        }
       }),
 
       items: mysqlTable('items', {
@@ -606,6 +646,26 @@ export function createSchema(dbType = 'sqlite') {
       isActive: text('is_active').notNull().default('true'),
       createdAt: text('created_at').notNull(),
       updatedAt: text('updated_at').notNull(),
+    }),
+
+    refreshTokens: sqliteTable('refresh_tokens', {
+      id: text('id').primaryKey(),
+      userId: text('user_id').notNull(),
+      tokenHash: text('token_hash').notNull().unique(),
+      deviceInfo: text('device_info'),
+      ipAddress: text('ip_address'),
+      userAgent: text('user_agent'),
+      expiresAt: text('expires_at').notNull(),
+      isRevoked: text('is_revoked').notNull().default('false'),
+      revokedAt: text('revoked_at'),
+      revokedReason: text('revoked_reason'),
+      lastUsedAt: text('last_used_at'),
+      createdAt: text('created_at').notNull(),
+    }, (table) => {
+      return {
+        userIdIdx: index('idx_refresh_tokens_user_id').on(table.userId),
+        expiresAtIdx: index('idx_refresh_tokens_expires_at').on(table.expiresAt),
+      }
     }),
 
     items: sqliteTable('items', {

@@ -61,9 +61,14 @@ export const useAuthStore = defineStore('auth', {
         if (userData) {
           this.user = userData
           this.isAuthenticated = true
+        } else {
+          logger.warn('No user data returned from /api/auth/me')
+          this.user = null
+          this.isAuthenticated = false
         }
       } catch (error) {
         // No valid session - user needs to login
+        logger.warn('Auth initialization failed:', error.message || error)
         this.user = null
         this.isAuthenticated = false
       }

@@ -1126,7 +1126,6 @@ const startResizingPanel = (event) => {
     const newWidth = Math.max(300, Math.min(1600, startWidth + deltaX)) // Min 300px, Max 1600px
     currentWidth = newWidth
 
-    // Directly update DOM styles for instant response (no Vue reactivity delay)
     if (panelElement) {
       panelElement.style.width = `${newWidth}px`
     }
@@ -1829,8 +1828,8 @@ const getDefaultNodeData = (type) => {
           { id: 'failure', label: 'Any Failure', connected: false },
           { id: 'output', label: 'Aggregated Output', connected: false },
           { id: 'iteration', label: 'For Each Item', connected: false },
-          { id: 'item-value', label: '$ITEM_VALUE', connected: false },
-          { id: 'additional-params', label: '$ADDITIONAL_PARAMS', connected: false }
+          { id: 'item-value', label: 'Iteration Value', connected: false },
+          { id: 'additional-params', label: 'Additional Parameters', connected: false }
         ],
         nameTemplate: '', // Template for execution names (e.g., "Build-${ITEM}")
         additionalParams: '', // JSON object of additional static parameters

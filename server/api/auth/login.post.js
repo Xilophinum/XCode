@@ -1,8 +1,8 @@
 import { getDataService } from '~/server/utils/dataService.js'
 import { authenticateWithLDAP } from '~/server/utils/ldapAuth.js'
 import { syncUserGroupMemberships } from '~/server/utils/groupManager.js'
+import { generateAccessToken, generateRefreshToken } from '~/server/utils/jwtAuth.js'
 import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
 import logger from '~/server/utils/logger.js'
 
 export default defineEventHandler(async (event) => {
@@ -116,34 +116,49 @@ export default defineEventHandler(async (event) => {
     // Ensure user has a role (for backward compatibility)
     const userRole = user.role || 'user'
 
-    // Get session timeout from system settings
-    let sessionTimeoutHours = 24 // Default fallback
-    try {
-      const sessionSetting = await dataService.getSystemSetting('session_timeout')
-      if (sessionSetting?.value) {
-        sessionTimeoutHours = parseInt(sessionSetting.value)
-      }
-    } catch (error) {
-      logger.warn('Failed to get session timeout setting, using default 24h:', error)
-    }
-
-    // Create JWT token
+    // Generate access token (short-lived, 15 minutes)
     const config = useRuntimeConfig()
-    const token = jwt.sign(
+    const accessToken = generateAccessToken(
       { userId: user.id, userName: user.name, email: user.email, role: userRole },
-      config.jwtSecret,
-      { expiresIn: `${sessionTimeoutHours}h` }
+      config.jwtSecret
     )
-    
-    // Set HTTP-only cookie
-    setCookie(event, 'auth-token', token, {
+
+    // Generate refresh token (long-lived, 7 days, stored in DB)
+    const deviceInfo = {
+      ipAddress: getRequestHeader(event, 'x-forwarded-for') || getRequestHeader(event, 'x-real-ip') || event.node.req.socket.remoteAddress,
+      userAgent: getRequestHeader(event, 'user-agent'),
+      deviceInfo: null  // Could parse user agent for device details
+    }
+    const refreshToken = await generateRefreshToken(user.id, deviceInfo)
+
+    // Set access token in HTTP-only cookie (15 min expiry)
+    setCookie(event, 'auth-token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * sessionTimeoutHours // Match JWT expiration
+      sameSite: 'strict',
+      maxAge: 15 * 60 // 15 minutes
     })
 
-    return { id: user.id, name: user.name, email: user.email, role: userRole }
+    // Set refresh token in HTTP-only cookie (7 days expiry)
+    setCookie(event, 'refresh-token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 // 7 days
+    })
+
+    logger.info(`User ${user.email} logged in successfully`)
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: userRole
+      },
+      accessToken,  // Also return in response for mobile/API clients
+      expiresIn: 900  // 15 minutes in seconds
+    }
   } catch (error) {
     logger.error('Login error:', error)
     if (error.statusCode) {

@@ -178,7 +178,8 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
     nodeId,
     nodeLabel,
     nameTemplate,        // Template for execution names
-    additionalParams     // Additional static parameters
+    additionalParams,    // Additional static parameters
+    duplicatedNodeIds    // Array of duplicated node IDs (one per matrix item)
   } = orchestratorCommand
 
   if (!iterationTarget) {
@@ -205,15 +206,23 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
 
   const agentManager = await getAgentManager()
 
-  // Mark the iteration target node as executing (will show as running during all sub-jobs)
-  if (parentJob.buildNumber && parentJob.projectId && iterationTarget.id) {
-    executionStateManager.markNodeExecuting(
-      parentJob.projectId,
-      parentJob.buildNumber,
-      iterationTarget.id,
-      iterationTarget.data.label
-    )
-    logger.info(`Marked iteration target node "${iterationTarget.data.label}" as executing`)
+  // If duplicated nodes were created, we'll mark each one individually
+  // Otherwise, mark the original iteration target (legacy behavior)
+  const useDuplicatedNodes = duplicatedNodeIds && duplicatedNodeIds.length === items.length
+
+  if (useDuplicatedNodes) {
+    logger.info(`Using ${duplicatedNodeIds.length} duplicated nodes for matrix execution`)
+  } else {
+    // Legacy behavior: mark the single iteration target node as executing
+    if (parentJob.buildNumber && parentJob.projectId && iterationTarget.id) {
+      executionStateManager.markNodeExecuting(
+        parentJob.projectId,
+        parentJob.buildNumber,
+        iterationTarget.id,
+        iterationTarget.data.label
+      )
+      logger.info(`Marked iteration target node "${iterationTarget.data.label}" as executing`)
+    }
   }
 
   // Create execution promises for each matrix item
@@ -228,11 +237,26 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
       // Generate sub-job ID for this matrix iteration
       const subJobId = `${parentJob.jobId}_matrix_${index}_${uuidv4().split('-')[0]}`
 
+      // Determine which node ID to use for this iteration
+      const currentIterationNodeId = useDuplicatedNodes ? duplicatedNodeIds[index] : iterationTarget.id
+      const currentIterationNodeLabel = useDuplicatedNodes
+        ? (nameTemplate ? generateExecutionName(nameTemplate, index, item) : `${iterationTarget.data.label} [${index}]`)
+        : iterationTarget.data.label
+
+      // Mark this specific duplicated node as executing (if using duplicated nodes)
+      if (useDuplicatedNodes && parentJob.buildNumber && parentJob.projectId) {
+        executionStateManager.markNodeExecuting(
+          parentJob.projectId,
+          parentJob.buildNumber,
+          currentIterationNodeId,
+          currentIterationNodeLabel
+        )
+        logger.info(`Marked duplicated node "${currentIterationNodeLabel}" (${currentIterationNodeId}) as executing`)
+      }
+
       // Create sub-job record with execution name
-      // NOTE: We do NOT set currentNodeId/currentNodeLabel because:
-      // - Matrix sub-jobs should not mark individual nodes
-      // - Only the parent matrix orchestrator node gets marked
-      // - This prevents all sub-jobs from trying to mark the same iteration target node
+      // For duplicated nodes, we SET currentNodeId/currentNodeLabel so the job can mark the node
+      // For legacy mode, we do NOT set these to prevent all sub-jobs from marking the same node
       await jobManager.createJob({
         jobId: subJobId,
         projectId: parentJob.projectId,
@@ -242,14 +266,15 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
         status: 'queued',
         matrixIndex: index,
         matrixItem: item,
-        executionName: executionName, // NEW: Store execution name
+        executionName: executionName,
         nodes: [iterationTarget],
         edges: [],
         startTime: itemStartTime,
         createdAt: itemStartTime,
-        output: []
-        // currentNodeId: NOT SET - prevents execution state marking
-        // currentNodeLabel: NOT SET - prevents execution state marking
+        output: [],
+        // Set currentNodeId/currentNodeLabel ONLY if using duplicated nodes
+        currentNodeId: useDuplicatedNodes ? currentIterationNodeId : undefined,
+        currentNodeLabel: useDuplicatedNodes ? currentIterationNodeLabel : undefined
       })
 
       // Convert target node to command
@@ -354,11 +379,30 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
       const statusIcon = result.success ? '✅' : '❌'
       const statusText = result.success ? 'Completed successfully' : `Failed (exit ${result.exitCode})`
 
+      // Mark this specific duplicated node as completed or failed (if using duplicated nodes)
+      if (useDuplicatedNodes && parentJob.buildNumber && parentJob.projectId) {
+        if (result.success) {
+          executionStateManager.markNodeCompleted(
+            parentJob.projectId,
+            parentJob.buildNumber,
+            currentIterationNodeId
+          )
+          logger.info(`Marked duplicated node "${currentIterationNodeLabel}" (${currentIterationNodeId}) as completed`)
+        } else {
+          executionStateManager.markNodeFailed(
+            parentJob.projectId,
+            parentJob.buildNumber,
+            currentIterationNodeId
+          )
+          logger.info(`Marked duplicated node "${currentIterationNodeLabel}" (${currentIterationNodeId}) as failed`)
+        }
+      }
+
       return {
         matrixIndex: index,
         matrixItem: item,
-        executionName: executionName, // NEW: Include in result
-        subJobId: subJobId,
+        executionName: executionName,
+        nodeId: currentIterationNodeId, // Include node ID in result
         success: result.success,
         exitCode: result.exitCode,
         error: result.error,
@@ -369,11 +413,26 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
       const executionName = generateExecutionName(nameTemplate, index, item)
       logger.error(`❌ [${executionName}] Execution error: ${error.message}`)
 
+      // Mark this specific duplicated node as failed (if using duplicated nodes)
+      const currentIterationNodeId = useDuplicatedNodes ? duplicatedNodeIds[index] : iterationTarget.id
+      const currentIterationNodeLabel = useDuplicatedNodes
+        ? (nameTemplate ? generateExecutionName(nameTemplate, index, item) : `${iterationTarget.data.label} [${index}]`)
+        : iterationTarget.data.label
+
+      if (useDuplicatedNodes && parentJob.buildNumber && parentJob.projectId) {
+        executionStateManager.markNodeFailed(
+          parentJob.projectId,
+          parentJob.buildNumber,
+          currentIterationNodeId
+        )
+        logger.info(`Marked duplicated node "${currentIterationNodeLabel}" (${currentIterationNodeId}) as failed due to error`)
+      }
+
       return {
         matrixIndex: index,
         matrixItem: item,
-        executionName: executionName, // NEW: Include even on error
-        subJobId: null,
+        executionName: executionName,
+        nodeId: currentIterationNodeId, // Include node ID in result
         success: false,
         exitCode: 1,
         error: error.message,
@@ -474,8 +533,9 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
 
   logger.info(`${resultIcon} Parallel matrix complete: ${successCount} succeeded, ${failureCount} failed`)
 
-  // Mark the iteration target node as completed or failed
-  if (parentJob.buildNumber && parentJob.projectId && iterationTarget.id) {
+  // Mark the iteration target node as completed or failed (legacy behavior only)
+  // When using duplicated nodes, each node is marked individually during execution
+  if (!useDuplicatedNodes && parentJob.buildNumber && parentJob.projectId && iterationTarget.id) {
     if (allSucceeded) {
       executionStateManager.markNodeCompleted(
         parentJob.projectId,
@@ -491,6 +551,8 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
       )
       logger.info(`Marked iteration target node "${iterationTarget.data.label}" as failed`)
     }
+  } else if (useDuplicatedNodes) {
+    logger.info(`Skipping legacy iteration target marking - using individual duplicated node states`)
   }
 
   return {

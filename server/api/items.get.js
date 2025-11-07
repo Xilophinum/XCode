@@ -1,6 +1,7 @@
 import { getDataService } from '../utils/dataService.js'
 import { getAuthenticatedUser } from '../utils/auth.js'
 import { AccessControl } from '../utils/accessControl.js'
+import logger from '../utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -20,6 +21,7 @@ export default defineEventHandler(async (event) => {
     const accessibleItems = await AccessControl.filterAccessibleItems(items, user.userId)
     return accessibleItems
   } catch (error) {
+    logger.error('Error fetching items:', error)
     throw createError({
       statusCode: error.statusCode || 500,
       statusMessage: error.statusMessage || 'Failed to fetch items: ' + error.message

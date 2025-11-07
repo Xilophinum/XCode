@@ -9,7 +9,7 @@
             <p class="font-semibold mb-2">Array Parameter Input Required:</p>
             <ol class="list-decimal list-inside space-y-1">
               <li>Create an <strong>Array Parameter</strong> node</li>
-              <li>Connect it to this node's <code class="bg-blue-100 dark:bg-blue-900 px-1 rounded">$ARRAY_VALUES</code> input socket</li>
+              <li>Connect it to this node's <code class="bg-blue-100 dark:bg-blue-900 px-1 rounded">Array Values</code> input socket</li>
               <li>The array values will be used to execute the connected job multiple times</li>
             </ol>
           </div>
@@ -27,16 +27,16 @@
         v-model="nodeData.data.nameTemplate"
         type="text"
         class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono"
-        placeholder="Matrix-${INDEX}"
+        placeholder="Matrix-$INDEX"
       >
       <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        Template for naming each execution. Available: ${INDEX}, ${ITEM}, ${ITEM_KEY}
+        Template for naming each execution. Available: $INDEX, $ITEM_VALUE
       </p>
       <div class="mt-2 p-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded text-xs">
         <div class="font-medium text-neutral-700 dark:text-neutral-300 mb-1">Examples:</div>
         <div class="space-y-1 text-neutral-600 dark:text-neutral-400">
-          <div><code class="bg-white dark:bg-neutral-700 px-1 rounded">Build-${ITEM}</code> → Build-production</div>
-          <div><code class="bg-white dark:bg-neutral-700 px-1 rounded">Deploy-${ITEM_ENV}-${ITEM_REGION}</code> → Deploy-prod-us-east</div>
+          <div><code class="bg-white dark:bg-neutral-700 px-1 rounded">Build-$ITEM_VALUE</code> → Build-production</div>
+          <div><code class="bg-white dark:bg-neutral-700 px-1 rounded">Deploy-$INDEX-$ITEM_VALUE</code> → Deploy-1-us-east</div>
         </div>
       </div>
     </div>
@@ -112,10 +112,10 @@
         <div class="text-sm text-purple-800 dark:text-purple-200">
           <p class="font-semibold mb-1">How it works:</p>
           <ol class="list-decimal list-inside space-y-1">
-            <li>Connect an Array Parameter node to the <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">$ARRAY_VALUES</code> input socket</li>
-            <li>Connect execution nodes to the <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">For Each Item</code> execution socket</li>
-            <li>Connect the <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">$ITEM_VALUE</code> output to execution node inputs to access current item</li>
-            <li>Optionally connect <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">$ADDITIONAL_PARAMS</code> output for static parameters</li>
+            <li>Connect an Array Parameter node to the <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">Array Values</code> input socket</li>
+            <li>Connect parallel execution node to the <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">For Each Item</code> execution socket</li>
+            <li>Connect the <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">Iteration Value</code> output to execution node inputs to access current item</li>
+            <li>Optionally connect <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">Additional Parameters</code> output for static parameters</li>
             <li>Results are aggregated in the output sockets after all iterations complete</li>
           </ol>
         </div>

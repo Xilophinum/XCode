@@ -175,7 +175,7 @@ export default defineEventHandler(async (event) => {
   
   try {
     const body = await readBody(event)
-    const { projectId: bodyProjectId, nodes, edges, startTime, failedNodeLabel } = body
+    let { projectId: bodyProjectId, nodes, edges, startTime, failedNodeLabel } = body
     projectId = bodyProjectId
 
     if (!projectId || !nodes || !edges) {
@@ -238,6 +238,17 @@ export default defineEventHandler(async (event) => {
         statusCode: 400,
         statusMessage: error.message
       })
+    }
+
+    // Duplicate matrix iteration target nodes if needed
+    const graphModification = duplicateMatrixNodes(nodes, edges, executionCommands)
+    if (graphModification.modified) {
+      // Update nodes and edges with the modified graph
+      body.nodes = graphModification.nodes
+      body.edges = graphModification.edges
+      nodes = graphModification.nodes
+      edges = graphModification.edges
+      logger.info(`Graph modified: Added ${graphModification.duplicatedNodeCount} duplicated matrix iteration nodes`)
     }
 
     // Filter to get only executable commands (including orchestrator commands, notifications, git, and dependencies)
@@ -360,8 +371,11 @@ export default defineEventHandler(async (event) => {
         buildNumber: currentBuildNumber
       })
 
-      // Execute orchestrator directly (will mark node as executing/completed internally)
-      await agentManager.executeParallelBranches(jobId, firstCommand, job)
+      // Execute orchestrator directly in background (non-blocking)
+      // Don't await - let it run asynchronously so the API can return immediately
+      agentManager.executeParallelBranches(jobId, firstCommand, job).catch(error => {
+        logger.error(`Parallel branches orchestrator failed:`, error)
+      })
 
       // Broadcast orchestrator started event to WebSocket clients
       if (globalThis.broadcastToProject) {
@@ -398,8 +412,11 @@ export default defineEventHandler(async (event) => {
         buildNumber: currentBuildNumber
       })
 
-      // Execute orchestrator directly (will mark node as executing/completed internally)
-      await agentManager.executeParallelMatrix(jobId, firstCommand, job)
+      // Execute orchestrator directly in background (non-blocking)
+      // Don't await - let it run asynchronously so the API can return immediately
+      agentManager.executeParallelMatrix(jobId, firstCommand, job).catch(error => {
+        logger.error(`Parallel matrix orchestrator failed:`, error)
+      })
 
       // Broadcast orchestrator started event to WebSocket clients
       if (globalThis.broadcastToProject) {
@@ -1797,7 +1814,7 @@ function getIterationTargetNode(matrixNode, allNodes, allEdges) {
       // Find socket mappings: which matrix output sockets connect to which target input sockets
       const socketMappings = {}
 
-      // Check for $ITEM_VALUE connection
+      // Check for Iteration Value connection
       const itemValueEdge = allEdges.find(edge =>
         edge.source === matrixNode.id &&
         edge.sourceHandle === 'item-value' &&
@@ -1805,10 +1822,9 @@ function getIterationTargetNode(matrixNode, allNodes, allEdges) {
       )
       if (itemValueEdge) {
         socketMappings.itemValueSocket = itemValueEdge.targetHandle
-        logger.debug(`Matrix $ITEM_VALUE connects to target socket: ${itemValueEdge.targetHandle}`)
       }
 
-      // Check for $ADDITIONAL_PARAMS connection
+      // Check for Additional Parameters connection
       const additionalParamsEdge = allEdges.find(edge =>
         edge.source === matrixNode.id &&
         edge.sourceHandle === 'additional-params' &&
@@ -1816,7 +1832,6 @@ function getIterationTargetNode(matrixNode, allNodes, allEdges) {
       )
       if (additionalParamsEdge) {
         socketMappings.additionalParamsSocket = additionalParamsEdge.targetHandle
-        logger.debug(`Matrix $ADDITIONAL_PARAMS connects to target socket: ${additionalParamsEdge.targetHandle}`)
       }
 
       return {
@@ -1828,4 +1843,184 @@ function getIterationTargetNode(matrixNode, allNodes, allEdges) {
 
   logger.debug(`No iteration target found for matrix node "${matrixNode.data.label}"`)
   return null
+}
+
+/**
+ * Duplicate matrix iteration target nodes for each matrix item
+ * This modifies the graph at execution time to create visual nodes for each iteration
+ */
+function duplicateMatrixNodes(nodes, edges, executionCommands) {
+  let modified = false
+  let duplicatedNodeCount = 0
+  const newNodes = [...nodes]
+  const newEdges = [...edges]
+  const nodesToRemove = []
+
+  // Find all parallel_matrix_orchestrator commands
+  const matrixCommands = executionCommands.filter(cmd => cmd.type === 'parallel_matrix_orchestrator')
+
+  for (const matrixCmd of matrixCommands) {
+    if (!matrixCmd.iterationTarget || !matrixCmd.items || matrixCmd.items.length === 0) {
+      logger.debug(`Skipping matrix node ${matrixCmd.nodeLabel} - no iteration target or items`)
+      continue
+    }
+
+    const matrixNode = nodes.find(n => n.id === matrixCmd.nodeId)
+    const iterationTarget = matrixCmd.iterationTarget
+    const itemCount = matrixCmd.items.length
+
+    logger.info(`Duplicating iteration target "${iterationTarget.data.label}" ${itemCount} times for matrix "${matrixCmd.nodeLabel}"`)
+
+    // Find the original iteration target node in the graph
+    const originalNodeIndex = newNodes.findIndex(n => n.id === iterationTarget.id)
+    if (originalNodeIndex === -1) {
+      logger.warn(`Could not find original iteration target node ${iterationTarget.id} in graph`)
+      continue
+    }
+
+    const originalNode = newNodes[originalNodeIndex]
+    const baseYPosition = originalNode.position?.y || 0
+    const verticalSpacing = 200 // Space between duplicated nodes
+
+    // Create duplicated nodes
+    const duplicatedNodes = []
+    const duplicatedNodeIds = []
+
+    for (let i = 0; i < itemCount; i++) {
+      const item = matrixCmd.items[i]
+      const newNodeId = `${iterationTarget.id}_matrix_${i}`
+
+      // Generate label for this iteration
+      let iterationLabel = originalNode.data.label
+      if (matrixCmd.nameTemplate && matrixCmd.nameTemplate.trim() !== '') {
+        // Use name template if provided
+        try {
+          // Replace $ITEM_VALUE placeholder with the current item
+          iterationLabel = matrixCmd.nameTemplate.replace(/\$ITEM_VALUE/g, String(item))
+          // Replace $INDEX placeholder with the index
+          iterationLabel = iterationLabel.replace(/\$INDEX/g, String(i))
+        } catch (error) {
+          logger.warn(`Failed to apply name template "${matrixCmd.nameTemplate}":`, error)
+          iterationLabel = `${originalNode.data.label} [${i}]`
+        }
+      } else {
+        // Default: append index to original label
+        iterationLabel = `${originalNode.data.label} [${i}]`
+      }
+
+      // Create duplicated node
+      const duplicatedNode = {
+        ...originalNode,
+        id: newNodeId,
+        position: {
+          x: originalNode.position?.x || 0,
+          y: baseYPosition + (i * verticalSpacing)
+        },
+        data: {
+          ...originalNode.data,
+          label: iterationLabel
+        }
+      }
+
+      duplicatedNodes.push(duplicatedNode)
+      duplicatedNodeIds.push(newNodeId)
+      duplicatedNodeCount++
+    }
+
+    // Remove original node and add duplicated nodes
+    newNodes.splice(originalNodeIndex, 1, ...duplicatedNodes)
+    nodesToRemove.push(iterationTarget.id)
+
+    // Update edges: Remove edges to/from original node and create edges to duplicated nodes
+    // 1. Remove the iteration edge from matrix to original target
+    const iterationEdgeIndex = newEdges.findIndex(edge =>
+      edge.source === matrixNode.id &&
+      edge.sourceHandle === 'iteration' &&
+      edge.target === iterationTarget.id
+    )
+    if (iterationEdgeIndex !== -1) {
+      newEdges.splice(iterationEdgeIndex, 1)
+    }
+
+    // 2. Create new iteration edges from matrix to each duplicated node
+    for (const duplicatedNodeId of duplicatedNodeIds) {
+      newEdges.push({
+        id: `${matrixNode.id}-iteration-${duplicatedNodeId}`,
+        source: matrixNode.id,
+        sourceHandle: 'iteration',
+        target: duplicatedNodeId,
+        targetHandle: 'execution',
+        type: 'smoothstep'
+      })
+    }
+
+    // 3. Handle parameter connections (Iteration Value and Additional Parameters)
+    // Remove old parameter edges to original target
+    const parameterEdgesToRemove = newEdges.filter(edge =>
+      edge.source === matrixNode.id &&
+      (edge.sourceHandle === 'item-value' || edge.sourceHandle === 'additional-params') &&
+      edge.target === iterationTarget.id
+    )
+
+    for (const edge of parameterEdgesToRemove) {
+      const edgeIndex = newEdges.indexOf(edge)
+      if (edgeIndex !== -1) {
+        newEdges.splice(edgeIndex, 1)
+      }
+    }
+
+    // Create new parameter edges to each duplicated node (preserving target handles)
+    for (const duplicatedNodeId of duplicatedNodeIds) {
+      for (const paramEdge of parameterEdgesToRemove) {
+        newEdges.push({
+          id: `${matrixNode.id}-${paramEdge.sourceHandle}-${duplicatedNodeId}`,
+          source: matrixNode.id,
+          sourceHandle: paramEdge.sourceHandle,
+          target: duplicatedNodeId,
+          targetHandle: paramEdge.targetHandle, // Preserve original target handle
+          type: paramEdge.type || 'smoothstep'
+        })
+      }
+    }
+
+    // 4. Handle edges FROM original target to next nodes (success/failure/output sockets)
+    const outgoingEdges = edges.filter(edge => edge.source === iterationTarget.id)
+
+    // For each duplicated node, create copies of outgoing edges
+    for (const duplicatedNodeId of duplicatedNodeIds) {
+      for (const outgoingEdge of outgoingEdges) {
+        newEdges.push({
+          id: `${duplicatedNodeId}-${outgoingEdge.sourceHandle || 'default'}-${outgoingEdge.target}`,
+          source: duplicatedNodeId,
+          sourceHandle: outgoingEdge.sourceHandle,
+          target: outgoingEdge.target,
+          targetHandle: outgoingEdge.targetHandle,
+          type: outgoingEdge.type || 'smoothstep'
+        })
+      }
+    }
+
+    // Remove original outgoing edges
+    for (const outgoingEdge of outgoingEdges) {
+      const edgeIndex = newEdges.findIndex(e =>
+        e.id === outgoingEdge.id ||
+        (e.source === outgoingEdge.source && e.target === outgoingEdge.target && e.sourceHandle === outgoingEdge.sourceHandle)
+      )
+      if (edgeIndex !== -1) {
+        newEdges.splice(edgeIndex, 1)
+      }
+    }
+
+    // Store duplicated node IDs in the matrix command for the orchestrator to use
+    matrixCmd.duplicatedNodeIds = duplicatedNodeIds
+
+    modified = true
+  }
+
+  return {
+    modified,
+    nodes: newNodes,
+    edges: newEdges,
+    duplicatedNodeCount
+  }
 }

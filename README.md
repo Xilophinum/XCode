@@ -76,7 +76,7 @@ FlowForge supports three database backends that can be configured via environmen
 **SQLite (Default)**
 ```bash
 # No configuration needed - uses local file storage
-# Default path: data/projects.db
+# Default path: data/flowforge.db
 ```
 
 **PostgreSQL**
@@ -90,8 +90,6 @@ DATABASE_URL=postgres://user:password@localhost:5432/flowforge
 DATABASE_TYPE=mysql
 DATABASE_URL=mysql://user:password@localhost:3306/flowforge
 ```
-
-The database will be automatically initialized with all required tables and indexes on first startup. For reference, the complete MySQL schema is available in [database-schema-mysql.sql](database-schema-mysql.sql).
 
 ### Build Agent Setup
 ```bash
@@ -129,23 +127,9 @@ Generate agent tokens from the Admin panel in the web interface.
 **API Orchestration** - Coordinate complex multi-service workflows
 **Event-Driven Workflows** - Trigger automation on git events or webhook calls
 
-## Development
-
-```bash
-pnpm dev          # Start development server
-pnpm build        # Build for production
-pnpm typecheck    # Run type checking
-pnpm lint         # Lint code
-```
-
 ## Roadmap
-
-- [ ] Workflow templates for common CI/CD patterns
 - [ ] Plugin marketplace for community extensions
-- [ ] Enhanced matrix builds with dynamic axes
 - [ ] Docker container execution support
-- [ ] Multi-tenant workspace isolation
-- [ ] Advanced role-based permissions
 - MUCH MUCH more 
 
 ## License
