@@ -3,22 +3,30 @@
     <!-- Navigation -->
     <AppNavigation :breadcrumbs="pathSegments">
       <template #actions>
-        <button
+        <UButton
           @click="refreshBuilds"
           :disabled="loading"
-          class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          color="neutral"
+          variant="outline"
+          :loading="loading"
+          size="md"
         >
-          <UIcon name="i-lucide-refresh-cw" class="w-4 h-4 mr-2" :class="{ 'animate-spin': loading }" />
+          <template #leading>
+            <UIcon name="i-lucide-refresh-cw" :class="{ 'animate-spin': loading }" />
+          </template>
           {{ loading ? 'Refreshing...' : 'Refresh' }}
-        </button>
+        </UButton>
         
-        <NuxtLink
+        <UButton
           :to="`/${pathSegments.slice(0, -1).join('/')}/editor`"
-          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          color="secondary"
+          size="md"
         >
-          <UIcon name="i-lucide-edit" class="w-4 h-4 mr-2" />
+          <template #leading>
+            <UIcon name="i-lucide-edit" />
+          </template>
           Edit Project
-        </NuxtLink>
+        </UButton>
       </template>
     </AppNavigation>
 
@@ -176,12 +184,15 @@
             </div>
             
             <div class="flex items-end">
-              <button
+              <UButton
                 @click="clearFilters"
-                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                color="neutral"
+                variant="outline"
+                block
+                size="xl"
               >
                 Clear Filters
-              </button>
+              </UButton>
             </div>
           </div>
         </div>
@@ -249,12 +260,14 @@
                     {{ formatRelativeTime(build.startedAt) }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
+                    <UButton
                       @click="viewBuildLogs(build)"
-                      class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                      color="secondary"
+                      variant="link"
+                      size="md"
                     >
                       View Logs
-                    </button>
+                    </UButton>
                   </td>
                 </tr>
               </tbody>
@@ -269,20 +282,22 @@
               {{ pagination.totalCount }} results
             </div>
             <div class="flex space-x-2">
-              <button
+              <UButton
                 @click="goToPage(pagination.page - 1)"
                 :disabled="pagination.page <= 1"
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                color="neutral"
+                variant="outline"
               >
                 Previous
-              </button>
-              <button
+              </UButton>
+              <UButton
                 @click="goToPage(pagination.page + 1)"
                 :disabled="pagination.page >= pagination.totalPages"
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                color="neutral"
+                variant="outline"
               >
                 Next
-              </button>
+              </UButton>
             </div>
           </div>
         </div>
@@ -295,12 +310,13 @@
         <h3 class="text-lg font-medium text-gray-900 dark:text-white">
           Build Logs - {{ selectedBuild?.id?.substring(0, 12) }}...
         </h3>
-        <button
+        <UButton
           @click="closeLogsModal"
-          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-        >
-          <UIcon name="i-lucide-x" class="w-6 h-6" />
-        </button>
+          color="neutral"
+          variant="ghost"
+          icon="i-lucide-x"
+          square
+        />
       </div>
       
       <div class="bg-gray-950 rounded-md p-4 max-h-96 overflow-y-auto m-4">

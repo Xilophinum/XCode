@@ -14,13 +14,17 @@ export default defineEventHandler(async (event) => {
   try {
     // Get refresh token from cookie or body
     let refreshToken = getCookie(event, 'refresh-token')
+    
+    logger.debug(`Refresh token from cookie: ${refreshToken ? 'present' : 'missing'}`)
 
     if (!refreshToken) {
       const body = await readBody(event).catch(() => ({}))
       refreshToken = body.refreshToken
+      logger.debug(`Refresh token from body: ${refreshToken ? 'present' : 'missing'}`)
     }
 
     if (!refreshToken) {
+      logger.warn('No refresh token provided in cookie or body')
       throw createError({
         statusCode: 401,
         statusMessage: 'No refresh token provided'
@@ -30,17 +34,21 @@ export default defineEventHandler(async (event) => {
     // Verify refresh token
     const tokenRecord = await verifyRefreshToken(refreshToken)
     if (!tokenRecord) {
+      logger.warn('Invalid or expired refresh token')
       throw createError({
         statusCode: 401,
         statusMessage: 'Invalid or expired refresh token'
       })
     }
 
+    logger.debug(`Token verified for user: ${tokenRecord.userId}`)
+
     // Get user from database
     const dataService = await getDataService()
     const user = await dataService.getUserById(tokenRecord.userId)
 
     if (!user) {
+      logger.warn(`User not found for token: ${tokenRecord.userId}`)
       throw createError({
         statusCode: 401,
         statusMessage: 'User not found'
@@ -73,17 +81,21 @@ export default defineEventHandler(async (event) => {
     const newRefreshToken = await rotateRefreshToken(refreshToken, user.id, deviceInfo)
 
     if (!newRefreshToken) {
+      logger.error('Failed to rotate refresh token - database operation failed')
       throw createError({
         statusCode: 500,
         statusMessage: 'Failed to rotate refresh token'
       })
     }
+    
+    logger.debug(`New refresh token generated for user: ${user.id}`)
 
     // Set new access token cookie
     setCookie(event, 'auth-token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
+      path: '/',
       maxAge: 15 * 60 // 15 minutes
     })
 
@@ -92,6 +104,7 @@ export default defineEventHandler(async (event) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 // 7 days
     })
 

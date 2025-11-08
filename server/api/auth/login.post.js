@@ -131,11 +131,12 @@ export default defineEventHandler(async (event) => {
     }
     const refreshToken = await generateRefreshToken(user.id, deviceInfo)
 
-    // Set access token in HTTP-only cookie (15 min expiry)
+    // Set access token in HTTP-only cookie (15 minutes expiry)
     setCookie(event, 'auth-token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
+      path: '/',
       maxAge: 15 * 60 // 15 minutes
     })
 
@@ -144,6 +145,7 @@ export default defineEventHandler(async (event) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 // 7 days
     })
 

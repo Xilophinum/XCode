@@ -91,45 +91,43 @@
           <span class="text-sm text-gray-700 dark:text-gray-200">
             Welcome, {{ authStore.user?.name }}
           </span>
-          <button
+          
+          <UButton
             @click="handleLogout"
-            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-700 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-log-out"
           >
-            <UIcon name="i-lucide-log-out" class="mr-2 w-4 h-4" />
             Logout
-          </button>
+          </UButton>
 
           <!-- Dark Mode Toggle -->
-          <button
-            @click="darkMode.toggle()"
-            class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-700 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            v-tooltip:bottomright="'Toggle dark mode'"
-          >
-            <!-- Sun icon for light mode -->
-            <UIcon
-              v-if="darkMode.isDark.value"
-              name="i-lucide-sun"
-              class="w-4 h-4"
-            />
-            <!-- Moon icon for dark mode -->
-            <UIcon
-              v-else
-              name="i-lucide-moon"
-              class="w-4 h-4"
-            />
-          </button>
+          <UTooltip text="Toggle dark mode">
+            <UButton
+              @click="darkMode.toggle()"
+              color="neutral"
+              variant="outline"
+              square
+              size="xl"
+            >
+              <UIcon name="i-lucide-sun" v-if="isDark"/>
+              <UIcon name="i-lucide-moon" v-else />
+            </UButton>
+          </UTooltip>
         </div>
 
         <!-- Mobile menu button -->
         <div class="md:hidden flex items-center space-x-1">
           <!-- Mobile Search Button -->
-          <button
-            @click="showMobileSearch = !showMobileSearch"
-            class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-700 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            v-tooltip="'Search'"
-          >
-            <UIcon name="i-lucide-search" class="w-4 h-4" />
-          </button>
+          <UTooltip text="Search">
+            <UButton
+              @click="showMobileSearch = !showMobileSearch"
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-search"
+              square
+            />
+          </UTooltip>
           
           <!-- Mobile actions slot - limited to essential buttons only -->
           <div class="flex items-center space-x-1">
@@ -137,13 +135,15 @@
           </div>
           
           <!-- Mobile hamburger menu -->
-          <button
-            @click="toggleMobileMenu"
-            class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-700 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-950 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            v-tooltip="'Menu'"
-          >
-            <UIcon name="i-lucide-menu" class="w-5 h-5" />
-          </button>
+          <UTooltip text="Menu">
+            <UButton
+              @click="toggleMobileMenu"
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-menu"
+              square
+            />
+          </UTooltip>
         </div>
       </div>
 
@@ -212,31 +212,31 @@
             Welcome, {{ authStore.user?.name }}
           </div>
 
-          <button
+          <UButton
             @click="handleLogout"
-            class="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-950 rounded-md transition-colors"
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-log-out"
+            block
+            class="justify-start"
           >
-            <UIcon name="i-lucide-log-out" class="mr-2 w-4 h-4" />
             Logout
-          </button>
+          </UButton>
 
           <!-- Dark mode toggle -->
-          <button
+          <UButton
             @click="darkMode.toggle()"
-            class="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-950 rounded-md transition-colors"
+            color="neutral"
+            variant="ghost"
+            block
+            class="justify-start"
           >
-            <UIcon
-              v-if="darkMode.isDark.value"
-              name="i-lucide-sun"
-              class="w-4 h-4 mr-2"
-            />
-            <UIcon
-              v-else
-              name="i-lucide-moon"
-              class="w-4 h-4 mr-2"
-            />
-            {{ darkMode.isDark.value ? 'Light Mode' : 'Dark Mode' }}
-          </button>
+            <template #leading>
+              <UIcon name="i-lucide-sun" v-if="isDark"/>
+              <UIcon name="i-lucide-moon" v-else />
+            </template>
+            {{ isDark ? 'Light Mode' : 'Dark Mode' }}
+          </UButton>
         </div>
       </div>
     </div>
@@ -244,7 +244,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 
 const props = defineProps({
   breadcrumbs: {
@@ -270,6 +270,8 @@ const showSearchResults = ref(false)
 // Branding settings
 const brandName = ref('FlowForge')
 const appLogo = ref(null)
+
+const isDark = computed(() => darkMode.isDark.value)
 
 const getBreadcrumbUrl = (index) => {
   const pathUpToIndex = props.breadcrumbs.slice(0, index + 1)

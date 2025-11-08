@@ -7,21 +7,25 @@
           <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
           Executing...
         </div>
-        <NuxtLink 
+        
+        <UButton
           :to="`/${pathSegments.join('/')}/editor`"
-          class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          color="neutral"
+          variant="outline"
+          icon="i-lucide-arrow-left"
         >
-          <UIcon name="i-lucide-arrow-left" class="w-4 h-4 mr-2" />
           Back to Editor
-        </NuxtLink>
-        <button
+        </UButton>
+        
+        <UButton
           v-if="isExecuting"
           @click="cancelExecution"
-          class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          color="error"
+          icon="i-lucide-x"
+
         >
-          <UIcon name="i-lucide-x" class="w-4 h-4 mr-2" />
           Cancel Build
-        </button>
+        </UButton>
       </template>
     </AppNavigation>
 
@@ -69,12 +73,14 @@
         <div class="bg-gray-800 px-4 py-2 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
           <span class="text-white font-semibold">Build #{{ buildNumber }} Output</span>
           <div class="flex items-center space-x-2">
-            <button
+            <UButton
               @click="clearTerminal"
-              class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded"
+              color="neutral"
+              variant="soft"
+              size="xs"
             >
               Clear
-            </button>
+            </UButton>
           </div>
         </div>
         <div ref="terminalRef" class="flex-1 p-4 overflow-y-auto">

@@ -5,149 +5,119 @@
       <template #mobile-actions>
         <!-- Mobile: Only show Run/Cancel and Save buttons -->
         <div class="inline-flex rounded-md shadow-sm">
-          <NuxtLink
+          <UButton
             v-if="isExecuting && currentBuildNumber"
             :to="`/${pathSegments.slice(0, -1).join('/')}/build/${currentBuildNumber}`"
-            class="relative inline-flex items-center px-2 py-2 border border-transparent text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 rounded-md"
-          >
-            <UIcon name="i-lucide-loader" class="animate-spin h-4 w-4 text-white" />
-          </NuxtLink>
-          <button
+            color="orange"
+            icon="i-lucide-loader"
+            class="animate-spin"
+            square
+            size="md"
+          />
+          <UButton
             v-else
             @click="executeGraph"
             :disabled="isExecuting || project?.status === 'disabled'"
-            class="relative inline-flex items-center px-2 py-2 border border-transparent text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 rounded-md"
-          >
-            <UIcon name="i-lucide-play" class="h-4 w-4" />
-          </button>
-
+            color="primary"
+            icon="i-lucide-play"
+            square
+            size="md"
+          />
         </div>
-        <button
+        <UButton
           @click="saveProject"
           :disabled="isSaving"
-          class="inline-flex items-center px-2 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-        >
-          <UIcon name="i-lucide-save" class="h-4 w-4" />
-        </button>
+          color="green"
+          icon="i-lucide-save"
+          square
+          size="md"
+        />
       </template>
       <template #actions>
         <!-- Run/Cancel Split Button -->
         <div class="inline-flex rounded-md shadow-sm">
           <!-- Main Run Button or View Build Link -->
-          <NuxtLink
+          <UButton
             v-if="isExecuting && currentBuildNumber"
             :to="`/${pathSegments.slice(0, -1).join('/')}/build/${currentBuildNumber}`"
-            class="relative inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 rounded-md"
+            class="bg-orange-600 hover:bg-orange-700 text-white"
+            icon="i-lucide-loader"
+            label="View Build"
+            :trailing="false"
+            size="md"
           >
-            <UIcon name="i-lucide-loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
+            <template #leading>
+              <UIcon name="i-lucide-loader" class="animate-spin" />
+            </template>
             View Build #{{ currentBuildNumber }}
-          </NuxtLink>
-          <button
+          </UButton>
+          <UButton
             v-else
             @click="executeGraph"
             :disabled="isExecuting || project?.status === 'disabled'"
-            class="relative inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 rounded-md"
+            color="secondary"
+            icon="i-lucide-play"
+            :loading="isExecuting"
+            size="md"
           >
-            <UIcon v-if="isExecuting" name="i-lucide-loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
-            <span class="inline-flex items-center">
-              <UIcon name="i-lucide-play" class="mr-2 h-4 w-4" />Run
-            </span>
-          </button>
-          
-
+            Run
+          </UButton>
         </div>
 
         <!-- Split Save Button -->
         <div class="inline-flex rounded-md shadow-sm relative">
-          <!-- Main Save Button -->
-          <button
-            @click="saveProject"
-            :disabled="isSaving"
-            class="relative inline-flex items-center px-3 py-2 rounded-l-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-          >
-            <UIcon v-if="isSaving" name="i-lucide-loader" class="animate-spin ml-1 mr-2 h-4 w-4 text-white" />
-            <span v-if="isSaving">Saving...</span>
-            <span v-else class="inline-flex items-center">
-              <UIcon name="i-lucide-save" class="mr-2 h-4 w-4" />Save
-            </span>
-          </button>
+            <UFieldGroup>
+              <UButton color="primary" label="Saving" v-if="isSaving">
+                <UIcon name="i-lucide-loader" class="animate-spin ml-1 mr-2 h-4 w-4 text-white" />
+              </UButton>
+              <UButton color="primary" label="Save" @click="saveProject" icon="i-lucide-save" v-else />
 
-          <!-- Dropdown Button -->
-          <button
-            @click.stop="showSaveDropdown = !showSaveDropdown"
-            :disabled="isSaving"
-            class="relative inline-flex items-center px-2 py-2 rounded-r-md border-l border-green-700 dark:border-green-400 text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-          >
-            <UIcon name="i-lucide-chevron-down" class="h-4 w-4" />
-          </button>
-
-          <!-- Dropdown Menu -->
-          <Transition
-            enter-active-class="transition ease-out duration-100"
-            enter-from-class="transform opacity-0 scale-95"
-            enter-to-class="transform opacity-100 scale-100"
-            leave-active-class="transition ease-in duration-75"
-            leave-from-class="transform opacity-100 scale-100"
-            leave-to-class="transform opacity-0 scale-95"
-          >
-            <div
-              v-if="showSaveDropdown"
-              @click.stop
-              class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-              style="top: 100%;"
-            >
-              <div class="py-1">
-                <button
-                  @click="openSaveAsTemplate"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                >
-                  <UIcon name="i-lucide-save-all" class="mr-2 h-4 w-4" />
-                  Save as Template
-                </button>
-              </div>
-            </div>
-          </Transition>
+              <UDropdownMenu :items="saveTemplateItems">
+                <UButton
+                  color="neutral"
+                  variant="outline"
+                  icon="i-lucide-chevron-down"
+                />
+              </UDropdownMenu>
+            </UFieldGroup>
         </div>
 
-        <!-- Project Status Toggle -->
-        <button
-          @click="toggleProjectStatus"
-          :disabled="isTogglingStatus"
-          :class="[
-            'inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50',
-            project?.status === 'disabled' 
-              ? 'text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 focus:ring-green-500' 
-              : 'text-white bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 focus:ring-amber-500'
-          ]"
-        >
-          <UIcon v-if="isTogglingStatus" name="i-lucide-loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
-          <span v-if="isTogglingStatus">{{ project?.status === 'disabled' ? 'Enabling...' : 'Disabling...' }}</span>
-          <span v-else class="inline-flex items-center">
-            <UIcon v-if="project?.status === 'disabled'" name="i-lucide-check" class="mr-2 h-4 w-4" />
-            <UIcon v-else name="i-lucide-x" class="mr-2 h-4 w-4" />
-            {{ project?.status === 'disabled' ? 'Enable' : 'Disable' }}
-          </span>
-        </button>
-
         <!-- Build History Link -->
-        <NuxtLink
-          :to="`/${pathSegments.slice(0, -1).join('/')}/builds`"
-          class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          v-tooltip:bottom="'View build history'"
-        >
-          <UIcon name="i-lucide-clock" class="mr-2 h-4 w-4" />
-          Build History
-        </NuxtLink>
+        <UTooltip text="View build history">
+          <UButton
+            :to="`/${pathSegments.slice(0, -1).join('/')}/builds`"
+            class="text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600"
+            icon="i-lucide-clock"
+            size="md"
+          >
+            Build History
+          </UButton>
+        </UTooltip>
 
         <!-- Retention Settings Button -->
-        <button
-          @click="showRetentionModal = true"
-          class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          v-tooltip:bottom="'Configure build retention policies'"
-        >
-          <UIcon name="i-lucide-settings" class="mr-2 h-4 w-4" />
-          Settings
-        </button>
+        <UTooltip text="Configure build retention policies">
+          <UButton
+            @click="showRetentionModal = true"
+            class="text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600"
+            icon="i-lucide-settings"
+            size="md"
+          >
+            Settings
+          </UButton>
+        </UTooltip>
+        <!-- Project Status Toggle -->
+         <UTooltip text="Enable or disable this project">
+          <UButton
+            @click="toggleProjectStatus"
+            :disabled="isTogglingStatus"
+            :color="project?.status === 'disabled' ? 'primary' : 'error'"
+            :icon="project?.status === 'disabled' ? 'i-lucide-check' : 'i-lucide-x'"
+            :loading="isTogglingStatus"
+            size="md"
+          >
+            {{ project?.status === 'disabled' ? 'Enable' : 'Disable' }}
+          </UButton>
+         </UTooltip>
       </template>
     </AppNavigation>
 
@@ -167,12 +137,14 @@
             </p>
           </div>
           <div class="ml-auto">
-            <NuxtLink
-              :to="`/${pathSegments.slice(0, -1).join('/')}/build/${currentBuildNumber}`"
-              class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-blue-800 dark:text-blue-200 bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            <UButton
+              :to="`/${pathSegments.slice(0, -1).join('/')}/builds/${currentBuildNumber}`"
+              color="primary"
+              variant="soft"
+              size="xs"
             >
               View Build #{{ currentBuildNumber }}
-            </NuxtLink>
+            </UButton>
           </div>
         </div>
       </div>
@@ -192,15 +164,6 @@
             <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
               Cron jobs will not run, manual execution is blocked, job triggers will not fire, and webhooks will be ignored. Click "Enable" to reactivate.
             </p>
-          </div>
-          <div class="ml-auto">
-            <button
-              @click="toggleProjectStatus"
-              :disabled="isTogglingStatus"
-              class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-800 hover:bg-amber-200 dark:hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50"
-            >
-              {{ isTogglingStatus ? 'Enabling...' : 'Enable Project' }}
-            </button>
           </div>
         </div>
       </div>
@@ -507,13 +470,14 @@
                       placeholder="Socket label"
                       class="flex-1 px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
                     >
-                    <button
-                      @click="removeInputSocket(socket.id)"
-                      class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                      v-tooltip:topright="'Remove socket'"
-                    >
-                      <UIcon name="i-lucide-trash" class="w-4 h-4" />
-                    </button>
+                    <UTooltip text="Remove socket">
+                      <button
+                        @click="removeInputSocket(socket.id)"
+                        class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        <UIcon name="i-lucide-trash" class="w-4 h-4" />
+                      </button>
+                    </UTooltip>
                   </div>
                 </div>
                 
@@ -1291,6 +1255,10 @@ const handleSaveTemplate = async (templateData) => {
 const handleCancelTemplate = () => {
   showTemplateModal.value = false
 }
+
+const saveTemplateItems = [
+  { label: 'Save as Template', icon: 'i-lucide-save', onSelect: openSaveAsTemplate }
+]
 
 const addInputSocketToSelectedNode = () => {
   if (!selectedNode.value) return
@@ -2381,7 +2349,8 @@ const toggleProjectStatus = async () => {
     const result = await projectsStore.toggleProjectStatus(project.value.id)
     if (result.success) {
       logger.info(`Project ${result.status}: ${project.value.name}`)
-      toast.add({ title: `Project ${result.status === 'enabled' ? 'enabled' : 'disabled'} successfully`, icon: 'i-lucide-check-circle' })
+      console.log(`Project ${result.status}: ${project.value.name}`)
+      toast.add({ title: `Project ${result.status === 'active' ? 'enabled' : 'disabled'} successfully`, icon: 'i-lucide-check-circle' })
       saveProject()
     } else {
       logger.error('Failed to toggle project status:', result.error)

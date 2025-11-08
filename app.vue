@@ -10,6 +10,8 @@
 const webSocketStore = useWebSocketStore()
 const authStore = useAuthStore()
 const logger = useLogger()
+const { startMonitoring, cleanup } = useWebSocketAutoReconnect()
+
 // Initialize WebSocket connection when app loads
 onMounted(async () => {
   try {
@@ -22,6 +24,9 @@ onMounted(async () => {
     if (authStore.isAuthenticated) {
       await webSocketStore.connect()
     }
+
+    // Start monitoring for WebSocket auto-reconnect on token refresh
+    startMonitoring()
   } catch (error) {
     logger.error('Failed to initialize global WebSocket:', error)
   }
@@ -45,6 +50,7 @@ onMounted(async () => {
 
 // Cleanup WebSocket on app unmount
 onUnmounted(() => {
+  cleanup()
   webSocketStore.disconnect()
 })
 </script>
