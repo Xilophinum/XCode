@@ -31,7 +31,8 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@pinia/nuxt',
     '@vueuse/nuxt',
-    'nuxt-monaco-editor'
+    'nuxt-monaco-editor',
+    'nuxt-auth-utils'
   ],
   icon: {
     provider: 'lucide'

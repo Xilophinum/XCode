@@ -191,21 +191,26 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex justify-end space-x-2">
-                    <button
-                      @click="editAgent(agent)"
-                      class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                      v-tooltip="'Edit agent'"
-                    >
-                      <UIcon name="i-lucide-edit" class="w-4 h-4" />
-                    </button>
-                    <button
-                      v-if="!agent.isLocal"
-                      @click="confirmDeleteAgent(agent)"
-                      class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                      v-tooltip:left="'Delete agent'"
-                    >
-                      <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
-                    </button>
+                    <UTooltip text="Edit agent">
+                        <UButton
+                          @click="editAgent(agent)"
+                          color="secondary"
+                          variant="ghost"
+                          size="sm"
+                          icon="i-lucide-edit-2"
+                        />
+                    </UTooltip>
+                    <UTooltip text="Delete agent" v-if="!agent.isLocal">
+                      <UButton
+                        v-if="!agent.isLocal"
+                        @click="confirmDeleteAgent(agent)"
+                        color="error"
+                        variant="outline"
+                        size="sm"
+                        icon="i-lucide-trash-2"
+                        v-tooltip:left="'Delete agent'"
+                      />
+                    </UTooltip>
                   </div>
                 </td>
               </tr>
@@ -397,8 +402,6 @@ definePageMeta({
 })
 
 import ModalWrapper from '~/components/ModalWrapper.vue'
-
-const { isDark } = useDarkMode()
 const authStore = useAuthStore()
 const toast = useToast()
 
@@ -433,6 +436,7 @@ const loadAgents = async (isInitialLoad = false) => {
     // Use the general agents endpoint for initial load only
     const data = await $fetch('/api/admin/agents')
     agents.value = data
+    console.log(data)
   } catch (error) {
     logger.error('Error loading agents:', error)
   } finally {

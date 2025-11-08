@@ -1,6 +1,6 @@
 import { getDataService } from '../../utils/dataService.js'
 import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
+import logger from '../../utils/logger.js'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -24,8 +24,10 @@ export default defineEventHandler(async (event) => {
     const user = await dataService.createUser({
       name: name,
       email: email,
-      passwordHash: hashedPassword
+      passwordHash: hashedPassword,
+      role: 'user'
     })
+    
     // Get session timeout from system settings
     let sessionTimeoutHours = 24 // Default fallback
     try {
@@ -36,23 +38,30 @@ export default defineEventHandler(async (event) => {
     } catch (error) {
       logger.warn('Failed to get session timeout setting, using default 24h:', error)
     }
-
-    // Create JWT token
-    const config = useRuntimeConfig()
-    const token = jwt.sign(
-      { userId: user.id, userName: user.name, email: user.email, role: 'user' },
-      config.jwtSecret,
-      { expiresIn: `${sessionTimeoutHours}h` }
-    )
-    // Set HTTP-only cookie
-    setCookie(event, 'auth-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * sessionTimeoutHours // Match JWT expiration
-    })
     
-    return { id: user.id, name: user.name, email: user.email }
+    // Set user session using nuxt-auth-utils with custom maxAge from system settings
+    await setUserSession(event, {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: 'user'
+      },
+      loggedInAt: Date.now()
+    }, {
+      maxAge: 60 * 60 * sessionTimeoutHours // Convert hours to seconds
+    })
+
+    logger.info(`User registered and logged in: ${user.email} (session: ${sessionTimeoutHours}h)`)
+    
+    return { 
+      user: {
+        id: user.id, 
+        name: user.name, 
+        email: user.email,
+        role: 'user'
+      }
+    }
   } catch (error) {
     if (error.statusCode) {
       throw error

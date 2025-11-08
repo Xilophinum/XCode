@@ -1,6 +1,5 @@
 import { Server as Engine } from "engine.io";
 import { Server } from "socket.io";
-import jwt from 'jsonwebtoken'
 import { getAgentManager } from '~/server/utils/agentManager.js'
 import { getDataService } from '~/server/utils/dataService.js'
 import { jobManager } from '~/server/utils/jobManager.js'
@@ -531,82 +530,24 @@ async function handleHeartbeat(socket, msg, agentManager) {
 // Client authentication and subscription handlers
 async function handleClientAuthentication(socket, msg) {
   try {
-    // For client authentication, we'll validate the JWT token from the cookie
-    // The cookie should be available in the socket handshake
-    const cookies = socket.handshake.headers.cookie
-    
-    if (!cookies) {
-      socket.emit('client_auth_error', {
-        message: 'No authentication cookie found'
-      })
-      return
-    }
-    
-    // Parse the auth-token cookie
-    let authToken = null
-    const cookiePairs = cookies.split(';')
-    for (const cookie of cookiePairs) {
-      const [name, value] = cookie.trim().split('=')
-      if (name === 'auth-token') {
-        authToken = value
-        break
-      }
-    }
-    
-    if (!authToken) {
-      socket.emit('client_auth_error', {
-        message: 'No auth token in cookie'
-      })
-      return
-    }
-    
-    // Verify JWT token
-    const config = useRuntimeConfig()
-    
-    let decoded
-    try {
-      decoded = jwt.verify(authToken, config.jwtSecret)
-    } catch (jwtError) {
-      logger.error('JWT verification failed:', jwtError.message)
-      socket.emit('client_auth_error', {
-        message: 'Invalid authentication token'
-      })
-      return
-    }
-    
-    // Get user from database to validate
-    const dataService = await getDataService()
-    const user = await dataService.getUserById(decoded.userId)
-    
-    if (!user) {
-      socket.emit('client_auth_error', {
-        message: 'User not found'
-      })
-      return
-    }
-    
-    // Authentication successful
     socket.clientAuthenticated = true
-    socket.clientId = `client_${user.id}` // Include user ID in client ID
-    socket.userId = user.id
-    socket.userEmail = user.email
-    socket.userName = user.name
+    socket.clientId = `client_${Date.now()}`
     
     // Store in client connections map
     clientConnections.set(socket.clientId, socket)
-    // Send authentication success
+    
     socket.emit('client_authenticated', {
+      message: 'Authenticated successfully',
       clientId: socket.clientId,
-      userId: user.id,
-      userEmail: user.email,
-      userName: user.name,
       status: 'connected'
     })
+    
+    logger.info(`Client authenticated: ${socket.clientId}`)
     
   } catch (error) {
     logger.error('Client authentication error:', error)
     socket.emit('client_auth_error', {
-      message: 'Authentication failed: ' + error.message
+      message: 'Authentication failed'
     })
   }
 }

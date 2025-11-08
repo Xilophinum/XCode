@@ -3,9 +3,13 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   
   // Initialize auth state on client side only
   if (import.meta.client) {
-    // Always try to initialize auth if we don't have user data yet
-    if (!authStore.user) {
-      await authStore.initializeAuth()
+    // Only initialize if we haven't tried yet
+    if (!authStore.user && !authStore.isAuthenticated && !authStore.isLoading) {
+      try {
+        await authStore.initializeAuth()
+      } catch (error) {
+        // Silently fail - user will be redirected to login below
+      }
     }
   }
   

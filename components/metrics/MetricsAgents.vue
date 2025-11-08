@@ -45,9 +45,25 @@
                   Platform: {{ getAgentPlatform(agentData) }} • Uptime: {{ getAgentUptime(agentData) }}
                 </div>
               </div>
-              <UBadge :color="isAgentOnline(agentData) ? 'success' : 'error'">
-                {{ isAgentOnline(agentData) ? 'Online' : 'Offline' }}
-              </UBadge>
+              <div class="flex items-center gap-2">
+                <UBadge v-if="!agentExists(agentData)" color="red">
+                  Deleted Agent
+                </UBadge>
+                <UBadge v-else :color="isAgentOnline(agentData) ? 'success' : 'error'">
+                  {{ isAgentOnline(agentData) ? 'Online' : 'Offline' }}
+                </UBadge>
+                <UButton
+                  v-if="!agentExists(agentData)"
+                  @click="deleteAgentLogs(agentId)"
+                  color="error"
+                  variant="soft"
+                  size="sm"
+                  icon="i-lucide-trash-2"
+                  :loading="deletingLogs[agentId]"
+                >
+                  Delete Logs
+                </UButton>
+              </div>
             </div>
           </template>
 
@@ -150,6 +166,63 @@ const darkMode = useDarkMode()
 const isDark = computed(() => darkMode.isDark.value === 'dark')
 const { toLocalTime, toShortTime, cronTimezone } = useTimezone()
 const agentMetrics = computed(() => metricsStore.agentMetrics)
+const toast = useToast()
+const logger = useLogger()
+
+// Track which agents are being deleted
+const deletingLogs = ref({})
+
+// Delete agent logs
+async function deleteAgentLogs(agentId) {
+  try {
+    deletingLogs.value[agentId] = true
+    
+    const response = await $fetch('/api/admin/metrics/logs', {
+      method: 'DELETE',
+      body: { 
+        entityType: 'agent',
+        entityId: agentId
+      }
+    })
+    
+    if (response.success) {
+      toast.add({
+        title: 'Logs deleted',
+        description: `Deleted ${response.deletedCount} metric records for this agent`,
+        icon: 'i-lucide-check-circle',
+        color: 'green'
+      })
+      
+      // Refresh metrics
+      await metricsStore.fetchAll()
+    } else {
+      toast.add({
+        title: 'Failed to delete logs',
+        description: response.error,
+        icon: 'i-lucide-x-circle',
+        color: 'red'
+      })
+    }
+  } catch (error) {
+    logger.error('Error deleting agent logs:', error)
+    toast.add({
+      title: 'Error deleting logs',
+      description: error.message,
+      icon: 'i-lucide-x-circle',
+      color: 'red'
+    })
+  } finally {
+    deletingLogs.value[agentId] = false
+  }
+}
+
+function agentExists(agentData) {
+  if (agentData.agent_status) {
+    const latest = agentData.agent_status[agentData.agent_status.length - 1]
+    return latest?.agentExists !== false
+  }
+  return true
+}
 
 
 // Helper function to create base chart options

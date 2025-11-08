@@ -16,13 +16,15 @@ export const useAuthStore = defineStore('auth', {
     async login(email, password) {
       this.isLoading = true
       try {
-        await $fetch('/api/auth/login', {
+        const response = await $fetch('/api/auth/login', {
           method: 'POST',
           body: { email, password }
         })
         
-        // After successful login, initialize auth state to ensure consistency
-        await this.initializeAuth()
+        if (response && response.user) {
+          this.user = response.user
+          this.isAuthenticated = true
+        }
         
         return { success: true }
       } catch (error) {
@@ -35,6 +37,9 @@ export const useAuthStore = defineStore('auth', {
 
     async logout() {
       try {
+        logger.info('🔴 LOGOUT CALLED - Stack trace:')
+        console.trace('Logout called from:')
+        
         // Call logout endpoint to clear server-side session
         await $fetch('/api/auth/logout', {
           method: 'POST'
@@ -53,7 +58,7 @@ export const useAuthStore = defineStore('auth', {
 
     async initializeAuth() {
       try {
-        // Check if user has a valid session with the server
+        // Check if user has a valid session - nuxt-auth-utils provides this built-in
         const userData = await $fetch('/api/auth/me', {
           method: 'GET'
         })
@@ -61,6 +66,7 @@ export const useAuthStore = defineStore('auth', {
         if (userData) {
           this.user = userData
           this.isAuthenticated = true
+          logger.debug('Session initialized successfully:', userData.email)
         } else {
           logger.warn('No user data returned from /api/auth/me')
           this.user = null
@@ -68,7 +74,11 @@ export const useAuthStore = defineStore('auth', {
         }
       } catch (error) {
         // No valid session - user needs to login
-        logger.warn('Auth initialization failed:', error.message || error)
+        if (import.meta.dev) {
+          logger.debug('Session initialization failed (expected in dev during HMR):', error.message || error)
+        } else {
+          logger.warn('Session initialization failed:', error.message || error)
+        }
         this.user = null
         this.isAuthenticated = false
       }

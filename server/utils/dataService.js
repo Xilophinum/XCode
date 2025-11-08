@@ -1,5 +1,5 @@
 import { getDB, users, items, envVariables, credentialVault, systemSettings, agents, auditLogs, projectSnapshots } from './database.js'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import crypto from 'crypto'
 import { AuditLogger, generateChangesSummary, analyzeDiagramChanges } from './audit-logger.js'
 import { AccessControl } from './accessControl.js'
@@ -53,6 +53,27 @@ export class DataService {
     const foundUser = user[0] || null
     if (foundUser && !foundUser.role) {
       foundUser.role = 'user' // Default role for existing users
+    }
+    return foundUser
+  }
+
+  async getUserByExternalId(userType, externalId) {
+    await this.ensureInitialized()
+    
+    const user = await this.db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.userType, userType),
+          eq(users.externalId, externalId)
+        )
+      )
+      .limit(1)
+
+    const foundUser = user[0] || null
+    if (foundUser && !foundUser.role) {
+      foundUser.role = 'user'
     }
     return foundUser
   }
@@ -803,6 +824,7 @@ export class DataService {
       description: agentData.description || '',
       token: token,
       maxConcurrentJobs: agentData.maxConcurrentJobs || 1,
+      isLocal: agentData.isLocal === true ? 'true' : 'false',  // Convert boolean to string for DB
       
       // System information (will be populated when agent connects)
       hostname: null,

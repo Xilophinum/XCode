@@ -9,7 +9,7 @@
  *   interval: 1m, 5m, 15m, 1h (default: 5m)
  */
 
-import { getDB, metrics as metricsSchema } from '~/server/utils/database.js'
+import { getDB, metrics as metricsSchema, agents as agentsSchema } from '~/server/utils/database.js'
 import { and, gte, lte, eq } from 'drizzle-orm'
 import logger from '~/server/utils/logger.js'
 import { getAuthenticatedUser } from '~/server/utils/auth.js'
@@ -51,6 +51,15 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // Get all current agents to cross-reference with metrics
+    const currentAgents = await db
+      .select()
+      .from(agentsSchema)
+      .all()
+    
+    const currentAgentIds = new Set(currentAgents.map(a => a.id))
+    const agentStatusMap = new Map(currentAgents.map(a => [a.id, a.status]))
+
     // Build query conditions for agent metrics
     const conditions = [
       gte(metricsSchema.timestamp, from.toISOString()),
@@ -85,7 +94,7 @@ export default defineEventHandler(async (event) => {
       .all()
 
     // Transform to frontend format
-    const transformed = transformAgentMetrics(metrics, globalMetrics, interval)
+    const transformed = transformAgentMetrics(metrics, globalMetrics, interval, currentAgentIds, agentStatusMap)
 
     return {
       success: true,
@@ -111,7 +120,7 @@ export default defineEventHandler(async (event) => {
 /**
  * Transform consolidated metrics to frontend format
  */
-function transformAgentMetrics(agentMetrics, globalMetrics, interval) {
+function transformAgentMetrics(agentMetrics, globalMetrics, interval, currentAgentIds, agentStatusMap) {
   const result = {}
 
   // Process agent metrics
@@ -136,14 +145,19 @@ function transformAgentMetrics(agentMetrics, globalMetrics, interval) {
 
       const agent = result[agentId]
 
+      // Determine actual status - use current agent status from agents table if it exists
+      const actualStatus = currentAgentIds.has(agentId) ? agentStatusMap.get(agentId) : 'offline'
+      const agentExists = currentAgentIds.has(agentId)
+
       // Agent status
       agent.agent_status.push({
         timestamp,
         agentName: metricsData.agentName,
         platform: metricsData.platform,
         uptime: metricsData.uptime,
-        status: metricsData.status,
-        isOnline: metricsData.status === 'online'
+        status: actualStatus, // Use actual status from agents table
+        isOnline: actualStatus === 'online',
+        agentExists // Flag to show if agent still exists
       })
 
       // Agent jobs

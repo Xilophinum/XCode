@@ -105,7 +105,18 @@ export class DatabaseManager {
   }
 
   async runSQLiteMigrations() {
-    // Migration
+    // Migration: Add password_change_required column if it doesn't exist
+    try {
+      const tableInfo = this.sqlite.prepare("PRAGMA table_info(users)").all()
+      const hasPasswordChangeRequired = tableInfo.some(col => col.name === 'password_change_required')
+      
+      if (!hasPasswordChangeRequired) {
+        logger.info('Running migration: Adding password_change_required column to users table')
+        this.sqlite.exec(`ALTER TABLE users ADD COLUMN password_change_required TEXT NOT NULL DEFAULT 'false'`)
+      }
+    } catch (migrationError) {
+      logger.warn('Migration check for password_change_required failed:', migrationError)
+    }
   }
 
   async createSQLiteTables() {
@@ -124,36 +135,10 @@ export class DatabaseManager {
           groups TEXT,
           last_login TEXT,
           is_active TEXT NOT NULL DEFAULT 'true',
+          password_change_required TEXT NOT NULL DEFAULT 'false',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
-      `)
-
-      // Refresh tokens table
-      this.sqlite.exec(`
-        CREATE TABLE IF NOT EXISTS refresh_tokens (
-          id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          token_hash TEXT UNIQUE NOT NULL,
-          device_info TEXT,
-          ip_address TEXT,
-          user_agent TEXT,
-          expires_at TEXT NOT NULL,
-          is_revoked TEXT NOT NULL DEFAULT 'false',
-          revoked_at TEXT,
-          revoked_reason TEXT,
-          last_used_at TEXT,
-          created_at TEXT NOT NULL,
-          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        )
-      `)
-
-      this.sqlite.exec(`
-        CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)
-      `)
-
-      this.sqlite.exec(`
-        CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at)
       `)
 
       // Items table (folders and projects)
@@ -704,35 +689,10 @@ export class DatabaseManager {
           groups TEXT,
           last_login TEXT,
           is_active VARCHAR(10) NOT NULL DEFAULT 'true',
+          password_change_required VARCHAR(10) NOT NULL DEFAULT 'false',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
-      `
-
-      await this.postgres`
-        CREATE TABLE IF NOT EXISTS refresh_tokens (
-          id VARCHAR(255) PRIMARY KEY,
-          user_id VARCHAR(255) NOT NULL,
-          token_hash VARCHAR(255) UNIQUE NOT NULL,
-          device_info TEXT,
-          ip_address VARCHAR(45),
-          user_agent TEXT,
-          expires_at TEXT NOT NULL,
-          is_revoked VARCHAR(10) NOT NULL DEFAULT 'false',
-          revoked_at TEXT,
-          revoked_reason VARCHAR(255),
-          last_used_at TEXT,
-          created_at TEXT NOT NULL,
-          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        )
-      `
-
-      await this.postgres`
-        CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)
-      `
-
-      await this.postgres`
-        CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at)
       `
 
       await this.postgres`
@@ -1062,7 +1022,24 @@ export class DatabaseManager {
   }
 
   async runPostgresMigrations() {
-    // Migration
+    // Migration: Add password_change_required column if it doesn't exist
+    try {
+      const result = await this.postgres`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'password_change_required'
+      `
+      
+      if (result.length === 0) {
+        logger.info('Running migration: Adding password_change_required column to users table')
+        await this.postgres`
+          ALTER TABLE users 
+          ADD COLUMN password_change_required VARCHAR(10) NOT NULL DEFAULT 'false'
+        `
+      }
+    } catch (migrationError) {
+      logger.warn('Migration check for password_change_required failed:', migrationError)
+    }
   }
 
   async createMySQLTables() {
@@ -1081,28 +1058,9 @@ export class DatabaseManager {
           groups TEXT,
           last_login TEXT,
           is_active VARCHAR(10) NOT NULL DEFAULT 'true',
+          password_change_required VARCHAR(10) NOT NULL DEFAULT 'false',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
-        )
-      `)
-
-      await this.mysql.query(`
-        CREATE TABLE IF NOT EXISTS refresh_tokens (
-          id VARCHAR(255) PRIMARY KEY,
-          user_id VARCHAR(255) NOT NULL,
-          token_hash VARCHAR(255) UNIQUE NOT NULL,
-          device_info TEXT,
-          ip_address VARCHAR(45),
-          user_agent TEXT,
-          expires_at TEXT NOT NULL,
-          is_revoked VARCHAR(10) NOT NULL DEFAULT 'false',
-          revoked_at TEXT,
-          revoked_reason VARCHAR(255),
-          last_used_at TEXT,
-          created_at TEXT NOT NULL,
-          INDEX idx_refresh_tokens_user_id (user_id),
-          INDEX idx_refresh_tokens_expires_at (expires_at),
-          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
       `)
 
@@ -1617,7 +1575,26 @@ export class DatabaseManager {
   }
 
   async runMySQLMigrations() {
-    // Migration
+    // Migration: Add password_change_required column if it doesn't exist
+    try {
+      const [result] = await this.mysql.query(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+          AND TABLE_NAME = 'users' 
+          AND COLUMN_NAME = 'password_change_required'
+      `)
+      
+      if (!result || result.length === 0) {
+        logger.info('Running migration: Adding password_change_required column to users table')
+        await this.mysql.query(`
+          ALTER TABLE users 
+          ADD COLUMN password_change_required VARCHAR(10) NOT NULL DEFAULT 'false'
+        `)
+      }
+    } catch (migrationError) {
+      logger.warn('Migration check for password_change_required failed:', migrationError)
+    }
   }
 
   getDatabase() {
