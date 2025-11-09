@@ -1,72 +1,59 @@
 <template>
   <div class="space-y-4">
-    <div>
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Repository URL</label>
-      <input
+    <UFormField label="Repository URL">
+      <UInput
         v-model="nodeData.data.repositoryUrl"
         type="text"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+        size="sm"
+        class="font-mono w-full"
         placeholder="https://github.com/user/repo.git"
-      >
-      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        
+      />
+      <template #help>
         Supports credential variables
-      </p>
-    </div>
+      </template>
+    </UFormField>
 
-    <div>
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Branch/Tag/Commit</label>
-      <input
+    <UFormField label="Branch/Tag/Commit">
+      <UInput
         v-model="nodeData.data.branch"
         type="text"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+        size="sm"
         placeholder="main"
-      >
-    </div>
+        class="w-full"
+      />
+    </UFormField>
 
-    <div>
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Checkout Directory</label>
-      <input
+    <UFormField label="Checkout Directory">
+      <UInput
         v-model="nodeData.data.checkoutDirectory"
         type="text"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+        size="sm"
         placeholder="./"
-      >
-      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        class="w-full"
+      />
+      <template #help>
         Directory will be created if it doesn't exist
-      </p>
-    </div>
+      </template>
+    </UFormField>
 
-    <div class="flex items-center space-x-2">
-      <input
-        type="checkbox"
-        v-model="nodeData.data.shallowClone"
-        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-      >
-      <label class="text-sm text-neutral-700 dark:text-neutral-300">
-        Shallow clone (depth=1, faster for large repos)
-      </label>
-    </div>
+    <UCheckbox
+      v-model="nodeData.data.shallowClone"
+      label="Shallow clone (depth=1, faster for large repos)"
+    />
 
-    <div class="flex items-center space-x-2">
-      <input
-        type="checkbox"
-        v-model="nodeData.data.cleanCheckout"
-        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-      >
-      <label class="text-sm text-neutral-700 dark:text-neutral-300">
-        Clean checkout (remove directory if exists)
-      </label>
-    </div>
+    <UCheckbox
+      v-model="nodeData.data.cleanCheckout"
+      label="Clean checkout (remove directory if exists)"
+    />
 
-    <div>
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Timeout (seconds)</label>
-      <input
+    <UFormField label="Timeout (seconds)" help="Maximum time to wait for git operations to complete">
+      <UInput
         v-model.number="nodeData.data.timeout"
         type="number"
-        min="60"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-      >
-    </div>
+        size="sm"
+      />
+    </UFormField>
   </div>
 </template>
 

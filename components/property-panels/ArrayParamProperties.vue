@@ -79,12 +79,11 @@
     </div>
 
     <!-- Array Preview -->
-    <div class="mb-4">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-        Array Preview
-        <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">({{ parsedArray.length }} items)</span>
-      </label>
-      <div class="p-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded-lg max-h-40 overflow-y-auto">
+    <UFormField class="mb-4">
+      <template #label>
+        <span>Array Preview <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">({{ parsedArray.length }} items)</span></span>
+      </template>
+      <UCard class="max-h-40 overflow-y-auto">
         <div v-if="parseError" class="text-red-600 dark:text-red-400 text-sm">
           Error: {{ parseError }}
         </div>
@@ -100,8 +99,8 @@
             ... and {{ parsedArray.length - 10 }} more items
           </div>
         </div>
-      </div>
-    </div>
+      </UCard>
+    </UFormField>
 
     <!-- Info Box -->
     <div class="mt-6 p-4 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-lg">

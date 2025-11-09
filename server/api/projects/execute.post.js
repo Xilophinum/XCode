@@ -1310,7 +1310,7 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
         )
 
         if (!arrayInputEdge) {
-          throw new Error('No array parameter connected to $ARRAY_VALUES socket')
+          throw new Error('No array parameter connected to Array Values socket')
         }
 
         const sourceNodeId = arrayInputEdge.source

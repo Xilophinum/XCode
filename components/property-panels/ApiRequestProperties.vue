@@ -1,150 +1,133 @@
 <template>
-  <div>
-    <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-      <div class="flex items-center mb-2">
-        <UIcon name="i-lucide-globe" class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
-        <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200">API Request Configuration</h4>
-      </div>
-      <p class="text-xs text-blue-700 dark:text-blue-300">
+  <div class="space-y-4">
+    <UAlert color="primary" variant="soft" icon="i-lucide-globe">
+      <template #title>API Request Configuration</template>
+      <template #description>
         Make HTTP requests to external APIs. Response data is available via the Output socket.
-      </p>
-    </div>
+      </template>
+    </UAlert>
 
     <!-- URL -->
-    <div class="mt-3">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-        URL <span class="text-red-500">*</span>
-      </label>
-      <input
+    <UFormField label="URL" required>
+      <UInput
         v-model="nodeData.data.url"
         type="url"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+        size="md"
+        class="w-full font-mono"
         placeholder="https://api.example.com/endpoint"
-        :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.url }"
       />
-      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+      <template #help>
         The API endpoint URL. Supports parameter placeholders like ${'{INPUT_1}'}
-      </p>
-    </div>
+      </template>
+    </UFormField>
 
     <!-- HTTP Method -->
-    <div class="mt-3">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-        HTTP Method
-      </label>
-      <select
+    <UFormField label="HTTP Method">
+      <USelect
         v-model="nodeData.data.method"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-      >
-        <option value="GET">GET</option>
-        <option value="POST">POST</option>
-        <option value="PUT">PUT</option>
-        <option value="PATCH">PATCH</option>
-        <option value="DELETE">DELETE</option>
-      </select>
-    </div>
+        :items="httpMethodOptions"
+        size="md"
+        class="w-full"
+      />
+    </UFormField>
 
     <!-- Custom Headers -->
-    <div class="mt-3">
-      <div class="flex items-center justify-between mb-1">
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-          Custom Headers
-        </label>
-        <button
-          @click="addHeader"
-          class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          + Add Header
-        </button>
-      </div>
-
+    <UFormField label="Custom Headers">
+      <template #label>
+        <div class="flex items-center justify-between w-full">
+          <span>Custom Headers</span>
+          <UButton
+            @click="addHeader"
+            size="xs"
+            variant="ghost"
+            label="+ Add Header"
+          />
+        </div>
+      </template>
       <div v-if="nodeData.data.headers && nodeData.data.headers.length > 0" class="space-y-2">
         <div
           v-for="(header, index) in nodeData.data.headers"
           :key="index"
-          class="flex gap-2 items-center"
+          class="flex gap-2 items-end"
         >
-          <input
+          <UInput
             v-model="header.key"
             type="text"
             placeholder="Header Name"
-            class="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm"
+            size="md"
+            class="flex-1"
           />
-          <input
+          <UInput
             v-model="header.value"
             type="text"
             placeholder="Header Value"
-            class="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm font-mono"
+            size="md"
+            class="flex-1 font-mono"
           />
-          <button
+          <UButton
             @click="removeHeader(index)"
-            class="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-          >
-            <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
-          </button>
+            size="md"
+            color="error"
+            variant="ghost"
+            icon="i-lucide-trash-2"
+            square
+          />
         </div>
       </div>
-      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+      <template #help>
         Add custom HTTP headers. Supports parameter placeholders.
-      </p>
-    </div>
+      </template>
+    </UFormField>
 
     <!-- Request Body (for POST/PUT/PATCH) -->
-    <div v-if="['POST', 'PUT', 'PATCH'].includes(nodeData.data.method)" class="mt-3">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-        Request Body
-      </label>
-      <textarea
+    <UFormField v-if="['POST', 'PUT', 'PATCH'].includes(nodeData.data.method)" label="Request Body">
+      <UTextarea
         v-model="nodeData.data.body"
         v-auto-resize
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
+        size="md"
+        class="w-full font-mono"
         placeholder='{"key": "value"} or plain text'
-      ></textarea>
-      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        Request body (JSON or plain text). Supports parameter placeholders like ${'{INPUT_1}'}
-      </p>
-    </div>
+      />
+      <template #help>
+        Request body (JSON or plain text). Supports parameter placeholders like $INPUT_1
+      </template>
+    </UFormField>
 
     <!-- Timeout -->
-    <div class="mt-3">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-        Timeout (seconds)
-      </label>
-      <input
+    <UFormField label="Timeout (seconds)" help="Maximum time to wait for response (default: 30 seconds)">
+      <UInput
         v-model.number="nodeData.data.timeout"
         type="number"
-        min="1"
-        max="300"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+        :min="1"
+        :max="300"
+        size="md"
+        class="w-full"
       />
-      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        Maximum time to wait for response (default: 30 seconds)
-      </p>
-    </div>
+    </UFormField>
 
     <!-- Success/Failure Routing Help -->
-    <div class="mt-4 p-3 bg-purple-50 dark:bg-purple-950 rounded-lg border border-purple-200 dark:border-purple-800">
-      <h4 class="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-2">
-        Execution Flow
-      </h4>
-      <p class="text-xs text-purple-700 dark:text-purple-300">
+    <UAlert color="secondary" variant="soft">
+      <template #title>Execution Flow</template>
+      <template #description>
         <strong>Success Socket:</strong> Triggered on HTTP 2xx status codes (200-299)<br/>
         <strong>Failure Socket:</strong> Triggered on errors or non-2xx status codes
-      </p>
-    </div>
+      </template>
+    </UAlert>
 
     <!-- Parameter substitution help -->
-    <div v-if="nodeData.data.inputSockets && nodeData.data.inputSockets.length > 0" class="mt-4 p-2 bg-blue-50 dark:bg-blue-950 rounded text-xs border border-blue-200 dark:border-blue-800">
-      <div class="font-medium text-blue-800 dark:text-blue-200 mb-1">Available placeholders:</div>
-      <div class="space-y-1">
-        <div v-for="(socket, index) in nodeData.data.inputSockets" :key="socket.id" class="text-blue-700 dark:text-blue-300">
-          <code>${{ socket.label }}</code>
+    <UAlert v-if="nodeData.data.inputSockets && nodeData.data.inputSockets.length > 0" color="primary" variant="soft">
+      <template #title>Available placeholders:</template>
+      <template #description>
+        <div class="space-y-1">
+          <div v-for="(socket, index) in nodeData.data.inputSockets" :key="socket.id">
+            <code>${{ socket.label }}</code>
+          </div>
         </div>
-      </div>
-      <p class="mt-2 text-blue-700 dark:text-blue-300">
-        Use these in URL, headers, or body to pass data from connected nodes
-      </p>
-    </div>
+        <p class="mt-2">
+          Use these in URL, headers, or body to pass data from connected nodes
+        </p>
+      </template>
+    </UAlert>
   </div>
 </template>
 
@@ -155,6 +138,14 @@ const props = defineProps({
     required: true
   }
 })
+
+const httpMethodOptions = [
+  { value: 'GET', label: 'GET' },
+  { value: 'POST', label: 'POST' },
+  { value: 'PUT', label: 'PUT' },
+  { value: 'PATCH', label: 'PATCH' },
+  { value: 'DELETE', label: 'DELETE' }
+]
 
 // Initialize defaults
 if (!props.nodeData.data.method) {

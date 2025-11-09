@@ -5,7 +5,7 @@
       <button
         @click="nodeData.data.defaultValue = !nodeData.data.defaultValue"
         :class="[
-          'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
+          'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ml-1',
           nodeData.data.defaultValue 
             ? 'bg-green-600 focus:ring-green-500' 
             : 'bg-red-600 focus:ring-red-500'

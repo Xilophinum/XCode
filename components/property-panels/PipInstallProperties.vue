@@ -1,86 +1,80 @@
 <template>
   <div class="space-y-4">
-    <div class="flex items-center space-x-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-      <input
-        type="checkbox"
-        v-model="nodeData.data.useExistingFile"
-        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-      >
-      <label class="text-sm text-neutral-700 dark:text-neutral-300">
-        Use existing requirements.txt from repository
-      </label>
-    </div>
+    <UCheckbox
+      v-model="nodeData.data.useExistingFile"
+      label="Use existing requirements.txt from repository"
+    />
 
-    <div>
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Python Version</label>
-      <select
+    <UFormField label="Python Version">
+      <USelect
         v-model="nodeData.data.pythonVersion"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-      >
-        <option value="python">python</option>
-        <option value="python3">python3</option>
-      </select>
-    </div>
+        :items="pythonVersionOptions"
+        size="md"
+        class="w-full"
+      />
+    </UFormField>
 
-    <div v-if="!nodeData.data.useExistingFile">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">requirements.txt Content</label>
+    <UFormField v-if="!nodeData.data.useExistingFile" label="requirements.txt Content" help="Will be written to requirements.txt before installation">
       <ScriptEditor
         v-model="nodeData.data.script"
         :language="'plaintext'"
         :langSelectionEnabled="false"
-        class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+        class="w-full"
       />
-      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        Will be written to requirements.txt before installation
-      </p>
-    </div>
-    <div v-else class="p-3 bg-amber-50 dark:bg-amber-950 rounded-lg">
-      <p class="text-sm text-amber-800 dark:text-amber-200">
-        ℹ️ Will use existing requirements.txt from working directory. Ensure file exists in repository or previous build step.
-      </p>
-    </div>
+    </UFormField>
+    <UAlert v-else color="warning" variant="soft" icon="i-lucide-info">
+      <template #description>
+        Will use existing requirements.txt from working directory. Ensure file exists in repository or previous build step.
+      </template>
+    </UAlert>
 
-    <div>
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Working Directory</label>
-      <input
+    <UFormField label="Working Directory">
+      <UInput
         v-model="nodeData.data.workingDirectory"
         type="text"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+        size="md"
+        class="w-full"
         placeholder="./"
-      >
-    </div>
+      />
+    </UFormField>
 
-    <div>
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Additional Arguments</label>
-      <input
+    <UFormField label="Additional Arguments">
+      <UInput
         v-model="nodeData.data.installArgs"
         type="text"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+        size="md"
+        class="w-full"
         placeholder="--user"
-      >
-      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+      />
+      <template #help>
         Optional flags (e.g., --user, --upgrade)
-      </p>
-    </div>
+      </template>
+    </UFormField>
 
-    <div>
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Timeout (seconds)</label>
-      <input
+    <UFormField label="Timeout (seconds)">
+      <UInput
         v-model.number="nodeData.data.timeout"
         type="number"
-        min="60"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-      >
-    </div>
+        :min="60"
+        size="md"
+        class="w-full"
+      />
+    </UFormField>
   </div>
 </template>
 
 <script setup>
 import ScriptEditor from '../ScriptEditor.vue'
+
 defineProps({
   nodeData: {
     type: Object,
     required: true
   }
 })
+
+const pythonVersionOptions = [
+  { value: 'python', label: 'python' },
+  { value: 'python3', label: 'python3' }
+]
 </script>

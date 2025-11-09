@@ -180,12 +180,12 @@
           <div class="p-0">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-medium text-neutral-900 dark:text-white">Nodes</h3>
-              <button
+              <UButton
                 @click="toggleNodesPanel"
-                class="p-1 rounded-md text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
-              >
-                <UIcon name="i-lucide-x" class="w-5 h-5" />
-              </button>
+                color="neutral"
+                icon="i-lucide-x"
+                variant="ghost"
+              />
             </div>
             
             <!-- Node Categories -->
@@ -362,7 +362,7 @@
         <!-- Properties Panel -->
         <UCard
           v-if="showPropertiesPanel"
-          class="shadow-md transition-all duration-300 ease-in-out relative flex flex-col"
+          class="shadow-md transition-all duration-300 ease-in-out relative flex flex-col overflow-y-scroll"
           :style="{ width: `${propertiesPanelWidth}px` }"
         >
           <!-- Resize Handle - Fixed to full height of panel -->
@@ -376,52 +376,34 @@
           <div class="p-0 overflow-y-auto flex-1">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-medium text-neutral-900 dark:text-white">Node Properties</h3>
-              <button
+              <UButton
                 @click="togglePropertiesPanel"
                 class="p-1 rounded-md text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
-              >
-                <UIcon name="i-lucide-x" class="w-5 h-5" />
-              </button>
+                color="neutral"
+                icon="i-lucide-x"
+                variant="ghost"
+              />
             </div>
             
             <div v-if="selectedNode" class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Label</label>
-                <input
-                  v-model="selectedNode.data.label"
-                  type="text"
-                  class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                  @input="updateNodeLabel"
-                >
+                <UFormField label="Label" help="This label is displayed on the node in the editor.">
+                  <UInput v-model="selectedNode.data.label" size="md" class="w-full"/>
+                </UFormField>
               </div>
               
               <div>
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Color</label>
-                <div class="flex items-center space-x-2">
-                  <input
-                    v-model="selectedNode.data.color"
-                    type="color"
-                    class="w-12 h-10 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
-                  >
-                  <input
-                    v-model="selectedNode.data.color"
-                    type="text"
-                    class="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
-                    placeholder="#6b7280"
-                  >
-                </div>
-                <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  Choose a custom color for this node. The color picker shows a preview, or enter a hex color code.
-                </p>
-              </div>
-              
-              <div v-if="selectedNode.data?.nodeType === 'number'">
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Value</label>
-                <input
-                  v-model.number="selectedNode.data.value"
-                  type="number"
-                  class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                >
+                <UFormField label="Color" help="Choose a custom color for this node. The color picker shows a preview, or enter a hex color code.">
+                  <div class="flex gap-2 items-center">
+                    <UPopover>
+                      <UButton label="Color Picker" color="neutral" variant="subtle" icon="i-lucide-palette"/>
+                      <template #content>
+                        <UColorPicker v-model="selectedNode.data.color" default-value="#6b7280"/>
+                      </template>
+                    </UPopover>
+                    <UInput v-model="selectedNode.data.color" placeholder="#6b7280" size="md" class="flex-1"/>
+                  </div>
+                </UFormField>
               </div>
               
               <!-- Choice Parameter Configuration -->
@@ -456,69 +438,59 @@
 
               <!-- Input Sockets Management -->
               <div v-if="selectedNode.data && selectedNode.data.hasExecutionInput !== false">
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Input Sockets</label>
-                
-                <div v-if="selectedNode.data.inputSockets && selectedNode.data.inputSockets.length > 0" class="space-y-2 mb-3">
-                  <div 
-                    v-for="(socket, index) in selectedNode.data.inputSockets" 
-                    :key="socket.id"
-                    class="flex items-center space-x-2 p-2 border border-neutral-200 dark:border-neutral-600 rounded"
-                  >
-                    <input
-                      v-model="socket.label"
-                      type="text"
-                      placeholder="Socket label"
-                      class="flex-1 px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                    >
-                    <UTooltip text="Remove socket">
-                      <button
-                        @click="removeInputSocket(socket.id)"
-                        class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        <UIcon name="i-lucide-trash" class="w-4 h-4" />
-                      </button>
-                    </UTooltip>
+                <UFormField label="Input Sockets" help="Define input sockets for this node. Input sockets allow data to be passed into this node from upstream nodes.">
+                  <div v-if="selectedNode.data.inputSockets && selectedNode.data.inputSockets.length > 0" class="mb-3">
+                    <div class="flex items-center mb-2" v-for="(socket, index) in selectedNode.data.inputSockets" :key="socket.id">
+                      <UInput
+                        v-model="socket.label"
+                        placeholder="Socket label"
+                        size="sm"
+                        class="w-full mr-2"
+                      />
+                      <UTooltip text="Remove socket">
+                        <UButton
+                          @click="removeInputSocket(socket.id)"
+                          icon="i-lucide-trash"
+                          size="sm"
+                          variant="ghost"
+                          class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        />
+                      </UTooltip>
+                    </div>
                   </div>
-                </div>
-                
-                <button
-                  @click="addInputSocketToSelectedNode"
-                  class="w-full px-3 py-2 text-sm border border-dashed border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-600 dark:text-neutral-400 hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400 transition-colors"
-                >
-                  + Add Input Socket
-                </button>
+                  
+                  <UButton
+                    @click="addInputSocketToSelectedNode"
+                    icon="i-lucide-plus"
+                    variant="outline"
+                    block
+                    class="border-dashed"
+                  >
+                    Add Input Socket
+                  </UButton>
+                </UFormField>
               </div>
               
               <!-- Agent Selection for execution nodes -->
-              <div v-if="isExecutionNode(selectedNode.data?.nodeType)">
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                  Execution Agent <span class="text-red-500">*</span>
-                </label>
-                <select
+              <UFormField 
+                v-if="isExecutionNode(selectedNode.data?.nodeType)"
+                label="Execution Agent"
+                required
+                :error="!selectedNode.data.agentId ? 'Agent selection is required for execution nodes' : undefined"
+              >
+                <USelect
                   v-model="selectedNode.data.agentId"
-                  class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                  :class="{ 'border-red-500 dark:border-red-400': !selectedNode.data.agentId }"
-                  required
-                >
-                  <option value="" disabled>-- Select an execution agent --</option>
-                  <option value="any">Any available agent</option>
-                  <option 
-                    v-for="agent in availableAgents" 
-                    :key="agent.id" 
-                    :value="agent.id"
-                    :disabled="agent.status !== 'online'"
-                  >
-                    {{ agent.name }} ({{ agent.hostname }}) 
-                    <span v-if="agent.status !== 'online'">- {{ agent.status }}</span>
-                  </option>
-                </select>
-                <p class="mt-1 text-xs text-red-500 dark:text-red-400" v-if="!selectedNode.data.agentId">
-                  Agent selection is required for execution nodes
-                </p>
-                <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400" v-else>
-                  This node will execute on the selected agent. Choose "Any available agent" if you don't have a preference.
-                </p>
-              </div>
+                  :items="agentOptions"
+                  placeholder="-- Select an execution agent --"
+                  size="md"
+                  class="w-full"
+                />
+                <template #help>
+                  <span v-if="selectedNode.data.agentId">
+                    This node will execute on the selected agent. Choose "Any available agent" if you don't have a preference.
+                  </span>
+                </template>
+              </UFormField>
               
               <!-- Cron Configuration for cron trigger nodes -->
               <CronProperties 
@@ -598,12 +570,11 @@
               />
 
               <!-- Script Editor for execution nodes -->
-              <div v-if="selectedNode.data?.script !== undefined && !['api-request', 'parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Script</label>
+              <UFormField label="Script" class="mt-3" v-if="selectedNode.data?.script !== undefined && !['api-request', 'parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
                 <ScriptEditor
                   v-model="selectedNode.data.script"
                   :language="getScriptLanguage(selectedNode.data?.nodeType)"
-                  class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+                  class="w-full"
                 />
 
                 <!-- Parameter substitution help -->
@@ -615,103 +586,97 @@
                     </div>
                   </div>
                 </div>
-              </div>
+              </UFormField>
 
               <!-- Working Directory for execution nodes -->
-              <div v-if="selectedNode.data?.workingDirectory !== undefined && !['api-request', 'parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Working Directory</label>
-                <input
+              <UFormField 
+                v-if="selectedNode.data?.workingDirectory !== undefined && !['api-request', 'parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)"
+                label="Working Directory"
+              >
+                <UInput
                   v-model="selectedNode.data.workingDirectory"
-                  type="text"
-                  class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
                   placeholder="."
-                >
-                <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  size="md"
+                  class="w-full"
+                />
+                <template #help>
                   Directory where the script will execute. Relative to agent's workspace.
-                </p>
-              </div>
+                </template>
+              </UFormField>
 
               <!-- Timeout for execution nodes -->
-              <div v-if="selectedNode.data?.timeout !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Timeout (seconds)</label>
-                <input
+              <UFormField 
+                v-if="selectedNode.data?.timeout !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)"
+                label="Timeout (seconds)"
+              >
+                <UInput
                   v-model.number="selectedNode.data.timeout"
                   type="number"
-                  min="1"
-                  class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                >
-              </div>
+                  :min="1"
+                  size="md"
+                  class="w-full"
+                />
+              </UFormField>
 
               <CredentialBinding 
                 v-if="selectedNode.data?.executionNode"
                 v-model="selectedNode.data.credentials" 
               />
               <!-- Retry Policy -->
-              <div v-if="selectedNode.data?.executionNode" class="mt-4 p-3 border border-neutral-200 dark:border-neutral-600 rounded-lg">
-                <div class="flex items-center justify-between mb-3">
-                  <label class="text-sm font-medium text-neutral-700 dark:text-neutral-300">Retry Policy</label>
-                  <button
-                    @click="selectedNode.data.retryEnabled = !selectedNode.data.retryEnabled"
-                    :class="[
-                      'relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
-                      selectedNode.data.retryEnabled 
-                        ? 'bg-blue-600 focus:ring-blue-500' 
-                        : 'bg-gray-400 focus:ring-gray-300'
-                    ]"
-                  >
-                    <span
-                      :class="[
-                        'inline-block h-3 w-3 transform rounded-full bg-white transition-transform',
-                        selectedNode.data.retryEnabled ? 'translate-x-5' : 'translate-x-1'
-                      ]"
+              <UFormField v-if="selectedNode.data?.executionNode" class="mt-4" help="Configure retry behavior for this node if it fails during execution.">
+                <template #label class="flex items-center justify-around space-x-2">
+                  <div class="flex items-center justify-around space-x-2">
+                    <span>Enable Retry</span>
+                    <UCheckbox
+                      v-model="selectedNode.data.retryEnabled"
+                      class="ml-2"
                     />
-                  </button>
-                </div>
+                  </div>
+                </template>
 
-                <div v-if="selectedNode.data.retryEnabled" class="space-y-3">
-                  <div>
-                    <label class="block text-xs text-neutral-600 dark:text-neutral-400 mb-1">Max Retries</label>
-                    <input
+                <UFormField v-if="selectedNode.data.retryEnabled" class="space-y-3">
+                  <UFormField label="Max Retries">
+                    <UInput
                       v-model.number="selectedNode.data.maxRetries"
                       type="number"
-                      min="1"
-                      max="10"
-                      class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                    >
-                  </div>
-                  <div>
-                    <label class="block text-xs text-neutral-600 dark:text-neutral-400 mb-1">Retry Delay (seconds)</label>
-                    <input
+                      :min="1"
+                      :max="10"
+                      size="md"
+                      class="w-full"
+                    />
+                  </UFormField>
+                  <UFormField label="Retry Delay (seconds)">
+                    <UInput
                       v-model.number="selectedNode.data.retryDelay"
                       type="number"
-                      min="1"
-                      max="300"
-                      class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                    >
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Position</label>
+                      :min="1"
+                      size="md"
+                      class="w-full"
+                    />
+                  </UFormField>
+                </UFormField>
+              </UFormField>
+              
+              <UFormField label="Position" help="The X and Y coordinates of the node in the editor, if you are looking to fine-tune placement.">
                 <div class="grid grid-cols-2 gap-2">
-                  <div>
-                    <label class="block text-xs text-neutral-500 dark:text-neutral-400">X</label>
-                    <input
+                  <UFormField label="X">
+                    <UInput
                       v-model.number="selectedNode.position.x"
                       type="number"
-                      class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                    >
-                  </div>
-                  <div>
-                    <label class="block text-xs text-neutral-500 dark:text-neutral-400">Y</label>
-                    <input
+                      size="sm"
+                      class="w-full"
+                    />
+                  </UFormField>
+                  <UFormField label="Y">
+                    <UInput
                       v-model.number="selectedNode.position.y"
                       type="number"
-                      class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-                    >
-                  </div>
+                      size="sm"
+                      class="w-full"
+                    />
+                  </UFormField>
                 </div>
-              </div>
+              </UFormField>
             </div>
             
             <div v-else class="text-center py-8">
@@ -1019,6 +984,23 @@ const availableAgents = computed(() => {
   return agents.value.filter(agent =>
     agent.capabilities.some(cap => ['bash', 'sh', 'powershell', 'cmd', 'python', 'node', 'python3', 'go', 'ruby', 'php', 'java', 'rust', 'perl'].includes(cap))
   )
+})
+
+const agentOptions = computed(() => {
+  const options = [
+    { value: 'any', label: 'Any available agent' }
+  ]
+  
+  availableAgents.value.forEach(agent => {
+    const statusSuffix = agent.status !== 'online' ? ` - ${agent.status}` : ''
+    options.push({
+      value: agent.id,
+      label: `${agent.name} (${agent.hostname})${statusSuffix}`,
+      disabled: agent.status !== 'online'
+    })
+  })
+  
+  return options
 })
 
 const isExecutionNode = (nodeType) => {
@@ -1789,7 +1771,7 @@ const getDefaultNodeData = (type) => {
         hasExecutionOutput: false,
         hasDataOutput: true,
         inputSockets: [
-          { id: 'array-input', label: '$ARRAY_VALUES', connected: false }
+          { id: 'array-input', label: 'Array Values', connected: false }
         ],
         outputSockets: [
           { id: 'success', label: 'All Success', connected: false },

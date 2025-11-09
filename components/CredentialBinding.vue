@@ -18,70 +18,76 @@
     </div>
 
     <div v-else class="space-y-3">
-      <UCard
+      <div
         v-for="(binding, index) in credentials"
         :key="index"
         class="relative"
       >
-        <UButton
-          @click="removeCredentialBinding(index)"
-          variant="ghost"
-          size="xs"
-          icon="i-lucide-trash-2"
-          class="absolute top-2 right-2 text-gray-400 hover:text-red-500"
-        />
-
-        <div class="grid grid-cols-3 gap-3 mt-3">
+        <div class="flex gap-2 items-end mt-3">
           <!-- Environment Variable Name -->
-          <UFormField label="Environment Variable" size="sm">
+          <UFormField label="Environment Variable" size="sm" class="flex-1">
             <UInput
               v-model="binding.variable"
               :placeholder="getDefaultEnvVarName(binding)"
-              size="md"
+              size="sm"
               class="w-full"
             />
           </UFormField>
 
           <!-- Credential Selection -->
-          <UFormField label="Credential" size="sm">
+          <UFormField label="Credential" size="sm" class="flex-1">
             <USelect
               v-model="binding.credentialId"
               :items="credentialOptions"
-              size="md"
+              size="sm"
               placeholder="Select credential..."
               class="w-full"
             />
           </UFormField>
 
           <!-- Field Selection -->
-          <UFormField label="Field" size="sm">
+          <UFormField label="Field" size="sm" class="flex-1">
             <USelect
               v-model="binding.field"
               :items="[
                 ...getCredentialFields(binding.credentialId)
               ]"
-              size="md"
+              size="sm"
               class="w-full"
             />
           </UFormField>
+          
+          <!-- Delete Button -->
+          <UButton
+            @click="removeCredentialBinding(index)"
+            size="sm"
+            icon="i-lucide-trash-2"
+            color="error"
+            variant="ghost"
+            square
+          />
         </div>
-
-        <!-- Preview -->
-        <UAlert
-          v-if="binding.credentialId"
-          color="secondary"
-          variant="soft"
-          class="mt-3"
-          icon="i-lucide-info"
-        >
-          <template #title>
-            Preview
-          </template>
-          <template #description>
-            {{ getEnvVarPreview(binding) }}
-          </template>
-        </UAlert>
-      </UCard>
+      </div>
+      
+      <!-- Preview -->
+      <UAlert
+        v-if="credentials.some(b => b.credentialId)"
+        color="secondary"
+        variant="soft"
+        class="mt-3"
+        icon="i-lucide-info"
+      >
+        <template #title>
+          Preview
+        </template>
+        <template #description>
+          <div class="space-y-1">
+            <div v-for="(binding, index) in credentials.filter(b => b.credentialId)" :key="index">
+              {{ getEnvVarPreview(binding) }}
+            </div>
+          </div>
+        </template>
+      </UAlert>
     </div>
 
     <!-- Help Text -->

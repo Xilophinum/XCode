@@ -1,372 +1,272 @@
 <template>
-  <div>
-    <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-      <div class="flex items-center mb-2">
-        <UIcon name="i-lucide-bell" class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
-        <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200">Notification Configuration</h4>
-      </div>
-      <p class="text-xs text-blue-700 dark:text-blue-300">
+  <div class="space-y-4">
+    <UAlert color="primary" variant="soft" icon="i-lucide-bell">
+      <template #title>Notification Configuration</template>
+      <template #description>
         Send notifications via Email, Slack, or Webhook when this node executes.
-      </p>
-    </div>
+      </template>
+    </UAlert>
 
     <!-- Template Selector -->
-    <div class="mt-3 p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
-      <label class="block text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">
-        Use Template (Optional)
-      </label>
-      <select
-        v-model="selectedTemplateId"
-        :disabled="isLoadingTemplate"
-        class="w-full px-3 py-2 border border-purple-300 dark:border-purple-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white text-sm disabled:opacity-50"
-      >
-        <option value="">-- Select a template --</option>
-        <optgroup v-if="filteredTemplates.length > 0" label="Available Templates">
-          <option v-for="template in filteredTemplates" :key="template.id" :value="template.id">
-            {{ template.name }}
-          </option>
-        </optgroup>
-      </select>
-      <p class="mt-2 text-xs text-purple-700 dark:text-purple-300">
-        {{ isLoadingTemplate ? 'Loading template...' : 'Choose a template to automatically fill the form fields below' }}
-      </p>
-    </div>
+    <UAlert color="secondary" variant="soft">
+      <template #title>Use Template (Optional)</template>
+      <template #description>
+        <UFormField class="mt-2">
+          <USelect
+            v-model="selectedTemplateId"
+            :disabled="isLoadingTemplate || templateOptions.length === 0"
+            :items="templateOptions"
+            size="md"
+            class="w-full"
+            placeholder="-- Select a template --"
+          />
+        </UFormField>
+        <p class="mt-2 text-xs">
+          {{ isLoadingTemplate ? 'Loading template...' : templateOptions.length === 0 ? 'No templates available for this notification type' : 'Choose a template to automatically fill the form fields below' }}
+        </p>
+      </template>
+    </UAlert>
 
     <!-- Notification Type Selection -->
-    <div class="mt-3">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-        Notification Type <span class="text-red-500">*</span>
-      </label>
-      <select
+    <UFormField label="Notification Type" required>
+      <USelect
         v-model="nodeData.data.notificationType"
         @change="onNotificationTypeChange"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-      >
-        <option value="email">Email</option>
-        <option value="slack">Slack</option>
-        <option value="webhook">Webhook</option>
-      </select>
-      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        :items="notificationTypeOptions"
+        size="md"
+        class="w-full"
+      />
+      <template #help>
         Select the type of notification to send
-      </p>
-    </div>
+      </template>
+    </UFormField>
 
     <!-- General Options (for all notification types) -->
-    <div class="mt-4 p-3 bg-purple-50 dark:bg-purple-950 rounded-lg border border-purple-200 dark:border-purple-800">
-      <h4 class="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-2">General Options</h4>
-      <div class="flex items-center">
-        <input
-          type="checkbox"
-          id="attachBuildLog"
+    <UAlert color="secondary" variant="soft">
+      <template #title>General Options</template>
+      <template #description>
+        <UCheckbox
           v-model="nodeData.data.attachBuildLog"
-          class="w-4 h-4 text-purple-600 bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 rounded focus:ring-purple-500 dark:focus:ring-purple-600 focus:ring-2"
+          label="Attach build log file"
+          help="Email: Attaches log file • Slack: Uploads file (requires files:write scope) • Discord: Attaches file • Other webhooks: Use $BuildLog variable"
         />
-        <label for="attachBuildLog" class="ml-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
-          Attach build log file
-        </label>
-      </div>
-      <p class="mt-1 ml-6 text-xs text-purple-700 dark:text-purple-300">
-        Email: Attaches log file • Slack: Uploads file (requires files:write scope) • Discord: Attaches file • Other webhooks: Use $BuildLog variable
-      </p>
-    </div>
+      </template>
+    </UAlert>
 
     <!-- Email Configuration -->
-    <div v-if="nodeData.data.notificationType === 'email'" class="mt-4 space-y-3">
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          From Address <span class="text-red-500">*</span>
-        </label>
-        <input
+    <div v-if="nodeData.data.notificationType === 'email'" class="space-y-4">
+      <UFormField label="From Address" required>
+        <UInput
           v-model="nodeData.data.emailFrom"
           type="email"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+          size="md"
+          class="w-full"
           placeholder="noreply@example.com"
-          :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.emailFrom }"
         />
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        <template #help>
           Email address to send from
-        </p>
-      </div>
+        </template>
+      </UFormField>
 
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          To (Recipients) <span class="text-red-500">*</span>
-        </label>
-        <input
+      <UFormField label="To (Recipients)" required>
+        <UInput
           v-model="nodeData.data.emailTo"
           type="text"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+          size="md"
+          class="w-full"
           placeholder="user@example.com, admin@example.com"
-          :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.emailTo }"
         />
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        <template #help>
           Comma-separated list of email addresses
-        </p>
-      </div>
+        </template>
+      </UFormField>
 
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Subject <span class="text-red-500">*</span>
-        </label>
-        <input
+      <UFormField label="Subject" required>
+        <UInput
           v-model="nodeData.data.emailSubject"
           type="text"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+          size="md"
+          class="w-full"
           placeholder="Workflow Notification: Job Completed"
-          :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.emailSubject }"
         />
-      </div>
+      </UFormField>
 
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Message Body <span class="text-red-500">*</span>
-        </label>
-        <textarea
+      <UFormField label="Message Body" required>
+        <UTextarea
           v-model="nodeData.data.emailBody"
-          v-auto-resize
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white resize-none overflow-hidden"
+          size="md"
+          class="w-full"
           placeholder="Enter email message body..."
-          :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.emailBody }"
-        ></textarea>
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        />
+        <template #help>
           Use $SocketName to reference input socket values
-        </p>
-      </div>
+        </template>
+      </UFormField>
 
-      <div>
-        <label class="flex items-center">
-          <input
-            v-model="nodeData.data.emailHtml"
-            type="checkbox"
-            class="w-4 h-4 text-blue-600 bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
-          />
-          <span class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">Send as HTML</span>
-        </label>
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Enable to send HTML formatted emails
-        </p>
-      </div>
+      <UFormField>
+        <UCheckbox
+          v-model="nodeData.data.emailHtml"
+          label="Send as HTML"
+          help="Enable to send HTML formatted emails"
+        />
+      </UFormField>
     </div>
 
     <!-- Slack Configuration -->
-    <div v-if="nodeData.data.notificationType === 'slack'" class="mt-4 space-y-3">
-      <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-        <p class="text-sm text-blue-800 dark:text-blue-200">
-          <strong>Slack App Integration:</strong> Set <code class="px-1 bg-blue-100 dark:bg-blue-800 rounded">SLACK_BOT_TOKEN</code> environment variable to enable Slack notifications.
-        </p>
-        <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
-          💡 For Slack Incoming Webhooks, use the "Webhook" notification type instead.
-        </p>
-      </div>
+    <div v-if="nodeData.data.notificationType === 'slack'" class="space-y-4">
+      <UAlert color="primary" variant="soft" icon="i-lucide-info">
+        <template #description>
+          <p><strong>Slack App Integration:</strong> Set <code class="px-1 bg-primary-100 dark:bg-primary-800 rounded">SLACK_BOT_TOKEN</code> environment variable to enable Slack notifications.</p>
+          <p class="mt-1">💡 For Slack Incoming Webhooks, use the "Webhook" notification type instead.</p>
+        </template>
+      </UAlert>
 
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Channel <span class="text-red-500">*</span>
-        </label>
-        <input
+      <UFormField label="Channel" required>
+        <UInput
           v-model="nodeData.data.slackChannel"
           type="text"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+          size="md"
+          class="w-full"
           placeholder="#general, @username, or C1234567890"
-          :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.slackChannel }"
         />
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        <template #help>
           Specify the Slack channel (e.g., #general), user (e.g., @john), or channel ID
-        </p>
-      </div>
+        </template>
+      </UFormField>
 
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Message Mode
-        </label>
-        <select
+      <UFormField label="Message Mode">
+        <USelect
           v-model="nodeData.data.slackMode"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-        >
-          <option value="simple">Simple Text Message</option>
-          <option value="blocks">Block Kit (Rich Formatting)</option>
-        </select>
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          :items="slackModeOptions"
+          size="md"
+          class="w-full"
+        />
+        <template #help>
           Block Kit enables rich, interactive messages with formatted layouts
-        </p>
-      </div>
+        </template>
+      </UFormField>
 
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Message <span class="text-red-500">*</span>
-          <span v-if="nodeData.data.slackMode === 'blocks'" class="text-neutral-400 font-normal">(Fallback Text)</span>
-        </label>
-        <textarea
+      <UFormField required>
+        <template #label>
+          <span>Message <span v-if="nodeData.data.slackMode === 'blocks'" class="text-neutral-400 font-normal">(Fallback Text)</span></span>
+        </template>
+        <UTextarea
           v-model="nodeData.data.slackMessage"
           v-auto-resize
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
+          size="md"
+          class="w-full font-mono"
           placeholder=":white_check_mark: Build #$BuildNumber completed successfully!"
-          :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.slackMessage }"
-        ></textarea>
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        />
+        <template #help>
           {{ nodeData.data.slackMode === 'blocks' ? 'Fallback text when blocks cannot be displayed' : 'Markdown-formatted message with emoji support' }}
-        </p>
-      </div>
+        </template>
+      </UFormField>
 
-      <div v-if="nodeData.data.slackMode === 'blocks'">
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Slack Blocks (JSON)
-        </label>
-        <textarea
+      <UFormField v-if="nodeData.data.slackMode === 'blocks'" label="Slack Blocks (JSON)">
+        <UTextarea
           v-model="nodeData.data.slackBlocks"
           v-auto-resize
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-xs resize-none overflow-hidden"
+          size="md"
+          class="w-full font-mono text-xs"
           placeholder='[{"type":"header","text":{"type":"plain_text","text":"Build #$BuildNumber"}}]'
-        ></textarea>
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          JSON array of Slack Block Kit blocks. <a href="https://app.slack.com/block-kit-builder" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">Use Block Kit Builder →</a>
-        </p>
-      </div>
+        />
+        <template #help>
+          JSON array of Slack Block Kit blocks. <a href="https://app.slack.com/block-kit-builder" target="_blank" class="text-primary-600 dark:text-primary-400 hover:underline">Use Block Kit Builder →</a>
+        </template>
+      </UFormField>
     </div>
 
     <!-- Webhook Configuration -->
-    <div v-if="nodeData.data.notificationType === 'webhook'" class="mt-4 space-y-3">
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Webhook URL
-        </label>
-        <input
+    <div v-if="nodeData.data.notificationType === 'webhook'" class="space-y-4">
+      <UFormField label="Webhook URL">
+        <UInput
           v-model="nodeData.data.webhookUrl"
           type="url"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+          size="md"
+          class="w-full font-mono"
           placeholder="https://discord.com/api/webhooks/... (or leave empty to use DISCORD_WEBHOOK_URL)"
         />
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        <template #help>
           Optional: Specify webhook URL here, or leave empty to use <code class="px-1 bg-neutral-200 dark:bg-neutral-800 rounded">DISCORD_WEBHOOK_URL</code> environment variable
-        </p>
-      </div>
+        </template>
+      </UFormField>
 
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          HTTP Method
-        </label>
-        <select
+      <UFormField label="HTTP Method">
+        <USelect
           v-model="nodeData.data.webhookMethod"
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-        >
-          <option value="POST">POST</option>
-          <option value="PUT">PUT</option>
-          <option value="PATCH">PATCH</option>
-          <option value="GET">GET</option>
-        </select>
-      </div>
+          :items="webhookMethodOptions"
+          size="md"
+          class="w-full"
+        />
+      </UFormField>
 
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Headers (JSON)
-        </label>
-        <textarea
+      <UFormField label="Headers (JSON)">
+        <UTextarea
           v-model="nodeData.data.webhookHeaders"
           v-auto-resize
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
+          size="md"
+          class="w-full font-mono"
           placeholder='{"Content-Type": "application/json", "Authorization": "Bearer token123"}'
-        ></textarea>
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        />
+        <template #help>
           Optional HTTP headers as JSON object
-        </p>
-      </div>
+        </template>
+      </UFormField>
 
-      <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-          Body (JSON) <span class="text-red-500">*</span>
-        </label>
-        <textarea
+      <UFormField label="Body (JSON)" required>
+        <UTextarea
           v-model="nodeData.data.webhookBody"
           v-auto-resize
-          class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm resize-none overflow-hidden"
+          size="md"
+          class="w-full font-mono"
           placeholder='{"status": "completed", "message": "Job finished"}'
-          :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.webhookBody }"
-        ></textarea>
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        />
+        <template #help>
           Request body as JSON. Use $SocketName to reference input socket values.
-        </p>
-      </div>
+        </template>
+      </UFormField>
     </div>
 
     <!-- Available Variables Documentation (Collapsible) -->
-    <div class="mt-4 border border-purple-200 dark:border-purple-800 rounded-lg overflow-hidden">
-      <button
-        @click="showVariables = !showVariables"
-        class="w-full p-3 bg-purple-50 dark:bg-purple-950 hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors flex items-center justify-between text-left"
-      >
-        <span class="font-medium text-purple-800 dark:text-purple-200 text-xs">Available Context Variables</span>
-        <UIcon
-          name="i-lucide-chevron-down"
-          class="w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform"
-          :class="{ 'rotate-180': showVariables }"
-        />
-      </button>
-      <div v-show="showVariables" class="p-3 bg-purple-50 dark:bg-purple-950 border-t border-purple-200 dark:border-purple-800 text-xs">
-        <div class="text-purple-700 dark:text-purple-300 space-y-1">
-          <div class="font-mono">$ProjectName - Name of the project being executed</div>
-          <div class="font-mono">$ProjectId - The project identifier (UUID)</div>
-          <div class="font-mono">$BuildNumber - The current build number</div>
-          <div class="font-mono">$JobId - Unique identifier for this job execution</div>
-          <div class="font-mono">$Status - Status text based on exit code (Success/Failed)</div>
-          <div class="font-mono">$ExitCode - Exit code from previous execution (0 = success)</div>
-          <div class="font-mono">$FailedNodeLabel - Label of the node that failed (only on failure)</div>
-          <div class="font-mono">$CurrentAttempt - Current failure attempt number (1, 2, 3, etc.)</div>
-          <div class="font-mono">$MaxAttempts - Maximum number of attempts configured</div>
-          <div class="font-mono">$WillRetry - Whether the job will retry after failure (Yes/No)</div>
-          <div class="font-mono">$Timestamp - ISO 8601 timestamp (e.g., 2025-10-23T14:30:00.000Z)</div>
-          <div class="font-mono">$TimestampHuman - Human-readable timestamp (e.g., Oct 23, 2025, 02:30:00 PM)</div>
-          <div class="font-mono">$BuildLog - Complete build log content (only when "Attach build log file" is enabled)</div>
-          <div class="font-mono">$BuildLogPath - Absolute path to build log file (only when "Attach build log file" is enabled)</div>
-          <div class="font-mono">$DefaultEmailFrom - Default from address from system settings</div>
-          <div class="font-mono">$DefaultEmailTo - Default to address from system settings</div>
-          <div class="font-mono">$AdminEmail - Administrator email from system settings</div>
+    <UAccordion :items="accordionItems" :multiple="true">
+      <template #available-variables>
+        <div class="mt-2 font-mono text-sm bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
+          <div><b>$ProjectName</b> - Name of the project being executed</div>
+          <div><b>$ProjectId</b> - The project identifier (UUID)</div>
+          <div><b>$BuildNumber</b> - The current build number</div>
+          <div><b>$JobId</b> - Unique identifier for this job execution</div>
+          <div><b>$Status</b> - Status text based on exit code (Success/Failed)</div>
+          <div><b>$ExitCode</b> - Exit code from previous execution (0 = success)</div>
+          <div><b>$FailedNodeLabel</b> - Label of the node that failed (only on failure)</div>
+          <div><b>$CurrentAttempt</b> - Current failure attempt number (1, 2, 3, etc.)</div>
+          <div><b>$MaxAttempts</b> - Maximum number of attempts configured</div>
+          <div><b>$WillRetry</b> - Whether the job will retry after failure (Yes/No)</div>
+          <div><b>$Timestamp</b> - ISO 8601 timestamp (e.g., 2025-10-23T14:30:00.000Z)</div>
+          <div><b>$TimestampHuman</b> - Human-readable timestamp (e.g., Oct 23, 2025, 02:30:00 PM)</div>
+          <div><b>$BuildLog</b> - Complete build log content (only when "Attach build log file" is enabled)</div>
+          <div><b>$BuildLogPath</b> - Absolute path to build log file (only when "Attach build log file" is enabled)</div>
+          <div><b>$DefaultEmailFrom</b> - Default from address from system settings</div>
+          <div><b>$DefaultEmailTo</b> - Default to address from system settings</div>
+          <div><b>$AdminEmail</b> - Administrator email from system settings</div>
         </div>
-        <p class="mt-2 text-purple-700 dark:text-purple-300">
-          Use both ${'{VarName}'} or $VarName format in your notification messages. To reference output from connected nodes, use input socket variables like $INPUT_1, $INPUT_2, etc. All environment variables from System Settings are also available (e.g., $MY_ENV, $API_KEY).
+        <p class="mt-2 text-xs">
+          Use $VarName format in your notification messages. To reference output from connected nodes, use input socket variables like $INPUT_1, $INPUT_2, etc. All environment variables from System Settings are also available (e.g., $MY_ENV, $API_KEY).
         </p>
-      </div>
-    </div>
+      </template>
 
-    <!-- Input Socket Variables Help (Collapsible) -->
-    <div v-if="nodeData.data.inputSockets && nodeData.data.inputSockets.length > 0" class="mt-4 border border-green-200 dark:border-green-800 rounded-lg overflow-hidden">
-      <button
-        @click="showInputSockets = !showInputSockets"
-        class="w-full p-3 bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 transition-colors flex items-center justify-between text-left"
-      >
-        <span class="font-medium text-green-800 dark:text-green-200 text-xs">Available Input Socket Variables</span>
-        <UIcon
-          name="i-lucide-chevron-down"
-          class="w-4 h-4 text-green-600 dark:text-green-400 transition-transform"
-          :class="{ 'rotate-180': showInputSockets }"
-        />
-      </button>
-      <div v-show="showInputSockets" class="p-3 bg-green-50 dark:bg-green-950 border-t border-green-200 dark:border-green-800 text-xs">
-        <div class="text-green-700 dark:text-green-300 space-y-1">
-          <div v-for="socket in nodeData.data.inputSockets" :key="socket.id" class="font-mono">
+      <template #input-sockets v-if="nodeData.data.inputSockets && nodeData.data.inputSockets.length > 0">
+        <div class="text-xs space-y-1 font-mono">
+          <div v-for="socket in nodeData.data.inputSockets" :key="socket.id">
             ${{ socket.label }}
           </div>
         </div>
-        <p class="mt-2 text-green-700 dark:text-green-300">
+        <p class="mt-2 text-xs">
           Use these variables to include data passed from connected nodes
         </p>
-      </div>
-    </div>
+      </template>
 
-    <!-- Usage Examples (Collapsible) -->
-    <div class="mt-4 border border-amber-200 dark:border-amber-800 rounded-lg overflow-hidden">
-      <button
-        @click="showExamples = !showExamples"
-        class="w-full p-3 bg-amber-50 dark:bg-amber-950 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors flex items-center justify-between text-left"
-      >
-        <span class="font-medium text-amber-800 dark:text-amber-200 text-xs">Usage Examples</span>
-        <UIcon
-          name="i-lucide-chevron-down"
-          class="w-4 h-4 text-amber-600 dark:text-amber-400 transition-transform"
-          :class="{ 'rotate-180': showExamples }"
-        />
-      </button>
-      <div v-show="showExamples" class="p-3 bg-amber-50 dark:bg-amber-950 border-t border-amber-200 dark:border-amber-800 text-xs">
-        <div class="text-amber-700 dark:text-amber-300 space-y-2">
+      <template #usage-examples>
+        <div class="mt-2 font-mono text-xs bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
           <div v-if="nodeData.data.notificationType === 'email'">
             <div class="font-medium mb-1">Email Notification (Success):</div>
             <div class="pl-2 space-y-1 font-mono text-xs">
@@ -389,7 +289,7 @@
           </div>
           <div v-if="nodeData.data.notificationType === 'webhook'">
             <div class="font-medium mb-1">Webhook Payload (Basic):</div>
-            <div class="pl-2 font-mono bg-amber-100 dark:bg-amber-900 p-2 rounded mt-1 text-xs">
+            <div class="pl-2 font-mono bg-neutral-100 dark:bg-neutral-800 p-2 rounded mt-1 text-xs">
               {<br/>
               &nbsp;&nbsp;"event": "build_failed",<br/>
               &nbsp;&nbsp;"project": "$ProjectName",<br/>
@@ -401,7 +301,7 @@
               }
             </div>
             <div class="font-medium mb-1 mt-3">Webhook with Build Log (when "Attach build log file" is enabled):</div>
-            <div class="pl-2 font-mono bg-amber-100 dark:bg-amber-900 p-2 rounded mt-1 text-xs">
+            <div class="pl-2 font-mono bg-neutral-100 dark:bg-neutral-800 p-2 rounded mt-1 text-xs">
               {<br/>
               &nbsp;&nbsp;"project": "$ProjectName",<br/>
               &nbsp;&nbsp;"buildNumber": "$BuildNumber",<br/>
@@ -410,75 +310,63 @@
               &nbsp;&nbsp;"logPath": "$BuildLogPath"<br/>
               }
             </div>
-            <p class="mt-2 text-amber-700 dark:text-amber-300 text-xs">
+            <p class="mt-2 text-xs">
               Note: Discord webhooks automatically attach the log file. For other webhooks, use $BuildLog to include log content in the JSON payload.
             </p>
           </div>
         </div>
-      </div>
-    </div>
+      </template>
 
-    <!-- Setup & Configuration Guide (Collapsible) -->
-    <div class="mt-4 border border-blue-200 dark:border-blue-800 rounded-lg overflow-hidden">
-      <button
-        @click="showSetupGuide = !showSetupGuide"
-        class="w-full p-3 bg-blue-50 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors flex items-center justify-between text-left"
-      >
-        <span class="font-medium text-blue-800 dark:text-blue-200 text-xs">Setup & Configuration Guide</span>
-        <UIcon
-          name="i-lucide-chevron-down"
-          class="w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform"
-          :class="{ 'rotate-180': showSetupGuide }"
-        />
-      </button>
-      <div v-show="showSetupGuide" class="p-3 bg-blue-50 dark:bg-blue-950 border-t border-blue-200 dark:border-blue-800 text-xs">
-        <!-- Email SMTP Setup -->
-        <div v-if="nodeData.data.notificationType === 'email'" class="text-blue-700 dark:text-blue-300">
-          <div class="font-medium mb-2">SMTP Configuration Required</div>
-          <div class="space-y-1">
-            <div>Make sure your SMTP server settings are configured in the system environment variables or configuration file.</div>
-            <div class="mt-2 font-mono text-xs bg-blue-100 dark:bg-blue-900 p-2 rounded">
-              Required environment variables:<br/>
-              • SMTP_HOST<br/>
-              • SMTP_PORT<br/>
-              • SMTP_USER<br/>
-              • SMTP_PASS
+      <template #setup-guide>
+        <div class="text-xs">
+          <!-- Email SMTP Setup -->
+          <div v-if="nodeData.data.notificationType === 'email'">
+            <div class="font-medium mb-2">SMTP Configuration Required</div>
+            <div class="space-y-1">
+              <div>Make sure your SMTP server settings are configured in the system environment variables or configuration file.</div>
+              <div class="mt-2 font-mono text-xs bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
+                Required environment variables (or set them in system settings):<br/>
+                • SMTP_HOST<br/>
+                • SMTP_PORT<br/>
+                • SMTP_USER<br/>
+                • SMTP_PASS
+              </div>
+            </div>
+          </div>
+
+          <!-- Slack Setup -->
+          <div v-if="nodeData.data.notificationType === 'slack'">
+            <div class="font-medium mb-2">Slack App Setup</div>
+            <div class="space-y-1">
+              <div>1. Go to https://api.slack.com/apps</div>
+              <div>2. Create a new app or select existing</div>
+              <div>3. Go to OAuth & Permissions → Scopes</div>
+              <div>4. Add Bot Token Scopes: <code class="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">chat:write</code> and <code class="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">files:write</code></div>
+              <div>5. Install app to workspace</div>
+              <div>6. Copy Bot Token and set <code class="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">SLACK_BOT_TOKEN</code> environment variable</div>
+            </div>
+          </div>
+
+          <!-- Webhook Setup -->
+          <div v-if="nodeData.data.notificationType === 'webhook'">
+            <div class="font-medium mb-2">Webhook Configuration</div>
+            <div class="space-y-2">
+              <div><strong>Discord Webhooks:</strong></div>
+              <div class="pl-2 space-y-1">
+                <div>1. Open Discord → Server Settings → Integrations</div>
+                <div>2. Create new webhook</div>
+                <div>3. Copy webhook URL</div>
+                <div>4. Paste in "Webhook URL" field or set <code class="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">DISCORD_WEBHOOK_URL</code> env variable</div>
+              </div>
+              <div class="mt-2"><strong>Other Webhooks:</strong></div>
+              <div class="pl-2">
+                Configure the HTTP method, headers, and body as required by your webhook service. Use context variables like $BuildNumber in the body.
+              </div>
             </div>
           </div>
         </div>
-
-        <!-- Slack Setup -->
-        <div v-if="nodeData.data.notificationType === 'slack'" class="text-purple-700 dark:text-purple-300">
-          <div class="font-medium mb-2">Slack App Setup</div>
-          <div class="space-y-1">
-            <div>1. Go to https://api.slack.com/apps</div>
-            <div>2. Create a new app or select existing</div>
-            <div>3. Go to OAuth & Permissions → Scopes</div>
-            <div>4. Add Bot Token Scopes: <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">chat:write</code> and <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">files:write</code></div>
-            <div>5. Install app to workspace</div>
-            <div>6. Copy Bot Token and set <code class="bg-purple-100 dark:bg-purple-900 px-1 rounded">SLACK_BOT_TOKEN</code> environment variable</div>
-          </div>
-        </div>
-
-        <!-- Webhook Setup -->
-        <div v-if="nodeData.data.notificationType === 'webhook'" class="text-blue-700 dark:text-blue-300">
-          <div class="font-medium mb-2">Webhook Configuration</div>
-          <div class="space-y-2">
-            <div><strong>Discord Webhooks:</strong></div>
-            <div class="pl-2 space-y-1">
-              <div>1. Open Discord → Server Settings → Integrations</div>
-              <div>2. Create new webhook</div>
-              <div>3. Copy webhook URL</div>
-              <div>4. Paste in "Webhook URL" field or set <code class="bg-blue-100 dark:bg-blue-900 px-1 rounded">DISCORD_WEBHOOK_URL</code> env variable</div>
-            </div>
-            <div class="mt-2"><strong>Other Webhooks:</strong></div>
-            <div class="pl-2">
-              Configure the HTTP method, headers, and body as required by your webhook service. Use context variables like $BuildNumber in the body.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      </template>
+    </UAccordion>
   </div>
 </template>
 
@@ -490,17 +378,30 @@ const props = defineProps({
   }
 })
 
-// Collapsible sections state
-const showVariables = ref(false)
-const showInputSockets = ref(false)
-const showExamples = ref(false)
-const showSetupGuide = ref(false)
-
 // Template management
 const templates = ref([])
-const selectedTemplateId = ref('')
+const selectedTemplateId = ref(null)
 const isLoadingTemplate = ref(false)
 const logger = useLogger()
+
+// Options arrays for selects
+const notificationTypeOptions = [
+  { value: 'email', label: 'Email' },
+  { value: 'slack', label: 'Slack' },
+  { value: 'webhook', label: 'Webhook' }
+]
+
+const slackModeOptions = [
+  { value: 'simple', label: 'Simple Text Message' },
+  { value: 'blocks', label: 'Block Kit (Rich Formatting)' }
+]
+
+const webhookMethodOptions = [
+  { value: 'POST', label: 'POST' },
+  { value: 'PUT', label: 'PUT' },
+  { value: 'PATCH', label: 'PATCH' },
+  { value: 'GET', label: 'GET' }
+]
 
 // Initialize default values if not set
 if (!props.nodeData.data.notificationType) {
@@ -531,6 +432,52 @@ const filteredTemplates = computed(() => {
   return templates.value.filter(t => t.type === props.nodeData.data.notificationType)
 })
 
+// Computed: Template options for USelect
+const templateOptions = computed(() => {
+  return filteredTemplates.value.map(template => ({
+    value: template.id,
+    label: template.name
+  }))
+})
+
+// Computed: Accordion items (dynamically include input sockets if they exist)
+const accordionItems = computed(() => {
+  const items = [
+    {
+      slot: 'available-variables',
+      label: 'Available Context Variables',
+      icon: 'i-lucide-code',
+      defaultOpen: false
+    }
+  ]
+  
+  if (props.nodeData.data.inputSockets && props.nodeData.data.inputSockets.length > 0) {
+    items.push({
+      slot: 'input-sockets',
+      label: 'Available Input Socket Variables',
+      icon: 'i-lucide-plug',
+      defaultOpen: false
+    })
+  }
+  
+  items.push(
+    {
+      slot: 'usage-examples',
+      label: 'Usage Examples',
+      icon: 'i-lucide-lightbulb',
+      defaultOpen: false
+    },
+    {
+      slot: 'setup-guide',
+      label: 'Setup & Configuration Guide',
+      icon: 'i-lucide-settings',
+      defaultOpen: false
+    }
+  )
+  
+  return items
+})
+
 // Fetch all templates from API
 async function fetchTemplates() {
   try {
@@ -545,7 +492,7 @@ async function fetchTemplates() {
 
 // When notification type changes, reset template selection
 function onNotificationTypeChange() {
-  selectedTemplateId.value = ''
+  selectedTemplateId.value = null
 }
 
 // Load selected template and auto-fill fields

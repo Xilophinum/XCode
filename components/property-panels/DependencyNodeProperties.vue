@@ -1,100 +1,100 @@
 <template>
   <div class="space-y-4">
-    <div class="flex items-center space-x-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-      <input
-        type="checkbox"
-        v-model="nodeData.data.useExistingFile"
-        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-      >
-      <label class="text-sm text-neutral-700 dark:text-neutral-300">
-        Use existing {{ getFileName() }} from repository
-      </label>
-    </div>
+    <UCheckbox
+      v-model="nodeData.data.useExistingFile"
+      :label="`Use existing ${getFileName()} from repository`"
+    />
 
     <!-- Go Mod specific -->
-    <div v-if="nodeData.data.nodeType === 'go-mod'">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Command</label>
-      <select
+    <UFormField v-if="nodeData.data.nodeType === 'go-mod'" label="Command">
+      <USelect
         v-model="nodeData.data.command"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-      >
-        <option value="download">download</option>
-        <option value="tidy">tidy</option>
-        <option value="vendor">vendor</option>
-      </select>
-    </div>
+        :items="goModCommandOptions"
+        size="md"
+        class="w-full"
+      />
+    </UFormField>
 
     <!-- Cargo Build specific -->
-    <div v-if="nodeData.data.nodeType === 'cargo-build'">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Build Type</label>
-      <select
+    <UFormField v-if="nodeData.data.nodeType === 'cargo-build'" label="Build Type">
+      <USelect
         v-model="nodeData.data.buildType"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-      >
-        <option value="debug">debug</option>
-        <option value="release">release</option>
-      </select>
-    </div>
+        :items="cargoBuildTypeOptions"
+        size="md"
+        class="w-full"
+      />
+    </UFormField>
 
     <!-- Dependency file content -->
-    <div v-if="!nodeData.data.useExistingFile">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ getFileLabel() }}</label>
+    <UFormField v-if="!nodeData.data.useExistingFile" :label="getFileLabel()">
       <ScriptEditor
         v-model="nodeData.data.script"
         :language="'plaintext'"
-        class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
+        class="w-full"
       />
-      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+      <template #help>
         Will be written to {{ getFileName() }} before execution
-      </p>
-    </div>
-    <div v-else class="p-3 bg-amber-50 dark:bg-amber-950 rounded-lg">
-      <p class="text-sm text-amber-800 dark:text-amber-200">
-        ℹ️ Will use existing {{ getFileName() }} from working directory. Ensure file exists in repository or previous build step.
-      </p>
-    </div>
+      </template>
+    </UFormField>
+    <UAlert v-else color="warning" variant="soft" icon="i-lucide-info">
+      <template #description>
+        Will use existing {{ getFileName() }} from working directory. Ensure file exists in repository or previous build step.
+      </template>
+    </UAlert>
 
     <!-- Common fields -->
-    <div>
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Working Directory</label>
-      <input
+    <UFormField label="Working Directory">
+      <UInput
         v-model="nodeData.data.workingDirectory"
         type="text"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+        size="md"
+        class="w-full"
         placeholder="./"
-      >
-    </div>
+      />
+    </UFormField>
 
-    <div v-if="nodeData.data.installArgs !== undefined">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Additional Arguments</label>
-      <input
+    <UFormField v-if="nodeData.data.installArgs !== undefined" label="Additional Arguments">
+      <UInput
         v-model="nodeData.data.installArgs"
         type="text"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
+        size="md"
+        class="w-full"
         :placeholder="getPlaceholder()"
-      >
-    </div>
+      />
+    </UFormField>
 
-    <div>
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Timeout (seconds)</label>
-      <input
+    <UFormField label="Timeout (seconds)">
+      <UInput
         v-model.number="nodeData.data.timeout"
         type="number"
-        min="60"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-      >
-    </div>
+        :min="60"
+        size="md"
+        class="w-full"
+      />
+    </UFormField>
   </div>
 </template>
 
 <script setup>
 import ScriptEditor from '../ScriptEditor.vue'
+
 const props = defineProps({
   nodeData: {
     type: Object,
     required: true
   }
 })
+
+const goModCommandOptions = [
+  { value: 'download', label: 'download' },
+  { value: 'tidy', label: 'tidy' },
+  { value: 'vendor', label: 'vendor' }
+]
+
+const cargoBuildTypeOptions = [
+  { value: 'debug', label: 'debug' },
+  { value: 'release', label: 'release' }
+]
 
 const getPlaceholder = () => {
   switch (props.nodeData.data.nodeType) {

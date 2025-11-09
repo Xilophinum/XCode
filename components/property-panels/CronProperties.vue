@@ -1,70 +1,89 @@
 <template>
     <div>
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-            Cron Expression <span class="text-red-500">*</span>
-        </label>
-        <input
-            v-model="nodeData.data.cronExpression"
-            type="text"
-            class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono"
-            placeholder="0 0 * * * (every hour at minute 0)"
-        />
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            Enter a cron expression. Format: minute hour day month dayOfWeek
-        </p>
+        <UFormField label="Cron Expression" required>
+            <UInput
+                v-model="nodeData.data.cronExpression"
+                type="text"
+                size="md"
+                class="font-mono w-full"
+                placeholder="0 0 * * * (every hour at minute 0)"
+            />
+            <template #help>
+                Enter a cron expression. Format: minute hour day month dayOfWeek
+            </template>
+        </UFormField>
         
         <!-- Cron presets -->
         <div class="mt-2">
             <label class="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Quick Presets:</label>
             <div class="grid grid-cols-2 gap-1">
-            <button
-                @click="nodeData.data.cronExpression = '0 * * * *'"
-                class="px-2 py-1 text-xs bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded"
-            >
-                Every hour
-            </button>
-            <button
-                @click="nodeData.data.cronExpression = '0 0 * * *'"
-                class="px-2 py-1 text-xs bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded"
-            >
-                Daily at midnight
-            </button>
-            <button
-                @click="nodeData.data.cronExpression = '0 0 * * 1'"
-                class="px-2 py-1 text-xs bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded"
-            >
-                Weekly (Monday)
-            </button>
-            <button
-                @click="nodeData.data.cronExpression = '0 0 1 * *'"
-                class="px-2 py-1 text-xs bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 rounded"
-            >
-                Monthly (1st)
-            </button>
+                <UButton
+                    @click="nodeData.data.cronExpression = '0 * * * *'"
+                    size="sm"
+                    color="secondary"
+                    variant="outline"
+                    block
+                >
+                    Every hour
+                </UButton>
+                <UButton
+                    @click="nodeData.data.cronExpression = '0 0 * * *'"
+                    size="sm"
+                    color="secondary"
+                    variant="outline"
+                    block
+                >
+                    Daily at midnight
+                </UButton>
+                <UButton
+                    @click="nodeData.data.cronExpression = '0 0 * * 1'"
+                    size="sm"
+                    color="secondary"
+                    variant="outline"
+                    block
+                >
+                    Weekly (Monday)
+                </UButton>
+                <UButton
+                    @click="nodeData.data.cronExpression = '0 0 1 * *'"
+                    size="sm"
+                    color="secondary"
+                    variant="outline"
+                    block
+                >
+                    Monthly (1st)
+                </UButton>
             </div>
         </div>
         
         <!-- Cron status -->
-        <div class="mt-3 p-2 bg-amber-50 dark:bg-amber-950 rounded text-xs">
-            <div class="font-medium text-amber-800 dark:text-amber-200 mb-1">⏰ Scheduling Status:</div>
-            <div class="text-amber-700 dark:text-amber-300">
-            <div v-if="nodeData.data.cronExpression && cronInfo.isValid" class="space-y-1">
-                <div class="font-medium">{{ cronInfo.description }}</div>
-                <div v-if="cronInfo.nextRun" class="text-xs">
-                Next run: {{ new Date(cronInfo.nextRun).toLocaleString() }}
+        <UAlert
+            class="mt-3"
+            color="warning"
+            variant="soft"
+            icon="i-lucide-clock"
+        >
+            <template #title>
+                Scheduling Status
+            </template>
+            <template #description>
+                <div v-if="nodeData.data.cronExpression && cronInfo.isValid" class="space-y-1">
+                    <div class="font-medium">{{ cronInfo.description }}</div>
+                    <div v-if="cronInfo.nextRun" class="text-xs">
+                        Next run: {{ new Date(cronInfo.nextRun).toLocaleString() }}
+                    </div>
+                    <div class="text-xs opacity-75">
+                        Expression: {{ nodeData.data.cronExpression }}
+                    </div>
                 </div>
-                <div class="text-xs opacity-75">
-                Expression: {{ nodeData.data.cronExpression }}
+                <div v-else-if="nodeData.data.cronExpression && !cronInfo.isValid" class="text-red-600 dark:text-red-400">
+                    {{ cronInfo.description }}
                 </div>
-            </div>
-            <div v-else-if="nodeData.data.cronExpression && !cronInfo.isValid" class="text-red-600 dark:text-red-400">
-                {{ cronInfo.description }}
-            </div>
-            <span v-else class="text-red-600 dark:text-red-400">
-                No cron expression configured
-            </span>
-            </div>
-        </div>
+                <span v-else class="text-red-600 dark:text-red-400">
+                    No cron expression configured
+                </span>
+            </template>
+        </UAlert>
     </div>
 </template>
 
