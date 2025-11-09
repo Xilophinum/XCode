@@ -184,10 +184,12 @@
                   {{ agent.currentJobs }}/{{ agent.maxConcurrentJobs }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  <span v-if="agent.lastHeartbeat" v-tooltip="new Date(agent.lastHeartbeat).toLocaleString()">
-                    {{ formatRelativeTime(agent.lastHeartbeat) }}
-                  </span>
-                  <span v-else>Never</span>
+                  <UTooltip v-if="agent.lastHeartbeat" :text="new Date(agent.lastHeartbeat).toLocaleString()">
+                    <span v-if="agent.lastHeartbeat">
+                      {{ formatRelativeTime(agent.lastHeartbeat) }}
+                    </span>
+                    <span v-else>Never</span>
+                  </UTooltip>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex justify-end space-x-2">
@@ -208,7 +210,6 @@
                         variant="outline"
                         size="sm"
                         icon="i-lucide-trash-2"
-                        v-tooltip:left="'Delete agent'"
                       />
                     </UTooltip>
                   </div>
@@ -342,13 +343,13 @@
         <div class="bg-gray-100 dark:bg-gray-800 rounded-md p-3 mb-4">
           <div class="flex items-center justify-between">
             <code class="text-sm font-mono break-all">{{ createdAgentToken }}</code>
-            <button
-              @click="copyToken"
-              class="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              v-tooltip="'Copy token'"
-            >
-              <UIcon name="i-lucide-copy" class="w-4 h-4" />
-            </button>
+            <UTooltip text="Copy token">
+              <UButton
+                @click="copyToken"
+                color="secondary"
+                icon="i-lucide-clipboard-copy"
+              />
+            </UTooltip>
           </div>
         </div>
         

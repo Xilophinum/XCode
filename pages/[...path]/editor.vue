@@ -173,11 +173,11 @@
     <main class="flex-1 overflow-hidden">
       <div class="flex" :style="{ height: `calc(100vh - 64px - ${project?.status === 'disabled' ? '60px' : '0px'} - ${isExecuting && currentBuildNumber ? '60px' : '0px'})` }">
         <!-- Nodes Sidebar -->
-        <div 
+        <UCard 
           v-if="showNodesPanel"
-          class="w-64 bg-white dark:bg-neutral-800 shadow-sm border-r border-neutral-200 dark:border-neutral-700 overflow-y-auto transition-all duration-300 ease-in-out"
+          class="w-64 overflow-y-auto transition-all duration-300 ease-in-out"
         >
-          <div class="p-4">
+          <div class="p-0">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-medium text-neutral-900 dark:text-white">Nodes</h3>
               <button
@@ -293,7 +293,7 @@
               </div>
             </div>
           </div>
-        </div>
+        </UCard>
 
         <!-- Main Editor Area -->
         <div class="flex-1 flex flex-col">
@@ -360,9 +360,9 @@
         </div>
 
         <!-- Properties Panel -->
-        <div
+        <UCard
           v-if="showPropertiesPanel"
-          class="bg-white dark:bg-neutral-800 shadow-sm border-l border-neutral-200 dark:border-neutral-700 transition-all duration-300 ease-in-out relative flex flex-col"
+          class="shadow-md transition-all duration-300 ease-in-out relative flex flex-col"
           :style="{ width: `${propertiesPanelWidth}px` }"
         >
           <!-- Resize Handle - Fixed to full height of panel -->
@@ -373,7 +373,7 @@
             @mousedown="startResizingPanel"
           ></div>
 
-          <div class="p-4 overflow-y-auto flex-1">
+          <div class="p-0 overflow-y-auto flex-1">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-medium text-neutral-900 dark:text-white">Node Properties</h3>
               <button
@@ -718,7 +718,7 @@
               <p class="text-neutral-500 dark:text-neutral-400">Select a node to view properties</p>
             </div>
           </div>
-        </div>
+        </UCard>
       </div>
     </main>
 

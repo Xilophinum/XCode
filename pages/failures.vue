@@ -46,7 +46,7 @@
                 @click="loadFailedBuilds"
                 :disabled="isLoading"
                 v-show="!autoRefreshEnabled"
-                class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-md text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
                 <UIcon name="i-lucide-refresh-cw" class="w-4 h-4 mr-2" :class="{ 'animate-spin': isLoading }" />
                 Refresh Now
@@ -58,7 +58,7 @@
         <!-- Stats Bar -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <!-- Projects with Failures -->
-          <UCard class="shadow-sm">
+          <UCard class="shadow-md">
             <div class="flex items-center">
               <div class="flex-shrink-0">
                 <UIcon name="i-lucide-x-circle" class="w-8 h-8 text-red-500" />
@@ -71,7 +71,7 @@
           </UCard>
 
           <!-- Last Updated -->
-          <UCard class="shadow-sm">
+          <UCard class="shadow-md">
             <div class="flex items-center">
               <div class="flex-shrink-0">
                 <UIcon name="i-lucide-clock" class="w-8 h-8 text-blue-500" />
@@ -85,15 +85,15 @@
         </div>
 
         <!-- Loading State -->
-        <div v-if="isLoading && failedBuilds.length === 0" class="bg-white dark:bg-gray-800 shadow rounded-lg p-8">
+        <UCard v-if="isLoading && failedBuilds.length === 0" class="shadow-md">
           <div class="text-center">
             <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             <p class="mt-4 text-gray-600 dark:text-gray-300">Loading failed builds...</p>
           </div>
-        </div>
+        </UCard>
 
         <!-- Empty State -->
-        <div v-else-if="!isLoading && failedBuilds.length === 0" class="bg-white dark:bg-gray-800 shadow rounded-lg p-8">
+        <UCard v-else-if="!isLoading && failedBuilds.length === 0" class="shadow-md">
           <div class="text-center">
             <UIcon name="i-lucide-check-circle" class="mx-auto h-12 w-12 text-green-400" />
             <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">All Projects Passing!</h3>
@@ -101,10 +101,10 @@
               Excellent! All projects' latest builds are successful.
             </p>
           </div>
-        </div>
+        </UCard>
 
         <!-- Failed Builds List -->
-        <div v-else class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+        <UCard v-else class="shadow-md">
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-50 dark:bg-gray-900">
@@ -129,11 +129,11 @@
                   </th>
                 </tr>
               </thead>
-              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody class="bg-white dark:bg-neutral-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr
                   v-for="build in failedBuilds"
                   :key="`${build.projectId}-${build.buildNumber}`"
-                  class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  class="hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
                 >
                   <!-- Project & Build -->
                   <td class="px-6 py-4 whitespace-nowrap">
@@ -167,59 +167,58 @@
                   </td>
 
                   <!-- Failed At -->
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {{ formatTimestamp(build.finishedAt || build.startedAt) }}
-                  </td>
+                   <UTooltip :text="new Date(build.finishedAt || build.startedAt).toLocaleString()">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {{ formatTimestamp(build.finishedAt || build.startedAt) }}
+                    </td>
+                  </UTooltip>
 
                   <!-- Error -->
                   <td class="px-6 py-4">
-                    <div class="text-sm text-red-600 dark:text-red-400 max-w-xs truncate" v-tooltip="getErrorMessage(build)">
-                      {{ getErrorMessage(build) }}
-                    </div>
+                    <UTooltip :text="getErrorMessage(build)">
+                      <div class="text-sm text-red-600 dark:text-red-400 max-w-xs truncate">
+                        {{ getErrorMessage(build) }}
+                      </div>
+                    </UTooltip>
                   </td>
 
                   <!-- Actions -->
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex items-center justify-end space-x-2">
                       <!-- View Logs Button -->
-                      <button
-                        @click="showLogsModal(build)"
-                        class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
-                        v-tooltip="'View last logs'"
-                      >
-                        <UIcon name="i-lucide-file-text" class="w-5 h-5" />
-                      </button>
-
+                      <UTooltip text="View last logs">
+                        <UButton
+                          @click="showLogsModal(build)"
+                          class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                          icon="i-lucide-file-text"
+                          variant="link"
+                        />
+                      </UTooltip>
                       <!-- Go to Build Button -->
-                      <NuxtLink
-                        :to="getBuildUrl(build)"
-                        class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                        v-tooltip="'Go to build'"
-                      >
-                        <UIcon name="i-lucide-external-link" class="w-5 h-5" />
-                      </NuxtLink>
+                      <UTooltip text="Go to build">
+                        <UButton
+                          :to="getBuildUrl(build)"
+                          color="neutral"
+                          variant="link"
+                          icon="i-lucide-external-link"
+                        />
+                      </UTooltip>
 
                       <!-- Rebuild Button -->
-                      <button
-                        @click="rebuildProject(build)"
-                        :disabled="rebuildingProjects.has(build.projectId)"
-                        class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        v-tooltip:left="'Rebuild project'"
-                      >
-                        <UIcon
-                          name="i-lucide-refresh-cw"
-                          class="w-5 h-5"
-                          :class="{ 'animate-spin': rebuildingProjects.has(build.projectId) }"
+                      <UTooltip text="Rebuild project">
+                        <UButton
+                          @click="rebuildProject(build)"
+                          variant="link"
+                          icon="i-lucide-refresh-cw"
                         />
-                      </button>
+                      </UTooltip>
                     </div>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-
-        </div>
+        </UCard>
       </div>
     </main>
 
@@ -276,25 +275,18 @@
 
         <!-- Actions -->
         <div class="mt-6 flex justify-end space-x-3">
-          <NuxtLink
+          <UButton
             :to="getBuildUrl(selectedBuild)"
             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
           >
             View Full Build
-          </NuxtLink>
-          <button
+          </UButton>
+          <UButton
             @click="rebuildProjectFromModal"
-            :disabled="rebuildingProjects.has(selectedBuild?.projectId)"
             class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span v-if="!rebuildingProjects.has(selectedBuild?.projectId)">
-              Rebuild Project
-            </span>
-            <span v-else class="flex items-center">
-              <UIcon name="i-lucide-loader" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
-              Rebuilding...
-            </span>
-            </button>
+            Rebuild Project
+          </UButton>
         </div>
       </div>
     </ModalWrapper>
@@ -306,11 +298,11 @@ definePageMeta({
   middleware: 'auth'
 })
 
+import { text } from 'drizzle-orm/gel-core'
 import ModalWrapper from '~/components/ModalWrapper.vue'
 
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
-const webSocketStore = useWebSocketStore()
 const toast = useToast()
 
 // State
@@ -320,10 +312,10 @@ const lastUpdated = ref(null)
 const currentTime = ref(new Date())
 const autoRefreshEnabled = ref(true)
 const timeUpdateInterval = ref(null)
+const failedBuildInterval = ref(null)
 
 const showLogsModalState = ref(false)
 const selectedBuild = ref(null)
-const rebuildingProjects = ref(new Set())
 
 // Functions
 const loadFailedBuilds = async () => {
@@ -360,6 +352,11 @@ const startRealTimeUpdates = () => {
   timeUpdateInterval.value = setInterval(() => {
     currentTime.value = new Date()
   }, 1000)
+  failedBuildInterval.value = setInterval(async () => {
+    if (autoRefreshEnabled.value) {
+      await loadFailedBuilds()
+    }
+  }, 5000) // Refresh every 5 seconds
 }
 
 const stopRealTimeUpdates = () => {
@@ -367,48 +364,14 @@ const stopRealTimeUpdates = () => {
     clearInterval(timeUpdateInterval.value)
     timeUpdateInterval.value = null
   }
+  if (failedBuildInterval.value) {
+    clearInterval(failedBuildInterval.value)
+    failedBuildInterval.value = null
+  }
 }
 
 const toggleAutoRefresh = () => {
   autoRefreshEnabled.value = !autoRefreshEnabled.value
-}
-
-// Handle WebSocket events for real-time updates
-const handleBuildStatusUpdate = (message) => {
-  const { type, projectId, status } = message
-  
-  // Only refresh if it's a build completion or failure
-  if (type === 'job_complete' || type === 'job_error' || type === 'job_status_updated') {
-    if (status === 'failed' || status === 'completed' || status === 'cancelled') {
-      // Debounce multiple rapid updates
-      if (refreshTimeout.value) {
-        clearTimeout(refreshTimeout.value)
-      }
-      refreshTimeout.value = setTimeout(() => {
-        if (autoRefreshEnabled.value) {
-          loadFailedBuilds()
-          lastUpdated.value = new Date()
-        }
-      }, 1000) // Wait 1 second before refreshing
-    }
-  }
-}
-
-// Handle custom build events
-const handleBuildEvent = (event) => {
-  const { type, status } = event.detail
-  
-  if (type === 'buildCompleted' || type === 'buildFailed') {
-    if (refreshTimeout.value) {
-      clearTimeout(refreshTimeout.value)
-    }
-    refreshTimeout.value = setTimeout(() => {
-      if (autoRefreshEnabled.value) {
-        loadFailedBuilds()
-        lastUpdated.value = new Date()
-      }
-    }, 500)
-  }
 }
 
 const refreshTimeout = ref(null)
@@ -470,12 +433,6 @@ const getBuildUrl = (build) => {
 
 const rebuildProject = async (build) => {
   const projectId = build.projectId
-
-  if (rebuildingProjects.value.has(projectId)) {
-    return // Already rebuilding this project
-  }
-
-  rebuildingProjects.value.add(projectId)
 
   try {
     // Get the project to fetch current workflow
@@ -547,8 +504,6 @@ const rebuildProject = async (build) => {
       title: `Failed to rebuild project: ${error.message || error.data?.error || 'Unknown error'}`,
       icon: 'i-lucide-x-circle'
     })
-  } finally {
-    rebuildingProjects.value.delete(projectId)
   }
 }
 
@@ -562,16 +517,18 @@ const formatTimestamp = (timestamp) => {
   if (!timestamp) return 'N/A'
   const date = new Date(timestamp)
   const diffMs = currentTime.value - date
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffSecs = Math.floor(diffMs / 1000)
+  
+  if (diffSecs < 60) return diffSecs <= 1 ? 'Just now' : `${diffSecs}s ago`
+  
+  const diffMins = Math.floor(diffSecs / 60)
+  if (diffMins < 60) return `${diffMins}m ago`
+  
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  
   const diffDays = Math.floor(diffHours / 24)
-
-  if (diffDays > 0) return `${diffDays}d ago`
-  if (diffHours > 0) return `${diffHours}h ago`
-  
-  const diffMins = Math.floor(diffMs / (1000 * 60))
-  if (diffMins > 0) return `${diffMins}m ago`
-  
-  return 'Just now'
+  return `${diffDays}${diffDays > 1 ? 'days ago' : 'day ago'}`
 }
 
 const formatLogTimestamp = (timestamp) => {
@@ -603,35 +560,17 @@ onMounted(async () => {
   
   // Start real-time updates
   startRealTimeUpdates()
-  
-  // Connect to WebSocket if not already connected
-  if (!webSocketStore.isConnected) {
-    await webSocketStore.connect()
-  }
-  
-  // Listen for build status updates via WebSocket
-  if (webSocketStore.socket) {
-    webSocketStore.socket.on('message', handleBuildStatusUpdate)
-  }
-  
-  // Also listen for custom build events
-  window.addEventListener('buildStatusChanged', handleBuildEvent)
 })
 
 onUnmounted(() => {
   stopRealTimeUpdates()
-  
-  // Clean up WebSocket listeners
-  if (webSocketStore.socket) {
-    webSocketStore.socket.off('message', handleBuildStatusUpdate)
-  }
-  
-  // Clean up custom event listeners
-  window.removeEventListener('buildStatusChanged', handleBuildEvent)
-  
   // Clear any pending refresh timeout
   if (refreshTimeout.value) {
     clearTimeout(refreshTimeout.value)
+  }
+  if (failedBuildInterval.value) {
+    clearInterval(failedBuildInterval.value)
+    failedBuildInterval.value = null
   }
 })
 

@@ -318,10 +318,12 @@
                   {{ agent.currentJobs }}/{{ agent.maxJobs }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  <span v-if="agent.lastHeartbeat" v-tooltip="new Date(agent.lastHeartbeat).toLocaleString()">
-                    {{ getReactiveRelativeTime(agent.lastHeartbeat) }}
-                  </span>
-                  <span v-else>Never</span>
+                  <UTooltip :text="agent.lastHeartbeat ? new Date(agent.lastHeartbeat).toLocaleString() : 'Never'">
+                    <span v-if="agent.lastHeartbeat">
+                      {{ getReactiveRelativeTime(agent.lastHeartbeat) }}
+                    </span>
+                    <span v-else>Never</span>
+                  </UTooltip>
                 </td>
               </tr>
             </tbody>

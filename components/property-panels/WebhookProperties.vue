@@ -1,85 +1,74 @@
 <template>
     <div>
-        <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-            <div class="flex items-center mb-2">
-            <UIcon name="i-lucide-send" class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
-            <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200">Webhook Trigger Configuration</h4>
+        <UAlert
+            color="info"
+            variant="soft"
+            icon="i-lucide-send"
+            title="Webhook Trigger Configuration"
+            class="mb-4"
+        >
+            <template #description>
+                Configure this webhook to allow external systems to trigger this workflow via HTTP requests.
+            </template>
+        </UAlert>
+        
+        <UFormField label="Custom Endpoint" required class="mb-4">
+            <div class="flex items-center gap-2">
+                <span class="text-sm text-neutral-500 dark:text-neutral-400">/api/webhook/</span>
+                <UInput
+                    v-model="nodeData.data.customEndpoint"
+                    placeholder="deploy-prod"
+                    class="flex-1 font-mono"
+                    @input="validateEndpoint"
+                />
             </div>
-            <p class="text-xs text-blue-700 dark:text-blue-300">
-            Configure this webhook to allow external systems to trigger this workflow via HTTP requests.
-            </p>
-        </div>
+            <template #help>
+                Choose a unique endpoint name (letters, numbers, dashes, and underscores only). Examples: <code>deploy-prod</code>, <code>backup_db</code>, <code>notify-slack</code>
+            </template>
+        </UFormField>
         
-        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-            Custom Endpoint <span class="text-red-500">*</span>
-        </label>
-        <div class="flex items-center mb-2">
-            <span class="text-sm text-neutral-500 dark:text-neutral-400 mr-2">/api/webhook/</span>
-            <input
-            v-model="nodeData.data.customEndpoint"
-            type="text"
-            class="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono"
-            placeholder="deploy-prod"
-            pattern="[a-zA-Z0-9-_]+"
-            @input="validateEndpoint"
-            />
-        </div>
-        <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            Choose a unique endpoint name (letters, numbers, dashes, and underscores only). Examples: <code>deploy-prod</code>, <code>backup_db</code>, <code>notify-slack</code>
-        </p>
-        
-        <div class="mt-3">
-            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-            Secret Token <span class="text-red-500">*</span>
-            </label>
-            <div class="flex items-center space-x-2">
-            <input
-                v-model="nodeData.data.secretToken"
-                type="text"
-                required
-                class="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono"
-                placeholder="Enter a secure secret token (required)"
-                :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.secretToken }"
-            />
-            <button
-                @click="generateSecretToken"
-                type="button"
-                class="px-3 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center space-x-1"
-                v-tooltip="'Generate random secure token'"
-            >
-                <UIcon name="i-lucide-lock" class="w-4 h-4" />
-                <span class="hidden sm:inline">Generate</span>
-            </button>
+        <UFormField label="Secret Token" required class="mb-4">
+            <div class="flex items-center gap-2">
+                <UInput
+                    v-model="nodeData.data.secretToken"
+                    placeholder="Enter a secure secret token (required)"
+                    class="flex-1 font-mono"
+                    :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.secretToken }"
+                />
+                <UButton
+                    @click="generateSecretToken"
+                    icon="i-lucide-lock"
+                    size="sm"
+                >
+                    Generate
+                </UButton>
             </div>
-            <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            Required for security. Include this token in the 'X-Webhook-Token' header when calling the webhook. Use the Generate button for a cryptographically secure 64-character token.
-            </p>
-            <p v-if="!nodeData.data.secretToken" class="mt-1 text-xs text-red-500 dark:text-red-400">
-            Secret token is required for webhook security
-            </p>
-        </div>
+            <template #help>
+                <div class="space-y-1">
+                    <p>Required for security. Include this token in the 'X-Webhook-Token' header when calling the webhook. Use the Generate button for a cryptographically secure 64-character token.</p>
+                    <p v-if="!nodeData.data.secretToken" class="text-red-500 dark:text-red-400">
+                        Secret token is required for webhook security
+                    </p>
+                </div>
+            </template>
+        </UFormField>
         
-        <div class="mt-3">
-            <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Description</label>
-            <textarea
-            v-model="nodeData.data.description"
-            v-auto-resize
-            class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white resize-none overflow-hidden"
-            placeholder="Describe what this webhook does (optional)"
-            ></textarea>
-        </div>
+        <UFormField label="Description" class="mb-4">
+            <UTextarea
+                v-model="nodeData.data.description"
+                placeholder="Describe what this webhook does (optional)"
+                :rows="3"
+                class="w-full"
+            />
+        </UFormField>
         
-        <div class="mt-3">
-            <label class="flex items-center">
-            <input
+        <div class="mb-4">
+            <UCheckbox
                 v-model="nodeData.data.active"
-                type="checkbox"
-                class="w-4 h-4 text-blue-600 bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 rounded focus:ring-blue-500 focus:ring-2"
+                label="Active"
             />
-            <span class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">Active</span>
-            </label>
-            <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-            Uncheck to temporarily disable this webhook trigger
+            <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400 ml-6">
+                Uncheck to temporarily disable this webhook trigger
             </p>
         </div>
         
@@ -104,180 +93,178 @@
             </div>
         </div>
         
-        <!-- Authentication & Security (Collapsible) -->
-        <div class="mt-4 border border-green-200 dark:border-green-800 rounded-lg overflow-hidden">
-            <button
-                @click="showAuthDocs = !showAuthDocs"
-                class="w-full p-3 bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 transition-colors flex items-center justify-between text-left"
-            >
-                <span class="font-medium text-green-800 dark:text-green-200 text-xs">📖 Authentication Methods & Security</span>
-                <UIcon
-                    name="i-lucide-chevron-down"
-                    class="w-4 h-4 text-green-600 dark:text-green-400 transition-transform"
-                    :class="{ 'rotate-180': showAuthDocs }"
-                />
-            </button>
-            <div v-show="showAuthDocs" class="p-3 bg-green-50 dark:bg-green-950 border-t border-green-200 dark:border-green-800 text-xs">
-                <div class="text-green-700 dark:text-green-300 space-y-2">
-                    <div class="space-y-1">
-                        <div class="font-medium">Custom APIs & Services:</div>
-                        <div class="pl-2 text-xs opacity-90">Header: <span class="font-mono">X-Webhook-Token: your-secret-token</span></div>
-                        <div class="pl-2 text-xs opacity-90">Body: <span class="font-mono">&#123;"token": "your-secret-token"&#125;</span></div>
-                        <div class="pl-2 text-xs opacity-90">Query: <span class="font-mono">?token=your-secret-token</span></div>
-                    </div>
-                    <div class="space-y-1">
-                        <div class="font-medium">Git Platforms (Automatic):</div>
-                        <div class="pl-2 text-xs opacity-90">GitHub: X-Hub-Signature-256 (SHA256 HMAC)</div>
-                        <div class="pl-2 text-xs opacity-90">GitLab: X-Gitlab-Token header</div>
-                        <div class="pl-2 text-xs opacity-90">Bitbucket: X-Hub-Signature (SHA1 HMAC)</div>
-                        <div class="pl-2 text-xs opacity-90">Azure DevOps: Authorization header</div>
-                    </div>
-                    <div class="pt-1 border-t border-green-200 dark:border-green-800">
-                        <div class="font-medium">Security Note:</div>
-                        <div class="text-xs opacity-90">Always configure a secret token for production webhooks. Git platforms will automatically sign requests using your secret.</div>
-                    </div>
-                    <div class="pt-1 border-t border-green-200 dark:border-green-800">
-                        <div class="font-medium">💡 Common Use Cases:</div>
-                        <div class="space-y-1">
-                            <div>• <strong>CI/CD:</strong> Trigger deployments from GitHub, GitLab, or other platforms</div>
-                            <div>• <strong>Notifications:</strong> Respond to events from Slack, Discord, or monitoring tools</div>
-                            <div>• <strong>API Integration:</strong> Process data from external APIs or services</div>
-                            <div>• <strong>Automation:</strong> Execute workflows when specific events occur</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Documentation Section Selector -->
+        <UFormField label="📚 Documentation" class="mt-4">
+            <USelect
+                v-model="selectedDocSection"
+                :items="docSectionOptions"
+                size="md"
+                class="w-full"
+            />
+        </UFormField>
 
-        <!-- Git Integration Examples -->
-        <div class="mt-3 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
-            <div class="font-medium text-green-800 dark:text-green-200 mb-2">Git Platform Setup:</div>
+        <!-- Authentication & Security -->
+        <div v-if="selectedDocSection === 'auth'" class="mt-3 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
+            <div class="font-medium text-green-800 dark:text-green-200 mb-2">📖 Authentication Methods & Security</div>
             <div class="text-green-700 dark:text-green-300 space-y-2">
-            <div class="space-y-1">
-                <div class="font-medium">GitHub:</div>
-                <div class="pl-2 text-xs opacity-90">1. Settings → Webhooks → Add webhook</div>
-                <div class="pl-2 text-xs opacity-90">2. Payload URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
-                <div class="pl-2 text-xs opacity-90">4. Content type: application/json</div>
-            </div>
-            <div class="space-y-1">
-                <div class="font-medium">GitLab:</div>
-                <div class="pl-2 text-xs opacity-90">1. Settings → Webhooks</div>
-                <div class="pl-2 text-xs opacity-90">2. URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                <div class="pl-2 text-xs opacity-90">3. Secret token: <span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
-            </div>
-            <div class="space-y-1">
-                <div class="font-medium">Bitbucket:</div>
-                <div class="pl-2 text-xs opacity-90">1. Repository Settings → Webhooks → Add webhook</div>
-                <div class="pl-2 text-xs opacity-90">2. URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
-            </div>
-            <div class="space-y-1">
-                <div class="font-medium">Azure DevOps:</div>
-                <div class="pl-2 text-xs opacity-90">1. Project Settings → Service hooks</div>
-                <div class="pl-2 text-xs opacity-90">2. Service: Web Hooks → URL: <span class="font-mono">{{ webhookUrl }}</span></div>
-                <div class="pl-2 text-xs opacity-90">3. Basic auth: username=token, password=<span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
-            </div>
+                <div class="space-y-1">
+                    <div class="font-medium">Custom APIs & Services:</div>
+                    <div class="pl-2 text-xs opacity-90">Header: <span class="font-mono">X-Webhook-Token: your-secret-token</span></div>
+                    <div class="pl-2 text-xs opacity-90">Body: <span class="font-mono">&#123;"token": "your-secret-token"&#125;</span></div>
+                    <div class="pl-2 text-xs opacity-90">Query: <span class="font-mono">?token=your-secret-token</span></div>
+                </div>
+                <div class="space-y-1">
+                    <div class="font-medium">Git Platforms (Automatic):</div>
+                    <div class="pl-2 text-xs opacity-90">GitHub: X-Hub-Signature-256 (SHA256 HMAC)</div>
+                    <div class="pl-2 text-xs opacity-90">GitLab: X-Gitlab-Token header</div>
+                    <div class="pl-2 text-xs opacity-90">Bitbucket: X-Hub-Signature (SHA1 HMAC)</div>
+                    <div class="pl-2 text-xs opacity-90">Azure DevOps: Authorization header</div>
+                </div>
+                <div class="pt-1 border-t border-green-200 dark:border-green-800">
+                    <div class="font-medium">Security Note:</div>
+                    <div class="text-xs opacity-90">Always configure a secret token for production webhooks. Git platforms will automatically sign requests using your secret.</div>
+                </div>
+                <div class="pt-1 border-t border-green-200 dark:border-green-800">
+                    <div class="font-medium">💡 Common Use Cases:</div>
+                    <div class="space-y-1">
+                        <div>• <strong>CI/CD:</strong> Trigger deployments from GitHub, GitLab, or other platforms</div>
+                        <div>• <strong>Notifications:</strong> Respond to events from Slack, Discord, or monitoring tools</div>
+                        <div>• <strong>API Integration:</strong> Process data from external APIs or services</div>
+                        <div>• <strong>Automation:</strong> Execute workflows when specific events occur</div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Git Payload Examples -->
-        <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded text-xs">
-            <div class="font-medium text-blue-800 dark:text-blue-200 mb-2">� Complete Webhook Examples:</div>
+        <!-- Git Platform Setup -->
+        <div v-if="selectedDocSection === 'git-setup'" class="mt-3 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
+            <div class="font-medium text-green-800 dark:text-green-200 mb-2">Git Platform Setup</div>
+            <div class="text-green-700 dark:text-green-300 space-y-2">
+                <div class="space-y-1">
+                    <div class="font-medium">GitHub:</div>
+                    <div class="pl-2 text-xs opacity-90">1. Settings → Webhooks → Add webhook</div>
+                    <div class="pl-2 text-xs opacity-90">2. Payload URL: <span class="font-mono">{{ webhookUrl }}</span></div>
+                    <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
+                    <div class="pl-2 text-xs opacity-90">4. Content type: application/json</div>
+                </div>
+                <div class="space-y-1">
+                    <div class="font-medium">GitLab:</div>
+                    <div class="pl-2 text-xs opacity-90">1. Settings → Webhooks</div>
+                    <div class="pl-2 text-xs opacity-90">2. URL: <span class="font-mono">{{ webhookUrl }}</span></div>
+                    <div class="pl-2 text-xs opacity-90">3. Secret token: <span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
+                </div>
+                <div class="space-y-1">
+                    <div class="font-medium">Bitbucket:</div>
+                    <div class="pl-2 text-xs opacity-90">1. Repository Settings → Webhooks → Add webhook</div>
+                    <div class="pl-2 text-xs opacity-90">2. URL: <span class="font-mono">{{ webhookUrl }}</span></div>
+                    <div class="pl-2 text-xs opacity-90">3. Secret: <span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
+                </div>
+                <div class="space-y-1">
+                    <div class="font-medium">Azure DevOps:</div>
+                    <div class="pl-2 text-xs opacity-90">1. Project Settings → Service hooks</div>
+                    <div class="pl-2 text-xs opacity-90">2. Service: Web Hooks → URL: <span class="font-mono">{{ webhookUrl }}</span></div>
+                    <div class="pl-2 text-xs opacity-90">3. Basic auth: username=token, password=<span class="font-mono">{{ nodeData.data.secretToken || 'your-secret-token' }}</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Webhook Examples -->
+        <div v-if="selectedDocSection === 'examples'" class="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded text-xs">
+            <div class="font-medium text-blue-800 dark:text-blue-200 mb-2">📝 Complete Webhook Examples</div>
             <div class="text-blue-700 dark:text-blue-300 space-y-3">
-            <div>
-                <div class="font-medium mb-1">GitHub Push Event:</div>
-                <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
-                Headers:<br/>
-                X-Hub-Signature-256: sha256=abc123...<br/>
-                X-GitHub-Event: push<br/><br/>
-                Body:<br/>
-                {<br/>
-                &nbsp;&nbsp;"ref": "refs/heads/main",<br/>
-                &nbsp;&nbsp;"repository": {"name": "my-repo"},<br/>
-                &nbsp;&nbsp;"head_commit": {<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;"message": "Fix critical bug",<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "John Doe"}<br/>
-                &nbsp;&nbsp;}<br/>
-                }
+                <div>
+                    <div class="font-medium mb-1">GitHub Push Event:</div>
+                    <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
+                    Headers:<br/>
+                    X-Hub-Signature-256: sha256=abc123...<br/>
+                    X-GitHub-Event: push<br/><br/>
+                    Body:<br/>
+                    {<br/>
+                    &nbsp;&nbsp;"ref": "refs/heads/main",<br/>
+                    &nbsp;&nbsp;"repository": {"name": "my-repo"},<br/>
+                    &nbsp;&nbsp;"head_commit": {<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;"message": "Fix critical bug",<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "John Doe"}<br/>
+                    &nbsp;&nbsp;}<br/>
+                    }
+                    </div>
                 </div>
-            </div>
-            <div>
-                <div class="font-medium mb-1">GitLab Push Event:</div>
-                <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
-                Headers:<br/>
-                X-Gitlab-Token: {{ nodeData.data.secretToken || 'your-secret-token' }}<br/>
-                X-Gitlab-Event: Push Hook<br/><br/>
-                Body:<br/>
-                {<br/>
-                &nbsp;&nbsp;"ref": "refs/heads/main",<br/>
-                &nbsp;&nbsp;"project": {"name": "my-repo"},<br/>
-                &nbsp;&nbsp;"commits": [{<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;"message": "Deploy to production",<br/>
-                &nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "Jane Smith"}<br/>
-                &nbsp;&nbsp;}]<br/>
-                }
+                <div>
+                    <div class="font-medium mb-1">GitLab Push Event:</div>
+                    <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
+                    Headers:<br/>
+                    X-Gitlab-Token: {{ nodeData.data.secretToken || 'your-secret-token' }}<br/>
+                    X-Gitlab-Event: Push Hook<br/><br/>
+                    Body:<br/>
+                    {<br/>
+                    &nbsp;&nbsp;"ref": "refs/heads/main",<br/>
+                    &nbsp;&nbsp;"project": {"name": "my-repo"},<br/>
+                    &nbsp;&nbsp;"commits": [{<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;"message": "Deploy to production",<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;"author": {"name": "Jane Smith"}<br/>
+                    &nbsp;&nbsp;}]<br/>
+                    }
+                    </div>
                 </div>
-            </div>
-            <div>
-                <div class="font-medium mb-1">Custom API Webhook:</div>
-                <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
-                Headers:<br/>
-                X-Webhook-Token: {{ nodeData.data.secretToken || 'your-secret-token' }}<br/>
-                Content-Type: application/json<br/><br/>
-                Body:<br/>
-                {<br/>
-                &nbsp;&nbsp;"event": "deployment",<br/>
-                &nbsp;&nbsp;"environment": "production",<br/>
-                &nbsp;&nbsp;"status": "success",<br/>
-                &nbsp;&nbsp;"timestamp": "2024-01-15T10:30:00Z"<br/>
-                }
+                <div>
+                    <div class="font-medium mb-1">Custom API Webhook:</div>
+                    <div class="pl-2 text-xs opacity-90 font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
+                    Headers:<br/>
+                    X-Webhook-Token: {{ nodeData.data.secretToken || 'your-secret-token' }}<br/>
+                    Content-Type: application/json<br/><br/>
+                    Body:<br/>
+                    {<br/>
+                    &nbsp;&nbsp;"event": "deployment",<br/>
+                    &nbsp;&nbsp;"environment": "production",<br/>
+                    &nbsp;&nbsp;"status": "success",<br/>
+                    &nbsp;&nbsp;"timestamp": "2024-01-15T10:30:00Z"<br/>
+                    }
+                    </div>
                 </div>
-            </div>
             </div>
         </div>
 
-        <!-- Payload Parsing Guide -->
-        <div class="mt-3 p-3 bg-purple-50 dark:bg-purple-950 rounded text-xs">
-            <div class="font-medium text-purple-800 dark:text-purple-200 mb-2">Webhook Data Access:</div>
+        <!-- Data Access Guide -->
+        <div v-if="selectedDocSection === 'data-access'" class="mt-3 p-3 bg-purple-50 dark:bg-purple-950 rounded text-xs">
+            <div class="font-medium text-purple-800 dark:text-purple-200 mb-2">🔌 Webhook Data Access</div>
             <div class="text-purple-700 dark:text-purple-300 space-y-2">
-            <div class="space-y-1">
-                <div class="font-medium">Output Socket:</div>
-                <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded">
-                This webhook node provides <strong>1 output socket</strong> containing raw webhook data.
+                <div class="space-y-1">
+                    <div class="font-medium">Output Socket:</div>
+                    <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded">
+                    This webhook node provides <strong>1 output socket</strong> containing raw webhook data.
+                    </div>
                 </div>
-            </div>
-            <div class="space-y-1">
-                <div class="font-medium">Available Data:</div>
-                <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded space-y-1">
-                <div>• <strong>body</strong> - Complete request payload</div>
-                <div>• <strong>headers</strong> - HTTP headers object</div>
-                <div>• <strong>query</strong> - URL query parameters</div>
-                <div>• <strong>endpoint</strong> - Webhook endpoint path</div>
-                <div>• <strong>timestamp</strong> - Request timestamp</div>
+                <div class="space-y-1">
+                    <div class="font-medium">Available Data:</div>
+                    <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded space-y-1">
+                    <div>• <strong>body</strong> - Complete request payload</div>
+                    <div>• <strong>headers</strong> - HTTP headers object</div>
+                    <div>• <strong>query</strong> - URL query parameters</div>
+                    <div>• <strong>endpoint</strong> - Webhook endpoint path</div>
+                    <div>• <strong>timestamp</strong> - Request timestamp</div>
+                    </div>
                 </div>
-            </div>
-            <div class="space-y-1">
-                <div class="font-medium">Usage Examples:</div>
-                <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded font-mono space-y-1">
-                <div># Access Git data from body</div>
-                <div>echo "Branch: $INPUT_1.body.ref"</div>
-                <div>echo "Commit: $INPUT_1.body.head_commit.id"</div>
-                <div>echo "Author: $INPUT_1.body.head_commit.author.name"</div>
-                <div>echo "Message: $INPUT_1.body.head_commit.message"</div>
-                <div># Access headers</div>
-                <div>echo "Event: $INPUT_1.headers.x-github-event"</div>
-                <div># Access full payload as JSON</div>
-                <div>echo '$INPUT_1.body' | jq .</div>
+                <div class="space-y-1">
+                    <div class="font-medium">Usage Examples:</div>
+                    <div class="pl-2 text-xs bg-purple-100 dark:bg-purple-900 p-1 rounded font-mono space-y-1">
+                    <div># Access Git data from body</div>
+                    <div>echo "Branch: $INPUT_1.body.ref"</div>
+                    <div>echo "Commit: $INPUT_1.body.head_commit.id"</div>
+                    <div>echo "Author: $INPUT_1.body.head_commit.author.name"</div>
+                    <div>echo "Message: $INPUT_1.body.head_commit.message"</div>
+                    <div># Access headers</div>
+                    <div>echo "Event: $INPUT_1.headers.x-github-event"</div>
+                    <div># Access full payload as JSON</div>
+                    <div>echo '$INPUT_1.body' | jq .</div>
+                    </div>
                 </div>
-            </div>
             </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 const logger = useLogger()
 const props = defineProps({
   nodeData: {
@@ -286,10 +273,15 @@ const props = defineProps({
   }
 })
 
-// Collapsible sections state
-const showAuthDocs = ref(false)
-const showGitSetup = ref(false)
-const showDataAccess = ref(false)
+// Documentation section selector
+const selectedDocSection = ref('none')
+const docSectionOptions = [
+  { value: 'none', label: 'Select documentation to view...' },
+  { value: 'auth', label: '🔐 Authentication & Security' },
+  { value: 'git-setup', label: '🔧 Git Platform Setup' },
+  { value: 'examples', label: '📝 Webhook Examples' },
+  { value: 'data-access', label: '🔌 Data Access Guide' }
+]
 
 // Webhook endpoint validation
 const validateEndpoint = (event) => {

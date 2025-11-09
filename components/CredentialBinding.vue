@@ -4,12 +4,13 @@
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
         Credentials
       </label>
-      <button
+      <UButton
         @click="addCredentialBinding"
-        class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+        size="xs"
+        icon="i-lucide-plus"
       >
         Add Credential
-      </button>
+      </UButton>
     </div>
 
     <div v-if="!credentials || credentials.length === 0" class="text-sm text-neutral-500 dark:text-neutral-400 italic">
@@ -17,86 +18,76 @@
     </div>
 
     <div v-else class="space-y-3">
-      <div
+      <UCard
         v-for="(binding, index) in credentials"
         :key="index"
-        class="relative p-3 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-neutral-50 dark:bg-neutral-800"
+        class="relative"
       >
-        <button
+        <UButton
           @click="removeCredentialBinding(index)"
-          class="absolute top-2 right-2 p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-          v-tooltip="'Remove credential binding'"
-        >
-          <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
-        </button>
-        
-        <div class="grid grid-cols-1 md:grid-cols-1 gap-3 mt-3">
+          variant="ghost"
+          size="xs"
+          icon="i-lucide-trash-2"
+          class="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+        />
 
+        <div class="grid grid-cols-3 gap-3 mt-3">
           <!-- Environment Variable Name -->
-          <div>
-            <label class="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
-              Environment Variable
-            </label>
-            <input
+          <UFormField label="Environment Variable" size="sm">
+            <UInput
               v-model="binding.variable"
-              type="text"
-              class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
               :placeholder="getDefaultEnvVarName(binding)"
-            >
-          </div>
+              size="md"
+              class="w-full"
+            />
+          </UFormField>
+
           <!-- Credential Selection -->
-          <div>
-            <label class="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
-              Credential
-            </label>
-            <select
+          <UFormField label="Credential" size="sm">
+            <USelect
               v-model="binding.credentialId"
-              class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-            >
-              <option value="">Select credential...</option>
-              <option
-                v-for="cred in availableCredentials"
-                :key="cred.id"
-                :value="cred.id"
-              >
-                {{ cred.name }} ({{ cred.type }})
-              </option>
-            </select>
-          </div>
+              :items="credentialOptions"
+              size="md"
+              placeholder="Select credential..."
+              class="w-full"
+            />
+          </UFormField>
 
           <!-- Field Selection -->
-          <div>
-            <label class="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
-              Field
-            </label>
-            <select
+          <UFormField label="Field" size="sm">
+            <USelect
               v-model="binding.field"
-              class="w-full px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-            >
-              <option value="">All fields</option>
-              <option
-                v-for="field in getCredentialFields(binding.credentialId)"
-                :key="field.value"
-                :value="field.value"
-              >
-                {{ field.label }}
-              </option>
-            </select>
-          </div>
+              :items="[
+                ...getCredentialFields(binding.credentialId)
+              ]"
+              size="md"
+              class="w-full"
+            />
+          </UFormField>
         </div>
 
         <!-- Preview -->
-        <div v-if="binding.credentialId" class="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
-          <strong>Preview:</strong> 
-          {{ getEnvVarPreview(binding) }}
-        </div>
-      </div>
+        <UAlert
+          v-if="binding.credentialId"
+          color="secondary"
+          variant="soft"
+          class="mt-3"
+          icon="i-lucide-info"
+        >
+          <template #title>
+            Preview
+          </template>
+          <template #description>
+            {{ getEnvVarPreview(binding) }}
+          </template>
+        </UAlert>
+      </UCard>
     </div>
 
     <!-- Help Text -->
-    <div class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+    <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
       Credentials will be injected as environment variables during job execution.
-    </div>
+    </p>
   </div>
 </template>
 
@@ -113,6 +104,14 @@ const credentials = computed({
 })
 
 const availableCredentials = ref([])
+
+// Computed property for select options
+const credentialOptions = computed(() => {
+  return availableCredentials.value.map(cred => ({
+    value: cred.id,
+    label: `${cred.name} (${cred.type})`
+  }))
+})
 
 // Load available credentials
 onMounted(async () => {

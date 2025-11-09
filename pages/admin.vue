@@ -534,29 +534,28 @@
                   </div>
                 </div>
                 <div class="flex items-center gap-2 ml-4">
-                  <button
-                    @click="viewNotificationTemplate(template)"
-                    class="pl-2 pr-2 pt-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-md transition-colors"
-                    v-tooltip="'View template'"
-                  >
-                    <UIcon name="i-lucide-eye" class="w-5 h-5" />
-                  </button>
-                  <button
-                    v-if="!template.is_built_in"
-                    @click="editNotificationTemplate(template)"
-                    class="pl-2 pr-2 pt-1 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/50 rounded-md transition-colors"
-                    v-tooltip="'Edit template'"
-                  >
-                    <UIcon name="i-lucide-edit" class="w-5 h-5" />
-                  </button>
-                  <button
-                    v-if="!template.is_built_in"
-                    @click="confirmDeleteTemplate(template)"
-                    class="pl-2 pr-2 pt-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50 rounded-md transition-colors"
-                    v-tooltip="'Delete template'"
-                  >
-                    <UIcon name="i-lucide-trash-2" class="w-5 h-5" />
-                  </button>
+                  <UTooltip text="View Template">
+                    <UButton
+                      @click="viewNotificationTemplate(template)"
+                      icon="i-lucide-eye"
+                    />
+                  </UTooltip>
+                  <UTooltip text="Edit Template">
+                    <UButton
+                      v-if="!template.is_built_in"
+                      @click="editNotificationTemplate(template)"
+                      color="secondary"
+                      icon="i-lucide-edit"
+                    />
+                  </UTooltip>
+                  <UTooltip text="Delete Template">
+                    <UButton
+                      v-if="!template.is_built_in"
+                      @click="confirmDeleteTemplate(template)"
+                      color="error"
+                      icon="i-lucide-trash-2"
+                    />
+                  </UTooltip>
                 </div>
               </div>
             </div>

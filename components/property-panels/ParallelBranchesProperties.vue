@@ -5,31 +5,35 @@
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Branches</label>
 
       <div class="space-y-2">
-        <div v-for="(branch, index) in nodeData.data.branches" :key="branch.id" class="flex items-center gap-2 p-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-800">
-          <input
+        <div v-for="(branch, index) in nodeData.data.branches" :key="branch.id" class="flex items-center gap-2">
+          <UInput
             v-model="branch.name"
             @input="updateBranchSockets"
-            type="text"
-            class="flex-1 px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
             placeholder="Branch name"
-          >
-          <button
+            size="sm"
+            class="flex-1"
+          />
+          <UButton
             v-if="nodeData.data.branches.length > 1"
             @click="removeBranch(index)"
-            class="px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded"
-            v-tooltip="'Remove branch'"
-          >
-            ✕
-          </button>
+            variant="ghost"
+            size="xs"
+            icon="i-lucide-x"
+            class="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+          />
         </div>
       </div>
 
-      <button
+      <UButton
         @click="addBranch"
-        class="mt-2 w-full px-3 py-2 text-sm border border-dashed border-neutral-400 dark:border-neutral-500 rounded-lg text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:border-blue-500 dark:hover:border-blue-400"
+        variant="outline"
+        size="sm"
+        block
+        icon="i-lucide-plus"
+        class="mt-2 border-dashed"
       >
-        + Add Branch
-      </button>
+        Add Branch
+      </UButton>
 
       <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
         Each branch creates an execution socket to connect parallel execution nodes
@@ -38,29 +42,26 @@
 
     <!-- Execution Settings -->
     <div class="mb-4">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Max Concurrent Branches</label>
-      <input
-        v-model.number="nodeData.data.maxConcurrency"
-        type="number"
-        min="1"
-        placeholder="Unlimited"
-        class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-      >
-      <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        Leave empty for unlimited parallel execution
-      </p>
+      <UFormField label="Max Concurrent Branches" size="sm">
+        <UInput
+          v-model.number="nodeData.data.maxConcurrency"
+          type="number"
+          min="1"
+          placeholder="Unlimited"
+          size="sm"
+        />
+        <template #help>
+          Leave empty for unlimited parallel execution
+        </template>
+      </UFormField>
     </div>
 
     <!-- Fail Fast -->
     <div class="mb-4">
-      <label class="flex items-center cursor-pointer">
-        <input
-          v-model="nodeData.data.failFast"
-          type="checkbox"
-          class="w-4 h-4 text-blue-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-blue-500 dark:focus:ring-blue-600"
-        >
-        <span class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">Fail Fast</span>
-      </label>
+      <UCheckbox
+        v-model="nodeData.data.failFast"
+        label="Fail Fast"
+      />
       <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400 ml-6">
         Stop all branches if any branch fails
       </p>

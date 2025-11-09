@@ -26,10 +26,6 @@ export default defineEventHandler(async (event) => {
     }
 
     const db = await getDB()
-    const dataService = await getDataService()
-
-    logger.info(`Fetching failed builds for user: ${user.email} (${user.userId})`)
-
     // Get all unique project IDs that have builds
     const allProjectsWithBuilds = await db
       .select({ projectId: builds.projectId })
@@ -81,9 +77,6 @@ export default defineEventHandler(async (event) => {
         })
       }
     }
-
-    logger.info(`Found ${projectsWithFailedBuilds.length} accessible failed builds for ${user.email}`)
-
     // Sort by most recent failure first
     projectsWithFailedBuilds.sort((a, b) => {
       const aTime = new Date(a.finishedAt || a.startedAt).getTime()
