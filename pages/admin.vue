@@ -34,231 +34,188 @@
             <p class="text-gray-600 dark:text-gray-300 mt-2">Loading settings...</p>
           </div>
           
-          <div v-else class="space-y-4">
-            <!-- Settings by Category -->
-            <div v-for="(settings, category) in groupedSystemSettings" :key="category" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-              <button
-                @click="toggleCategory(category)"
-                class="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <div class="flex items-center">
-                  <h3 class="text-md font-medium text-gray-950 dark:text-white flex items-center">
-                    <!-- Category Icons -->
-                    <UIcon v-if="category === 'branding'" name="i-lucide-tag" class="w-5 h-5 mr-2 text-purple-600" />
-                    <UIcon v-else-if="category === 'security'" name="i-lucide-shield" class="w-5 h-5 mr-2 text-red-600" />
-                    <UIcon v-else-if="category === 'authentication'" name="i-lucide-users" class="w-5 h-5 mr-2 text-indigo-600" />
-                    <UIcon v-else-if="category === 'notifications'" name="i-lucide-bell" class="w-5 h-5 mr-2 text-blue-600" />
-                    <UIcon v-else-if="category === 'general'" name="i-lucide-settings" class="w-5 h-5 mr-2 text-green-600" />
-                    <UIcon v-else name="i-lucide-file-text" class="w-5 h-5 mr-2 text-gray-600" />
-                    {{ getCategoryTitle(category) }}
-                  </h3>
-                </div>
-                <UIcon 
-                  name="i-lucide-chevron-down"
-                  :class="expandedCategories.has(category) ? 'rotate-180 w-5 h-5 text-gray-400 transition-transform duration-200' : 'w-5 h-5 text-gray-400 transition-transform duration-200'"
-                />
-              </button>
-              
-              <div v-if="expandedCategories.has(category)" class="p-6 bg-white dark:bg-gray-800">
-              
-              <div class="grid grid-cols-1 gap-6">
-                <div v-for="setting in settings" :key="setting.key" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                  <div class="flex justify-between items-start mb-3">
-                    <div class="flex-1">
-                      <label :for="setting.key" class="block text-sm font-medium text-gray-950 dark:text-white">
-                        {{ setting.label }}
-                        <span v-if="setting.required === 'true'" class="text-red-500 ml-1">*</span>
-                      </label>
-                      <p v-if="setting.description" class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ setting.description }}</p>
-                    </div>
-                    <span v-if="setting.readonly === 'true'" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                      Read-only
-                    </span>
-                  </div>
-                  
-                  <!-- Setting Input based on type -->
-                  <div class="mt-2">
-                    <!-- Text Input -->
-                    <input
-                      v-if="setting.type === 'text'"
-                      :id="setting.key"
+          <div v-else-if="Object.keys(groupedSystemSettings).length === 0" class="text-center py-8">
+            <p class="text-gray-500 dark:text-gray-400">No system settings available</p>
+          </div>
+
+          <UAccordion v-else :items="settingsAccordionItems" :multiple="true">
+            <template v-for="category in Object.keys(groupedSystemSettings)" :key="category" #[category]>
+              <div class="space-y-4 py-2 bg-slate-100 dark:bg-neutral-800 p-4 rounded-lg">
+                <div v-for="setting in groupedSystemSettings[category]" :key="setting.key">
+                  <!-- Text Input -->
+                  <UFormField v-if="setting.type === 'text'" :label="setting.label" :required="setting.required === 'true'">
+                    <UInput
                       v-model="setting.value"
                       :disabled="setting.readonly === 'true'"
                       type="text"
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-950 dark:text-white"
+                      size="md"
+                      class="w-full"
                       @change="updateSetting(setting.key, setting.value)"
-                    >
-                    
-                    <!-- Password Input -->
-                    <input
-                      v-else-if="setting.type === 'password'"
-                      :id="setting.key"
+                    />
+                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                  </UFormField>
+
+                  <!-- Password Input -->
+                  <UFormField v-else-if="setting.type === 'password'" :label="setting.label" :required="setting.required === 'true'">
+                    <UInput
                       v-model="setting.value"
                       :disabled="setting.readonly === 'true'"
                       type="password"
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-950 dark:text-white"
+                      size="md"
+                      class="w-full"
                       @change="updateSetting(setting.key, setting.value)"
-                    >
-                    
-                    <!-- Textarea -->
-                    <textarea
-                      v-else-if="setting.type === 'textarea'"
-                      :id="setting.key"
+                    />
+                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                  </UFormField>
+
+                  <!-- Textarea -->
+                  <UFormField v-else-if="setting.type === 'textarea'" :label="setting.label" :required="setting.required === 'true'">
+                    <UTextarea
                       v-model="setting.value"
                       :disabled="setting.readonly === 'true'"
                       v-auto-resize
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-950 dark:text-white resize-none overflow-hidden"
+                      size="md"
+                      class="w-full"
                       @change="updateSetting(setting.key, setting.value)"
-                    ></textarea>
-                    
-                    <!-- Select Dropdown -->
-                    <select
-                      v-else-if="setting.type === 'select'"
-                      :id="setting.key"
+                    />
+                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                  </UFormField>
+
+                  <!-- Select Dropdown -->
+                  <UFormField v-else-if="setting.type === 'select'" :label="setting.label" :required="setting.required === 'true'">
+                    <USelect
                       v-model="setting.value"
                       :disabled="setting.readonly === 'true'"
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-950 dark:text-white"
+                      :items="getSelectOptions(setting.options)"
+                      size="md"
+                      class="w-full"
+                      placeholder="Select..."
                       @change="updateSetting(setting.key, setting.value)"
-                    >
-                      <option value="">Select...</option>
-                      <option
-                        v-for="option in JSON.parse(setting.options || '[]')"
-                        :key="option"
-                        :value="option"
-                      >
-                        {{ option }}
-                      </option>
-                    </select>
-                    
-                    <!-- Boolean Checkbox -->
-                    <label
-                      v-else-if="setting.type === 'boolean'"
-                      class="flex items-center"
-                    >
-                      <input
-                        :id="setting.key"
-                        v-model="setting.value"
-                        :disabled="setting.readonly === 'true'"
-                        :true-value="'true'"
-                        :false-value="'false'"
-                        type="checkbox"
-                        class="mr-2 rounded border-gray-300 dark:border-gray-600 text-purple-600 shadow-sm focus:border-purple-300 focus:ring focus:ring-purple-200 focus:ring-opacity-50 disabled:cursor-not-allowed dark:bg-gray-700"
-                        @change="updateSetting(setting.key, setting.value)"
-                      >
-                      <span class="text-sm text-gray-700 dark:text-gray-300">Enable this setting</span>
-                    </label>
-                    
-                    <!-- File Upload -->
-                    <div v-else-if="setting.type === 'file'" class="space-y-2">
-                      <input
+                    />
+                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                  </UFormField>
+
+                  <!-- Boolean Checkbox -->
+                  <UFormField v-else-if="setting.type === 'boolean'">
+                    <UCheckbox
+                      v-model="setting.value"
+                      :disabled="setting.readonly === 'true'"
+                      :true-value="'true'"
+                      :false-value="'false'"
+                      :label="setting.label"
+                      @change="updateSetting(setting.key, setting.value)"
+                    />
+                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                  </UFormField>
+
+                  <!-- File Upload -->
+                  <UFormField v-else-if="setting.type === 'file'" :label="setting.label" :required="setting.required === 'true'">
+                    <div class="space-y-2">
+                      <UInput
                         :id="setting.key"
                         :disabled="setting.readonly === 'true'"
                         type="file"
-                        accept="image/*"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-950 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 dark:file:bg-purple-900 file:text-purple-700 dark:file:text-purple-300 hover:file:bg-purple-100 dark:hover:file:bg-purple-800"
+                        accept=".pem"
+                        class="block w-full text-sm text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-white dark:bg-gray-800 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-600"
                         @change="handleFileUpload(setting.key, $event)"
-                      >
-                      <div v-if="setting.value" class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                      />
+                      <div v-if="setting.value" class="flex items-center gap-2">
                         <img :src="setting.value" alt="Preview" class="h-8 w-8 object-contain rounded">
-                        <span>Current file uploaded</span>
-                        <button
+                        <span class="text-sm">Current file uploaded</span>
+                        <UButton
                           @click="updateSetting(setting.key, null)"
-                          class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                        >
-                          Remove
-                        </button>
+                          color="error"
+                          variant="ghost"
+                          size="xs"
+                          label="Remove"
+                        />
                       </div>
                     </div>
-                    
-                    <!-- Number Input -->
-                    <input
-                      v-else-if="setting.type === 'number'"
-                      :id="setting.key"
+                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                  </UFormField>
+
+                  <!-- Number Input -->
+                  <UFormField v-else-if="setting.type === 'number'" :label="setting.label" :required="setting.required === 'true'">
+                    <UInput
                       v-model="setting.value"
                       :disabled="setting.readonly === 'true'"
                       type="number"
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed bg-white dark:bg-gray-800 text-gray-950 dark:text-white"
+                      size="md"
+                      class="w-full"
                       @change="updateSetting(setting.key, setting.value)"
-                    >
-                  </div>
+                    />
+                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                  </UFormField>
                 </div>
-                
+
                 <!-- LDAP Test Section -->
-                <div v-if="category === 'authentication' && hasLdapSettings" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
-                  <div class="flex items-center justify-between mb-4">
-                    <h4 class="text-md font-medium text-gray-950 dark:text-white">LDAP Connection Test</h4>
-                    <span v-if="ldapTestResult?.success" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                      ✓ Last test successful
-                    </span>
-                    <span v-else-if="ldapTestResult && !ldapTestResult.success" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">
-                      ✗ Last test failed
-                    </span>
-                  </div>
-                  
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Test Username</label>
-                      <input
-                        v-model="ldapTestForm.username"
-                        type="text"
-                        placeholder="user@domain.com or username"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                      >
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Test Password</label>
-                      <input
-                        v-model="ldapTestForm.password"
-                        type="password"
-                        placeholder="Password"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                      >
-                    </div>
-                  </div>
-                  
-                  <div class="flex justify-between items-center">
-                    <button
-                      @click="testLdapConnection"
-                      :disabled="!ldapTestForm.username || !ldapTestForm.password || ldapTesting"
-                      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      <UIcon name="i-lucide-loader" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" />
-                      {{ ldapTesting ? 'Testing...' : 'Test LDAP Connection' }}
-                    </button>
-                    
-                    <div v-if="ldapTestResult" class="text-sm">
-                      <span v-if="ldapTestResult.success" class="text-green-600 dark:text-green-400">
-                        ✓ {{ ldapTestResult.message }}
-                      </span>
-                      <span v-else class="text-red-600 dark:text-red-400">
-                        ✗ {{ ldapTestResult.message }}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div v-if="ldapTestResult?.success && ldapTestResult.user" class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-md">
-                    <h5 class="text-sm font-medium text-green-800 dark:text-green-200 mb-2">User Information Retrieved:</h5>
-                    <div class="text-xs text-green-700 dark:text-green-300 space-y-1">
-                      <div><strong>DN:</strong> {{ ldapTestResult.user.dn }}</div>
-                      <div><strong>Name:</strong> {{ ldapTestResult.user.name }}</div>
-                      <div><strong>Email:</strong> {{ ldapTestResult.user.email }}</div>
-                      <div v-if="Array.isArray(ldapTestResult.user.groups) && ldapTestResult.user.groups.length > 0"><strong>Groups:</strong> {{ ldapTestResult.user.groups.join(', ') }}</div>
-                    </div>
-                  </div>
-                  
-                  <div v-if="ldapTestResult && !ldapTestResult.success" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
-                    <h5 class="text-sm font-medium text-red-800 dark:text-red-200 mb-2">Error Details:</h5>
-                    <div class="text-xs text-red-700 dark:text-red-300">{{ ldapTestResult.error }}</div>
-                  </div>
+                <div v-if="category === 'authentication' && hasLdapSettings" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <UAlert 
+                    :color="ldapTestResult?.success ? 'success' : ldapTestResult && !ldapTestResult.success ? 'error' : 'primary'"
+                    variant="soft"
+                    :icon="ldapTestResult?.success ? 'i-lucide-check-circle' : ldapTestResult && !ldapTestResult.success ? 'i-lucide-x-circle' : 'i-lucide-shield'"
+                  >
+                    <template #title>LDAP Connection Test</template>
+                    <template #description>
+                      <div class="space-y-4 mt-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <UFormField label="Test Username">
+                            <UInput
+                              v-model="ldapTestForm.username"
+                              type="text"
+                              size="md"
+                              class="w-full"
+                              placeholder="user@domain.com or username"
+                            />
+                          </UFormField>
+                          <UFormField label="Test Password">
+                            <UInput
+                              v-model="ldapTestForm.password"
+                              type="password"
+                              size="md"
+                              class="w-full"
+                              placeholder="Password"
+                            />
+                          </UFormField>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                          <UButton
+                            @click="testLdapConnection"
+                            :disabled="!ldapTestForm.username || !ldapTestForm.password || ldapTesting"
+                            :loading="ldapTesting"
+                            icon="i-lucide-plug"
+                            :label="ldapTesting ? 'Testing...' : 'Test LDAP Connection'"
+                          />
+                          
+                          <span v-if="ldapTestResult" class="text-sm">
+                            {{ ldapTestResult.message }}
+                          </span>
+                        </div>
+
+                        <UCard v-if="ldapTestResult?.success && ldapTestResult.user" class="bg-success-50 dark:bg-success-950">
+                          <div class="text-sm space-y-1">
+                            <div class="font-medium mb-2">User Information Retrieved:</div>
+                            <div><strong>DN:</strong> {{ ldapTestResult.user.dn }}</div>
+                            <div><strong>Name:</strong> {{ ldapTestResult.user.name }}</div>
+                            <div><strong>Email:</strong> {{ ldapTestResult.user.email }}</div>
+                            <div v-if="Array.isArray(ldapTestResult.user.groups) && ldapTestResult.user.groups.length > 0">
+                              <strong>Groups:</strong> {{ ldapTestResult.user.groups.join(', ') }}
+                            </div>
+                          </div>
+                        </UCard>
+
+                        <UAlert v-if="ldapTestResult && !ldapTestResult.success" color="error" variant="soft">
+                          <template #title>Error Details</template>
+                          <template #description>{{ ldapTestResult.error }}</template>
+                        </UAlert>
+                      </div>
+                    </template>
+                  </UAlert>
                 </div>
               </div>
-              </div>
-            </div>
-            
-            <div v-if="Object.keys(groupedSystemSettings).length === 0" class="text-center py-8">
-              <p class="text-gray-500 dark:text-gray-400">No system settings available</p>
-            </div>
-          </div>
+            </template>
+          </UAccordion>
         </UCard>
 
         <!-- System Update Section -->
@@ -271,108 +228,101 @@
               </h2>
               <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Manage application updates from GitHub releases</p>
             </div>
-            <button
+            <UButton
               @click="checkForUpdates"
               :disabled="updateChecking"
-              class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <UIcon name="i-lucide-refresh-cw" :class="updateChecking ? 'animate-spin w-4 h-4 mr-2' : 'w-4 h-4 mr-2'" />
-              Check for Updates
-            </button>
-          </div>
-
-          <!-- Update Status -->
-          <div v-if="updateInfo" class="space-y-4">
-            <!-- Current Version -->
-            <div class="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Current Version</p>
-                  <p class="text-lg font-semibold text-gray-950 dark:text-white mt-1">{{ updateInfo.currentVersion }}</p>
-                </div>
-                <div v-if="updateInfo.updateAvailable" class="text-right">
-                  <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Latest Version</p>
-                  <p class="text-lg font-semibold text-green-600 dark:text-green-400 mt-1">{{ updateInfo.latestVersion }}</p>
-                </div>
-              </div>
-
-              <!-- Last Check -->
-              <p v-if="updateInfo.lastCheck" class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Last checked: {{ new Date(updateInfo.lastCheck).toLocaleString() }}
-              </p>
-            </div>
-
-            <!-- Update Available -->
-            <div v-if="updateInfo.updateAvailable" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-              <div class="flex items-start">
-                <UIcon name="i-lucide-check-circle" class="w-5 h-5 text-green-600 dark:text-green-400 mr-3 mt-0.5" />
-                <div class="flex-1">
-                  <h3 class="text-sm font-medium text-green-900 dark:text-green-200">Update Available!</h3>
-                  <p class="text-sm text-green-700 dark:text-green-300 mt-1">
-                    A new version ({{ updateInfo.latestVersion }}) is available.
-                  </p>
-
-                  <!-- Release Notes -->
-                  <div v-if="updateInfo.releaseNotes" class="mt-3">
-                    <p class="text-xs font-medium text-green-900 dark:text-green-200 mb-1">Release Notes:</p>
-                    <div class="bg-white dark:bg-gray-800 rounded p-3 text-xs text-gray-700 dark:text-gray-300 max-h-32 overflow-y-auto">
-                      <pre class="whitespace-pre-wrap">{{ updateInfo.releaseNotes }}</pre>
-                    </div>
-                  </div>
-
-                  <!-- Update Options -->
-                  <div class="mt-4 space-y-3">
-                    <label class="flex items-start">
-                      <input
-                        v-model="waitForJobs"
-                        type="checkbox"
-                        class="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                      >
-                      <span class="ml-2 text-sm text-green-900 dark:text-green-200">
-                        Wait for running builds to complete before updating
-                        <span class="block text-xs text-green-700 dark:text-green-400 mt-1">
-                          If unchecked, running builds will be paused and can resume after update
-                        </span>
-                      </span>
-                    </label>
-
-                    <button
-                      @click="triggerUpdate"
-                      :disabled="updateTriggering"
-                      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <UIcon name="i-lucide-download" :class="updateTriggering ? 'animate-pulse w-4 h-4 mr-2' : 'w-4 h-4 mr-2'" />
-                      {{ updateTriggering ? 'Initiating Update...' : 'Update Now' }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- No Update Available -->
-            <div v-else class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <div class="flex items-center">
-                <UIcon name="i-lucide-check-circle" class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3" />
-                <div>
-                  <h3 class="text-sm font-medium text-blue-900 dark:text-blue-200">Up to Date</h3>
-                  <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                    You are running the latest version of FlowForge.
-                  </p>
-                </div>
-              </div>
-            </div>
+              :loading="updateChecking"
+              icon="i-lucide-refresh-cw"
+              label="Check for Updates"
+              color="secondary"
+              variant="outline"
+            />
           </div>
 
           <!-- Loading State -->
-          <div v-else-if="updateChecking" class="text-center py-8">
+          <div v-if="updateChecking" class="text-center py-8">
             <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
             <p class="text-gray-600 dark:text-gray-300 mt-2">Checking for updates...</p>
           </div>
 
           <!-- Initial State -->
-          <div v-else class="text-center py-8">
+          <div v-else-if="!updateInfo" class="text-center py-8">
             <UIcon name="i-lucide-refresh-cw" class="mx-auto h-12 w-12 text-gray-400" />
             <p class="text-gray-600 dark:text-gray-300 mt-2">Click "Check for Updates" to see if a new version is available</p>
+          </div>
+
+          <!-- Update Status -->
+          <div v-else class="space-y-4">
+            <!-- Current Version Info -->
+            <UAlert 
+              :color="updateInfo.updateAvailable ? 'warning' : 'primary'"
+              variant="soft"
+              :icon="updateInfo.updateAvailable ? 'i-lucide-alert-circle' : 'i-lucide-check-circle'"
+            >
+              <template #title>
+                {{ updateInfo.updateAvailable ? 'Update Available' : 'Up to Date' }}
+              </template>
+              <template #description>
+                <div class="space-y-2 mt-2">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm font-medium">Current Version</p>
+                      <p class="text-lg font-semibold">{{ updateInfo.currentVersion }}</p>
+                    </div>
+                    <div v-if="updateInfo.updateAvailable" class="text-right">
+                      <p class="text-sm font-medium">Latest Version</p>
+                      <p class="text-lg font-semibold text-green-600 dark:text-green-400">{{ updateInfo.latestVersion }}</p>
+                    </div>
+                  </div>
+                  <p v-if="updateInfo.lastCheck" class="text-xs opacity-75">
+                    Last checked: {{ new Date(updateInfo.lastCheck).toLocaleString() }}
+                  </p>
+                </div>
+              </template>
+            </UAlert>
+
+            <!-- Update Available Details -->
+            <UCollapsible v-if="updateInfo.updateAvailable" :default-open="true">
+              <template #header>
+                <div class="flex items-center gap-2">
+                  <UIcon name="i-lucide-package" class="w-5 h-5" />
+                  <span class="font-medium">Update Details & Options</span>
+                </div>
+              </template>
+
+              <UCard class="mt-2">
+                <div class="space-y-4">
+                  <!-- Release Notes -->
+                  <div v-if="updateInfo.releaseNotes">
+                    <p class="text-sm font-medium mb-2">Release Notes:</p>
+                    <UCard class="bg-gray-50 dark:bg-gray-900">
+                      <pre class="whitespace-pre-wrap text-xs max-h-32 overflow-y-auto">{{ updateInfo.releaseNotes }}</pre>
+                    </UCard>
+                  </div>
+
+                  <!-- Update Options -->
+                  <div class="space-y-3">
+                    <UFormField>
+                      <UCheckbox
+                        v-model="waitForJobs"
+                        label="Wait for running builds to complete before updating"
+                        help="If unchecked, running builds will be paused and can resume after update"
+                      />
+                    </UFormField>
+
+                    <UButton
+                      @click="triggerUpdate"
+                      :disabled="updateTriggering"
+                      :loading="updateTriggering"
+                      icon="i-lucide-download"
+                      :label="updateTriggering ? 'Initiating Update...' : 'Update Now'"
+                      color="success"
+                      block
+                    />
+                  </div>
+                </div>
+              </UCard>
+            </UCollapsible>
           </div>
         </UCard>
 
@@ -2227,6 +2177,38 @@ const getCategoryTitle = (category) => {
     'system': 'System Information'
   }
   return titles[category] || category.charAt(0).toUpperCase() + category.slice(1)
+}
+
+const getCategoryIcon = (category) => {
+  const icons = {
+    'branding': 'i-lucide-tag',
+    'security': 'i-lucide-shield',
+    'authentication': 'i-lucide-users',
+    'notifications': 'i-lucide-bell',
+    'general': 'i-lucide-settings',
+    'system': 'i-lucide-info'
+  }
+  return icons[category] || 'i-lucide-file-text'
+}
+
+// Computed property for accordion items
+const settingsAccordionItems = computed(() => {
+  return Object.keys(groupedSystemSettings.value).map(category => ({
+    slot: category,
+    label: getCategoryTitle(category),
+    icon: getCategoryIcon(category),
+    defaultOpen: category === 'branding'
+  }))
+})
+
+// Helper to convert select options JSON to array format for USelect
+const getSelectOptions = (optionsJson) => {
+  try {
+    const options = JSON.parse(optionsJson || '[]')
+    return options.map(opt => ({ value: opt, label: opt }))
+  } catch {
+    return []
+  }
 }
 
 // Credential utility methods
