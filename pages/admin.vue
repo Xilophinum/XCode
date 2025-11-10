@@ -40,7 +40,7 @@
 
           <UAccordion v-else :items="settingsAccordionItems" :multiple="true">
             <template v-for="category in Object.keys(groupedSystemSettings)" :key="category" #[category]>
-              <div class="space-y-4 py-2 bg-slate-100 dark:bg-neutral-800 p-4 rounded-lg">
+              <div class="space-y-4 py-2 bg-gray-100 dark:bg-neutral-800 p-4 rounded-lg">
                 <div v-for="setting in groupedSystemSettings[category]" :key="setting.key">
                   <!-- Text Input -->
                   <UFormField v-if="setting.type === 'text'" :label="setting.label" :required="setting.required === 'true'">
@@ -283,45 +283,51 @@
 
             <!-- Update Available Details -->
             <UCollapsible v-if="updateInfo.updateAvailable" :default-open="true">
-              <template #header>
-                <div class="flex items-center gap-2">
+              <template #default="{ open }">
+                <div class="flex items-center gap-2 p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
                   <UIcon name="i-lucide-package" class="w-5 h-5" />
                   <span class="font-medium">Update Details & Options</span>
+                  <UIcon
+                    :name="open ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+                    class="w-5 h-5 ml-auto text-gray-400 transition-transform"
+                  />
                 </div>
               </template>
 
-              <UCard class="mt-2">
-                <div class="space-y-4">
-                  <!-- Release Notes -->
-                  <div v-if="updateInfo.releaseNotes">
-                    <p class="text-sm font-medium mb-2">Release Notes:</p>
-                    <UCard class="bg-gray-50 dark:bg-gray-900">
-                      <pre class="whitespace-pre-wrap text-xs max-h-32 overflow-y-auto">{{ updateInfo.releaseNotes }}</pre>
-                    </UCard>
-                  </div>
+              <template #content>
+                <UCard class="mt-2">
+                  <div class="space-y-4">
+                    <!-- Release Notes -->
+                    <div v-if="updateInfo.releaseNotes">
+                      <p class="text-sm font-medium mb-2">Release Notes:</p>
+                      <UCard class="bg-gray-50 dark:bg-gray-900">
+                        <pre class="whitespace-pre-wrap text-xs max-h-32 overflow-y-auto">{{ updateInfo.releaseNotes }}</pre>
+                      </UCard>
+                    </div>
 
-                  <!-- Update Options -->
-                  <div class="space-y-3">
-                    <UFormField>
-                      <UCheckbox
-                        v-model="waitForJobs"
-                        label="Wait for running builds to complete before updating"
-                        help="If unchecked, running builds will be paused and can resume after update"
+                    <!-- Update Options -->
+                    <div class="space-y-3">
+                      <UFormField>
+                        <UCheckbox
+                          v-model="waitForJobs"
+                          label="Wait for running builds to complete before updating"
+                          help="If unchecked, running builds will be paused and can resume after update"
+                        />
+                      </UFormField>
+
+                      <UButton
+                        @click="triggerUpdate"
+                        :disabled="updateTriggering"
+                        :loading="updateTriggering"
+                        icon="i-lucide-download"
+                        :label="updateTriggering ? 'Initiating Update...' : 'Update Now'"
+                        color="success"
+                        block
                       />
-                    </UFormField>
-
-                    <UButton
-                      @click="triggerUpdate"
-                      :disabled="updateTriggering"
-                      :loading="updateTriggering"
-                      icon="i-lucide-download"
-                      :label="updateTriggering ? 'Initiating Update...' : 'Update Now'"
-                      color="success"
-                      block
-                    />
+                    </div>
                   </div>
-                </div>
-              </UCard>
+                </UCard>
+              </template>
             </UCollapsible>
           </div>
         </UCard>
@@ -602,93 +608,139 @@
 
         <!-- Credential Vault Section -->
         <UCard class="shadow-md">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-gray-950 dark:text-white">Credential Vault</h2>
-            <div class="flex space-x-2">
-              <select
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-950 dark:text-white">Credential Vault</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Securely store and manage credentials</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <USelectMenu
                 v-model="credentialFilter"
-                class="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-              >
-                <option value="">All Types</option>
-                <option value="password">Password</option>
-                <option value="user_pass">Username + Password</option>
-                <option value="token">Token</option>
-                <option value="ssh_key">SSH Key</option>
-                <option value="certificate">Certificate</option>
-                <option value="file">File</option>
-                <option value="custom">Custom</option>
-              </select>
-              <button
+                :items="credentialFilterOptions"
+                placeholder="Filter by type"
+                size="md"
+                class="w-full sm:w-auto"
+              />
+              <UButton
                 @click="showCredentialModal = true"
-                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
-              >
-                <UIcon name="i-lucide-plus" class="w-4 h-4 mr-2" />
-                Add Credential
-              </button>
+                icon="i-lucide-plus"
+                label="Add Credential"
+                color="success"
+              />
             </div>
           </div>
           
-          <div class="space-y-3">
-            <div v-if="filteredCredentials.length === 0" class="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
-              {{ credentialFilter ? 'No credentials of this type' : 'No credentials stored' }}
-            </div>
-            <div
-              v-for="credential in filteredCredentials"
-              :key="credential.id"
-              class="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-800 rounded-lg"
-            >
-              <div class="flex-1">
-                <div class="flex items-center space-x-2">
-                  <div class="font-medium text-sm text-gray-950 dark:text-white">{{ credential.name }}</div>
-                  <span 
-                    :class="getCredentialTypeColor(credential.type)"
-                    class="px-2 py-1 text-xs font-medium rounded-full"
-                  >
-                    {{ getCredentialTypeLabel(credential.type) }}
-                  </span>
-                  <span v-if="credential.environment" class="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
-                    {{ credential.environment }}
-                  </span>
-                  <span v-if="!credential.isActive" class="px-2 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-full">
-                    Inactive
-                  </span>
-                </div>
-                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {{ credential.description || 'No description' }}
-                </div>
-                <div v-if="credential.url" class="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                  {{ credential.url }}
-                </div>
-                <div v-if="credential.tags && credential.tags.length > 0" class="flex flex-wrap gap-1 mt-2">
-                  <span
-                    v-for="tag in credential.tags"
-                    :key="tag"
-                    class="px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded"
-                  >
-                    {{ tag }}
-                  </span>
-                </div>
-              </div>
-              <div class="flex space-x-2">
-                <button
-                  @click="viewCredential(credential)"
-                  class="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 text-sm"
-                >
-                  View
-                </button>
-                <button
-                  @click="editCredential(credential)"
-                  class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm"
-                >
-                  Edit
-                </button>
-                <button
-                  @click="confirmDeleteCredential(credential)"
-                  class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm"
-                >
-                  Delete
-                </button>
-              </div>
+          <!-- Empty State -->
+          <div v-if="filteredCredentials.length === 0" class="text-center py-8">
+            <UIcon name="i-lucide-shield" class="mx-auto h-12 w-12 text-gray-400" />
+            <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">
+              {{ credentialFilter && credentialFilter !== 'All Types' ? 'No credentials of this type' : 'No credentials stored' }}
+            </p>
+          </div>
+
+          <!-- Credentials List -->
+          <div v-else class="space-y-3">
+            <div v-for="credential in filteredCredentials" :key="credential.id" class="border border-gray-200 dark:border-gray-700 rounded-lg">
+              <UCollapsible>
+                <template #default="{ open }">
+                  <div class="flex items-center justify-between w-full gap-3 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                      <UAvatar
+                        :icon="credential.type === 'ssh_key' ? 'i-lucide-key' : credential.type === 'token' ? 'i-lucide-shield' : 'i-lucide-lock'"
+                        size="sm"
+                        color="primary"
+                      />
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="font-medium truncate">{{ credential.name }}</span>
+                          <UBadge :label="getCredentialTypeLabel(credential.type)" size="xs" variant="soft" />
+                          <UBadge v-if="credential.environment" :label="credential.environment" color="primary" size="xs" variant="subtle" />
+                          <UBadge v-if="!credential.isActive" label="Inactive" color="error" size="xs" variant="soft" />
+                        </div>
+                        <p v-if="credential.description" class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                          {{ credential.description }}
+                        </p>
+                      </div>
+                    </div>
+                    <UIcon
+                      :name="open ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+                      class="w-5 h-5 flex-shrink-0 text-gray-400 transition-transform"
+                    />
+                  </div>
+                </template>
+
+                <template #content>
+                  <div class="border-t border-gray-200 dark:border-gray-700 p-4 space-y-4">
+                    <!-- Credential Details -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p class="text-gray-500 dark:text-gray-400 mb-1">Type</p>
+                        <p class="font-medium">{{ getCredentialTypeLabel(credential.type) }}</p>
+                      </div>
+                      <div v-if="credential.environment">
+                        <p class="text-gray-500 dark:text-gray-400 mb-1">Environment</p>
+                        <p class="font-medium">{{ credential.environment }}</p>
+                      </div>
+                      <div v-if="credential.url">
+                        <p class="text-gray-500 dark:text-gray-400 mb-1">URL</p>
+                        <p class="font-medium text-xs break-all">{{ credential.url }}</p>
+                      </div>
+                      <div>
+                        <p class="text-gray-500 dark:text-gray-400 mb-1">Status</p>
+                        <UBadge :label="credential.isActive ? 'Active' : 'Inactive'" :color="credential.isActive ? 'success' : 'error'" variant="soft" size="xs" />
+                      </div>
+                    </div>
+
+                    <!-- Tags -->
+                    <div v-if="credential.tags && credential.tags.length > 0">
+                      <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Tags</p>
+                      <div class="flex flex-wrap gap-1">
+                        <UBadge
+                          v-for="tag in credential.tags"
+                          :key="tag"
+                          :label="tag"
+                          size="xs"
+                          variant="subtle"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div v-if="credential.description">
+                      <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Description</p>
+                      <p class="text-sm">{{ credential.description }}</p>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex flex-col sm:flex-row gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <UButton
+                        @click="viewCredential(credential)"
+                        icon="i-lucide-eye"
+                        label="View"
+                        color="secondary"
+                        variant="soft"
+                        block
+                      />
+                      <UButton
+                        @click="editCredential(credential)"
+                        icon="i-lucide-edit"
+                        label="Edit"
+                        color="primary"
+                        variant="soft"
+                        block
+                      />
+                      <UButton
+                        @click="confirmDeleteCredential(credential)"
+                        icon="i-lucide-trash-2"
+                        label="Delete"
+                        color="error"
+                        variant="soft"
+                        block
+                      />
+                    </div>
+                  </div>
+                </template>
+              </UCollapsible>
             </div>
           </div>
         </UCard>
@@ -1797,12 +1849,37 @@ const updatingAgentSettings = ref(false)
 const latestAgentVersion = ref('1.0.0')
 
 // Filter state
-const credentialFilter = ref('')
+const credentialFilter = ref('All Types')
+
+// Credential filter options for USelectMenu
+const credentialFilterOptions = [
+  'All Types',
+  'Password',
+  'Username + Password',
+  'Token',
+  'SSH Key',
+  'Certificate',
+  'File',
+  'Custom'
+]
 
 // Computed for filtered credentials
 const filteredCredentials = computed(() => {
-  if (!credentialFilter.value) return storedCredentials.value.credentials
-  return storedCredentials.value.credentials.filter(cred => cred.type === credentialFilter.value)
+  if (!credentialFilter.value || credentialFilter.value === 'All Types') {
+    return storedCredentials.value.credentials
+  }
+  // Map display labels to actual credential types
+  const typeMap = {
+    'Password': 'password',
+    'Username + Password': 'user_pass',
+    'Token': 'token',
+    'SSH Key': 'ssh_key',
+    'Certificate': 'certificate',
+    'File': 'file',
+    'Custom': 'custom'
+  }
+  const actualType = typeMap[credentialFilter.value]
+  return storedCredentials.value.credentials.filter(cred => cred.type === actualType)
 })
 
 // Check if LDAP settings exist
