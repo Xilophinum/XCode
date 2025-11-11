@@ -105,18 +105,7 @@ export class DatabaseManager {
   }
 
   async runSQLiteMigrations() {
-    // Migration: Add password_change_required column if it doesn't exist
-    try {
-      const tableInfo = this.sqlite.prepare("PRAGMA table_info(users)").all()
-      const hasPasswordChangeRequired = tableInfo.some(col => col.name === 'password_change_required')
-      
-      if (!hasPasswordChangeRequired) {
-        logger.info('Running migration: Adding password_change_required column to users table')
-        this.sqlite.exec(`ALTER TABLE users ADD COLUMN password_change_required TEXT NOT NULL DEFAULT 'false'`)
-      }
-    } catch (migrationError) {
-      logger.warn('Migration check for password_change_required failed:', migrationError)
-    }
+    // Migration
   }
 
   async createSQLiteTables() {
@@ -1022,24 +1011,7 @@ export class DatabaseManager {
   }
 
   async runPostgresMigrations() {
-    // Migration: Add password_change_required column if it doesn't exist
-    try {
-      const result = await this.postgres`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'users' AND column_name = 'password_change_required'
-      `
-      
-      if (result.length === 0) {
-        logger.info('Running migration: Adding password_change_required column to users table')
-        await this.postgres`
-          ALTER TABLE users 
-          ADD COLUMN password_change_required VARCHAR(10) NOT NULL DEFAULT 'false'
-        `
-      }
-    } catch (migrationError) {
-      logger.warn('Migration check for password_change_required failed:', migrationError)
-    }
+    // Migration
   }
 
   async createMySQLTables() {
@@ -1575,26 +1547,7 @@ export class DatabaseManager {
   }
 
   async runMySQLMigrations() {
-    // Migration: Add password_change_required column if it doesn't exist
-    try {
-      const [result] = await this.mysql.query(`
-        SELECT COLUMN_NAME 
-        FROM INFORMATION_SCHEMA.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() 
-          AND TABLE_NAME = 'users' 
-          AND COLUMN_NAME = 'password_change_required'
-      `)
-      
-      if (!result || result.length === 0) {
-        logger.info('Running migration: Adding password_change_required column to users table')
-        await this.mysql.query(`
-          ALTER TABLE users 
-          ADD COLUMN password_change_required VARCHAR(10) NOT NULL DEFAULT 'false'
-        `)
-      }
-    } catch (migrationError) {
-      logger.warn('Migration check for password_change_required failed:', migrationError)
-    }
+    // Migration
   }
 
   getDatabase() {

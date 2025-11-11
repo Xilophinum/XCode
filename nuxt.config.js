@@ -29,11 +29,19 @@ export default defineNuxtConfig({
     '@nuxt/image',
     '@nuxt/scripts',
     '@nuxt/ui',
+    '@nuxtjs/i18n',
     '@pinia/nuxt',
     '@vueuse/nuxt',
     'nuxt-monaco-editor',
     'nuxt-auth-utils'
   ],
+  i18n: {
+    locales: [
+      { code: 'en', name: 'English', file: 'en.json' },
+      { code: 'es', name: 'Español', file: 'es.json' }
+    ],
+    defaultLocale: 'en'
+  },
   icon: {
     provider: 'lucide'
   },

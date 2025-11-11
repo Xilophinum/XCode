@@ -33,6 +33,7 @@ export class DataService {
       externalId: userData.externalId || null,
       lastLogin: userData.lastLogin || null,
       isActive: userData.isActive || 'true',
+      passwordChangeRequired: userData.passwordChangeRequired || 'false',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }

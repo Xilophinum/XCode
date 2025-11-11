@@ -18,4 +18,10 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     // Redirect to login page if not authenticated
     return navigateTo('/login')
   }
+  
+  // Check if password change is required (skip for change-password page itself)
+  if (authStore.user?.passwordChangeRequired === true && to.path !== '/change-password') {
+    console.log('Password change required - redirecting to /change-password')
+    return navigateTo('/change-password')
+  }
 })

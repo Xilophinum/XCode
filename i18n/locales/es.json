@@ -1,0 +1,29 @@
+{
+    "auth": {
+        "login": "Iniciar Sesión",
+        "register": "Registrarse",
+        "logout": "Cerrar Sesión",
+        "welcometo": "Bienvenido a",
+        "signintoaccess": "Inicie sesión para acceder a su plataforma de automatización",
+        "orcontinuewith": "O continuar con",
+        "email": "Correo Electrónico",
+        "password": "Contraseña",
+        "loginButton": "Iniciar Sesión",
+        "loginError": "Correo o contraseña inválidos",
+        "github": "Continuar con GitHub",
+        "google": "Continuar con Google",
+        "microsoft": "Continuar con Microsoft",
+        "donthaveanaccount": "¿No tienes una cuenta?",
+        "createone": "Crear una",
+        "alreadyhaveanaccount": "¿Ya tienes una cuenta?",
+        "signin": "Iniciar sesión",
+        "demoCredentials": "Credenciales de demostración",
+        "demoCredentialsWarning": "⚠️ Se le requerirá cambiar esta contraseña en el primer inicio de sesión",
+        "registerButton": "Registrarse",
+        "userRegistrationDisabled": "El registro de usuarios está actualmente deshabilitado",
+        "registrationFailed": "Error al registrar usuario"
+    },
+    "common": {
+        "loading": "Cargando..."
+    }
+}

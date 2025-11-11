@@ -1,5 +1,4 @@
-import logger from '~/server/utils/logger.js'
-
+import { getDataService } from '~/server/utils/dataService.js'
 /**
  * Get current user session
  * Uses nuxt-auth-utils session management
@@ -14,8 +13,23 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  logger.debug(`Session check for user: ${session.user.email}`)
+  // Always fetch fresh user data from database to get current passwordChangeRequired status
+  const dataService = await getDataService()
+  const freshUser = await dataService.getUserById(session.user.id)
   
-  return session.user
+  if (!freshUser) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'User not found'
+    })
+  }
+
+  return {
+    id: freshUser.id,
+    name: freshUser.name,
+    email: freshUser.email,
+    role: freshUser.role || 'user',
+    passwordChangeRequired: freshUser.passwordChangeRequired === 'true'
+  }
 })
  

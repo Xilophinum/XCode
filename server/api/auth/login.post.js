@@ -99,11 +99,26 @@ export default defineEventHandler(async (event) => {
         })
       }
       
-      // Update last login for local users
-      await dataService.updateUser(user.id, {
-        lastLogin: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      })
+      // Check if admin is using default password and force password change
+      if (email === 'admin@example.com' && password === 'password') {
+        console.log('Admin using default password - setting password change required')
+        await dataService.updateUser(user.id, {
+          passwordChangeRequired: 'true',
+          lastLogin: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+        // Refresh user data to include the updated flag
+        user = await dataService.getUserByEmail(email)
+        console.log('Updated user data:', { email: user.email, passwordChangeRequired: user.passwordChangeRequired })
+        logger.warn('⚠️ Admin using default password - password change required')
+      } else {
+        console.log('Not default admin password, normal login')
+        // Update last login for local users
+        await dataService.updateUser(user.id, {
+          lastLogin: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+      }
     }
     
     // Check if user is active

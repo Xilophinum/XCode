@@ -1,0 +1,29 @@
+{
+    "auth": {
+        "login": "Sign In",
+        "register": "Register",
+        "logout": "Logout",
+        "welcometo": "Welcome to",
+        "signintoaccess": "Sign in to access your automation platform",
+        "orcontinuewith": "Or continue with",
+        "email": "Email",
+        "password": "Password",
+        "loginButton": "Sign In",
+        "loginError": "Invalid email or password",
+        "github": "Continue with GitHub",
+        "google": "Continue with Google",
+        "microsoft": "Continue with Microsoft",
+        "donthaveanaccount": "Don't have an account?",
+        "createone": "Create one",
+        "alreadyhaveanaccount": "Already have an account?",
+        "signin": "Sign in",
+        "demoCredentials": "Demo Credentials",
+        "demoCredentialsWarning": "⚠️ You will be required to change this password on first login",
+        "registerButton": "Register",
+        "userRegistrationDisabled": "User registration is currently disabled",
+        "registrationFailed": "Error registering user"
+    },
+    "common": {
+        "loading": "Loading..."
+    }
+}

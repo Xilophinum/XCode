@@ -1,27 +1,26 @@
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 py-12 px-4 sm:px-6 lg:px-8">
+    <!-- Language Switcher -->
+    <div class="absolute top-4 right-4">
+      <LanguageSwitcher />
+    </div>
+    
     <div class="max-w-md w-full space-y-8">
       <!-- Header -->
       <div class="text-center">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-          Welcome to FlowForge
+          {{$t('auth.welcometo')}} FlowForge
         </h1>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Sign in to access your automation platform
+          {{ $t('auth.signintoaccess') }}
         </p>
       </div>
 
       <!-- Login Form -->
       <UCard v-if="isLoginMode" class="shadow-lg">
-        <template #header>
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Sign In
-          </h2>
-        </template>
-
         <form class="space-y-6" @submit.prevent="handleLogin">
           <div class="space-y-4">
-            <UFormField label="Email/Username" name="email" required class="text-center">
+            <UFormField :label="$t('auth.email')" name="email" required class="text-center">
               <UInput
                 v-model="loginForm.email"
                 type="text"
@@ -32,7 +31,7 @@
                 required
               />
             </UFormField>
-            <UFormField label="Password" name="password" required class="text-center">
+            <UFormField :label="$t('auth.password')" name="password" required class="text-center">
               <UInput
                 v-model="loginForm.password"
                 type="password"
@@ -62,7 +61,7 @@
             :loading="authStore.isLoading"
             :disabled="authStore.isLoading"
           >
-            {{ authStore.isLoading ? 'Signing in...' : 'Sign in' }}
+            {{ authStore.isLoading ? $t('common.loading') : $t('auth.loginButton') }}
           </UButton>
 
           <!-- OAuth Providers -->
@@ -73,7 +72,7 @@
               </div>
               <div class="relative flex justify-center text-sm">
                 <span class="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
-                  Or continue with
+                  {{ $t('auth.orcontinuewith') }}
                 </span>
               </div>
             </div>
@@ -91,7 +90,7 @@
                 <template #leading>
                   <Icon name="i-lucide-github" class="w-5 h-5" />
                 </template>
-                Continue with GitHub
+                {{ $t('auth.github') }}
               </UButton>
 
               <!-- Google -->
@@ -111,7 +110,7 @@
                     <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
                 </template>
-                Continue with Google
+                {{ $t('auth.google') }}
               </UButton>
 
               <!-- Microsoft -->
@@ -131,7 +130,7 @@
                     <path fill="#ffb900" d="M22 22h-9.4v-9.4H22z"/>
                   </svg>
                 </template>
-                Continue with Microsoft
+                {{ $t('auth.microsoft') }}
               </UButton>
             </div>
           </div>
@@ -139,14 +138,14 @@
 
         <template #footer v-if="userRegistrationEnabled">
           <div class="text-center text-sm">
-            <span class="text-gray-600 dark:text-gray-400">Don't have an account? </span>
+            <span class="text-gray-600 dark:text-gray-400">{{ $t('auth.donthaveanaccount') }}</span>
             <UButton
               variant="link"
               color="primary"
               size="sm"
               @click="isLoginMode = false"
             >
-              Create one
+              {{ $t('auth.createone') }}
             </UButton>
           </div>
         </template>
@@ -156,13 +155,13 @@
       <UCard v-if="!isLoginMode && userRegistrationEnabled" class="shadow-lg">
         <template #header>
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Create Account
+            {{ $t('auth.register') }}
           </h2>
         </template>
 
         <form class="space-y-6" @submit.prevent="handleRegister">
           <div class="space-y-4">
-            <UFormField label="Full name" name="name" required class="text-center">
+            <UFormField :label="$t('auth.fullname')" name="name" required class="text-center">
               <UInput
                 v-model="registerForm.name"
                 type="text"
@@ -174,7 +173,7 @@
               />
             </UFormField>
 
-            <UFormField label="Email address" name="email" required class="text-center">
+            <UFormField :label="$t('auth.email')" name="email" required class="text-center">
               <UInput
                 v-model="registerForm.email"
                 type="email"
@@ -186,7 +185,7 @@
               />
             </UFormField>
 
-            <UFormField label="Password" name="password" required class="text-center">
+            <UFormField :label="$t('auth.password')" name="password" required class="text-center">
               <UInput
                 v-model="registerForm.password"
                 type="password"
@@ -222,14 +221,14 @@
 
         <template #footer>
           <div class="text-center text-sm">
-            <span class="text-gray-600 dark:text-gray-400">Already have an account? </span>
+            <span class="text-gray-600 dark:text-gray-400">{{ $t('auth.alreadyhaveanaccount') }}</span>
             <UButton
               variant="link"
               color="primary"
               size="sm"
               @click="isLoginMode = true"
             >
-              Sign in
+              {{ $t('auth.signin') }}
             </UButton>
           </div>
         </template>
@@ -243,23 +242,23 @@
               <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
             </svg>
             <h3 class="text-sm font-medium text-gray-900 dark:text-white">
-              Demo Credentials
+              {{ $t('auth.demoCredentials') }}
             </h3>
           </div>
         </template>
 
         <div class="text-center space-y-3">
           <div class="text-sm text-gray-600 dark:text-gray-400">
-            <div class="font-medium">Email:</div>
+            <div class="font-medium">{{ $t('auth.email') }}:</div>
             <div class="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">admin@example.com</div>
           </div>
           <div class="text-sm text-gray-600 dark:text-gray-400">
-            <div class="font-medium">Password:</div>
+            <div class="font-medium">{{ $t('auth.password') }}:</div>
             <div class="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">password</div>
           </div>
           <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
             <p class="text-xs text-amber-700 dark:text-amber-300 font-medium">
-              ⚠️ You will be required to change this password on first login
+              {{ $t('auth.demoCredentialsWarning') }}
             </p>
           </div>
         </div>
@@ -275,6 +274,8 @@ definePageMeta({
 })
 
 const authStore = useAuthStore()
+const localeStore = useLocaleStore()
+const { t } = useI18n()
 
 const isLoginMode = ref(true)
 const error = ref('')
@@ -310,7 +311,7 @@ const handleLogin = async () => {
   if (result.success) {
     await navigateTo('/')
   } else {
-    error.value = result.error || 'Login failed'
+    error.value = result.error || t('auth.loginError')
   }
 }
 
@@ -319,7 +320,7 @@ const handleRegister = async () => {
 
   // Double-check if registration is still enabled
   if (!userRegistrationEnabled.value) {
-    error.value = 'User registration is currently disabled'
+    error.value = t('auth.userRegistrationDisabled')
     return
   }
 
@@ -328,7 +329,7 @@ const handleRegister = async () => {
   if (result.success) {
     await navigateTo('/')
   } else {
-    error.value = result.error || 'Registration failed'
+    error.value = result.error || t('auth.registrationFailed')
   }
 }
 
@@ -364,6 +365,7 @@ const loginWithOAuth = (provider) => {
 // Initialize auth on page load
 onMounted(async () => {
   authStore.initializeAuth()
+  localeStore.initializeLocale()
   await loadUserRegistrationSetting()
   await checkOAuthProviders()
 })
