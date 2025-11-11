@@ -1,14 +1,14 @@
 <template>
   <div class="space-y-4">
     <UAlert color="primary" variant="soft" icon="i-lucide-globe">
-      <template #title>API Request Configuration</template>
+      <template #title>{{ t('apiRequestProperties.apiRequestConfiguration') }}</template>
       <template #description>
-        Make HTTP requests to external APIs. Response data is available via the Output socket.
+        {{ t('apiRequestProperties.makeHttpRequests') }}
       </template>
     </UAlert>
 
     <!-- URL -->
-    <UFormField label="URL" required>
+    <UFormField :label="t('apiRequestProperties.url')" required>
       <UInput
         v-model="nodeData.data.url"
         type="url"
@@ -17,12 +17,12 @@
         placeholder="https://api.example.com/endpoint"
       />
       <template #help>
-        The API endpoint URL. Supports parameter placeholders like ${'{INPUT_1}'}
+        {{ t('apiRequestProperties.apiEndpointUrl') }}
       </template>
     </UFormField>
 
     <!-- HTTP Method -->
-    <UFormField label="HTTP Method">
+    <UFormField :label="t('apiRequestProperties.httpMethod')">
       <USelect
         v-model="nodeData.data.method"
         :items="httpMethodOptions"
@@ -32,15 +32,15 @@
     </UFormField>
 
     <!-- Custom Headers -->
-    <UFormField label="Custom Headers">
+    <UFormField :label="t('apiRequestProperties.customHeaders')">
       <template #label>
         <div class="flex items-center justify-between w-full">
-          <span>Custom Headers</span>
+          <span>{{ t('apiRequestProperties.customHeaders') }}</span>
           <UButton
             @click="addHeader"
             size="xs"
             variant="ghost"
-            label="+ Add Header"
+            :label="t('apiRequestProperties.addHeader')"
           />
         </div>
       </template>
@@ -53,14 +53,14 @@
           <UInput
             v-model="header.key"
             type="text"
-            placeholder="Header Name"
+            :placeholder="t('apiRequestProperties.headerName')"
             size="md"
             class="flex-1"
           />
           <UInput
             v-model="header.value"
             type="text"
-            placeholder="Header Value"
+            :placeholder="t('apiRequestProperties.headerValue')"
             size="md"
             class="flex-1 font-mono"
           />
@@ -75,12 +75,12 @@
         </div>
       </div>
       <template #help>
-        Add custom HTTP headers. Supports parameter placeholders.
+        {{ t('apiRequestProperties.addCustomHeaders') }}
       </template>
     </UFormField>
 
     <!-- Request Body (for POST/PUT/PATCH) -->
-    <UFormField v-if="['POST', 'PUT', 'PATCH'].includes(nodeData.data.method)" label="Request Body">
+    <UFormField v-if="['POST', 'PUT', 'PATCH'].includes(nodeData.data.method)" :label="t('apiRequestProperties.requestBody')">
       <UTextarea
         v-model="nodeData.data.body"
         v-auto-resize
@@ -89,12 +89,12 @@
         placeholder='{"key": "value"} or plain text'
       />
       <template #help>
-        Request body (JSON or plain text). Supports parameter placeholders like $INPUT_1
+        {{ t('apiRequestProperties.requestBodyHelp') }}
       </template>
     </UFormField>
 
     <!-- Timeout -->
-    <UFormField label="Timeout (seconds)" help="Maximum time to wait for response (default: 30 seconds)">
+    <UFormField :label="t('apiRequestProperties.timeoutSeconds')" :help="t('apiRequestProperties.timeoutHelp')">
       <UInput
         v-model.number="nodeData.data.timeout"
         type="number"
@@ -107,16 +107,16 @@
 
     <!-- Success/Failure Routing Help -->
     <UAlert color="secondary" variant="soft">
-      <template #title>Execution Flow</template>
+      <template #title>{{ t('apiRequestProperties.executionFlow') }}</template>
       <template #description>
-        <strong>Success Socket:</strong> Triggered on HTTP 2xx status codes (200-299)<br/>
-        <strong>Failure Socket:</strong> Triggered on errors or non-2xx status codes
+        <strong>{{ t('apiRequestProperties.successSocket') }}</strong><br/>
+        <strong>{{ t('apiRequestProperties.failureSocket') }}</strong>
       </template>
     </UAlert>
 
     <!-- Parameter substitution help -->
     <UAlert v-if="nodeData.data.inputSockets && nodeData.data.inputSockets.length > 0" color="primary" variant="soft">
-      <template #title>Available placeholders:</template>
+      <template #title>{{ t('apiRequestProperties.availablePlaceholders') }}</template>
       <template #description>
         <div class="space-y-1">
           <div v-for="(socket, index) in nodeData.data.inputSockets" :key="socket.id">
@@ -124,7 +124,7 @@
           </div>
         </div>
         <p class="mt-2">
-          Use these in URL, headers, or body to pass data from connected nodes
+          {{ t('apiRequestProperties.usePlaceholders') }}
         </p>
       </template>
     </UAlert>
@@ -132,6 +132,7 @@
 </template>
 
 <script setup>
+const { t } = useI18n()
 const props = defineProps({
   nodeData: {
     type: Object,

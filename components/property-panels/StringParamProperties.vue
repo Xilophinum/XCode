@@ -1,6 +1,6 @@
 <template>
   <div>
-    <UFormField label="Default Value" class="mt-3">
+    <UFormField :label="t('stringParamProperties.defaultValue')" class="mt-3">
       <UInput
         v-model="nodeData.data.defaultValue"
         type="text"
@@ -12,6 +12,8 @@
 </template>
 
 <script setup>
+const { t } = useI18n()
+
 const props = defineProps({
   nodeData: {
     type: Object,

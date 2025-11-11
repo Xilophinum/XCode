@@ -60,7 +60,7 @@ export default defineEventHandler(async (event) => {
         )
       )
       .orderBy(buildsSchema.startedAt, 'asc')
-      .all()
+      .execute()
 
     // Aggregate build metrics
     const aggregated = aggregateBuildMetrics(builds, interval)

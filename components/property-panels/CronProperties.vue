@@ -1,21 +1,21 @@
 <template>
     <div>
-        <UFormField label="Cron Expression" required>
+        <UFormField :label="t('cronProperties.cronExpression')" required>
             <UInput
                 v-model="nodeData.data.cronExpression"
                 type="text"
                 size="md"
                 class="font-mono w-full"
-                placeholder="0 0 * * * (every hour at minute 0)"
+                :placeholder="t('cronProperties.cronPlaceholder')"
             />
             <template #help>
-                Enter a cron expression. Format: minute hour day month dayOfWeek
+                {{ t('cronProperties.cronHelp') }}
             </template>
         </UFormField>
         
         <!-- Cron presets -->
         <div class="mt-2">
-            <label class="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Quick Presets:</label>
+            <label class="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">{{ t('cronProperties.quickPresets') }}</label>
             <div class="grid grid-cols-2 gap-1">
                 <UButton
                     @click="nodeData.data.cronExpression = '0 * * * *'"
@@ -24,7 +24,7 @@
                     variant="outline"
                     block
                 >
-                    Every hour
+                    {{ t('cronProperties.everyHour') }}
                 </UButton>
                 <UButton
                     @click="nodeData.data.cronExpression = '0 0 * * *'"
@@ -33,7 +33,7 @@
                     variant="outline"
                     block
                 >
-                    Daily at midnight
+                    {{ t('cronProperties.dailyMidnight') }}
                 </UButton>
                 <UButton
                     @click="nodeData.data.cronExpression = '0 0 * * 1'"
@@ -42,7 +42,7 @@
                     variant="outline"
                     block
                 >
-                    Weekly (Monday)
+                    {{ t('cronProperties.weeklyMonday') }}
                 </UButton>
                 <UButton
                     @click="nodeData.data.cronExpression = '0 0 1 * *'"
@@ -51,7 +51,7 @@
                     variant="outline"
                     block
                 >
-                    Monthly (1st)
+                    {{ t('cronProperties.monthlyFirst') }}
                 </UButton>
             </div>
         </div>
@@ -64,23 +64,23 @@
             icon="i-lucide-clock"
         >
             <template #title>
-                Scheduling Status
+                {{ t('cronProperties.schedulingStatus') }}
             </template>
             <template #description>
                 <div v-if="nodeData.data.cronExpression && cronInfo.isValid" class="space-y-1">
                     <div class="font-medium">{{ cronInfo.description }}</div>
                     <div v-if="cronInfo.nextRun" class="text-xs">
-                        Next run: {{ new Date(cronInfo.nextRun).toLocaleString() }}
+                        {{ t('cronProperties.nextRun') }} {{ new Date(cronInfo.nextRun).toLocaleString() }}
                     </div>
                     <div class="text-xs opacity-75">
-                        Expression: {{ nodeData.data.cronExpression }}
+                        {{ t('cronProperties.expression') }} {{ nodeData.data.cronExpression }}
                     </div>
                 </div>
                 <div v-else-if="nodeData.data.cronExpression && !cronInfo.isValid" class="text-red-600 dark:text-red-400">
-                    {{ cronInfo.description }}
+                    {{ t('cronProperties.invalidCronExpression') }}
                 </div>
                 <span v-else class="text-red-600 dark:text-red-400">
-                    No cron expression configured
+                    {{ t('cronProperties.noCronExpression') }}
                 </span>
             </template>
         </UAlert>
@@ -90,6 +90,8 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { Cron } from 'croner'
+
+const { t } = useI18n()
 
 const props = defineProps({
   nodeData: {

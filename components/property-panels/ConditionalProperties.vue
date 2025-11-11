@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <UFormField label="Condition (JavaScript)">
+    <UFormField :label="t('conditionalProperties.conditionJavaScript')">
       <UTextarea
         v-model="nodeData.data.condition"
         v-auto-resize
@@ -9,13 +9,13 @@
         placeholder="$socketLabel == 'value'"
       />
       <template #help>
-        Write JavaScript condition using input socket variables. If the condition evaluates to true, the green execution socket is used; if false, the red execution socket is used.
+        {{ t('conditionalProperties.conditionHelp') }}
       </template>
     </UFormField>
       
     <!-- Parameter substitution help -->
     <UAlert v-if="nodeData.data.inputSockets && nodeData.data.inputSockets.length > 0" color="primary" variant="soft">
-      <template #title>Available variables:</template>
+      <template #title>{{ t('conditionalProperties.availableVariables') }}</template>
       <template #description>
         <div class="space-y-1">
           <div v-for="socket in nodeData.data.inputSockets" :key="socket.id">
@@ -28,6 +28,7 @@
 </template>
 
 <script setup>
+const { t } = useI18n()
 const props = defineProps({
   nodeData: {
     type: Object,

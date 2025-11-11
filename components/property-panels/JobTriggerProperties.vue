@@ -1,20 +1,20 @@
 <template>
   <div>
-    <UFormField label="Source Project">
+    <UFormField :label="t('jobTriggerProperties.sourceProject')">
       <USelectMenu
         v-model="nodeData.data.sourceProjectId"
         :items="projectOptions"
-        placeholder="Select a project..."
+        :placeholder="t('jobTriggerProperties.selectProject')"
         searchable
         size="md"
         class="w-full"
       />
       <template #help>
-        Select which project's completion will trigger this workflow
+        {{ t('jobTriggerProperties.sourceProjectHelp') }}
       </template>
     </UFormField>
 
-    <UFormField label="Trigger Condition" class="mt-3">
+    <UFormField :label="t('jobTriggerProperties.triggerCondition')" class="mt-3">
       <USelect
         v-model="nodeData.data.triggerOn"
         :items="triggerOptions"
@@ -22,7 +22,7 @@
         class="w-full"
       />
       <template #help>
-        When should this workflow be triggered?
+        {{ t('jobTriggerProperties.triggerConditionHelp') }}
       </template>
     </UFormField>
   </div>
@@ -30,6 +30,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   nodeData: {
@@ -53,9 +55,9 @@ const projectOptions = computed(() => {
     }))
 })
 
-const triggerOptions = [
-  { value: 'success', label: 'On Success' },
-  { value: 'failure', label: 'On Failure' },
-  { value: 'always', label: 'Always (Success or Failure)' }
-]
+const triggerOptions = computed(() => [
+  { value: 'success', label: t('jobTriggerProperties.onSuccess') },
+  { value: 'failure', label: t('jobTriggerProperties.onFailure') },
+  { value: 'always', label: t('jobTriggerProperties.always') }
+])
 </script>

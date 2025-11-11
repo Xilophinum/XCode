@@ -1,6 +1,6 @@
 <template>
   <div>
-    <UFormField label="Choices (one per line)" class="mt-3">
+    <UFormField :label="t('choiceParamProperties.choicesOnePerLine')" class="mt-3">
       <UTextarea
         :value="nodeData.data.choices?.join('\n') || ''"
         @input="nodeData.data.choices = $event.target.value.split('\n').filter(c => c.trim())"
@@ -10,7 +10,7 @@
       />
     </UFormField>
     
-    <UFormField label="Default Value" class="mt-3">
+    <UFormField :label="t('choiceParamProperties.defaultValue')" class="mt-3">
       <USelect
         v-model="nodeData.data.defaultValue"
         :items="choiceOptions"
@@ -24,6 +24,7 @@
 <script setup>
 import { computed } from 'vue'
 
+const { t } = useI18n()
 const props = defineProps({
   nodeData: {
     type: Object,

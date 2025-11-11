@@ -10,8 +10,8 @@
         <div class="mb-8">
           <div class="flex items-center justify-between">
             <div>
-              <h2 class="text-2xl font-bold text-gray-950 dark:text-white">Failed Projects</h2>
-              <p class="text-gray-600 dark:text-gray-300">Projects where the latest build failed</p>
+              <h2 class="text-2xl font-bold text-gray-950 dark:text-white">{{ $t('failures.title') }}</h2>
+              <p class="text-gray-600 dark:text-gray-300">{{ $t('failures.subtitle') }}</p>
             </div>
 
             <!-- Auto-refresh and Manual Refresh Controls -->
@@ -23,7 +23,7 @@
                   autoRefreshEnabled ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
                 ]"></div>
                 <span class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ autoRefreshEnabled ? 'Live updates ON' : 'Live updates OFF' }}
+                  {{ autoRefreshEnabled ? $t('failures.liveUpdatesOn') : $t('failures.liveUpdatesOff') }}
                 </span>
               </div>
               
@@ -38,7 +38,7 @@
                 ]"
               >
                 <UIcon name="i-lucide-zap" class="w-4 h-4 mr-2" />
-                {{ autoRefreshEnabled ? 'Disable Live' : 'Enable Live' }}
+                {{ autoRefreshEnabled ? $t('failures.disableLive') : $t('failures.enableLive') }}
               </button>
               
               <!-- Manual Refresh Button -->
@@ -49,7 +49,7 @@
                 class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-md text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
                 <UIcon name="i-lucide-refresh-cw" class="w-4 h-4 mr-2" :class="{ 'animate-spin': isLoading }" />
-                Refresh Now
+                {{ $t('failures.refreshNow') }}
               </button>
             </div>
           </div>
@@ -64,7 +64,7 @@
                 <UIcon name="i-lucide-x-circle" class="w-8 h-8 text-red-500" />
               </div>
               <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Projects with Failures</p>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $t('failures.projectsWithFailures') }}</p>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ failedBuilds.length }}</p>
               </div>
             </div>
@@ -77,7 +77,7 @@
                 <UIcon name="i-lucide-clock" class="w-8 h-8 text-blue-500" />
               </div>
               <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</p>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $t('failures.lastUpdated') }}</p>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatLastUpdated() }}</p>
               </div>
             </div>
@@ -88,7 +88,7 @@
         <UCard v-if="isLoading && failedBuilds.length === 0" class="shadow-md">
           <div class="text-center">
             <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p class="mt-4 text-gray-600 dark:text-gray-300">Loading failed builds...</p>
+            <p class="mt-4 text-gray-600 dark:text-gray-300">{{ $t('failures.loadingFailedBuilds') }}</p>
           </div>
         </UCard>
 
@@ -96,9 +96,9 @@
         <UCard v-else-if="!isLoading && failedBuilds.length === 0" class="shadow-md">
           <div class="text-center">
             <UIcon name="i-lucide-check-circle" class="mx-auto h-12 w-12 text-green-400" />
-            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">All Projects Passing!</h3>
+            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">{{ $t('failures.allProjectsPassing') }}</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Excellent! All projects' latest builds are successful.
+              {{ $t('failures.allProjectsPassingDesc') }}
             </p>
           </div>
         </UCard>
@@ -110,22 +110,22 @@
               <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Project & Build
+                    {{ $t('failures.projectAndBuild') }}
                   </th>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Agent
+                    {{ $t('failures.agent') }}
                   </th>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Trigger
+                    {{ $t('failures.trigger') }}
                   </th>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Failed At
+                    {{ $t('failures.failedAt') }}
                   </th>
                   <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Error
+                    {{ $t('failures.error') }}
                   </th>
                   <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
+                    {{ $t('failures.actions') }}
                   </th>
                 </tr>
               </thead>
@@ -143,7 +143,7 @@
                           {{ build.projectName }}
                         </div>
                         <div class="text-sm text-gray-500 dark:text-gray-400">
-                          Build #{{ build.buildNumber }}
+                          {{ $t('failures.build') }} #{{ build.buildNumber }}
                         </div>
                       </div>
                     </div>
@@ -152,7 +152,7 @@
                   <!-- Agent -->
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900 dark:text-white">
-                      {{ build.agentName || 'Unknown' }}
+                      {{ build.agentName || $t('failures.unknown') }}
                     </div>
                   </td>
 
@@ -186,7 +186,7 @@
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex items-center justify-end space-x-2">
                       <!-- View Logs Button -->
-                      <UTooltip text="View last logs">
+                      <UTooltip :text="$t('failures.viewLastLogs')">
                         <UButton
                           @click="showLogsModal(build)"
                           class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
@@ -195,7 +195,7 @@
                         />
                       </UTooltip>
                       <!-- Go to Build Button -->
-                      <UTooltip text="Go to build">
+                      <UTooltip :text="$t('failures.goToBuild')">
                         <UButton
                           :to="getBuildUrl(build)"
                           color="neutral"
@@ -205,7 +205,7 @@
                       </UTooltip>
 
                       <!-- Rebuild Button -->
-                      <UTooltip text="Rebuild project">
+                      <UTooltip :text="$t('failures.rebuildProject')">
                         <UButton
                           @click="rebuildProject(build)"
                           variant="link"
@@ -232,7 +232,7 @@
               {{ selectedBuild?.projectName }} - Build #{{ selectedBuild?.buildNumber }}
             </h3>
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Last {{ selectedBuild?.lastLogLines?.length || 0 }} log lines
+              {{ $t('failures.lastLogLines').replace('{count}', selectedBuild?.lastLogLines?.length || 0) }}
             </p>
           </div>
           <button
@@ -250,7 +250,7 @@
               <UIcon name="i-lucide-alert-circle" class="h-5 w-5 text-red-400" />
             </div>
             <div class="ml-3 flex-1 min-w-0">
-              <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
+              <h3 class="text-sm font-medium text-red-800 dark:text-red-200">{{ $t('failures.error') }}</h3>
               <div class="mt-2 text-sm text-red-700 dark:text-red-300 break-words whitespace-pre-wrap">
                 {{ selectedBuild.error }}
               </div>
@@ -269,7 +269,7 @@
             </div>
           </div>
           <div v-else class="text-gray-400 text-center py-8">
-            No log entries available
+            {{ $t('failures.noLogEntries') }}
           </div>
         </div>
 
@@ -279,13 +279,13 @@
             :to="getBuildUrl(selectedBuild)"
             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
           >
-            View Full Build
+            {{ $t('failures.viewFullBuild') }}
           </UButton>
           <UButton
             @click="rebuildProjectFromModal"
             class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Rebuild Project
+            {{ $t('failures.rebuildProjectButton') }}
           </UButton>
         </div>
       </div>
@@ -298,9 +298,9 @@ definePageMeta({
   middleware: 'auth'
 })
 
-import { text } from 'drizzle-orm/gel-core'
 import ModalWrapper from '~/components/ModalWrapper.vue'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const toast = useToast()
@@ -333,16 +333,16 @@ const loadFailedBuilds = async () => {
 }
 
 const formatLastUpdated = () => {
-  if (autoRefreshEnabled.value) return 'Live Updating'
-  if (!lastUpdated.value) return 'Never'
+  if (autoRefreshEnabled.value) return t('failures.liveUpdating')
+  if (!lastUpdated.value) return t('failures.never')
   const diffMs = currentTime.value - lastUpdated.value
   const diffSecs = Math.floor(diffMs / 1000)
 
-  if (diffSecs < 10) return 'Just now'
-  if (diffSecs < 60) return `${diffSecs}s ago`
+  if (diffSecs < 10) return t('failures.justNow')
+  if (diffSecs < 60) return t('failures.secondsAgo').replace('{count}', diffSecs)
 
   const diffMins = Math.floor(diffSecs / 60)
-  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffMins < 60) return t('failures.minutesAgo').replace('{count}', diffMins)
 
   return lastUpdated.value.toLocaleTimeString()
 }
@@ -384,7 +384,7 @@ const getErrorMessage = (build) => {
 
   // Check if there's a non-zero exit code
   if (build.exitCode && build.exitCode !== 0) {
-    return `Process exited with code ${build.exitCode}`
+    return t('failures.processExited').replace('{code}', build.exitCode)
   }
 
   // Check last log lines for error messages
@@ -398,7 +398,7 @@ const getErrorMessage = (build) => {
   }
 
   // Fallback
-  return 'Build failed - see logs for details'
+  return t('failures.buildFailed')
 }
 
 const showLogsModal = (build) => {
@@ -441,7 +441,7 @@ const rebuildProject = async (build) => {
     )
 
     if (!project) {
-      throw new Error('Project not found')
+      throw new Error(t('failures.projectNotFound'))
     }
 
     // Parse the diagram data to get nodes and edges
@@ -457,12 +457,12 @@ const rebuildProject = async (build) => {
         nodes = diagramData.nodes || []
         edges = diagramData.edges || []
       } catch (e) {
-        throw new Error('Failed to parse project workflow data')
+        throw new Error(t('failures.failedToParseWorkflow'))
       }
     }
 
     if (nodes.length === 0) {
-      throw new Error('Project has no workflow defined')
+      throw new Error(t('failures.noWorkflowDefined'))
     }
 
     // Execute the project - this creates a NEW build (never retries the same build number)
@@ -479,12 +479,12 @@ const rebuildProject = async (build) => {
 
     // Show success notification
     toast.add({
-      title: 'Build Started',
-      description: `Rebuild started successfully! New build #${response.buildNumber}`,
+      title: t('failures.buildStarted'),
+      description: t('failures.rebuildSuccess').replace('{buildNumber}', response.buildNumber),
       icon: 'i-lucide-check-circle',
       actions: [
         {
-          label: 'View Build',
+          label: t('failures.viewBuild'),
           color: 'primary',
           icon: 'i-lucide-external-link',
           onClick: () => {
@@ -501,7 +501,7 @@ const rebuildProject = async (build) => {
   } catch (error) {
     console.error('Error rebuilding project:', error)
     toast.add({
-      title: `Failed to rebuild project: ${error.message || error.data?.error || 'Unknown error'}`,
+      title: t('failures.rebuildFailed').replace('{error}', error.message || error.data?.error || t('failures.unknownError')),
       icon: 'i-lucide-x-circle'
     })
   }
@@ -519,16 +519,16 @@ const formatTimestamp = (timestamp) => {
   const diffMs = currentTime.value - date
   const diffSecs = Math.floor(diffMs / 1000)
   
-  if (diffSecs < 60) return diffSecs <= 1 ? 'Just now' : `${diffSecs}s ago`
+  if (diffSecs < 60) return diffSecs <= 1 ? t('failures.justNow') : t('failures.secondsAgo').replace('{count}', diffSecs)
   
   const diffMins = Math.floor(diffSecs / 60)
-  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffMins < 60) return t('failures.minutesAgo').replace('{count}', diffMins)
   
   const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffHours < 24) return t('failures.hoursAgo').replace('{count}', diffHours)
   
   const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays}${diffDays > 1 ? 'days ago' : 'day ago'}`
+  return `${diffDays}${diffDays > 1 ? t('failures.daysAgo') : t('failures.dayAgo')}`
 }
 
 const formatLogTimestamp = (timestamp) => {

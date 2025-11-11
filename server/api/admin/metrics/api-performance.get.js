@@ -61,7 +61,7 @@ export default defineEventHandler(async (event) => {
       .from(metricsSchema)
       .where(and(...conditions))
       .orderBy(metricsSchema.timestamp)
-      .all()
+      .execute()
 
     // Aggregate and analyze
     const aggregated = aggregateAPIMetrics(metrics, interval)

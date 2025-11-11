@@ -20,12 +20,12 @@
       <UCard>
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Server CPU</p>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('metricsOverview.serverCpu') }}</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ summary.server?.cpu?.percent || 0 }}%
             </p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ summary.server?.cpu?.cores || 0 }} cores
+              {{ summary.server?.cpu?.cores || 0 }} {{ t('metricsOverview.cores') }}
             </p>
           </div>
           <div class="p-3 rounded-full" :class="getCPUColor(summary.server?.cpu?.percent)">
@@ -38,7 +38,7 @@
       <UCard>
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Server Memory</p>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('metricsOverview.serverMemory') }}</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ summary.server?.memory?.percent || 0 }}%
             </p>
@@ -56,12 +56,12 @@
       <UCard>
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Agents Online</p>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('metricsOverview.agentsOnline') }}</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ summary.agents?.online || 0 }} / {{ summary.agents?.total || 0 }}
             </p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ summary.agents?.jobs?.current || 0 }} active jobs
+              {{ summary.agents?.jobs?.current || 0 }} {{ t('metricsOverview.activeJobs') }}
             </p>
           </div>
           <div class="p-3 rounded-full bg-green-100 dark:bg-green-900">
@@ -74,12 +74,12 @@
       <UCard>
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Success Rate ({{ metricsStore.timeRangeShortLabel }})</p>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('metricsOverview.successRate') }} ({{ metricsStore.timeRangeShortLabel }})</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ summary.builds?.last24Hours?.successRate || 0 }}%
             </p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ summary.builds?.last24Hours?.total || 0 }} builds
+              {{ summary.builds?.last24Hours?.total || 0 }} {{ t('metricsOverview.builds') }}
             </p>
           </div>
           <div class="p-3 rounded-full" :class="getSuccessRateColor(summary.builds?.last24Hours?.successRate)">
@@ -95,12 +95,12 @@
       <UCard>
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Server Process CPU</p>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('metricsOverview.serverProcessCpu') }}</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ summary.server?.process?.cpu || 0 }}%
             </p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Process footprint
+              {{ t('metricsOverview.processFootprint') }}
             </p>
           </div>
           <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
@@ -113,7 +113,7 @@
       <UCard>
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Server Process Memory</p>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('metricsOverview.serverProcessMemory') }}</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ summary.server?.process?.memory?.heapUsed || 0 }} MB
             </p>
@@ -131,12 +131,12 @@
       <UCard>
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Avg Agent Process CPU</p>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('metricsOverview.avgAgentProcessCpu') }}</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ getAvgAgentProcessCpu(summary) }}%
             </p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Across {{ summary.agents?.online || 0 }} agents
+              {{ t('metricsOverview.acrossAgents').replace('{count}', summary.agents?.online || 0) }}
             </p>
           </div>
           <div class="p-3 rounded-full bg-pink-100 dark:bg-pink-900">
@@ -149,12 +149,12 @@
       <UCard>
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Avg Agent Process Memory</p>
+            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('metricsOverview.avgAgentProcessMemory') }}</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ getAvgAgentProcessMemory(summary) }} MB
             </p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Heap usage average
+              {{ t('metricsOverview.heapUsageAverage') }}
             </p>
           </div>
           <div class="p-3 rounded-full bg-cyan-100 dark:bg-cyan-900">
@@ -170,41 +170,41 @@
       <UCard>
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            Build Statistics ({{ metricsStore.timeRangeShortLabel }})
+            {{ t('metricsOverview.buildStatistics') }} ({{ metricsStore.timeRangeShortLabel }})
           </h3>
         </template>
 
         <div class="space-y-4">
           <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-600 dark:text-gray-300">Total Builds</span>
+            <span class="text-sm text-gray-600 dark:text-gray-300">{{ t('metricsOverview.totalBuilds') }}</span>
             <span class="font-semibold text-gray-900 dark:text-white">
               {{ summary.builds?.last24Hours?.total || 0 }}
             </span>
           </div>
 
           <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-600 dark:text-gray-300">Success</span>
+            <span class="text-sm text-gray-600 dark:text-gray-300">{{ t('metricsOverview.success') }}</span>
             <span class="font-semibold text-green-600 dark:text-green-400">
               {{ summary.builds?.last24Hours?.success || 0 }}
             </span>
           </div>
 
           <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-600 dark:text-gray-300">Failures</span>
+            <span class="text-sm text-gray-600 dark:text-gray-300">{{ t('metricsOverview.failures') }}</span>
             <span class="font-semibold text-red-600 dark:text-red-400">
               {{ summary.builds?.last24Hours?.failure || 0 }}
             </span>
           </div>
 
           <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-600 dark:text-gray-300">Running</span>
+            <span class="text-sm text-gray-600 dark:text-gray-300">{{ t('metricsOverview.running') }}</span>
             <span class="font-semibold text-blue-600 dark:text-blue-400">
               {{ summary.builds?.last24Hours?.running || 0 }}
             </span>
           </div>
 
           <div class="flex items-center justify-between pt-4 border-t dark:border-gray-700">
-            <span class="text-sm text-gray-600 dark:text-gray-300">Avg Duration</span>
+            <span class="text-sm text-gray-600 dark:text-gray-300">{{ t('metricsOverview.avgDuration') }}</span>
             <span class="font-semibold text-gray-900 dark:text-white">
               {{ formatDuration(summary.builds?.last24Hours?.avgDuration || 0) }}
             </span>
@@ -336,6 +336,7 @@
 
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+const { t } = useI18n()
 const metricsStore = useMetricsStore()
 
 const summary = computed(() => metricsStore.summary)

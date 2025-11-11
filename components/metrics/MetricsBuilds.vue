@@ -21,7 +21,7 @@
       <UCard>
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            Build Throughput
+            {{ t('metricsBuilds.buildThroughput') }}
           </h3>
         </template>
         <apexchart
@@ -36,7 +36,7 @@
       <UCard class="mt-6">
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            Success Rate Over Time
+            {{ t('metricsBuilds.successRateOverTime') }}
           </h3>
         </template>
         <apexchart
@@ -51,7 +51,7 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">Total Builds</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('metricsBuilds.totalBuilds') }}</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ buildMetrics?.summary?.total || 0 }}
             </p>
@@ -60,7 +60,7 @@
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">Success Rate</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('metricsBuilds.successRate') }}</p>
             <p class="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">
               {{ buildMetrics?.summary?.successRate || 0 }}%
             </p>
@@ -69,7 +69,7 @@
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">Avg Duration</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('metricsBuilds.avgDuration') }}</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ formatDuration(buildMetrics?.summary?.avgDuration || 0) }}
             </p>
@@ -82,6 +82,7 @@
 
 <script setup>
 import { computed, watch, ref } from 'vue'
+const { t } = useI18n()
 const metricsStore = useMetricsStore()
 const darkMode = useDarkMode()
 const isDark = computed(() => darkMode.isDark.value === 'dark')
@@ -204,14 +205,14 @@ const throughputChartSeries = computed(() => {
 
   return [
     {
-      name: 'Success',
+      name: t('metricsBuilds.success'),
       data: buildMetrics.value.timeSeries.map(m => ({
         x: new Date(m.timestamp).getTime(),
         y: m.success
       }))
     },
     {
-      name: 'Failure',
+      name: t('metricsBuilds.failure'),
       data: buildMetrics.value.timeSeries.map(m => ({
         x: new Date(m.timestamp).getTime(),
         y: m.failure
@@ -225,7 +226,7 @@ const successRateChartSeries = computed(() => {
   if (!buildMetrics.value?.timeSeries) return []
 
   return [{
-    name: 'Success Rate %',
+    name: t('metricsBuilds.successRatePercent'),
     data: buildMetrics.value.timeSeries.map(m => ({
       x: new Date(m.timestamp).getTime(),
       y: m.successRate

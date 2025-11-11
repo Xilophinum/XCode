@@ -4,10 +4,10 @@
       <!-- Header -->
       <div class="text-center">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-          Password Change Required
+          {{ $t('changePassword.title') }}
         </h1>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          For security reasons, you must change your password before continuing.
+          {{ $t('changePassword.subtitle') }}
         </p>
       </div>
 
@@ -15,7 +15,7 @@
       <UCard class="shadow-lg">
         <template #header>
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Change Your Password
+            {{ $t('changePassword.formTitle') }}
           </h2>
         </template>
 
@@ -24,7 +24,7 @@
             <!-- Current Password (only show if not forced change) -->
             <UFormField
               v-if="!isDefaultPassword"
-              label="Current Password"
+              :label="$t('changePassword.currentPassword')"
               name="current-password"
               required
             >
@@ -32,7 +32,7 @@
                 v-model="currentPassword"
                 type="password"
                 autocomplete="current-password"
-                placeholder="Enter current password"
+                :placeholder="$t('changePassword.currentPasswordPlaceholder')"
                 size="lg"
                 class="w-full"
                 required
@@ -41,7 +41,7 @@
 
             <!-- New Password -->
             <UFormField
-              label="New Password"
+              :label="$t('changePassword.newPassword')"
               name="new-password"
               :error="showPasswordError"
               required
@@ -50,17 +50,16 @@
                 v-model="newPassword"
                 type="password"
                 autocomplete="new-password"
-                placeholder="Enter new password (minimum 8 characters)"
+                :placeholder="$t('changePassword.newPasswordPlaceholder')"
                 size="lg"
                 required
                 class="w-full"
-                @input="validatePassword"
               />
             </UFormField>
 
             <!-- Confirm Password -->
             <UFormField
-              label="Confirm New Password"
+              :label="$t('changePassword.confirmPassword')"
               name="confirm-password"
               :error="showConfirmError"
               required
@@ -69,11 +68,10 @@
                 v-model="confirmPassword"
                 type="password"
                 autocomplete="new-password"
-                placeholder="Confirm new password"
+                :placeholder="$t('changePassword.confirmPasswordPlaceholder')"
                 size="lg"
                 required
                 class="w-full"
-                @input="validateConfirm"
               />
             </UFormField>
           </div>
@@ -82,14 +80,14 @@
           <UAlert
             color="blue"
             variant="soft"
-            title="Password Requirements"
+            :title="$t('changePassword.requirementsTitle')"
             icon="i-lucide-info"
           >
             <template #description>
               <ul class="list-disc list-inside space-y-1 text-sm">
-                <li>Minimum 8 characters</li>
-                <li>Cannot be same as current password</li>
-                <li>Must match confirmation</li>
+                <li>{{ $t('changePassword.requirement1') }}</li>
+                <li>{{ $t('changePassword.requirement2') }}</li>
+                <li>{{ $t('changePassword.requirement3') }}</li>
               </ul>
             </template>
           </UAlert>
@@ -112,7 +110,7 @@
             :loading="loading"
             :disabled="loading || !isValid"
           >
-            {{ loading ? 'Changing Password...' : 'Change Password' }}
+            {{ loading ? $t('changePassword.changingButton') : $t('changePassword.changeButton') }}
           </UButton>
 
           <!-- Logout Option -->
@@ -123,7 +121,7 @@
               size="lg"
               @click="handleLogout"
             >
-              Logout instead
+              {{ $t('changePassword.logoutInstead') }}
             </UButton>
           </div>
         </form>
@@ -136,6 +134,8 @@
 import { ref, computed, nextTick } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+
+const { t } = useI18n()
 
 definePageMeta({
   middleware: 'auth',
@@ -159,29 +159,17 @@ const isDefaultPassword = computed(() => {
 // Computed properties for showing errors (only show when condition is met)
 const showPasswordError = computed(() => {
   if (newPassword.value.length === 0) return undefined
-  if (newPassword.value.length < 8) return 'Password must be at least 8 characters'
+  if (newPassword.value.length < 8) return t('changePassword.passwordTooShort')
   return undefined
 })
 
 const showConfirmError = computed(() => {
   if (confirmPassword.value.length === 0) return undefined
   if (newPassword.value.length > 0 && confirmPassword.value !== newPassword.value) {
-    return 'Passwords do not match'
+    return t('changePassword.passwordsNoMatch')
   }
   return undefined
 })
-
-// Validate new password
-const validatePassword = () => {
-  // Validation is now handled by computed properties
-  // This is just for triggering reactivity if needed
-}
-
-// Validate password confirmation
-const validateConfirm = () => {
-  // Validation is now handled by computed properties
-  // This is just for triggering reactivity if needed
-}
 
 // Check if form is valid
 const isValid = computed(() => {
@@ -199,7 +187,7 @@ const handleSubmit = async () => {
   
   // Final validation
   if (!isValid.value) {
-    error.value = 'Please fix the errors above'
+    error.value = t('changePassword.fixErrors')
     return
   }
   

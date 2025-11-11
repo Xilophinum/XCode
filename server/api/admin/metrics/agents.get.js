@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
     const currentAgents = await db
       .select()
       .from(agentsSchema)
-      .all()
+      .execute()
     
     const currentAgentIds = new Set(currentAgents.map(a => a.id))
     const agentStatusMap = new Map(currentAgents.map(a => [a.id, a.status]))
@@ -77,7 +77,7 @@ export default defineEventHandler(async (event) => {
       .from(metricsSchema)
       .where(and(...conditions))
       .orderBy(metricsSchema.timestamp)
-      .all()
+      .execute()
 
     // Also fetch global agent totals
     const globalConditions = [
@@ -91,7 +91,7 @@ export default defineEventHandler(async (event) => {
       .from(metricsSchema)
       .where(and(...globalConditions))
       .orderBy(metricsSchema.timestamp)
-      .all()
+      .execute()
 
     // Transform to frontend format
     const transformed = transformAgentMetrics(metrics, globalMetrics, interval, currentAgentIds, agentStatusMap)

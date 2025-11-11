@@ -11,7 +11,7 @@
         <div class="flex justify-between items-center mb-6">
           <div>
             <h1 class="text-2xl font-bold text-gray-950 dark:text-white">
-              {{ currentFolderName || 'Browse Folders' }}
+              {{ currentFolderName || $t('browse.title') }}
             </h1>
             <p class="text-gray-600 dark:text-gray-300 mt-1">
               {{ currentFolderDescription || '' }}
@@ -24,7 +24,7 @@
               icon="i-lucide-plus"
               class="text-black dark:text-slate-700"
             >
-              New Folder
+              {{ $t('browse.newFolder') }}
             </UButton>
             
             <UButton
@@ -32,7 +32,7 @@
               icon="i-lucide-plus"
               class="text-black dark:text-slate-700"
             >
-              New Project
+              {{ $t('browse.newProject') }}
             </UButton>
           </div>
         </div>
@@ -44,23 +44,23 @@
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <UIcon name="i-lucide-cog" class="h-4 w-4 text-blue-600 dark:text-blue-400 mr-3 animate-spin" />
                 <span class="font-medium">{{ totalProjectsInCurrentPath }}</span>
-                <span class="ml-1">{{ totalProjectsInCurrentPath === 1 ? 'project' : 'projects' }}</span>
+                <span class="ml-1">{{ totalProjectsInCurrentPath === 1 ? $t('browse.project') : $t('browse.projects') }}</span>
               </div>
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <UIcon name="i-lucide-folder" class="w-4 h-4 mr-1.5 text-blue-500" />
                 <span class="font-medium">{{ totalFoldersInCurrentPath }}</span>
-                <span class="ml-1">{{ totalFoldersInCurrentPath === 1 ? 'folder' : 'folders' }}</span>
+                <span class="ml-1">{{ totalFoldersInCurrentPath === 1 ? $t('browse.folder') : $t('browse.folders') }}</span>
               </div>
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <UIcon name="i-lucide-check" class="w-4 h-4 mr-1.5 text-green-500" />
                 <span class="font-medium">{{ onlineAgentsCount }}</span>
-                <span class="ml-1">online agents</span>
+                <span class="ml-1">{{ $t('browse.onlineAgents') }}</span>
               </div>
               
               <div class="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <UIcon name="i-lucide-clock" class="w-4 h-4 mr-1.5 text-yellow-500" />
                 <span class="font-medium">{{ busyAgentsCount }}</span>
-                <span class="ml-1">busy</span>
+                <span class="ml-1">{{ $t('browse.busy') }}</span>
               </div>
             </div>
             
@@ -68,7 +68,7 @@
               to="/agents"
               class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
             >
-              Manage Agents →
+              {{ $t('browse.manageAgents') }}
             </NuxtLink>
           </div>
         </div>
@@ -78,7 +78,7 @@
           <!-- Loading State -->
           <div v-if="projectsStore.isLoading" class="text-center py-8">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p class="mt-2 text-gray-600 dark:text-gray-300">Loading...</p>
+            <p class="mt-2 text-gray-600 dark:text-gray-300">{{ $t('common.loading') }}</p>
           </div>
 
           <!-- Content Grid -->
@@ -89,7 +89,7 @@
             :key="folder.id"
             :items="getFolderMenuItems(folder)"
           >
-            <UTooltip text="Right Click For More Options" placement="top">
+            <UTooltip :text="$t('browse.rightClickOptions')" placement="top">
               <div
                 @click="navigateToFolder(folder.name)"
                 class="cursor-pointer border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-800/30 relative group"
@@ -100,7 +100,7 @@
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">{{ folder.description || '' }}</p>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                  Updated: {{ formatDate(folder.updatedAt) }}
+                  {{ $t('browse.updated') }}: {{ formatDate(folder.updatedAt) }}
                 </div>
               </div>
             </UTooltip>
@@ -112,7 +112,7 @@
             :key="project.id"
             :items="getProjectMenuItems(project)"
           >
-            <UTooltip text="Right Click For More Options" placement="top">
+            <UTooltip :text="$t('browse.rightClickOptions')" placement="top">
               <div
                 @click="openProject(project)"
                 :class="[
@@ -124,7 +124,7 @@
                 <UIcon name="i-lucide-cog" class="h-7 w-7 text-blue-600 dark:text-blue-400 mr-3 animate-spin" />
                 <h3 class="font-medium" :class="getProjectTextColor(projectBuildStats.get(project.id))">{{ project.name }}</h3>
                 <span v-if="project.status === 'disabled'" class="ml-2 px-2 py-0.5 text-xs font-medium bg-gray-500 text-white rounded-full">
-                  Disabled
+                  {{ $t('browse.disabled') }}
                 </span>
               </div>
               <p class="text-sm mb-3" :class="getProjectTextColor(projectBuildStats.get(project.id))">{{ project.description || '' }}</p>
@@ -132,33 +132,33 @@
               <!-- Build Stats Summary with History Link -->
               <div v-if="projectBuildStats.get(project.id)" class="flex items-center justify-between mb-2">
                 <div class="text-xs" :class="getProjectTextColor(projectBuildStats.get(project.id))">
-                  {{ projectBuildStats.get(project.id).totalBuilds || 0 }} builds • 
-                  {{ Math.round(projectBuildStats.get(project.id).successRate * 100) }}% success •
-                  Last: {{ projectBuildStats.get(project.id).lastBuildStatus || 'None' }}
+                  {{ projectBuildStats.get(project.id).totalBuilds || 0 }} {{ $t('browse.builds') }} • 
+                  {{ Math.round(projectBuildStats.get(project.id).successRate * 100) }}% {{ $t('browse.success') }} •
+                  {{ $t('browse.last') }}: {{ projectBuildStats.get(project.id).lastBuildStatus || $t('browse.none') }}
                 </div>
                 <button
                   @click.stop="viewBuildHistory(project)"
                   class="text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors"
                   :class="getProjectTextColor(projectBuildStats.get(project.id))"
                 >
-                  Build History
+                  {{ $t('browse.buildHistory') }}
                 </button>
               </div>
               
               <div v-else class="flex items-center justify-between mb-2">
                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                  No builds yet
+                  {{ $t('browse.noBuildsYet') }}
                 </div>
                 <button
                   @click.stop="viewBuildHistory(project)"
                   class="text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors text-gray-500 dark:text-gray-400"
                 >
-                  Build History
+                  {{ $t('browse.buildHistory') }}
                 </button>
               </div>
               
               <div class="text-xs" :class="getProjectTextColor(projectBuildStats.get(project.id))">
-                Updated: {{ formatDate(project.updatedAt) }}
+                {{ $t('browse.updated') }}: {{ formatDate(project.updatedAt) }}
               </div>
               
               <!-- Progress Bar -->
@@ -173,8 +173,8 @@
           <!-- Empty State -->
           <div v-if="foldersAtCurrentPath.length === 0 && projectsAtCurrentPath.length === 0" class="col-span-full text-center py-8">
             <UIcon name="i-lucide-folder" class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-            <h3 class="mt-2 text-sm font-medium text-gray-950 dark:text-white">No items found</h3>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new folder or project.</p>
+            <h3 class="mt-2 text-sm font-medium text-gray-950 dark:text-white">{{ $t('browse.noItemsFound') }}</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $t('browse.noItemsDesc') }}</p>
           </div>
           </div>
         </div>
@@ -184,27 +184,27 @@
     <!-- Create Folder Modal -->
     <ModalWrapper :model-value="showCreateFolderModal" @update:model-value="showCreateFolderModal = $event" class="max-w-md">
       <div class="m-4">
-        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Folder</h3>
+        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">{{ $t('folder.createTitle') }}</h3>
         <form @submit.prevent="handleCreateFolder">
           <div class="mb-4">
-            <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Folder Name</label>
+            <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('folder.name') }}</label>
             <input
               id="folderName"
               v-model="folderForm.name"
               type="text"
               required
               class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-              placeholder="Enter folder name"
+              :placeholder="$t('folder.namePlaceholder')"
             >
           </div>
           <div class="mb-4">
-            <label for="folderDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
+            <label for="folderDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('folder.description') }}</label>
             <textarea
               id="folderDescription"
               v-model="folderForm.description"
               v-auto-resize
               class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
-              placeholder="Enter folder description"
+              :placeholder="$t('folder.descriptionPlaceholder')"
             ></textarea>
           </div>
           <div class="flex justify-end space-x-3">
@@ -213,14 +213,14 @@
               @click="showCreateFolderModal = false"
               class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </button>
             <button
               type="submit"
               :disabled="!folderForm.name.trim()"
               class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50"
             >
-              Create Folder
+              {{ $t('folder.createButton') }}
             </button>
           </div>
         </form>
@@ -230,43 +230,43 @@
     <!-- Create Project Modal -->
     <ModalWrapper :model-value="showCreateProjectModal" @update:model-value="showCreateProjectModal = $event" class="max-w-md">
       <div class="m-4">
-        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Project</h3>
+        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">{{ $t('project.createTitle') }}</h3>
         <form @submit.prevent="handleCreateProject">
           <div class="mb-4">
-            <label for="projectName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Name</label>
+            <label for="projectName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('project.name') }}</label>
             <input
               id="projectName"
               v-model="projectForm.name"
               type="text"
               required
               class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-              placeholder="Enter project name"
+              :placeholder="$t('project.namePlaceholder')"
             >
           </div>
           <div class="mb-4">
-            <label for="projectTemplate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Template (Optional)</label>
+            <label for="projectTemplate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('project.template') }}</label>
             <select
               id="projectTemplate"
               v-model="projectForm.templateId"
               class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
             >
-              <option :value="null">Blank Project</option>
+              <option :value="null">{{ $t('project.blankProject') }}</option>
               <option v-for="template in availableTemplates" :key="template.id" :value="template.id">
                 {{ template.name }}
               </option>
             </select>
             <p v-if="selectedTemplate" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ selectedTemplate.description || 'No description' }}
+              {{ selectedTemplate.description || $t('project.noDescription') }}
             </p>
           </div>
           <div class="mb-4">
-            <label for="projectDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
+            <label for="projectDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('project.description') }}</label>
             <textarea
               id="projectDescription"
               v-model="projectForm.description"
               v-auto-resize
               class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
-              placeholder="Enter project description"
+              :placeholder="$t('project.descriptionPlaceholder')"
             ></textarea>
           </div>
           <div class="flex justify-end space-x-3">
@@ -275,14 +275,14 @@
               @click="showCreateProjectModal = false"
               class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </button>
             <button
               type="submit"
               :disabled="!projectForm.name.trim()"
               class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50"
             >
-              Create Project
+              {{ $t('project.createButton') }}
             </button>
           </div>
         </form>
@@ -292,24 +292,24 @@
   <!-- Delete Project Confirmation Modal -->
   <ModalWrapper :model-value="showDeleteProjectModal" @update:model-value="cancelDeleteProject" class="max-w-md">
     <div class="m-4">
-      <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Delete {{ projectToDelete?.type === 'folder' ? 'Folder' : 'Project' }}</h3>
+      <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{{ $t('project.deleteTitle') }} {{ projectToDelete?.type === 'folder' ? $t('folder.deleteTitle') : $t('project.deleteTitle') }}</h3>
       <p class="text-sm text-gray-600 dark:text-gray-300 mb-6">
-        Are you sure you want to delete the {{ projectToDelete?.type === 'folder' ? 'folder' : 'project' }} "{{ projectToDelete?.name }}"?
-        {{ projectToDelete?.type === 'folder' ? 'This will also delete all projects and subfolders within it. ' : '' }}
-        This action cannot be undone.
+        {{ $t('project.deleteConfirm') }} {{ projectToDelete?.type === 'folder' ? $t('browse.folder') : $t('browse.project') }} "{{ projectToDelete?.name }}"?
+        {{ projectToDelete?.type === 'folder' ? $t('project.deleteWarning') + ' ' : '' }}
+        {{ $t('project.deleteAction') }}
       </p>
       <div class="flex justify-end space-x-4">
         <button
           @click="cancelDeleteProject"
           class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
-          Cancel
+          {{ $t('common.cancel') }}
         </button>
         <button
           @click="handleDeleteProject"
           class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
         >
-          Delete
+          {{ $t('common.delete') }}
         </button>
       </div>
     </div>
@@ -317,23 +317,23 @@
   <ModalWrapper :model-value="showMoveModal" @update:model-value="cancelMove" class="max-w-md">
     <div class="m-4">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-        Move {{ itemToMove?.type === 'folder' ? 'Folder' : 'Project' }}
+        {{ $t('project.moveTitle') }} {{ itemToMove?.type === 'folder' ? $t('folder.moveTitle') : $t('project.moveTitle') }}
       </h3>
       <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-        Moving "{{ itemToMove?.name }}" to a new location.
-        {{ itemToMove?.type === 'folder' ? 'All contents will move with the folder.' : '' }}
+        {{ $t('project.moveDesc').replace('{name}', itemToMove?.name || '') }}
+        {{ itemToMove?.type === 'folder' ? $t('project.moveFolderDesc') : '' }}
       </p>
 
       <div class="mb-4">
         <label for="destinationPath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Destination Path
+          {{ $t('folder.destinationPath') }}
         </label>
         <input
           id="destinationPath"
           v-model="destinationPath"
           @input="filterPaths"
           type="text"
-          placeholder="Type to search paths..."
+          :placeholder="$t('folder.destinationPlaceholder')"
           class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
         >
 
@@ -355,14 +355,14 @@
           @click="cancelMove"
           class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
-          Cancel
+          {{ $t('common.cancel') }}
         </button>
         <button
           @click="handleMoveItem"
           :disabled="!destinationPath.trim()"
           class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
-          Move
+          {{ $t('common.move') }}
         </button>
       </div>
     </div>
@@ -372,13 +372,13 @@
   <ModalWrapper :model-value="showRenameModal" @update:model-value="cancelRename" class="max-w-md">
     <div class="m-4">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-        Rename {{ itemToRename?.type === 'folder' ? 'Folder' : 'Project' }}
+        {{ $t('project.renameTitle') }} {{ itemToRename?.type === 'folder' ? $t('folder.moveTitle') : $t('project.renameTitle') }}
       </h3>
 
       <form @submit.prevent="handleRenameItem">
         <div class="mb-4">
           <label for="renameName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Name
+            {{ $t('project.renameName') }}
           </label>
           <input
             id="renameName"
@@ -386,20 +386,20 @@
             type="text"
             required
             class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-            placeholder="Enter new name"
+            :placeholder="$t('project.renameNamePlaceholder')"
           >
         </div>
 
         <div class="mb-4">
           <label for="renameDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Description (Optional)
+            {{ $t('project.renameDescription') }}
           </label>
           <textarea
             id="renameDescription"
             v-model="renameForm.description"
             v-auto-resize
             class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
-            placeholder="Enter description"
+            :placeholder="$t('project.renameDescriptionPlaceholder')"
           ></textarea>
         </div>
 
@@ -409,14 +409,14 @@
             @click="cancelRename"
             class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Cancel
+            {{ $t('common.cancel') }}
           </button>
           <button
             type="submit"
             :disabled="!renameForm.name.trim()"
             class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Rename
+            {{ $t('project.renameButton') }}
           </button>
         </div>
       </form>
@@ -427,27 +427,27 @@
   <ModalWrapper :model-value="showAccessModal" @update:model-value="cancelAccessSettings" class="max-w-md">
     <div class="m-4">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-        Access Settings - {{ itemForAccess?.name }}
+        {{ $t('access.title') }} - {{ itemForAccess?.name }}
       </h3>
 
       <form @submit.prevent="handleAccessUpdate">
         <div class="mb-4">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Access Policy
+            {{ $t('access.policy') }}
           </label>
           <select
             v-model="accessForm.access_policy"
             class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
           >
-            <option value="public">Public - All users can access</option>
-            <option value="owner">Owner Only - Only creator can access</option>
-            <option value="groups">Groups - Only specified groups can access</option>
+            <option value="public">{{ $t('access.public') }}</option>
+            <option value="owner">{{ $t('access.owner') }}</option>
+            <option value="groups">{{ $t('access.groups') }}</option>
           </select>
         </div>
 
         <div v-if="accessForm.access_policy === 'groups'" class="mb-4">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Allowed Groups
+            {{ $t('access.allowedGroups') }}
           </label>
 
           <!-- Selected Groups -->
@@ -476,7 +476,7 @@
               @change="addGroupToAccess($event.target.value); $event.target.value = ''"
               class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
             >
-              <option value="">Select a group to add...</option>
+              <option value="">{{ $t('access.selectGroup') }}</option>
               <option
                 v-for="group in availableGroupsForAccess"
                 :key="group.id"
@@ -488,7 +488,7 @@
           </div>
 
           <p v-else class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-            No groups available. Groups are created from user LDAP memberships or manual assignment.
+            {{ $t('access.noGroups') }}
           </p>
         </div>
 
@@ -498,13 +498,13 @@
             @click="cancelAccessSettings"
             class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Cancel
+            {{ $t('common.cancel') }}
           </button>
           <button
             type="submit"
             class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Update Access
+            {{ $t('access.updateAccess') }}
           </button>
         </div>
       </form>
@@ -528,6 +528,7 @@ import ProjectProgressBar from '@/components/ProjectProgressBar.vue'
 import AuditHistoryModal from '@/components/modals/AuditHistoryModal.vue'
 import ModalWrapper from '@/components/ModalWrapper.vue'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -769,7 +770,7 @@ const allAvailablePaths = computed(() => {
   // Add root path
   paths.push({
     path: [],
-    displayPath: 'Root',
+    displayPath: t('folder.root'),
     item: null
   })
   
@@ -820,7 +821,7 @@ const viewBuildHistory = (project) => {
 const getFolderMenuItems = (folder) => {
   return [
     {
-      label: 'Audit History',
+      label: t('contextMenu.auditHistory'),
       icon: 'i-lucide-clock',
       onSelect: () => {
         selectedEntityForAudit.value = folder
@@ -828,7 +829,7 @@ const getFolderMenuItems = (folder) => {
       }
     },
     {
-      label: 'Rename',
+      label: t('contextMenu.rename'),
       icon: 'i-lucide-edit-2',
       onSelect: () => {
         itemToRename.value = folder
@@ -838,7 +839,7 @@ const getFolderMenuItems = (folder) => {
       }
     },
     {
-      label: 'Move',
+      label: t('contextMenu.move'),
       icon: 'i-lucide-move',
       onSelect: () => {
         itemToMove.value = folder
@@ -848,7 +849,7 @@ const getFolderMenuItems = (folder) => {
       }
     },
     {
-      label: 'Access Settings',
+      label: t('contextMenu.accessSettings'),
       icon: 'i-lucide-shield',
       onSelect: async () => {
         itemForAccess.value = folder
@@ -859,7 +860,7 @@ const getFolderMenuItems = (folder) => {
       }
     },
     {
-      label: 'Delete',
+      label: t('contextMenu.delete'),
       icon: 'i-lucide-trash-2',
       onSelect: () => {
         projectToDelete.value = folder
@@ -874,7 +875,7 @@ const getProjectMenuItems = (project) => {
   const hasPermissions = authStore.getCurrentUser.role === 'admin' || authStore.getCurrentUser.id === project.ownerId
   return [
     {
-      label: 'Audit History',
+      label: t('contextMenu.auditHistory'),
       icon: 'i-lucide-clock',
       onSelect: () => {
         selectedEntityForAudit.value = project
@@ -882,7 +883,7 @@ const getProjectMenuItems = (project) => {
       }
     },
     {
-      label: 'Rename',
+      label: t('contextMenu.rename'),
       icon: 'i-lucide-edit-2',
       onSelect: () => {
         itemToRename.value = project
@@ -893,7 +894,7 @@ const getProjectMenuItems = (project) => {
       disabled: !hasPermissions
     },
     {
-      label: 'Move',
+      label: t('contextMenu.move'),
       icon: 'i-lucide-move',
       onSelect: () => {
         itemToMove.value = project
@@ -904,7 +905,7 @@ const getProjectMenuItems = (project) => {
       disabled: !hasPermissions
     },
     {
-      label: 'Access Settings',
+      label: t('contextMenu.accessSettings'),
       icon: 'i-lucide-shield',
       onSelect: async () => {
         itemForAccess.value = project
@@ -916,7 +917,7 @@ const getProjectMenuItems = (project) => {
       disabled: !hasPermissions
     },
     {
-      label: project.status === 'disabled' ? 'Enable' : 'Disable',
+      label: project.status === 'disabled' ? t('contextMenu.enable') : t('contextMenu.disable'),
       icon: project.status === 'disabled' ? 'i-lucide-check-circle' : 'i-lucide-ban',
       onSelect: async () => {
         const result = await projectsStore.toggleProjectStatus(project.id)
@@ -931,7 +932,7 @@ const getProjectMenuItems = (project) => {
       class: project.status === 'disabled' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'
     },
     {
-      label: 'Delete',
+      label: t('contextMenu.delete'),
       icon: 'i-lucide-trash-2',
       onSelect: () => {
         projectToDelete.value = project

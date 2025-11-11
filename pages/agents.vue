@@ -7,9 +7,9 @@
     <main class="max-w-8xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div class="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Build Agents</h1>
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ $t('agents.title') }}</h1>
           <p class="mt-2 text-gray-600 dark:text-gray-300">
-            Manage and monitor your build agents. Agents execute your pipeline jobs on distributed machines.
+            {{ $t('agents.subtitle') }}
           </p>
         </div>
         <div class="flex gap-2">
@@ -18,7 +18,7 @@
             class="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:w-auto w-full"
           >
             <UIcon name="i-lucide-plus" class="w-4 h-4 mr-2" />
-            Add Agent
+            {{ $t('agents.addAgent') }}
           </button>
         </div>
       </div>
@@ -32,7 +32,7 @@
               <UIcon name="i-lucide-check-circle" class="w-8 h-8 text-green-500" />
             </div>
             <div class="ml-4">
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Online Agents</p>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $t('agents.onlineAgents') }}</p>
               <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ onlineAgents.length }}</p>
             </div>
           </div>
@@ -45,7 +45,7 @@
               <UIcon name="i-lucide-clock" class="w-8 h-8 text-yellow-500" />
             </div>
             <div class="ml-4">
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Busy Agents</p>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $t('agents.busyAgents') }}</p>
               <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ busyAgents.length }}</p>
             </div>
           </div>
@@ -58,7 +58,7 @@
               <UIcon name="i-lucide-x-circle" class="w-8 h-8 text-red-500" />
             </div>
             <div class="ml-4">
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Offline Agents</p>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $t('agents.offlineAgents') }}</p>
               <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ offlineAgents.length }}</p>
             </div>
           </div>
@@ -71,7 +71,7 @@
               <UIcon name="i-lucide-file-text" class="w-8 h-8 text-blue-500" />
             </div>
             <div class="ml-4">
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Agents</p>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $t('agents.totalAgents') }}</p>
               <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ agents.length }}</p>
             </div>
           </div>
@@ -80,30 +80,30 @@
 
       <!-- Agents Table -->
       <UCard class="shadow-sm">
-        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Build Agents</h3>
+        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">{{ $t('agents.buildAgents') }}</h3>
         
         <div v-if="initialLoading" class="text-center py-8">
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p class="mt-4 text-gray-500 dark:text-gray-400">Loading agents...</p>
+          <p class="mt-4 text-gray-500 dark:text-gray-400">{{ $t('agents.loadingAgents') }}</p>
         </div>
 
         <div v-else-if="!initialLoading && agents.length === 0" class="text-center py-8">
           <UIcon name="i-lucide-file-text" class="mx-auto h-12 w-12 text-gray-400" />
-          <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No agents</h3>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by clicking "Add Agent" above to create your first build agent.</p>
+          <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">{{ $t('agents.noAgents') }}</h3>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $t('agents.noAgentsDesc') }}</p>
         </div>
 
         <div v-else-if="!initialLoading" class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
             <thead class="bg-gray-50 dark:bg-gray-800/50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Agent</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Platform</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Capabilities</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jobs</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Seen</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('agents.agent') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('agents.status') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('agents.platform') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('agents.capabilities') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('agents.jobs') }}</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('agents.lastSeen') }}</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('agents.actions') }}</th>
               </tr>
             </thead>
             <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
@@ -118,7 +118,7 @@
                     <div class="ml-4">
                       <div class="text-sm font-medium text-gray-900 dark:text-white">{{ agent.name }}</div>
                       <div class="text-sm text-gray-500 dark:text-gray-400">
-                        {{ agent.hostname || 'Not connected' }}
+                        {{ agent.hostname || $t('agents.notConnected') }}
                       </div>
                     </div>
                   </div>
@@ -133,7 +133,7 @@
                   <div class="flex items-center">
                     <UIcon name="i-lucide-monitor" class="w-4 h-4 mr-2" />
                     <span v-if="agent.platform" class="capitalize">{{ agent.platform }}</span>
-                    <span v-else class="text-gray-400 dark:text-gray-500">Unknown</span>
+                    <span v-else class="text-gray-400 dark:text-gray-500">{{ $t('agents.unknown') }}</span>
                     <span v-if="agent.architecture" class="text-gray-400 dark:text-gray-500 ml-1">({{ agent.architecture }})</span>
                   </div>
                 </td>
@@ -153,8 +153,8 @@
                         @click="toggleCapabilities(agent.id)"
                         class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                       >
-                        <span v-if="!expandedCapabilities.has(agent.id)">+{{ agent.capabilities.length - 3 }} more</span>
-                        <span v-else>Show less</span>
+                        <span v-if="!expandedCapabilities.has(agent.id)">+{{ agent.capabilities.length - 3 }} {{ $t('agents.more') }}</span>
+                        <span v-else>{{ $t('agents.showLess') }}</span>
                         <UIcon name="i-lucide-chevron-down" 
                           class="ml-1 w-3 h-3 transition-transform duration-200"
                           :class="{ 'rotate-180': expandedCapabilities.has(agent.id) }"
@@ -177,7 +177,7 @@
                     </div>
                   </div>
                   <div v-else class="text-sm text-gray-400 dark:text-gray-500">
-                    Not detected
+                    {{ $t('agents.notDetected') }}
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
@@ -188,12 +188,12 @@
                     <span v-if="agent.lastHeartbeat">
                       {{ formatRelativeTime(agent.lastHeartbeat) }}
                     </span>
-                    <span v-else>Never</span>
+                    <span v-else>{{ $t('agents.never') }}</span>
                   </UTooltip>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex justify-end space-x-2">
-                    <UTooltip text="Edit agent">
+                    <UTooltip :text="$t('agents.editAgent')">
                         <UButton
                           @click="editAgent(agent)"
                           color="secondary"
@@ -202,7 +202,7 @@
                           icon="i-lucide-edit-2"
                         />
                     </UTooltip>
-                    <UTooltip text="Delete agent" v-if="!agent.isLocal">
+                    <UTooltip :text="$t('agents.deleteAgent')" v-if="!agent.isLocal">
                       <UButton
                         v-if="!agent.isLocal"
                         @click="confirmDeleteAgent(agent)"
@@ -224,22 +224,22 @@
     <!-- Add Agent Modal -->
     <ModalWrapper v-model="showAddAgentModal" class="max-w-md">
       <UCard class="shadow-md">
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Add New Agent</h3>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{{ $t('agents.addNewAgent') }}</h3>
         
         <form @submit.prevent="createAgent" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Agent Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('agents.agentName') }}</label>
             <input
               v-model="newAgent.name"
               type="text"
               required
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-              placeholder="My Build Agent"
+              :placeholder="$t('agents.agentNamePlaceholder')"
             >
           </div>
           
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Concurrent Jobs</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('agents.maxConcurrentJobs') }}</label>
             <input
               v-model.number="newAgent.maxConcurrentJobs"
               type="number"
@@ -251,12 +251,12 @@
           </div>
           
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('agents.description') }}</label>
             <textarea
               v-model="newAgent.description"
               v-auto-resize
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-white resize-none overflow-hidden"
-              placeholder="Description of this agent"
+              :placeholder="$t('agents.descriptionPlaceholder')"
             ></textarea>
           </div>
           
@@ -266,15 +266,15 @@
               @click="showAddAgentModal = false"
               class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              Cancel
+              {{ $t('agents.cancel') }}
             </button>
             <button
               type="submit"
               :disabled="creating"
               class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
             >
-              <span v-if="creating">Creating...</span>
-              <span v-else>Create Agent</span>
+              <span v-if="creating">{{ $t('agents.creating') }}</span>
+              <span v-else>{{ $t('agents.createAgent') }}</span>
             </button>
           </div>
         </form>
@@ -284,11 +284,11 @@
     <!-- Edit Agent Modal -->
     <ModalWrapper v-model="showEditAgentModal" class="max-w-md">
       <UCard class="shadow-md">
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Edit Agent</h3>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{{ $t('agents.editAgentTitle') }}</h3>
         
         <form @submit.prevent="updateAgent" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Agent Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('agents.agentName') }}</label>
             <input
               v-model="editAgentForm.name"
               type="text"
@@ -298,7 +298,7 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Concurrent Jobs</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('agents.maxConcurrentJobs') }}</label>
             <input
               v-model.number="editAgentForm.maxConcurrentJobs"
               type="number"
@@ -314,13 +314,13 @@
               @click="showEditAgentModal = false"
               class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              Cancel
+              {{ $t('agents.cancel') }}
             </button>
             <button
               type="submit"
               class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
-              Update Agent
+              {{ $t('agents.updateAgent') }}
             </button>
           </div>
         </form>
@@ -334,16 +334,16 @@
           <UIcon name="i-lucide-check" class="h-6 w-6 text-green-600 dark:text-green-400" />
         </div>
         
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 text-center">Agent Created Successfully</h3>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 text-center">{{ $t('agents.agentCreatedTitle') }}</h3>
         
         <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-          Your agent has been created. Use this token to connect your agent to the server:
+          {{ $t('agents.agentCreatedDesc') }}
         </p>
         
         <div class="bg-gray-100 dark:bg-gray-800 rounded-md p-3 mb-4">
           <div class="flex items-center justify-between">
             <code class="text-sm font-mono break-all">{{ createdAgentToken }}</code>
-            <UTooltip text="Copy token">
+            <UTooltip :text="$t('agents.copyToken')">
               <UButton
                 @click="copyToken"
                 color="secondary"
@@ -355,8 +355,7 @@
         
         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3 mb-4">
           <p class="text-sm text-blue-800 dark:text-blue-200">
-            <strong>Important:</strong> Save this token securely. You won't be able to see it again. 
-            The agent will use this token to authenticate with the server.
+            <strong>{{ $t('agents.important') }}</strong> {{ $t('agents.tokenWarning') }}
           </p>
         </div>
         
@@ -365,7 +364,7 @@
             @click="closeTokenModal"
             class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            Got it
+            {{ $t('agents.gotIt') }}
           </button>
         </div>
       </UCard>
@@ -374,22 +373,22 @@
     <!-- Delete Agent Confirmation Modal -->
     <ModalWrapper v-model="showDeleteModal" class="max-w-md">
       <UCard class="shadow-md">
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Delete Agent</h3>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{{ $t('agents.deleteAgentTitle') }}</h3>
         <p class="text-sm text-gray-600 dark:text-gray-300 mb-6">
-          Are you sure you want to delete agent "{{ agentToDelete?.name }}"? This action cannot be undone.
+          {{ $t('agents.deleteAgentConfirm').replace('{name}', agentToDelete?.name || '') }}
         </p>
         <div class="flex justify-end space-x-4">
           <button
             @click="cancelDeleteAgent"
             class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Cancel
+            {{ $t('agents.cancel') }}
           </button>
           <button
             @click="deleteAgent"
             class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
           >
-            Delete
+            {{ $t('agents.delete') }}
           </button>
         </div>
       </UCard>
@@ -403,6 +402,8 @@ definePageMeta({
 })
 
 import ModalWrapper from '~/components/ModalWrapper.vue'
+
+const { t } = useI18n()
 const authStore = useAuthStore()
 const toast = useToast()
 
@@ -481,7 +482,7 @@ const createAgent = async () => {
     await loadAgents(false) // Pass false since this is not initial load
   } catch (error) {
     logger.error('Error creating agent:', error)
-    error('Failed to create agent. Please try again.')
+    toast.add({ title: t('agents.failedToCreateAgent'), icon: 'i-lucide-x-circle' })
   } finally {
     creating.value = false
   }
@@ -491,10 +492,10 @@ const createAgent = async () => {
 const copyToken = async () => {
   try {
     await navigator.clipboard.writeText(createdAgentToken.value)
-    toast.add({ title: 'Agent token copied to clipboard!', icon: 'i-lucide-check-circle' })
+    toast.add({ title: t('agents.agentTokenCopied'), icon: 'i-lucide-check-circle' })
   } catch (error) {
     logger.error('Failed to copy token:', error)
-    toast.add({ title: 'Failed to copy agent token', icon: 'i-lucide-x-circle' })
+    toast.add({ title: t('agents.failedToCopyToken'), icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -539,7 +540,7 @@ const updateAgent = async () => {
     await loadAgents(false)
   } catch (error) {
     logger.error('Error updating agent:', error)
-    error('Failed to update agent. Please try again.')
+    toast.add({ title: t('agents.failedToUpdateAgent'), icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -562,12 +563,12 @@ const deleteAgent = async () => {
     
     // No need to refresh - WebSocket updates will handle removal
     logger.info(`🗑️ Agent ${agentToDelete.value.name} deleted successfully`)
-    toast.add({ title: 'Agent deleted successfully', icon: 'i-lucide-check-circle' })
+    toast.add({ title: t('agents.agentDeletedSuccess'), icon: 'i-lucide-check-circle' })
     showDeleteModal.value = false
     agentToDelete.value = null
   } catch (error) {
     logger.error('Error deleting agent:', error)
-    toast.add({ title: 'Failed to delete agent: ' + (error.data?.message || error.message), icon: 'i-lucide-x-circle' })
+    toast.add({ title: t('agents.failedToDeleteAgent') + ' ' + (error.data?.message || error.message), icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -605,13 +606,13 @@ const getStatusDotClass = (status) => {
 }
 
 const formatRelativeTime = (dateString) => {
-  if (!dateString) return 'Never'
+  if (!dateString) return t('agents.never')
   
   const date = new Date(dateString)
   const now = new Date()
   const diffInSeconds = Math.floor((now - date) / 1000)
   
-  if (diffInSeconds < 60) return 'Just now'
+  if (diffInSeconds < 60) return t('agents.justNow')
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
   return `${Math.floor(diffInSeconds / 86400)}d ago`

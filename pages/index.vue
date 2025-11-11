@@ -7,8 +7,8 @@
     <main class="max-w-8xl mx-auto py-4 sm:px-6 lg:px-8">
       <div class="px-4 sm:px-0">
         <div class="mb-8">
-          <h2 class="text-2xl font-bold text-gray-950 dark:text-white">Dashboard</h2>
-          <p class="text-gray-600 dark:text-gray-300">Manage your hierarchical project folders</p>
+          <h2 class="text-2xl font-bold text-gray-950 dark:text-white">{{ $t('dashboard.title') }}</h2>
+          <p class="text-gray-600 dark:text-gray-300">{{ $t('dashboard.subtitle') }}</p>
         </div>
 
         <!-- Dashboard Stats -->
@@ -20,7 +20,7 @@
                 <UIcon name="i-lucide-briefcase" class="w-8 h-8 text-blue-500" />
               </div>
               <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Projects</p>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $t('dashboard.projects') }}</p>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ totalProjects }}</p>
               </div>
             </div>
@@ -33,7 +33,7 @@
                 <UIcon name="i-lucide-check-circle" class="w-8 h-8 text-green-500" />
               </div>
               <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Online Agents</p>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $t('dashboard.onlineAgents') }}</p>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ onlineAgentsCount }}</p>
               </div>
             </div>
@@ -46,7 +46,7 @@
                 <UIcon name="i-lucide-clock" class="w-8 h-8 text-yellow-500" />
               </div>
               <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Busy Agents</p>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $t('dashboard.busyAgents') }}</p>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ busyAgentsCount }}</p>
               </div>
             </div>
@@ -59,7 +59,7 @@
                 <UIcon name="i-lucide-bar-chart" class="w-8 h-8 text-purple-500" />
               </div>
               <div class="ml-4">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Build Success Rate</p>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $t('dashboard.buildSuccessRate') }}</p>
                 <p
                   class="text-2xl font-bold"
                   :class="buildSuccessRate > 80 ? 'text-green-600 dark:text-green-400' : buildSuccessRate > 70 ? 'text-yellow-600 dark:text-yellow-400' : buildSuccessRate > 55 ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400'"
@@ -73,7 +73,7 @@
 
         <!-- Admin Tools (for admin users only) -->
         <div class="mb-8">
-          <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Quick Links</h3>
+          <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">{{ $t('dashboard.quickLinks') }}</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- Agents Management Card -->
             <UCard class="shadow-sm hover:shadow-md transition-shadow group cursor-pointer" @click="navigateTo('/agents')" v-show="authStore.user?.role === 'admin'">
@@ -85,10 +85,10 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                   <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
-                    Build Agents
+                    {{ $t('dashboard.buildAgents') }}
                   </h4>
                   <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Manage and monitor your build agents. View agent status, capabilities, and job history.
+                    {{ $t('dashboard.buildAgentsDesc') }}
                   </p>
                 </div>
                 <div class="flex-shrink-0">
@@ -106,10 +106,10 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                   <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
-                    Failed Projects
+                    {{ $t('dashboard.failedProjects') }}
                   </h4>
                   <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Projects where latest build failed. View logs and quickly rebuild.
+                    {{ $t('dashboard.failedProjectsDesc') }}
                   </p>
                 </div>
                 <div class="flex-shrink-0">
@@ -127,10 +127,10 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                   <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    System Metrics
+                    {{ $t('dashboard.systemMetrics') }}
                   </h4>
                   <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Monitor server performance, agent metrics, and build statistics in real-time.
+                    {{ $t('dashboard.systemMetricsDesc') }}
                   </p>
                 </div>
                 <div class="flex-shrink-0">
@@ -149,10 +149,10 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                   <h4 class="text-lg font-medium text-gray-900 dark:text-white group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">
-                    Admin Panel
+                    {{ $t('dashboard.adminPanel') }}
                   </h4>
                   <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    System settings, environment variables, security configuration, and user management.
+                    {{ $t('dashboard.adminPanelDesc') }}
                   </p>
                 </div>
                 <div class="flex-shrink-0">
@@ -167,22 +167,22 @@
         <UCard class="shadow-sm">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg leading-6 font-medium text-gray-950 dark:text-white">
-              Folders
+              {{ $t('dashboard.folders') }}
             </h3>
             <UButton
               @click="showCreateFolderModal = true"
               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
             >
-              New Folder
+              {{ $t('dashboard.newFolder') }}
             </UButton>
           </div>
 
           <div v-if="projectsStore.isLoading" class="text-center py-8">
-            <p class="text-gray-600 dark:text-gray-300">Loading folders...</p>
+            <p class="text-gray-600 dark:text-gray-300">{{ $t('dashboard.loadingFolders') }}</p>
           </div>
 
           <div v-else-if="rootFolders.length === 0" class="text-center py-8">
-            <p class="text-gray-600 dark:text-gray-300 mb-4">No folders yet. Create your first folder!</p>
+            <p class="text-gray-600 dark:text-gray-300 mb-4">{{ $t('dashboard.noFolders') }}</p>
           </div>
 
           <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -191,7 +191,7 @@
               :key="folder.id"
               :items="getFolderMenuItems(folder)"
             >
-              <UTooltip text="Right Click For More Options" placement="top">
+              <UTooltip :text="$t('dashboard.rightClickOptions')" placement="top">
                 <div 
                   @click="openFolder(folder)"
                   class="cursor-pointer border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow bg-slate-50 dark:bg-slate-900/20 hover:bg-slate-100 dark:hover:bg-slate-800/30 relative group"
@@ -199,7 +199,7 @@
                   <h4 class="font-medium text-gray-950 dark:text-white mb-2">{{ folder.name }}</h4>
                   <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">{{ folder.description || '' }}</p>
                   <div class="text-xs text-gray-500 dark:text-gray-400">
-                    Updated {{ formatDate(folder.updatedAt) }}
+                    {{ $t('dashboard.updated') }} {{ formatDate(folder.updatedAt) }}
                   </div>
                 </div>
               </UTooltip>
@@ -212,27 +212,27 @@
     <!-- Create Folder Modal -->
     <ModalWrapper v-model="showCreateFolderModal" class="max-w-lg">
       <div class="m-4">
-        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Create New Folder</h3>
+        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">{{ $t('folder.createTitle') }}</h3>
         <form @submit.prevent="handleCreateFolder">
           <div class="mb-4">
-            <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Folder Name</label>
+            <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('folder.name') }}</label>
             <input
               id="folderName"
               v-model="folderForm.name"
               type="text"
               required
               class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-              placeholder="Enter folder name"
+              :placeholder="$t('folder.namePlaceholder')"
             >
           </div>
           <div class="mb-4">
-            <label for="folderDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (Optional)</label>
+            <label for="folderDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('folder.description') }}</label>
             <textarea
               id="folderDescription"
               v-model="folderForm.description"
               v-auto-resize
               class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-950 dark:text-white resize-none overflow-hidden"
-              placeholder="Enter folder description"
+              :placeholder="$t('folder.descriptionPlaceholder')"
             ></textarea>
           </div>
           <div class="flex justify-end space-x-3">
@@ -241,14 +241,14 @@
               @click="showCreateFolderModal = false"
               class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </button>
             <button
               type="submit"
               :disabled="!folderForm.name.trim()"
               class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             >
-              Create Folder
+              {{ $t('folder.createButton') }}
             </button>
           </div>
         </form>
@@ -258,27 +258,27 @@
     <!-- Edit Folder Modal -->
     <ModalWrapper v-model="showEditFolderModal" class="max-w-lg">
       <div class="m-4">
-        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">Edit Folder</h3>
+        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-4">{{ $t('folder.editTitle') }}</h3>
         <form @submit.prevent="handleEditFolder">
           <div class="mb-4">
-            <label for="editFolderName" class="block text-sm font-medium text-gray-700">Folder Name</label>
+            <label for="editFolderName" class="block text-sm font-medium text-gray-700">{{ $t('folder.name') }}</label>
             <input
               id="editFolderName"
               v-model="editForm.name"
               type="text"
               required
               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-              placeholder="Enter folder name"
+              :placeholder="$t('folder.namePlaceholder')"
             >
           </div>
           <div class="mb-4">
-            <label for="editFolderDescription" class="block text-sm font-medium text-gray-700">Description (Optional)</label>
+            <label for="editFolderDescription" class="block text-sm font-medium text-gray-700">{{ $t('folder.description') }}</label>
             <textarea
               id="editFolderDescription"
               v-model="editForm.description"
               v-auto-resize
               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 resize-none overflow-hidden"
-              placeholder="Enter folder description"
+              :placeholder="$t('folder.descriptionPlaceholder')"
             ></textarea>
           </div>
           <div class="flex justify-end space-x-3">
@@ -286,14 +286,14 @@
               @click="cancelEdit"
               class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
-              Cancel
+              {{ $t('common.cancel') }}
             </UButton>
             <UButton
               type="submit"
               :disabled="!editForm.name.trim()"
               class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             >
-              Save Changes
+              {{ $t('common.save') }}
             </UButton>
           </div>
         </form>
@@ -306,25 +306,25 @@
         <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 mb-4">
           <UIcon name="i-lucide-alert-triangle" class="h-6 w-6 text-red-600 dark:text-red-400" />
         </div>
-        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-2 text-center">Delete Folder</h3>
+        <h3 class="text-lg font-medium text-gray-950 dark:text-white mb-2 text-center">{{ $t('folder.deleteTitle') }}</h3>
         <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
-          Are you sure you want to delete "<strong>{{ folderToDelete?.name }}</strong>"?
+          {{ $t('folder.deleteConfirm') }} "<strong>{{ folderToDelete?.name }}</strong>"?
         </p>
         <p class="text-sm text-red-600 dark:text-red-400 mb-4 text-center">
-          <strong>Warning:</strong> This will also delete all folders and projects inside this folder. This action cannot be undone.
+          <strong>{{ $t('common.warning') }}:</strong> {{ $t('folder.deleteWarning') }}
         </p>
         <div class="flex justify-end space-x-3">
           <UButton
             @click="cancelDelete"
             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
           >
-            Cancel
+            {{ $t('common.cancel') }}
           </UButton>
           <UButton
             @click="handleDeleteFolder"
             class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
           >
-            Delete Folder
+            {{ $t('folder.deleteButton') }}
           </UButton>
         </div>
       </div>
@@ -334,23 +334,22 @@
     <ModalWrapper v-model="showMoveModal" class="max-w-lg">
       <div class="m-4">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Move Folder
+          {{ $t('folder.moveTitle') }}
         </h3>
         <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-          Moving "{{ itemToMove?.name }}" to a new location.
-          All contents will move with the folder.
+          {{ $t('folder.moveDesc').replace('{name}', itemToMove?.name || '') }}
         </p>
         
         <div class="mb-4">
           <label for="destinationPath" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Destination Path
+            {{ $t('folder.destinationPath') }}
           </label>
           <input
             id="destinationPath"
             v-model="destinationPath"
             @input="filterPaths"
             type="text"
-            placeholder="Type to search paths..."
+            :placeholder="$t('folder.destinationPlaceholder')"
             class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
           >
           
@@ -372,14 +371,14 @@
             @click="cancelMove"
             class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Cancel
+            {{ $t('common.cancel') }}
           </UButton>
           <UButton
             @click="handleMoveItem"
             :disabled="!destinationPath.trim()"
             class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Move
+            {{ $t('common.move') }}
           </UButton>
         </div>
       </div>
@@ -394,6 +393,7 @@ definePageMeta({
 
 import ModalWrapper from '~/components/ModalWrapper.vue'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
 const webSocketStore = useWebSocketStore()
@@ -453,7 +453,7 @@ const allAvailablePaths = computed(() => {
   // Add root path
   paths.push({
     path: [],
-    displayPath: 'Root',
+    displayPath: t('folder.root'),
     item: null
   })
   
@@ -636,17 +636,17 @@ const filterPaths = () => {
 const getFolderMenuItems = (folder) => {
   return [
     {
-      label: 'Edit',
+      label: t('common.edit'),
       icon: 'i-lucide-edit-2',
       onSelect: () => startEditFolder(folder)
     },
     {
-      label: 'Move',
+      label: t('common.move'),
       icon: 'i-lucide-move',
       onSelect: () => confirmMoveItem(folder)
     },
     {
-      label: 'Delete',
+      label: t('common.delete'),
       icon: 'i-lucide-trash-2',
       onSelect: () => confirmDeleteFolder(folder),
       class: 'text-red-600 dark:text-red-400'

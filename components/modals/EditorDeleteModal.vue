@@ -5,10 +5,10 @@
         <UIcon name="i-lucide-triangle-alert" class="w-6 h-6 text-red-600 dark:text-red-400" />
       </div>
       <div class="mt-4 text-center">
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Confirm Deletion</h3>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ t('editorDeleteModal.confirmDeletion') }}</h3>
         <div class="mt-2 px-7 py-3">
           <p class="text-sm text-gray-500 dark:text-gray-300">
-            Are you sure you want to delete the following {{ items.length === 1 ? 'item' : 'items' }}?
+            {{ t('editorDeleteModal.areYouSureDelete') }} {{ items.length === 1 ? t('editorDeleteModal.item') : t('editorDeleteModal.items') }}?
           </p>
           <div class="mt-3 max-h-32 overflow-y-auto">
             <ul class="text-sm text-gray-700 dark:text-gray-300">
@@ -19,7 +19,7 @@
             </ul>
           </div>
           <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
-            This action cannot be undone.
+            {{ t('editorDeleteModal.cannotBeUndone') }}
           </p>
         </div>
       </div>
@@ -29,13 +29,13 @@
         @click="handleCancel"
         class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 text-base font-medium rounded-md shadow-sm hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
       >
-        Cancel
+        {{ t('editorDeleteModal.cancel') }}
       </button>
       <button
         @click="handleConfirm"
         class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
       >
-        Delete
+        {{ t('editorDeleteModal.delete') }}
       </button>
     </div>
   </ModalWrapper>
@@ -43,6 +43,7 @@
 
 <script setup>
 import ModalWrapper from '~/components/ModalWrapper.vue'
+const { t } = useI18n()
 const props = defineProps({
   modelValue: {
     type: Boolean,

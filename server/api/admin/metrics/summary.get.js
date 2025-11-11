@@ -119,7 +119,7 @@ async function getRecentBuildMetrics(db) {
       .select()
       .from(buildsSchema)
       .where(gte(buildsSchema.startedAt, cutoff))
-      .all()
+      .execute()
 
     const total = recentBuilds.length
     const success = recentBuilds.filter(b => b.status === 'success').length

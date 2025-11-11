@@ -2,11 +2,11 @@
   <div class="space-y-4">
     <UCheckbox
       v-model="nodeData.data.useExistingFile"
-      :label="`Use existing ${getFileName()} from repository`"
+      :label="t('dependencyNodeProperties.useExistingFile').replace('{fileName}', getFileName())"
     />
 
     <!-- Go Mod specific -->
-    <UFormField v-if="nodeData.data.nodeType === 'go-mod'" label="Command">
+    <UFormField v-if="nodeData.data.nodeType === 'go-mod'" :label="t('dependencyNodeProperties.command')">
       <USelect
         v-model="nodeData.data.command"
         :items="goModCommandOptions"
@@ -16,7 +16,7 @@
     </UFormField>
 
     <!-- Cargo Build specific -->
-    <UFormField v-if="nodeData.data.nodeType === 'cargo-build'" label="Build Type">
+    <UFormField v-if="nodeData.data.nodeType === 'cargo-build'" :label="t('dependencyNodeProperties.buildType')">
       <USelect
         v-model="nodeData.data.buildType"
         :items="cargoBuildTypeOptions"
@@ -33,17 +33,17 @@
         class="w-full"
       />
       <template #help>
-        Will be written to {{ getFileName() }} before execution
+        {{ t('dependencyNodeProperties.fileContentHelp').replace('{fileName}', getFileName()) }}
       </template>
     </UFormField>
     <UAlert v-else color="warning" variant="soft" icon="i-lucide-info">
       <template #description>
-        Will use existing {{ getFileName() }} from working directory. Ensure file exists in repository or previous build step.
+        {{ t('dependencyNodeProperties.existingFileWarning').replace('{fileName}', getFileName()) }}
       </template>
     </UAlert>
 
     <!-- Common fields -->
-    <UFormField label="Working Directory">
+    <UFormField :label="t('dependencyNodeProperties.workingDirectory')">
       <UInput
         v-model="nodeData.data.workingDirectory"
         type="text"
@@ -53,7 +53,7 @@
       />
     </UFormField>
 
-    <UFormField v-if="nodeData.data.installArgs !== undefined" label="Additional Arguments">
+    <UFormField v-if="nodeData.data.installArgs !== undefined" :label="t('dependencyNodeProperties.additionalArguments')">
       <UInput
         v-model="nodeData.data.installArgs"
         type="text"
@@ -63,7 +63,7 @@
       />
     </UFormField>
 
-    <UFormField label="Timeout (seconds)">
+    <UFormField :label="t('dependencyNodeProperties.timeout')">
       <UInput
         v-model.number="nodeData.data.timeout"
         type="number"
@@ -77,6 +77,8 @@
 
 <script setup>
 import ScriptEditor from '../ScriptEditor.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   nodeData: {
@@ -110,15 +112,15 @@ const getPlaceholder = () => {
 const getFileLabel = () => {
   switch (props.nodeData.data.nodeType) {
     case 'go-mod':
-      return 'go.mod Content'
+      return t('dependencyNodeProperties.goModContent')
     case 'bundle-install':
-      return 'Gemfile Content'
+      return t('dependencyNodeProperties.gemfileContent')
     case 'composer-install':
-      return 'composer.json Content'
+      return t('dependencyNodeProperties.composerJsonContent')
     case 'cargo-build':
-      return 'Cargo.toml Content'
+      return t('dependencyNodeProperties.cargoTomlContent')
     default:
-      return 'File Content'
+      return t('dependencyNodeProperties.fileContent')
   }
 }
 

@@ -2,7 +2,7 @@
   <div>
     <!-- Execution Type -->
     <div class="mb-4">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Execution Type</label>
+      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{{ t('parallelExecutionProperties.executionType') }}</label>
       <select
         v-model="nodeData.data.executionType"
         class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
@@ -17,7 +17,7 @@
 
     <!-- Script Editor -->
     <div class="mb-4">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Script</label>
+      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{{ t('parallelExecutionProperties.script') }}</label>
       <ScriptEditor
         v-model="nodeData.data.script"
         :language="'javascript'"
@@ -27,19 +27,19 @@
 
     <!-- Working Directory -->
     <div class="mb-4">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Working Directory</label>
+      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{{ t('parallelExecutionProperties.workingDirectory') }}</label>
       <input
         v-model="nodeData.data.workingDirectory"
         type="text"
         class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white"
-        placeholder="."
+        :placeholder="t('parallelExecutionProperties.workingDirectoryPlaceholder')"
       >
     </div>
 
     <!-- Timeout -->
     <div class="mb-4">
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-        Timeout (seconds)
+        {{ t('parallelExecutionProperties.timeout') }}
       </label>
       <input
         v-model.number="nodeData.data.timeout"
@@ -54,8 +54,8 @@
       <div class="flex items-start gap-2">
         <span class="text-blue-600 dark:text-blue-400 text-lg">ℹ️</span>
         <div class="text-sm text-blue-800 dark:text-blue-200">
-          <p class="font-semibold mb-1">Parallel Execution Node</p>
-          <p>This node is designed to be connected to a Parallel Branches node. It has no output sockets - all results are sent back to the parent parallel node.</p>
+          <p class="font-semibold mb-1">{{ t('parallelExecutionProperties.parallelExecutionNode') }}</p>
+          <p>{{ t('parallelExecutionProperties.parallelExecutionDescription') }}</p>
         </div>
       </div>
     </div>
@@ -64,6 +64,9 @@
 
 <script setup>
 import ScriptEditor from '@/components/ScriptEditor.vue'
+
+const { t } = useI18n()
+
 const props = defineProps({
   nodeData: { 
     type: Object, 

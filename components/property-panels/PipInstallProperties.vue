@@ -2,10 +2,10 @@
   <div class="space-y-4">
     <UCheckbox
       v-model="nodeData.data.useExistingFile"
-      label="Use existing requirements.txt from repository"
+      :label="t('pipInstallProperties.useExistingRequirements')"
     />
 
-    <UFormField label="Python Version">
+    <UFormField :label="t('pipInstallProperties.pythonVersion')">
       <USelect
         v-model="nodeData.data.pythonVersion"
         :items="pythonVersionOptions"
@@ -14,7 +14,7 @@
       />
     </UFormField>
 
-    <UFormField v-if="!nodeData.data.useExistingFile" label="requirements.txt Content" help="Will be written to requirements.txt before installation">
+    <UFormField v-if="!nodeData.data.useExistingFile" :label="t('pipInstallProperties.requirementsContent')" :help="t('pipInstallProperties.requirementsHelp')">
       <ScriptEditor
         v-model="nodeData.data.script"
         :language="'plaintext'"
@@ -24,11 +24,11 @@
     </UFormField>
     <UAlert v-else color="warning" variant="soft" icon="i-lucide-info">
       <template #description>
-        Will use existing requirements.txt from working directory. Ensure file exists in repository or previous build step.
+        {{ t('pipInstallProperties.existingFileWarning') }}
       </template>
     </UAlert>
 
-    <UFormField label="Working Directory">
+    <UFormField :label="t('pipInstallProperties.workingDirectory')">
       <UInput
         v-model="nodeData.data.workingDirectory"
         type="text"
@@ -38,20 +38,20 @@
       />
     </UFormField>
 
-    <UFormField label="Additional Arguments">
+    <UFormField :label="t('pipInstallProperties.additionalArguments')">
       <UInput
         v-model="nodeData.data.installArgs"
         type="text"
         size="md"
         class="w-full"
-        placeholder="--user"
+        :placeholder="t('pipInstallProperties.additionalArgumentsPlaceholder')"
       />
       <template #help>
-        Optional flags (e.g., --user, --upgrade)
+        {{ t('pipInstallProperties.additionalArgumentsHelp') }}
       </template>
     </UFormField>
 
-    <UFormField label="Timeout (seconds)">
+    <UFormField :label="t('pipInstallProperties.timeout')">
       <UInput
         v-model.number="nodeData.data.timeout"
         type="number"
@@ -65,6 +65,8 @@
 
 <script setup>
 import ScriptEditor from '../ScriptEditor.vue'
+
+const { t } = useI18n()
 
 defineProps({
   nodeData: {

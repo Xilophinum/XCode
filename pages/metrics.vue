@@ -7,7 +7,7 @@
         <USelect
           v-model="selectedTimeRange"
           :items="timeRangeOptions"
-          placeholder="Range"
+          :placeholder="t('metrics.range')"
           class="w-32"
         />
         <UButton
@@ -23,7 +23,7 @@
         <USelect
           v-model="selectedTimeRange"
           :items="timeRangeOptions"
-          placeholder="Select time range"
+          :placeholder="t('metrics.selectTimeRange')"
           class="w-48"
         />
         <UButton
@@ -32,7 +32,7 @@
         >
           <UIcon name="i-lucide-refresh-cw" class="h-5 w-5 text-black animate-spin" v-if="autoRefresh"/>
           <UIcon name="i-lucide-pause" class="h-5 w-5 text-primary animate-pulse" v-else/>
-          {{ autoRefresh ? 'Auto-Refresh' : 'Paused' }}
+          {{ autoRefresh ? t('metrics.autoRefresh') : t('metrics.paused') }}
         </UButton>
         <UButton
           v-if ="!autoRefresh"
@@ -41,7 +41,7 @@
           :loading="isLoading"
           @click="refreshAll"
         >
-          Refresh
+          {{ t('metrics.refresh') }}
         </UButton>
       </template>
     </AppNavigation>
@@ -51,13 +51,13 @@
       <div class="px-4 sm:px-0">
         <!-- Page Header -->
         <div class="mb-6">
-          <h1 class="text-3xl font-bold text-gray-950 dark:text-white">System Metrics</h1>
+          <h1 class="text-3xl font-bold text-gray-950 dark:text-white">{{ t('metrics.title') }}</h1>
           <div class="flex items-center justify-between mt-2">
             <p class="text-gray-600 dark:text-gray-300">
-              Monitor server, agent, and build performance
+              {{ t('metrics.subtitle') }}
             </p>
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              Last updated: {{ getReactiveRelativeTime(lastRefresh) }}
+              {{ t('metrics.lastUpdated') }} {{ getReactiveRelativeTime(lastRefresh) }}
             </div>
           </div>
         </div>
@@ -111,6 +111,7 @@ import MetricsAlerts from '~/components/metrics/MetricsAlerts.vue'
 import MetricsComparison from '~/components/metrics/MetricsComparison.vue'
 
 // Stores
+const { t } = useI18n()
 const authStore = useAuthStore()
 const router = useRouter()
 
@@ -132,13 +133,13 @@ const refreshIntervalId = ref(null)
 const currentTime = ref(Date.now())
 
 // Time range options
-const timeRangeOptions = [
-  { label: 'Last Hour', value: '1h' },
-  { label: 'Last 8 Hours', value: '8h' },
-  { label: 'Last 24 Hours', value: '24h' },
-  { label: 'Last 3 Days', value: '3d' },
-  { label: 'Last 7 Days', value: '7d' }
-]
+const timeRangeOptions = computed(() => [
+  { label: t('metrics.lastHour'), value: '1h' },
+  { label: t('metrics.last8Hours'), value: '8h' },
+  { label: t('metrics.last24Hours'), value: '24h' },
+  { label: t('metrics.last3Days'), value: '3d' },
+  { label: t('metrics.last7Days'), value: '7d' }
+])
 
 // Computed
 const selectedTimeRange = computed({
@@ -166,13 +167,13 @@ const checkViewport = () => {
 }
 
 const tabs = computed(() => [
-  { slot: 'overview', label: isMobile.value ? '' : 'Overview', icon: 'i-lucide-bar-chart' },
-  { slot: 'server', label: isMobile.value ? '' : 'Server', icon: 'i-lucide-server' },
-  { slot: 'agents', label: isMobile.value ? '' : 'Agents', icon: 'i-lucide-cpu' },
-  { slot: 'builds', label: isMobile.value ? '' : 'Builds', icon: 'i-lucide-box' },
-  { slot: 'api', label: isMobile.value ? '' : 'API Performance', icon: 'i-lucide-activity' },
-  { slot: 'alerts', label: isMobile.value ? '' : 'Alerts', icon: 'i-lucide-bell-ring' },
-  { slot: 'comparison', label: isMobile.value ? '' : 'Comparison', icon: 'i-lucide-grid-2x2' }
+  { slot: 'overview', label: isMobile.value ? '' : t('metrics.overview'), icon: 'i-lucide-bar-chart' },
+  { slot: 'server', label: isMobile.value ? '' : t('metrics.server'), icon: 'i-lucide-server' },
+  { slot: 'agents', label: isMobile.value ? '' : t('metrics.agents'), icon: 'i-lucide-cpu' },
+  { slot: 'builds', label: isMobile.value ? '' : t('metrics.builds'), icon: 'i-lucide-box' },
+  { slot: 'api', label: isMobile.value ? '' : t('metrics.apiPerformance'), icon: 'i-lucide-activity' },
+  { slot: 'alerts', label: isMobile.value ? '' : t('metrics.alerts'), icon: 'i-lucide-bell-ring' },
+  { slot: 'comparison', label: isMobile.value ? '' : t('metrics.comparison'), icon: 'i-lucide-grid-2x2' }
 ])
 
 // Methods
@@ -213,15 +214,15 @@ function stopAutoRefresh() {
 
 // Reactive version that updates with currentTime ref
 function getReactiveRelativeTime(dateString) {
-  if (!dateString) return 'Never'
+  if (!dateString) return t('metrics.never')
 
   const date = new Date(dateString)
   const diffInSeconds = Math.floor((currentTime.value - date.getTime()) / 1000)
-  if (diffInSeconds < 5) return 'Just now'
-  if (diffInSeconds < 60) return `${diffInSeconds}s ago`
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
-  return `${Math.floor(diffInSeconds / 86400)}d ago`
+  if (diffInSeconds < 5) return t('metrics.justNow')
+  if (diffInSeconds < 60) return t('metrics.secondsAgo').replace('{count}', diffInSeconds)
+  if (diffInSeconds < 3600) return t('metrics.minutesAgo').replace('{count}', Math.floor(diffInSeconds / 60))
+  if (diffInSeconds < 86400) return t('metrics.hoursAgo').replace('{count}', Math.floor(diffInSeconds / 3600))
+  return t('metrics.daysAgo').replace('{count}', Math.floor(diffInSeconds / 86400))
 }
 let timeUpdateInterval = null
 // Lifecycle

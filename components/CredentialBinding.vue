@@ -2,19 +2,19 @@
   <div class="mt-5">
     <div class="flex items-center justify-between mb-2">
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-        Credentials
+        {{ t('credentials.credentials') }}
       </label>
       <UButton
         @click="addCredentialBinding"
         size="xs"
         icon="i-lucide-plus"
       >
-        Add Credential
+        {{ t('credentials.addCredential') }}
       </UButton>
     </div>
 
     <div v-if="!credentials || credentials.length === 0" class="text-sm text-neutral-500 dark:text-neutral-400 italic">
-      No credentials bound to this node
+      {{ t('credentials.noCredentialsBound') }}
     </div>
 
     <div v-else class="space-y-3">
@@ -25,7 +25,7 @@
       >
         <div class="flex gap-2 items-end mt-3">
           <!-- Environment Variable Name -->
-          <UFormField label="Environment Variable" size="sm" class="flex-1">
+          <UFormField :label="t('credentials.environmentVariable')" size="sm" class="flex-1">
             <UInput
               v-model="binding.variable"
               :placeholder="getDefaultEnvVarName(binding)"
@@ -35,18 +35,18 @@
           </UFormField>
 
           <!-- Credential Selection -->
-          <UFormField label="Credential" size="sm" class="flex-1">
+          <UFormField :label="t('credentials.credential')" size="sm" class="flex-1">
             <USelect
               v-model="binding.credentialId"
               :items="credentialOptions"
               size="sm"
-              placeholder="Select credential..."
+              :placeholder="t('credentials.selectCredential')"
               class="w-full"
             />
           </UFormField>
 
           <!-- Field Selection -->
-          <UFormField label="Field" size="sm" class="flex-1">
+          <UFormField :label="t('credentials.field')" size="sm" class="flex-1">
             <USelect
               v-model="binding.field"
               :items="[
@@ -78,7 +78,7 @@
         icon="i-lucide-info"
       >
         <template #title>
-          Preview
+          {{ t('credentials.preview') }}
         </template>
         <template #description>
           <div class="space-y-1">
@@ -92,7 +92,7 @@
 
     <!-- Help Text -->
     <p class="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-      Credentials will be injected as environment variables during job execution.
+      {{ t('credentials.helpText') }}
     </p>
   </div>
 </template>
@@ -103,6 +103,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
+const { t } = useI18n()
 const logger = useLogger()
 const credentials = computed({
   get: () => props.modelValue || [],
@@ -150,25 +151,25 @@ const getCredentialFields = (credentialId) => {
 
   const fieldMap = {
     password: [
-      { value: 'password', label: 'Password' }
+      { value: 'password', label: t('credentials.password') }
     ],
     user_pass: [
-      { value: 'username', label: 'Username' },
-      { value: 'password', label: 'Password' }
+      { value: 'username', label: t('credentials.username') },
+      { value: 'password', label: t('credentials.password') }
     ],
     token: [
-      { value: 'token', label: 'Token' }
+      { value: 'token', label: t('credentials.token') }
     ],
     ssh_key: [
-      { value: 'username', label: 'Username' },
-      { value: 'private_key', label: 'Private Key' }
+      { value: 'username', label: t('credentials.username') },
+      { value: 'private_key', label: t('credentials.privateKey') }
     ],
     certificate: [
-      { value: 'certificate', label: 'Certificate' }
+      { value: 'certificate', label: t('credentials.certificate') }
     ],
     file: [
-      { value: 'file_data', label: 'File Data' },
-      { value: 'file_name', label: 'File Name' }
+      { value: 'file_data', label: t('credentials.fileData') },
+      { value: 'file_name', label: t('credentials.fileName') }
     ]
   }
 

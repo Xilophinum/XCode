@@ -2,35 +2,35 @@
   <div class="space-y-4">
     <!-- Array Parameter Instructions -->
     <UAlert color="primary" variant="soft" icon="i-lucide-list">
-      <template #title>Array Parameter Input Required:</template>
+      <template #title>{{ t('parallelMatrixProperties.arrayParameterInputRequired') }}</template>
       <template #description>
         <ol class="list-decimal list-inside space-y-1">
-          <li>Create an <strong>Array Parameter</strong> node</li>
-          <li>Connect it to this node's <code class="bg-primary-100 dark:bg-primary-900 px-1 rounded">Array Values</code> input socket</li>
-          <li>The array values will be used to execute the connected job multiple times</li>
+          <li>{{ t('parallelMatrixProperties.createArrayParameter') }}</li>
+          <li>{{ t('parallelMatrixProperties.connectToArrayValues') }}</li>
+          <li>{{ t('parallelMatrixProperties.arrayValuesUsage') }}</li>
         </ol>
       </template>
     </UAlert>
 
     <!-- Execution Name Template -->
-    <UFormField label="Execution Name Template">
+    <UFormField :label="t('parallelMatrixProperties.executionNameTemplate')">
       <template #label>
-        <span>Execution Name Template <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400">(optional)</span></span>
+        <span>{{ t('parallelMatrixProperties.executionNameTemplate') }} <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400">{{ t('parallelMatrixProperties.optional') }}</span></span>
       </template>
       <UInput
         v-model="nodeData.data.nameTemplate"
         type="text"
         size="md"
         class="w-full font-mono"
-        placeholder="Matrix-$INDEX"
+        :placeholder="t('parallelMatrixProperties.nameTemplatePlaceholder')"
       />
       <template #help>
-        Template for naming each execution. Available: $INDEX, $ITEM_VALUE
+        {{ t('parallelMatrixProperties.nameTemplateHelp') }}
       </template>
     </UFormField>
 
     <div class="text-xs">
-      <div class="font-medium mb-1">Examples:</div>
+      <div class="font-medium mb-1">{{ t('parallelMatrixProperties.examples') }}</div>
       <div class="space-y-1 text-neutral-600 dark:text-neutral-400">
         <div><code class="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">Build-$ITEM_VALUE</code> → Build-production</div>
         <div><code class="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">Deploy-$INDEX-$ITEM_VALUE</code> → Deploy-1-us-east</div>
@@ -38,9 +38,9 @@
     </div>
 
     <!-- Additional Parameters -->
-    <UFormField label="Additional Parameters">
+    <UFormField :label="t('parallelMatrixProperties.additionalParameters')">
       <template #label>
-        <span>Additional Parameters <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400">(JSON object, optional)</span></span>
+        <span>{{ t('parallelMatrixProperties.additionalParameters') }} <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400">{{ t('parallelMatrixProperties.jsonObjectOptional') }}</span></span>
       </template>
       <ScriptEditor
         v-model="nodeData.data.additionalParams"
@@ -49,22 +49,22 @@
         class="w-full"
       />
       <template #help>
-        Static parameters passed to all executions. Example: {"BUILD_TYPE": "Release", "ENABLE_CACHE": true}
+        {{ t('parallelMatrixProperties.additionalParamsHelp') }}
       </template>
     </UFormField>
 
     <!-- Max Concurrency -->
-    <UFormField label="Max Concurrent Executions">
+    <UFormField :label="t('parallelMatrixProperties.maxConcurrentExecutions')">
       <UInput
         v-model.number="nodeData.data.maxConcurrency"
         type="number"
         :min="1"
-        placeholder="Unlimited"
+        :placeholder="t('parallelMatrixProperties.unlimitedPlaceholder')"
         size="md"
         class="w-full"
       />
       <template #help>
-        Leave empty for unlimited parallel execution
+        {{ t('parallelMatrixProperties.maxConcurrencyHelp') }}
       </template>
     </UFormField>
 
@@ -72,8 +72,8 @@
     <UFormField>
       <UCheckbox
         v-model="nodeData.data.failFast"
-        label="Fail Fast"
-        help="Stop all iterations if any iteration fails"
+        :label="t('parallelMatrixProperties.failFast')"
+        :help="t('parallelMatrixProperties.failFastHelp')"
       />
     </UFormField>
 
@@ -81,21 +81,21 @@
     <UFormField>
       <UCheckbox
         v-model="nodeData.data.continueOnError"
-        label="Continue on Error"
-        help="Continue executing remaining items even if some fail"
+        :label="t('parallelMatrixProperties.continueOnError')"
+        :help="t('parallelMatrixProperties.continueOnErrorHelp')"
       />
     </UFormField>
 
     <!-- Info Box -->
     <UAlert color="secondary" variant="soft" icon="i-lucide-info">
-      <template #title>How it works:</template>
+      <template #title>{{ t('parallelMatrixProperties.howItWorks') }}</template>
       <template #description>
         <ol class="list-decimal list-inside space-y-1">
-          <li>Connect an Array Parameter node to the <code class="bg-secondary-100 dark:bg-secondary-900 px-1 rounded">Array Values</code> input socket</li>
-          <li>Connect parallel execution node to the <code class="bg-secondary-100 dark:bg-secondary-900 px-1 rounded">For Each Item</code> execution socket</li>
-          <li>Connect the <code class="bg-secondary-100 dark:bg-secondary-900 px-1 rounded">Iteration Value</code> output to execution node inputs to access current item</li>
-          <li>Optionally connect <code class="bg-secondary-100 dark:bg-secondary-900 px-1 rounded">Additional Parameters</code> output for static parameters</li>
-          <li>Results are aggregated in the output sockets after all iterations complete</li>
+          <li>{{ t('parallelMatrixProperties.step1') }}</li>
+          <li>{{ t('parallelMatrixProperties.step2') }}</li>
+          <li>{{ t('parallelMatrixProperties.step3') }}</li>
+          <li>{{ t('parallelMatrixProperties.step4') }}</li>
+          <li>{{ t('parallelMatrixProperties.step5') }}</li>
         </ol>
       </template>
     </UAlert>
@@ -104,6 +104,9 @@
 
 <script setup>
 import ScriptEditor from '@/components/ScriptEditor.vue'
+
+const { t } = useI18n()
+
 const props = defineProps({
   nodeData: { type: Object, required: true }
 })

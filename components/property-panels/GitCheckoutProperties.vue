@@ -1,53 +1,53 @@
 <template>
   <div class="space-y-4">
-    <UFormField label="Repository URL">
+    <UFormField :label="t('gitCheckoutProperties.repositoryUrl')">
       <UInput
         v-model="nodeData.data.repositoryUrl"
         type="text"
         size="sm"
         class="font-mono w-full"
-        placeholder="https://github.com/user/repo.git"
+        :placeholder="t('gitCheckoutProperties.repositoryUrlPlaceholder')"
         
       />
       <template #help>
-        Supports credential variables
+        {{ t('gitCheckoutProperties.repositoryUrlHelp') }}
       </template>
     </UFormField>
 
-    <UFormField label="Branch/Tag/Commit">
+    <UFormField :label="t('gitCheckoutProperties.branchTagCommit')">
       <UInput
         v-model="nodeData.data.branch"
         type="text"
         size="sm"
-        placeholder="main"
+        :placeholder="t('gitCheckoutProperties.branchPlaceholder')"
         class="w-full"
       />
     </UFormField>
 
-    <UFormField label="Checkout Directory">
+    <UFormField :label="t('gitCheckoutProperties.checkoutDirectory')">
       <UInput
         v-model="nodeData.data.checkoutDirectory"
         type="text"
         size="sm"
-        placeholder="./"
+        :placeholder="t('gitCheckoutProperties.checkoutDirectoryPlaceholder')"
         class="w-full"
       />
       <template #help>
-        Directory will be created if it doesn't exist
+        {{ t('gitCheckoutProperties.checkoutDirectoryHelp') }}
       </template>
     </UFormField>
 
     <UCheckbox
       v-model="nodeData.data.shallowClone"
-      label="Shallow clone (depth=1, faster for large repos)"
+      :label="t('gitCheckoutProperties.shallowClone')"
     />
 
     <UCheckbox
       v-model="nodeData.data.cleanCheckout"
-      label="Clean checkout (remove directory if exists)"
+      :label="t('gitCheckoutProperties.cleanCheckout')"
     />
 
-    <UFormField label="Timeout (seconds)" help="Maximum time to wait for git operations to complete">
+    <UFormField :label="t('gitCheckoutProperties.timeout')" :help="t('gitCheckoutProperties.timeoutHelp')">
       <UInput
         v-model.number="nodeData.data.timeout"
         type="number"
@@ -58,6 +58,8 @@
 </template>
 
 <script setup>
+const { t } = useI18n()
+
 defineProps({
   nodeData: {
     type: Object,

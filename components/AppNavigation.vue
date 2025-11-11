@@ -89,7 +89,7 @@
 
           
           <span class="text-sm text-gray-700 dark:text-gray-200">
-            Welcome, {{ authStore.user?.name }}
+            {{ $t('common.welcome') }}, {{ authStore.user?.name }}
           </span>
           
           <UButton
@@ -102,7 +102,7 @@
           </UButton>
 
           <!-- Dark Mode Toggle -->
-          <UTooltip text="Toggle dark mode">
+          <UTooltip :text="$t('common.toggleDarkMode')">
             <UButton
               @click="darkMode.toggle()"
               color="neutral"
@@ -119,7 +119,7 @@
         <!-- Mobile menu button -->
         <div class="md:hidden flex items-center space-x-1">
           <!-- Mobile Search Button -->
-          <UTooltip text="Search">
+          <UTooltip :text="$t('common.search')">
             <UButton
               @click="showMobileSearch = !showMobileSearch"
               color="neutral"
@@ -135,7 +135,7 @@
           </div>
           
           <!-- Mobile hamburger menu -->
-          <UTooltip text="Menu">
+          <UTooltip :text="$t('common.menu')">
             <UButton
               @click="toggleMobileMenu"
               color="neutral"
@@ -235,7 +235,7 @@
               <UIcon name="i-lucide-sun" v-if="isDark"/>
               <UIcon name="i-lucide-moon" v-else />
             </template>
-            {{ isDark ? 'Light Mode' : 'Dark Mode' }}
+            {{ isDark ? $t('common.lightMode') : $t('common.darkMode') }}
           </UButton>
         </div>
       </div>
@@ -244,7 +244,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 
 const props = defineProps({
   breadcrumbs: {
@@ -270,7 +270,7 @@ const showSearchResults = ref(false)
 // Branding settings
 const brandName = ref('FlowForge')
 const appLogo = ref(null)
-
+const { t } = useI18n()
 const isDark = computed(() => darkMode.isDark.value)
 
 const getBreadcrumbUrl = (index) => {

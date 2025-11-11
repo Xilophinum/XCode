@@ -3,11 +3,11 @@
     <UCard>
       <UCheckbox
         v-model="nodeData.data.useExistingFile"
-        label="Use existing package.json from repository"
+        :label="t('npmInstallProperties.useExistingPackageJson')"
       />
     </UCard>
 
-    <UFormField label="Package Manager">
+    <UFormField :label="t('npmInstallProperties.packageManager')">
       <USelect
         v-model="nodeData.data.packageManager"
         :items="packageManagerOptions"
@@ -16,7 +16,7 @@
       />
     </UFormField>
 
-    <UFormField v-if="!nodeData.data.useExistingFile" label="package.json Content">
+    <UFormField v-if="!nodeData.data.useExistingFile" :label="t('npmInstallProperties.packageJsonContent')">
       <ScriptEditor
         v-model="nodeData.data.script"
         :language="'json'"
@@ -24,16 +24,16 @@
         class="w-full"
       />
       <template #help>
-        Will be written to package.json before installation
+        {{ t('npmInstallProperties.packageJsonHelp') }}
       </template>
     </UFormField>
     <UAlert v-else color="warning" variant="soft" icon="i-lucide-info">
       <template #description>
-        Will use existing package.json from working directory. Ensure file exists in repository or previous build step.
+        {{ t('npmInstallProperties.existingFileWarning') }}
       </template>
     </UAlert>
 
-    <UFormField label="Working Directory">
+    <UFormField :label="t('npmInstallProperties.workingDirectory')">
       <UInput
         v-model="nodeData.data.workingDirectory"
         type="text"
@@ -43,20 +43,20 @@
       />
     </UFormField>
 
-    <UFormField label="Additional Arguments">
+    <UFormField :label="t('npmInstallProperties.additionalArguments')">
       <UInput
         v-model="nodeData.data.installArgs"
         type="text"
         size="md"
         class="w-full"
-        placeholder="--production"
+        :placeholder="t('npmInstallProperties.additionalArgumentsPlaceholder')"
       />
       <template #help>
-        Optional flags (e.g., --production, --frozen-lockfile)
+        {{ t('npmInstallProperties.additionalArgumentsHelp') }}
       </template>
     </UFormField>
 
-    <UFormField label="Timeout (seconds)">
+    <UFormField :label="t('npmInstallProperties.timeout')">
       <UInput
         v-model.number="nodeData.data.timeout"
         type="number"
@@ -70,6 +70,8 @@
 
 <script setup>
 import ScriptEditor from '../ScriptEditor.vue'
+
+const { t } = useI18n()
 
 defineProps({
   nodeData: {

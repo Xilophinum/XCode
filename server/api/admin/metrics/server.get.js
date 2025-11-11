@@ -61,7 +61,7 @@ export default defineEventHandler(async (event) => {
       .from(metricsSchema)
       .where(and(...conditions))
       .orderBy(metricsSchema.timestamp)
-      .all()
+      .execute()
 
     // Transform consolidated storage to frontend format
     const transformed = transformServerMetrics(metrics, interval)

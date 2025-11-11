@@ -2,14 +2,14 @@
   <div>
     <!-- Branches Configuration -->
     <div class="mb-4">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Branches</label>
+      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{{ t('parallelBranchesProperties.branches') }}</label>
 
       <div class="space-y-2">
         <div v-for="(branch, index) in nodeData.data.branches" :key="branch.id" class="flex items-center gap-2">
           <UInput
             v-model="branch.name"
             @input="updateBranchSockets"
-            placeholder="Branch name"
+            :placeholder="t('parallelBranchesProperties.branchNamePlaceholder')"
             size="sm"
             class="flex-1"
           />
@@ -32,26 +32,26 @@
         icon="i-lucide-plus"
         class="mt-2 border-dashed"
       >
-        Add Branch
+        {{ t('parallelBranchesProperties.addBranch') }}
       </UButton>
 
       <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        Each branch creates an execution socket to connect parallel execution nodes
+        {{ t('parallelBranchesProperties.branchesHelp') }}
       </p>
     </div>
 
     <!-- Execution Settings -->
     <div class="mb-4">
-      <UFormField label="Max Concurrent Branches" size="sm">
+      <UFormField :label="t('parallelBranchesProperties.maxConcurrentBranches')" size="sm">
         <UInput
           v-model.number="nodeData.data.maxConcurrency"
           type="number"
           min="1"
-          placeholder="Unlimited"
+          :placeholder="t('parallelBranchesProperties.unlimitedPlaceholder')"
           size="sm"
         />
         <template #help>
-          Leave empty for unlimited parallel execution
+          {{ t('parallelBranchesProperties.maxConcurrencyHelp') }}
         </template>
       </UFormField>
     </div>
@@ -60,10 +60,10 @@
     <div class="mb-4">
       <UCheckbox
         v-model="nodeData.data.failFast"
-        label="Fail Fast"
+        :label="t('parallelBranchesProperties.failFast')"
       />
       <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400 ml-6">
-        Stop all branches if any branch fails
+        {{ t('parallelBranchesProperties.failFastHelp') }}
       </p>
     </div>
   </div>
@@ -71,6 +71,8 @@
 
 <script setup>
 import { watch } from 'vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   nodeData: {
@@ -86,7 +88,7 @@ const addBranch = () => {
 
   props.nodeData.data.branches.push({
     id: branchId,
-    name: `Branch ${branchIndex}`
+    name: `${t('parallelBranchesProperties.branch')} ${branchIndex}`
   })
 
   updateBranchSockets()
@@ -106,9 +108,9 @@ const removeBranch = (index) => {
 // Update output sockets based on branches
 const updateBranchSockets = () => {
   const newSockets = [
-    { id: 'success', label: 'All Success', connected: false },
-    { id: 'failure', label: 'Any Failure', connected: false },
-    { id: 'output', label: 'Output', connected: false }
+    { id: 'success', label: t('parallelBranchesProperties.allSuccess'), connected: false },
+    { id: 'failure', label: t('parallelBranchesProperties.anyFailure'), connected: false },
+    { id: 'output', label: t('parallelBranchesProperties.output'), connected: false }
   ]
 
   props.nodeData.data.branches.forEach(branch => {
