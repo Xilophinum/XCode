@@ -194,7 +194,7 @@
         "viewLastLogs": "Ver últimos registros",
         "goToBuild": "Ir a la compilación",
         "rebuildProject": "Recompilar proyecto",
-        "lastLogLines": "Últimas {{count}} líneas de registro",
+        "lastLogLines": "Últimas {count} líneas de registro",
         "viewFullBuild": "Ver Compilación Completa",
         "rebuildProjectButton": "Recompilar Proyecto",
         "noLogEntries": "No hay entradas de registro disponibles",
@@ -659,7 +659,7 @@
         "examples": "Ejemplos:",
         "additionalParameters": "Parámetros Adicionales",
         "jsonObjectOptional": "(objeto JSON, opcional)",
-        "additionalParamsHelp": "Parámetros estáticos pasados a todas las ejecuciones. Ejemplo: {\"BUILD_TYPE\": \"Release\", \"ENABLE_CACHE\": true}",
+        "additionalParamsHelp": "Parámetros estáticos pasados a todas las ejecuciones. Ejemplo: ",
         "maxConcurrentExecutions": "Máximo de Ejecuciones Concurrentes",
         "unlimitedPlaceholder": "Ilimitado",
         "maxConcurrencyHelp": "Dejar vacío para ejecución paralela ilimitada",
@@ -753,7 +753,7 @@
         "slackBotTokenHelp": "Configura la variable de entorno SLACK_BOT_TOKEN para habilitar notificaciones de Slack.",
         "slackWebhookTip": "Para Slack Incoming Webhooks, usa el tipo de notificación \"Webhook\" en su lugar.",
         "channel": "Canal",
-        "channelHelp": "Especifica el canal de Slack (ej., #general), usuario (ej., @john), o ID del canal",
+        "channelHelp": "Especifica el canal de Slack (ej., #general), o ID del canal",
         "messageMode": "Modo de Mensaje",
         "messageModeHelp": "Block Kit habilita mensajes ricos e interactivos con diseños formateados",
         "message": "Mensaje",
@@ -820,5 +820,591 @@
         "discordWebhooks": "Webhooks de Discord:",
         "otherWebhooks": "Otros Webhooks:",
         "webhookConfigurationHelp": "Configura el método HTTP, encabezados y cuerpo según lo requiera tu servicio de webhook. Usa variables de contexto como $BuildNumber en el cuerpo."
+    },
+    "admin": {
+        "title": "Panel de Administración",
+        "subtitle": "Gestionar configuración del sistema, variables de entorno y seguridad.",
+        "systemSettings": {
+            "title": "Configuración del Sistema",
+            "subtitle": "Configurar ajustes y preferencias de la aplicación",
+            "loadingSettings": "Cargando configuración...",
+            "noSettings": "No hay configuraciones del sistema disponibles",
+            "updateSuccess": "Configuración del sistema actualizada correctamente",
+            "categories": {
+                "branding": "Marca y Apariencia",
+                "general": "Configuración General",
+                "security": "Configuración de Seguridad",
+                "authentication": "Autenticación y LDAP",
+                "notifications": "Configuración de Notificaciones",
+                "system": "Información del Sistema"
+            }
+        },
+        "environmentVariables": {
+            "title": "Variables de Entorno",
+            "subtitle": "Gestionar variables de entorno y secretos del servidor",
+            "addVariable": "Agregar Variable",
+            "noVariables": "No hay variables de entorno definidas",
+            "key": "Clave",
+            "value": "Valor",
+            "description": "Descripción",
+            "type": "Tipo",
+            "actions": "Acciones",
+            "secret": "Secreto",
+            "standard": "Estándar",
+            "editVariable": "Editar Variable",
+            "deleteVariable": "Eliminar Variable",
+            "deleteConfirm": "¿Está seguro de que desea eliminar esta variable de entorno?",
+            "deleteWarning": "Esta acción no se puede deshacer.",
+            "deleteSuccess": "Variable de entorno eliminada correctamente",
+            "deleteFailed": "Error al eliminar la variable de entorno",
+            "isSecret": "Marcar como Secreto",
+            "isSecretHelp": "Los valores secretos se ocultarán en la interfaz"
+        },
+        "credentialVault": {
+            "title": "Bóveda de Credenciales",
+            "subtitle": "Gestionar credenciales para flujos de trabajo CI/CD",
+            "addCredential": "Agregar Credencial",
+            "noCredentials": "No hay credenciales almacenadas",
+            "name": "Nombre",
+            "type": "Tipo",
+            "description": "Descripción",
+            "createdAt": "Creado el",
+            "actions": "Acciones",
+            "editCredential": "Editar Credencial",
+            "deleteCredential": "Eliminar Credencial",
+            "deleteConfirm": "¿Está seguro de que desea eliminar esta credencial?",
+            "deleteWarning": "Esta acción no se puede deshacer. Los proyectos que usen esta credencial pueden fallar.",
+            "deleteSuccess": "Credencial eliminada correctamente",
+            "deleteFailed": "Error al eliminar la credencial",
+            "types": {
+                "password": "Contraseña",
+                "userPass": "Usuario + Contraseña",
+                "token": "Token",
+                "sshKey": "Clave SSH",
+                "certificate": "Certificado",
+                "file": "Archivo"
+            },
+            "fields": {
+                "password": "Contraseña",
+                "username": "Usuario",
+                "token": "Valor del Token",
+                "privateKey": "Clave Privada",
+                "publicKey": "Clave Pública",
+                "certificate": "Certificado",
+                "privateKeyData": "Clave Privada",
+                "fileName": "Nombre del Archivo",
+                "fileData": "Datos del Archivo"
+            }
+        },
+        "updateManagement": {
+            "title": "Gestión de Actualizaciones",
+            "checkForUpdates": "Buscar Actualizaciones",
+            "checking": "Verificando...",
+            "upToDate": "Actualizado",
+            "updateAvailable": "Actualización Disponible",
+            "currentVersion": "Versión Actual",
+            "latestVersion": "Última Versión",
+            "releaseNotes": "Notas de Versión",
+            "viewOnGitHub": "Ver en GitHub",
+            "triggerUpdate": "Activar Actualización",
+            "waitForJobs": "Esperar a que se completen los trabajos en ejecución antes de actualizar",
+            "updateCheckSuccess": "Actualización disponible: {version}",
+            "alreadyLatest": "Estás ejecutando la última versión",
+            "checkFailed": "Error al buscar actualizaciones",
+            "updateInitiated": "Actualización iniciada. El servidor se reiniciará en breve...",
+            "serverRestarting": "Servidor reiniciando en {count} segundos...",
+            "updateFailed": "Error al activar la actualización",
+            "confirmUpdate": "¿Está seguro de que desea actualizar a la versión {version}? El servidor se reiniciará durante este proceso."
+        },
+        "agentTemplates": {
+            "title": "Plantillas de Agentes",
+            "subtitle": "Gestionar configuraciones de actualización de agentes remotos",
+            "noAgents": "No hay agentes conectados",
+            "agent": "Agente",
+            "version": "Versión",
+            "platform": "Plataforma",
+            "status": "Estado",
+            "autoUpdate": "Auto-Actualización",
+            "actions": "Acciones",
+            "online": "En Línea",
+            "offline": "Fuera de Línea",
+            "updateAvailable": "Actualización Disponible",
+            "triggerUpdate": "Activar Actualización",
+            "autoUpdateEnabled": "Auto-actualización habilitada para {name}",
+            "autoUpdateDisabled": "Auto-actualización deshabilitada para {name}",
+            "updateSettingsFailed": "Error al actualizar la configuración del agente",
+            "updateTriggered": "Actualización activada para {name}. El agente se actualizará y reconectará en breve.",
+            "updateTriggerFailed": "Error al activar la actualización del agente"
+        },
+        "userManagement": {
+            "title": "Gestión de Usuarios",
+            "noUsers": "No se encontraron usuarios",
+            "username": "Nombre de Usuario",
+            "name": "Nombre",
+            "email": "Correo Electrónico",
+            "role": "Rol",
+            "groups": "Grupos",
+            "actions": "Acciones",
+            "changeRole": "Cambiar Rol",
+            "manageGroups": "Gestionar Grupos",
+            "roles": {
+                "admin": "Administrador",
+                "user": "Usuario"
+            },
+            "roleChangeSuccess": "Rol de usuario cambiado a {role} correctamente",
+            "roleChangeFailed": "Error al actualizar el rol del usuario",
+            "manageGroupsTitle": "Gestionar Grupos - {name}",
+            "userGroups": "Grupos de Usuario",
+            "userGroupsHelp": "Seleccionar grupos para este usuario",
+            "groupsUpdateSuccess": "Grupos de usuario actualizados correctamente",
+            "groupsUpdateFailed": "Error al actualizar los grupos del usuario"
+        },
+        "groupManagement": {
+            "title": "Gestión de Grupos",
+            "subtitle": "Gestionar grupos de usuarios y mapeos LDAP",
+            "createGroup": "Crear Grupo",
+            "noGroups": "No hay grupos definidos",
+            "name": "Nombre",
+            "description": "Descripción",
+            "members": "Miembros",
+            "ldapMappings": "Mapeos LDAP",
+            "actions": "Acciones",
+            "editGroup": "Editar Grupo",
+            "deleteGroup": "Eliminar Grupo",
+            "ldapGroups": "{count} Grupos LDAP",
+            "deleteConfirm": "¿Está seguro de que desea eliminar este grupo?",
+            "deleteWarning": "Los usuarios en este grupo perderán acceso a recursos restringidos a este grupo.",
+            "deleteSuccess": "Grupo eliminado correctamente",
+            "deleteFailed": "Error al eliminar el grupo",
+            "createSuccess": "Grupo creado correctamente",
+            "updateSuccess": "Grupo actualizado correctamente",
+            "saveFailed": "Error al guardar el grupo",
+            "groupName": "Nombre del Grupo",
+            "groupDescription": "Descripción (Opcional)",
+            "groupMembers": "Miembros",
+            "addMember": "Agregar miembro",
+            "selectUser": "Seleccionar un usuario...",
+            "removeMember": "Eliminar miembro",
+            "memberRemoveSuccess": "Miembro eliminado correctamente",
+            "memberRemoveFailed": "Error al eliminar el miembro",
+            "ldapMappingTitle": "Mapeos de Grupos LDAP",
+            "ldapMappingHelp": "Mapear grupos LDAP a este grupo de aplicación. Los usuarios que sean miembros de cualquier grupo LDAP mapeado se agregarán automáticamente a este grupo.",
+            "addLdapMapping": "Agregar Mapeo LDAP",
+            "ldapGroupName": "Nombre del Grupo LDAP"
+        },
+        "ldapTest": {
+            "title": "Prueba de Conexión LDAP",
+            "testConnection": "Probar Conexión LDAP",
+            "testing": "Probando...",
+            "username": "Usuario de Prueba",
+            "password": "Contraseña de Prueba",
+            "runTest": "Ejecutar Prueba",
+            "success": "¡Conexión LDAP Exitosa!",
+            "failed": "Conexión LDAP Fallida",
+            "userDn": "DN de Usuario:",
+            "groups": "Grupos:",
+            "error": "Error:"
+        },
+        "common": {
+            "edit": "Editar",
+            "delete": "Eliminar",
+            "cancel": "Cancelar",
+            "save": "Guardar",
+            "create": "Crear",
+            "close": "Cerrar",
+            "enabled": "Habilitado",
+            "disabled": "Deshabilitado",
+            "loading": "Cargando..."
+        }
+    },
+    "builds": {
+        "title": "Historial de Compilaciones",
+        "subtitle": "Historial de compilaciones y registros para {projectName}",
+        "refresh": "Actualizar",
+        "refreshing": "Actualizando...",
+        "editProject": "Editar Proyecto",
+        "stats": {
+            "totalBuilds": "Compilaciones Totales",
+            "successRate": "Tasa de Éxito",
+            "avgDuration": "Duración Promedio",
+            "failedBuilds": "Compilaciones Fallidas",
+            "lastBuild": "Última Compilación",
+            "never": "Nunca"
+        },
+        "filters": {
+            "title": "Filtros",
+            "status": "Estado",
+            "allStatus": "Todos los Estados",
+            "success": "Éxito",
+            "failure": "Fallo",
+            "cancelled": "Cancelado",
+            "running": "En Ejecución",
+            "startDate": "Fecha de Inicio",
+            "endDate": "Fecha de Fin",
+            "clearFilters": "Limpiar Filtros"
+        },
+        "table": {
+            "title": "Compilaciones Recientes",
+            "loading": "Cargando compilaciones...",
+            "noBuild": "No se encontraron compilaciones",
+            "noBuildsYet": "Aún no se han ejecutado compilaciones.",
+            "adjustFilters": "Intenta ajustar tus filtros.",
+            "buildNumber": "Compilación #{number}",
+            "noMessage": "Sin mensaje",
+            "headers": {
+                "build": "Compilación",
+                "status": "Estado",
+                "trigger": "Disparador",
+                "agent": "Agente",
+                "duration": "Duración",
+                "started": "Iniciado",
+                "actions": "Acciones"
+            }
+        },
+        "actions": {
+            "viewLogs": "Ver Registros",
+            "deleteBuild": "Eliminar Compilación",
+            "viewDetails": "Ver"
+        },
+        "deleteConfirm": {
+            "title": "Eliminar Compilación",
+            "message": "¿Está seguro de que desea eliminar la compilación #{number}? Esta acción no se puede deshacer.",
+            "cancel": "Cancelar",
+            "confirm": "Eliminar Compilación"
+        },
+        "triggers": {
+            "manual": "Manual",
+            "webhook": "Webhook",
+            "cron": "Cron",
+            "git": "Git",
+            "unknown": "Desconocido"
+        },
+        "pagination": {
+            "showing": "Mostrando {from} a {to} de {total} resultados",
+            "previous": "Anterior",
+            "next": "Siguiente"
+        },
+        "logsModal": {
+            "title": "Registros de Compilación - {buildId}...",
+            "loading": "Cargando registros...",
+            "noLogs": "No se encontraron registros para esta compilación.",
+            "close": "Cerrar"
+        },
+        "status": {
+            "success": "Éxito",
+            "failure": "Fallo",
+            "cancelled": "Cancelado",
+            "running": "En Ejecución",
+            "pending": "Pendiente",
+            "queued": "En Cola"
+        },
+        "common": {
+            "local": "Local",
+            "notAvailable": "N/D"
+        }
+    },
+    "buildDetail": {
+        "title": "Compilación #{buildNumber} - {projectName}",
+        "executing": "Ejecutando...",
+        "backToEditor": "Volver al Editor",
+        "cancelBuild": "Cancelar Compilación",
+        "output": "Salida de Compilación #{buildNumber}",
+        "clear": "Limpiar",
+        "loading": "Cargando...",
+        "error": "Error",
+        "messages": {
+            "projectNotFound": "Proyecto no encontrado",
+            "failedToLoad": "Error al cargar datos de compilación",
+            "failedToCancel": "Error al cancelar trabajo: {message}",
+            "errorCancelling": "Error al cancelar trabajo: {message}",
+            "buildCompleted": "Compilación completada exitosamente",
+            "buildFailed": "Compilación fallida",
+            "checkStatusFailed": "Error al verificar el estado actual de la compilación"
+        }
+    },
+    "editor": {
+        "navigation": {
+            "viewBuild": "Ver Compilación",
+            "viewBuildNumber": "Ver Compilación #{buildNumber}",
+            "run": "Ejecutar",
+            "saving": "Guardando",
+            "save": "Guardar",
+            "viewBuildHistoryTooltip": "Ver historial de compilaciones",
+            "buildHistory": "Historial de Compilaciones",
+            "retentionTooltip": "Configurar políticas de retención de compilaciones",
+            "settings": "Configuración",
+            "toggleStatusTooltip": "Activar o desactivar este proyecto",
+            "enable": "Activar",
+            "disable": "Desactivar"
+        },
+        "banner": {
+            "buildExecuting": "La compilación #{buildNumber} se está ejecutando actualmente",
+            "buildExecutingDescription": "Este proyecto se está ejecutando actualmente. Haga clic en \"Ver Compilación\" para monitorear el progreso o cancelar la ejecución.",
+            "viewBuild": "Ver Compilación #{buildNumber}",
+            "projectDisabled": "Este proyecto está desactivado",
+            "projectDisabledDescription": "Los trabajos cron no se ejecutarán, la ejecución manual está bloqueada, los disparadores de trabajos no se activarán y los webhooks serán ignorados. Haga clic en \"Activar\" para reactivar."
+        },
+        "nodesPanel": {
+            "title": "Nodos",
+            "categories": {
+                "sourceControl": "Control de Versiones",
+                "triggers": "Disparadores",
+                "parameters": "Parámetros",
+                "dependencies": "Dependencias",
+                "execution": "Ejecución",
+                "control": "Control"
+            }
+        },
+        "controls": {
+            "showNodesPanelTooltip": "Mostrar Panel de Nodos",
+            "showPropertiesPanelTooltip": "Mostrar Panel de Propiedades"
+        },
+        "loading": {
+            "message": "Cargando editor..."
+        },
+        "propertiesPanel": {
+            "title": "Propiedades del Nodo",
+            "label": "Etiqueta",
+            "labelHelp": "Esta etiqueta se muestra en el nodo en el editor.",
+            "color": "Color",
+            "colorHelp": "Elija un color personalizado para este nodo. El selector de color muestra una vista previa, o ingrese un código de color hexadecimal.",
+            "colorPickerButton": "Selector de Color",
+            "inputSockets": "Conectores de Entrada",
+            "inputSocketsHelp": "Defina conectores de entrada para este nodo. Los conectores de entrada permiten que se pasen datos a este nodo desde nodos anteriores.",
+            "socketLabelPlaceholder": "Etiqueta del conector",
+            "removeSocketTooltip": "Eliminar conector",
+            "addInputSocket": "Agregar Conector de Entrada",
+            "executionAgent": "Agente de Ejecución",
+            "agentRequired": "Se requiere seleccionar un agente para nodos de ejecución",
+            "selectAgentPlaceholder": "-- Seleccione un agente de ejecución --",
+            "agentHelp": "Este nodo se ejecutará en el agente seleccionado. Elija \"Cualquier agente disponible\" si no tiene preferencia.",
+            "script": "Script",
+            "availablePlaceholders": "Marcadores disponibles:",
+            "workingDirectory": "Directorio de Trabajo",
+            "workingDirectoryHelp": "Directorio donde se ejecutará el script. Relativo al espacio de trabajo del agente.",
+            "timeout": "Tiempo de Espera (segundos)",
+            "retryHelp": "Configure el comportamiento de reintento para este nodo si falla durante la ejecución.",
+            "enableRetry": "Habilitar Reintento",
+            "maxRetries": "Reintentos Máximos",
+            "retryDelay": "Retraso de Reintento (segundos)",
+            "position": "Posición",
+            "positionHelp": "Las coordenadas X e Y del nodo en el editor, si desea ajustar la colocación con precisión.",
+            "positionX": "X",
+            "positionY": "Y",
+            "noNodeSelected": "Seleccione un nodo para ver las propiedades"
+        },
+        "nodes": {
+            "cronTrigger": {
+                "name": "Disparador Cron",
+                "description": "Programar ejecución de trabajos con expresiones cron"
+            },
+            "webhookTrigger": {
+                "name": "Disparador Webhook",
+                "description": "Disparar mediante webhook HTTP"
+            },
+            "jobTrigger": {
+                "name": "Disparador de Trabajo",
+                "description": "Disparar desde la finalización de otro proyecto"
+            },
+            "stringParam": {
+                "name": "Parámetro de Cadena",
+                "description": "Parámetro de texto de una línea"
+            },
+            "textParam": {
+                "name": "Parámetro de Texto",
+                "description": "Parámetro de texto multilínea"
+            },
+            "choiceParam": {
+                "name": "Parámetro de Elección",
+                "description": "Parámetro de selección desplegable"
+            },
+            "booleanParam": {
+                "name": "Parámetro Booleano",
+                "description": "Parámetro verdadero/falso"
+            },
+            "arrayParam": {
+                "name": "Parámetro de Array",
+                "description": "Array de valores para ejecución matricial"
+            },
+            "apiRequest": {
+                "name": "Solicitud API",
+                "description": "Realizar solicitudes API HTTP con encabezados personalizados"
+            },
+            "bash": {
+                "name": "Script Bash",
+                "description": "Ejecutar comandos bash"
+            },
+            "sh": {
+                "name": "Script Shell",
+                "description": "Ejecutar comandos shell POSIX"
+            },
+            "powershell": {
+                "name": "Script PowerShell",
+                "description": "Ejecutar comandos PowerShell"
+            },
+            "cmd": {
+                "name": "Símbolo del Sistema",
+                "description": "Ejecutar comandos CMD de Windows"
+            },
+            "python": {
+                "name": "Script Python",
+                "description": "Ejecutar código Python"
+            },
+            "python3": {
+                "name": "Script Python3",
+                "description": "Ejecutar código Python3"
+            },
+            "node": {
+                "name": "Script Node.js",
+                "description": "Ejecutar código Node.js/JavaScript"
+            },
+            "go": {
+                "name": "Script Go",
+                "description": "Ejecutar código Go"
+            },
+            "ruby": {
+                "name": "Script Ruby",
+                "description": "Ejecutar código Ruby"
+            },
+            "php": {
+                "name": "Script PHP",
+                "description": "Ejecutar código PHP"
+            },
+            "java": {
+                "name": "Programa Java",
+                "description": "Ejecutar código Java"
+            },
+            "rust": {
+                "name": "Script Rust",
+                "description": "Ejecutar código Rust"
+            },
+            "perl": {
+                "name": "Script Perl",
+                "description": "Ejecutar código Perl"
+            },
+            "parallelExecution": {
+                "name": "Ejecución Paralela",
+                "description": "Nodo de ejecución para ramas paralelas (sin conectores de salida)"
+            },
+            "gitCheckout": {
+                "name": "Git Checkout",
+                "description": "Clonar o hacer checkout de un repositorio Git"
+            },
+            "npmInstall": {
+                "name": "NPM Install",
+                "description": "Instalar dependencias de Node.js desde package.json"
+            },
+            "pipInstall": {
+                "name": "Pip Install",
+                "description": "Instalar dependencias de Python desde requirements.txt"
+            },
+            "goMod": {
+                "name": "Go Modules",
+                "description": "Descargar dependencias de módulos Go"
+            },
+            "bundleInstall": {
+                "name": "Bundle Install",
+                "description": "Instalar gemas Ruby desde Gemfile"
+            },
+            "composerInstall": {
+                "name": "Composer Install",
+                "description": "Instalar dependencias PHP desde composer.json"
+            },
+            "cargoBuild": {
+                "name": "Cargo Build",
+                "description": "Compilar proyecto Rust y obtener dependencias"
+            },
+            "parallelBranches": {
+                "name": "Ramas Paralelas",
+                "description": "Ejecutar múltiples ramas diferentes en paralelo"
+            },
+            "parallelMatrix": {
+                "name": "Matriz Paralela",
+                "description": "Ejecutar el mismo trabajo varias veces con diferentes parámetros"
+            },
+            "conditional": {
+                "name": "Condicional",
+                "description": "Ejecución condicional basada en parámetros"
+            },
+            "notification": {
+                "name": "Notificación",
+                "description": "Enviar notificaciones (correo, slack, etc.)"
+            }
+        },
+        "nodeDefaults": {
+            "stringParam": {
+                "description": "Parámetro de cadena"
+            },
+            "textParam": {
+                "description": "Parámetro de texto multilínea"
+            },
+            "booleanParam": {
+                "description": "Parámetro booleano"
+            },
+            "arrayParam": {
+                "description": "Parámetro de array para ejecución matricial"
+            },
+            "parallelBranches": {
+                "description": "Ejecutar múltiples ramas en paralelo"
+            },
+            "parallelExecution": {
+                "description": "Nodo de ejecución para ramas paralelas"
+            },
+            "parallelMatrix": {
+                "description": "Ejecutar trabajo para cada elemento del parámetro array"
+            },
+            "conditional": {
+                "description": "Ejecución condicional"
+            },
+            "notification": {
+                "description": "Enviar notificación"
+            }
+        },
+        "agentOptions": {
+            "anyAvailable": "Cualquier agente disponible"
+        },
+        "sockets": {
+            "success": "Éxito",
+            "failure": "Fallo",
+            "output": "Salida",
+            "allSuccess": "Todos Exitosos",
+            "anyFailure": "Cualquier Fallo",
+            "branch": "Rama {number}",
+            "aggregatedOutput": "Salida Agregada",
+            "forEachItem": "Para Cada Elemento",
+            "iterationValue": "Valor de Iteración",
+            "additionalParameters": "Parámetros Adicionales",
+            "true": "Verdadero",
+            "false": "Falso",
+            "webhookData": "Datos del Webhook",
+            "arrayValues": "Valores del Array"
+        },
+        "toast": {
+            "retentionUpdated": "Configuración de retención actualizada exitosamente",
+            "retentionFailed": "Error al guardar la configuración de retención. Por favor, inténtelo de nuevo.",
+            "templateUpdated": "Plantilla actualizada exitosamente",
+            "templateSaved": "Plantilla guardada exitosamente",
+            "templateFailed": "Error al guardar la plantilla: {message}",
+            "projectEnabled": "Proyecto activado exitosamente",
+            "projectDisabled": "Proyecto desactivado exitosamente",
+            "projectEnableFailed": "Error al activar el proyecto: {error}",
+            "projectDisableFailed": "Error al desactivar el proyecto: {error}",
+            "projectStatusError": "Error al cambiar el estado del proyecto: {message}"
+        },
+        "validation": {
+            "missingAgent": "🚨 \"{label}\" no tiene un ejecutor seleccionado. Se requiere seleccionar un agente para ejecutar.",
+            "missingWebhookEndpoint": "🎣 \"{label}\" no tiene un endpoint personalizado configurado.",
+            "missingWebhookToken": "\"{label}\" no tiene un token secreto. Los tokens secretos son requeridos para la seguridad del webhook.",
+            "unnamedParameter": "Parámetro Sin Nombre",
+            "unnamedNode": "Nodo Sin Nombre",
+            "unnamedWebhook": "Webhook Sin Nombre",
+            "projectDisabled": "El proyecto está desactivado. La ejecución manual está bloqueada.",
+            "executionBlocked": "Ejecución bloqueada debido a errores de validación:\n\n",
+            "executionFailed": "Error al iniciar la ejecución: {message}",
+            "executionDispatchError": "Error al iniciar la ejecución: {message}"
+        },
+        "menu": {
+            "saveAsTemplate": "Guardar como Plantilla"
+        }
     }
 }

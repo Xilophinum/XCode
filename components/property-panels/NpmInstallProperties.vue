@@ -3,11 +3,11 @@
     <UCard>
       <UCheckbox
         v-model="nodeData.data.useExistingFile"
-        :label="t('npmInstallProperties.useExistingPackageJson')"
+        :label="$t('npmInstallProperties.useExistingPackageJson')"
       />
     </UCard>
 
-    <UFormField :label="t('npmInstallProperties.packageManager')">
+    <UFormField :label="$t('npmInstallProperties.packageManager')">
       <USelect
         v-model="nodeData.data.packageManager"
         :items="packageManagerOptions"
@@ -16,7 +16,7 @@
       />
     </UFormField>
 
-    <UFormField v-if="!nodeData.data.useExistingFile" :label="t('npmInstallProperties.packageJsonContent')">
+    <UFormField v-if="!nodeData.data.useExistingFile" :label="$t('npmInstallProperties.packageJsonContent')">
       <ScriptEditor
         v-model="nodeData.data.script"
         :language="'json'"
@@ -24,16 +24,16 @@
         class="w-full"
       />
       <template #help>
-        {{ t('npmInstallProperties.packageJsonHelp') }}
+        {{ $t('npmInstallProperties.packageJsonHelp') }}
       </template>
     </UFormField>
     <UAlert v-else color="warning" variant="soft" icon="i-lucide-info">
       <template #description>
-        {{ t('npmInstallProperties.existingFileWarning') }}
+        {{ $t('npmInstallProperties.existingFileWarning') }}
       </template>
     </UAlert>
 
-    <UFormField :label="t('npmInstallProperties.workingDirectory')">
+    <UFormField :label="$t('npmInstallProperties.workingDirectory')">
       <UInput
         v-model="nodeData.data.workingDirectory"
         type="text"
@@ -43,20 +43,20 @@
       />
     </UFormField>
 
-    <UFormField :label="t('npmInstallProperties.additionalArguments')">
+    <UFormField :label="$t('npmInstallProperties.additionalArguments')">
       <UInput
         v-model="nodeData.data.installArgs"
         type="text"
         size="md"
         class="w-full"
-        :placeholder="t('npmInstallProperties.additionalArgumentsPlaceholder')"
+        :placeholder="$t('npmInstallProperties.additionalArgumentsPlaceholder')"
       />
       <template #help>
-        {{ t('npmInstallProperties.additionalArgumentsHelp') }}
+        {{ $t('npmInstallProperties.additionalArgumentsHelp') }}
       </template>
     </UFormField>
 
-    <UFormField :label="t('npmInstallProperties.timeout')">
+    <UFormField :label="$t('npmInstallProperties.timeout')">
       <UInput
         v-model.number="nodeData.data.timeout"
         type="number"
@@ -70,9 +70,6 @@
 
 <script setup>
 import ScriptEditor from '../ScriptEditor.vue'
-
-const { t } = useI18n()
-
 defineProps({
   nodeData: {
     type: Object,

@@ -274,7 +274,6 @@ definePageMeta({
 })
 
 const authStore = useAuthStore()
-const localeStore = useLocaleStore()
 const { t } = useI18n()
 
 const isLoginMode = ref(true)
@@ -365,7 +364,6 @@ const loginWithOAuth = (provider) => {
 // Initialize auth on page load
 onMounted(async () => {
   authStore.initializeAuth()
-  localeStore.initializeLocale()
   await loadUserRegistrationSetting()
   await checkOAuthProviders()
 })

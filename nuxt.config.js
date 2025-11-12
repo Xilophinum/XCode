@@ -40,7 +40,9 @@ export default defineNuxtConfig({
       { code: 'en', name: 'English', file: 'en.json' },
       { code: 'es', name: 'Español', file: 'es.json' }
     ],
-    defaultLocale: 'en'
+    lazy: true,
+    defaultLocale: 'en',
+    strategy: 'no_prefix'
   },
   icon: {
     provider: 'lucide'

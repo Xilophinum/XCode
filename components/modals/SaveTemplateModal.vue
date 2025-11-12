@@ -7,22 +7,22 @@
           <UIcon name="i-lucide-save" class="w-6 h-6 text-green-600 dark:text-green-400" />
         </div>
         <div class="ml-4">
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ t('saveTemplateModal.saveAsTemplate') }}</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('saveTemplateModal.createReusableTemplate') }}</p>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ $t('saveTemplateModal.saveAsTemplate') }}</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('saveTemplateModal.createReusableTemplate') }}</p>
         </div>
       </div>
 
       <!-- Existing Templates (if overwriting) -->
       <div v-if="existingTemplates.length > 0" class="mb-4">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          {{ t('saveTemplateModal.overwriteExistingTemplate') }}
+          {{ $t('saveTemplateModal.overwriteExistingTemplate') }}
         </label>
         <select
           v-model="selectedTemplateId"
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
           @change="handleTemplateSelection"
         >
-          <option :value="null">{{ t('saveTemplateModal.createNewTemplate') }}</option>
+          <option :value="null">{{ $t('saveTemplateModal.createNewTemplate') }}</option>
           <option v-for="template in existingTemplates" :key="template.id" :value="template.id">
             {{ template.name }}
           </option>
@@ -32,12 +32,12 @@
       <!-- Template Name -->
       <div class="mb-4">
         <label for="template-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          {{ t('saveTemplateModal.templateName') }} <span class="text-red-500">*</span>
+          {{ $t('saveTemplateModal.templateName') }} <span class="text-red-500">*</span>
         </label>
         <UInput
           id="template-name"
           v-model="templateName"
-          :placeholder="t('saveTemplateModal.enterTemplateName')"
+          :placeholder="$t('saveTemplateModal.enterTemplateName')"
           class="w-full"
           :error="nameError"
         />
@@ -47,14 +47,14 @@
       <!-- Template Description -->
       <div class="mb-6">
         <label for="template-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          {{ t('saveTemplateModal.descriptionOptional') }}
+          {{ $t('saveTemplateModal.descriptionOptional') }}
         </label>
         <textarea
           id="template-description"
           v-model="templateDescription"
           rows="3"
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-y"
-          :placeholder="t('saveTemplateModal.describeTemplate')"
+          :placeholder="$t('saveTemplateModal.describeTemplate')"
         />
       </div>
 
@@ -64,7 +64,7 @@
           @click="handleCancel"
           color="error"
         >
-          {{ t('saveTemplateModal.cancel') }}
+          {{ $t('saveTemplateModal.cancel') }}
         </UButton>
         <UButton
           @click="handleSave"
@@ -80,7 +80,6 @@
 </template>
 
 <script setup>
-const { t } = useI18n()
 const props = defineProps({
   modelValue: {
     type: Boolean,
@@ -127,7 +126,7 @@ const handleTemplateSelection = () => {
 const handleSave = async () => {
   // Validate
   if (!templateName.value.trim()) {
-    nameError.value = t('saveTemplateModal.templateNameRequired')
+    nameError.value = $t('saveTemplateModal.templateNameRequired')
     return
   }
 

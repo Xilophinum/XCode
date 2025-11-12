@@ -4,10 +4,10 @@
     <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
       <div>
         <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-          {{ t('auditHistory.auditHistory') }}
+          {{ $t('auditHistory.auditHistory') }}
         </h3>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {{ entityName || t('auditHistory.unknownEntity') }} - {{ entityType === 'project' ? t('auditHistory.project') : t('auditHistory.folder') }}
+          {{ entityName || $t('auditHistory.unknownEntity') }} - {{ entityType === 'project' ? $t('auditHistory.project') : $t('auditHistory.folder') }}
         </p>
       </div>
       <button
@@ -30,7 +30,7 @@
             'whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium'
           ]"
         >
-          {{ t('auditHistory.activityLog') }}
+          {{ $t('auditHistory.activityLog') }}
         </button>
         <button
           v-if="entityType === 'project'"
@@ -42,7 +42,7 @@
             'whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium'
           ]"
         >
-          {{ t('auditHistory.versionHistory') }}
+          {{ $t('auditHistory.versionHistory') }}
         </button>
       </nav>
     </div>
@@ -57,7 +57,7 @@
 
           <div v-else-if="auditLogs.length === 0" class="text-center py-8">
             <UIcon name="i-lucide-file-text" class="mx-auto h-12 w-12 text-gray-400" />
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ t('auditHistory.noActivityRecorded') }}</p>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ $t('auditHistory.noActivityRecorded') }}</p>
           </div>
 
           <div v-else class="space-y-4">
@@ -81,7 +81,7 @@
                       {{ log.changesSummary || `${log.action} ${log.entityType}` }}
                     </p>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      {{ t('auditHistory.by') }} {{ log.userName }} • {{ formatDate(log.createdAt) }}
+                      {{ $t('auditHistory.by') }} {{ log.userName }} • {{ formatDate(log.createdAt) }}
                     </p>
                   </div>
                   <span :class="[
@@ -98,20 +98,20 @@
                     @click="toggleDetails(log.id)"
                     class="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                   >
-                    {{ expandedLogs.has(log.id) ? t('auditHistory.hide') : t('auditHistory.show') }} {{ t('auditHistory.details') }}
+                    {{ expandedLogs.has(log.id) ? $t('auditHistory.hide') : $t('auditHistory.show') }} {{ $t('auditHistory.details') }}
                   </button>
 
                   <div v-if="expandedLogs.has(log.id)" class="mt-2 space-y-2">
                     <!-- Show diagram changes if available -->
                     <div v-if="log.previousData?.diagramChanges" class="rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3">
                       <p class="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-2">
-                        {{ t('auditHistory.diagramChanges') }}
+                        {{ $t('auditHistory.diagramChanges') }}
                       </p>
 
                       <!-- Nodes Added -->
                       <div v-if="log.previousData.diagramChanges.nodesAdded?.length > 0" class="mb-3">
                         <p class="text-xs font-medium text-green-700 dark:text-green-400 mb-1">
-                          {{ t('auditHistory.addedNodes') }} ({{ log.previousData.diagramChanges.nodesAdded.length }}):
+                          {{ $t('auditHistory.addedNodes') }} ({{ log.previousData.diagramChanges.nodesAdded.length }}):
                         </p>
                         <ul class="list-disc list-inside space-y-1">
                           <li v-for="node in log.previousData.diagramChanges.nodesAdded" :key="node.id"
@@ -125,7 +125,7 @@
                       <!-- Nodes Deleted -->
                       <div v-if="log.previousData.diagramChanges.nodesDeleted?.length > 0" class="mb-3">
                         <p class="text-xs font-medium text-red-700 dark:text-red-400 mb-1">
-                          {{ t('auditHistory.deletedNodes') }} ({{ log.previousData.diagramChanges.nodesDeleted.length }}):
+                          {{ $t('auditHistory.deletedNodes') }} ({{ log.previousData.diagramChanges.nodesDeleted.length }}):
                         </p>
                         <ul class="list-disc list-inside space-y-1">
                           <li v-for="node in log.previousData.diagramChanges.nodesDeleted" :key="node.id"
@@ -139,7 +139,7 @@
                       <!-- Nodes Modified -->
                       <div v-if="log.previousData.diagramChanges.nodesModified?.length > 0" class="mb-3">
                         <p class="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1">
-                          ✏️ {{ t('auditHistory.modifiedNodes') }} ({{ log.previousData.diagramChanges.nodesModified.length }}):
+                          ✏️ {{ $t('auditHistory.modifiedNodes') }} ({{ log.previousData.diagramChanges.nodesModified.length }}):
                         </p>
                         <div v-for="node in log.previousData.diagramChanges.nodesModified" :key="node.id"
                               class="mb-2 ml-2 border-l-2 border-blue-300 dark:border-blue-600 pl-2">
@@ -261,7 +261,6 @@
 </template><script setup>
 import { ref, computed, watch } from 'vue'
 import ModalWrapper from '~/components/ModalWrapper.vue'
-const { t } = useI18n()
 const toast = useToast()
 
 const props = defineProps({

@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="mt-3">
-      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ t('booleanParamProperties.defaultValue') }}</label>
+      <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ $t('booleanParamProperties.defaultValue') }}</label>
       <button
         @click="nodeData.data.defaultValue = !nodeData.data.defaultValue"
         :class="[
@@ -19,14 +19,13 @@
         />
       </button>
       <span class="ml-2 text-sm" :class="nodeData.data.defaultValue ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-        {{ nodeData.data.defaultValue ? t('booleanParamProperties.true') : t('booleanParamProperties.false') }}
+        {{ nodeData.data.defaultValue ? $t('booleanParamProperties.true') : $t('booleanParamProperties.false') }}
       </span>
     </div>
   </div>
 </template>
 
 <script setup>
-const { t } = useI18n()
 const props = defineProps({
   nodeData: {
     type: Object,

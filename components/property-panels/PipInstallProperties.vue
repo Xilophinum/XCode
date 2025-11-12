@@ -2,10 +2,10 @@
   <div class="space-y-4">
     <UCheckbox
       v-model="nodeData.data.useExistingFile"
-      :label="t('pipInstallProperties.useExistingRequirements')"
+      :label="$t('pipInstallProperties.useExistingRequirements')"
     />
 
-    <UFormField :label="t('pipInstallProperties.pythonVersion')">
+    <UFormField :label="$t('pipInstallProperties.pythonVersion')">
       <USelect
         v-model="nodeData.data.pythonVersion"
         :items="pythonVersionOptions"
@@ -14,7 +14,7 @@
       />
     </UFormField>
 
-    <UFormField v-if="!nodeData.data.useExistingFile" :label="t('pipInstallProperties.requirementsContent')" :help="t('pipInstallProperties.requirementsHelp')">
+    <UFormField v-if="!nodeData.data.useExistingFile" :label="$t('pipInstallProperties.requirementsContent')" :help="$t('pipInstallProperties.requirementsHelp')">
       <ScriptEditor
         v-model="nodeData.data.script"
         :language="'plaintext'"
@@ -24,11 +24,11 @@
     </UFormField>
     <UAlert v-else color="warning" variant="soft" icon="i-lucide-info">
       <template #description>
-        {{ t('pipInstallProperties.existingFileWarning') }}
+        {{ $t('pipInstallProperties.existingFileWarning') }}
       </template>
     </UAlert>
 
-    <UFormField :label="t('pipInstallProperties.workingDirectory')">
+    <UFormField :label="$t('pipInstallProperties.workingDirectory')">
       <UInput
         v-model="nodeData.data.workingDirectory"
         type="text"
@@ -38,20 +38,20 @@
       />
     </UFormField>
 
-    <UFormField :label="t('pipInstallProperties.additionalArguments')">
+    <UFormField :label="$t('pipInstallProperties.additionalArguments')">
       <UInput
         v-model="nodeData.data.installArgs"
         type="text"
         size="md"
         class="w-full"
-        :placeholder="t('pipInstallProperties.additionalArgumentsPlaceholder')"
+        :placeholder="$t('pipInstallProperties.additionalArgumentsPlaceholder')"
       />
       <template #help>
-        {{ t('pipInstallProperties.additionalArgumentsHelp') }}
+        {{ $t('pipInstallProperties.additionalArgumentsHelp') }}
       </template>
     </UFormField>
 
-    <UFormField :label="t('pipInstallProperties.timeout')">
+    <UFormField :label="$t('pipInstallProperties.timeout')">
       <UInput
         v-model.number="nodeData.data.timeout"
         type="number"
@@ -65,9 +65,6 @@
 
 <script setup>
 import ScriptEditor from '../ScriptEditor.vue'
-
-const { t } = useI18n()
-
 defineProps({
   nodeData: {
     type: Object,

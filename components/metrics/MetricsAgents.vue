@@ -21,7 +21,7 @@
       <UCard>
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ t('metricsAgents.agentStatusOverview') }}
+            {{ $t('metricsAgents.agentStatusOverview') }}
           </h3>
         </template>
         <apexchart
@@ -42,15 +42,15 @@
                   {{ getAgentName(agentData) }}
                 </h3>
                 <div class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ t('metricsAgents.platform') }}: {{ getAgentPlatform(agentData) }} • {{ t('metricsAgents.uptime') }}: {{ getAgentUptime(agentData) }}
+                  {{ $t('metricsAgents.platform') }}: {{ getAgentPlatform(agentData) }} • {{ $t('metricsAgents.uptime') }}: {{ getAgentUptime(agentData) }}
                 </div>
               </div>
               <div class="flex items-center gap-2">
                 <UBadge v-if="!agentExists(agentData)" color="red">
-                  {{ t('metricsAgents.deletedAgent') }}
+                  {{ $t('metricsAgents.deletedAgent') }}
                 </UBadge>
                 <UBadge v-else :color="isAgentOnline(agentData) ? 'success' : 'error'">
-                  {{ isAgentOnline(agentData) ? t('metricsAgents.online') : t('metricsAgents.offline') }}
+                  {{ isAgentOnline(agentData) ? $t('metricsAgents.online') : $t('metricsAgents.offline') }}
                 </UBadge>
                 <UButton
                   v-if="!agentExists(agentData)"
@@ -61,7 +61,7 @@
                   icon="i-lucide-trash-2"
                   :loading="deletingLogs[agentId]"
                 >
-                  {{ t('metricsAgents.deleteLogs') }}
+                  {{ $t('metricsAgents.deleteLogs') }}
                 </UButton>
               </div>
             </div>
@@ -71,7 +71,7 @@
             <!-- Agent CPU Usage -->
             <div v-if="agentData.agent_cpu">
               <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                {{ t('metricsAgents.cpuUsage') }}
+                {{ $t('metricsAgents.cpuUsage') }}
               </h4>
               <apexchart
                 type="area"
@@ -84,7 +84,7 @@
             <!-- Agent Memory Usage -->
             <div v-if="agentData.agent_memory">
               <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                {{ t('metricsAgents.memoryUsage') }}
+                {{ $t('metricsAgents.memoryUsage') }}
               </h4>
               <apexchart
                 type="area"
@@ -97,7 +97,7 @@
             <!-- Agent Jobs -->
             <div v-if="agentData.agent_jobs">
               <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                {{ t('metricsAgents.jobLoad') }}
+                {{ $t('metricsAgents.jobLoad') }}
               </h4>
               <apexchart
                 type="area"
@@ -110,7 +110,7 @@
             <!-- Agent Disk Usage -->
             <div v-if="agentData.agent_disk">
               <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                {{ t('metricsAgents.diskUsage') }}
+                {{ $t('metricsAgents.diskUsage') }}
               </h4>
               <apexchart
                 type="area"
@@ -124,19 +124,19 @@
             <div class="pt-4 border-t dark:border-gray-700 col-span-2">
               <div class="grid grid-cols-4 gap-4 text-sm">
                 <div>
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('metricsAgents.networkInterfaceTotal') }}</span>
+                  <span class="text-gray-500 dark:text-gray-400">{{ $t('metricsAgents.networkInterfaceTotal') }}</span>
                   <span class="ml-2 text-gray-900 dark:text-white">{{ getNetworkInterfaceTotal(agentData) }}</span>
                 </div>
                 <div>
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('metricsAgents.networkInterfaceNames') }}</span>
+                  <span class="text-gray-500 dark:text-gray-400">{{ $t('metricsAgents.networkInterfaceNames') }}</span>
                   <span class="ml-2 text-gray-900 dark:text-white">{{ getNetworkInterfaceNames(agentData) }}</span>
                 </div>
                 <div>
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('metricsAgents.ipAddressesV4') }}</span>
+                  <span class="text-gray-500 dark:text-gray-400">{{ $t('metricsAgents.ipAddressesV4') }}</span>
                   <span class="ml-2 text-gray-900 dark:text-white">{{ getIPAddressesV4(agentData) }}</span>
                 </div>
                 <div>
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('metricsAgents.ipAddressesV6') }}</span>
+                  <span class="text-gray-500 dark:text-gray-400">{{ $t('metricsAgents.ipAddressesV6') }}</span>
                   <span class="ml-2 text-gray-900 dark:text-white">{{ getIPAddressesV6(agentData) }}</span>
                 </div>
               </div>
@@ -151,7 +151,7 @@
       <UCard>
         <div class="text-center py-12">
           <UIcon name="i-lucide-bar-chart" class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
-          <p class="text-gray-500 dark:text-gray-400">{{ t('metricsAgents.noAgentMetrics') }}</p>
+          <p class="text-gray-500 dark:text-gray-400">{{ $t('metricsAgents.noAgentMetrics') }}</p>
         </div>
       </UCard>
     </div>
@@ -160,8 +160,6 @@
 
 <script setup>
 import { computed, watch, ref } from 'vue'
-
-const { t } = useI18n()
 const metricsStore = useMetricsStore()
 const darkMode = useDarkMode()
 const isDark = computed(() => darkMode.isDark.value === 'dark')
@@ -188,8 +186,8 @@ async function deleteAgentLogs(agentId) {
     
     if (response.success) {
       toast.add({
-        title: t('metricsAgents.logsDeleted'),
-        description: t('metricsAgents.deletedCount').replace('{count}', response.deletedCount),
+        title: $t('metricsAgents.logsDeleted'),
+        description: $t('metricsAgents.deletedCount').replace('{count}', response.deletedCount),
         icon: 'i-lucide-check-circle',
         color: 'green'
       })
@@ -198,7 +196,7 @@ async function deleteAgentLogs(agentId) {
       await metricsStore.fetchAll()
     } else {
       toast.add({
-        title: t('metricsAgents.failedToDeleteLogs'),
+        title: $t('metricsAgents.failedToDeleteLogs'),
         description: response.error,
         icon: 'i-lucide-x-circle',
         color: 'red'
@@ -207,7 +205,7 @@ async function deleteAgentLogs(agentId) {
   } catch (error) {
     logger.error('Error deleting agent logs:', error)
     toast.add({
-      title: t('metricsAgents.errorDeletingLogs'),
+      title: $t('metricsAgents.errorDeletingLogs'),
       description: error.message,
       icon: 'i-lucide-x-circle',
       color: 'red'

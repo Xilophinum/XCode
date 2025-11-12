@@ -21,7 +21,7 @@
       <UCard>
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ t('metricsServer.cpuUsageSystemVsProcess') }}
+            {{ $t('metricsServer.cpuUsageSystemVsProcess') }}
           </h3>
         </template>
         <apexchart
@@ -36,7 +36,7 @@
       <UCard>
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ t('metricsServer.memoryUsageSystemVsProcess') }}
+            {{ $t('metricsServer.memoryUsageSystemVsProcess') }}
           </h3>
         </template>
         <apexchart
@@ -51,7 +51,7 @@
       <UCard class="col-span-2">
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ t('metricsServer.websocketConnections') }}
+            {{ $t('metricsServer.websocketConnections') }}
           </h3>
         </template>
         <apexchart
@@ -67,7 +67,6 @@
 
 <script setup>
 import { computed, watch, ref } from 'vue'
-const { t } = useI18n()
 const metricsStore = useMetricsStore()
 const darkMode = useDarkMode()
 const isDark = computed(() => darkMode.isDark.value === 'dark')
@@ -160,7 +159,7 @@ const wsChartSeries = computed(() => {
   if (!serverMetrics.value?.server_websocket_connections) return []
 
   return [{
-    name: t('metricsServer.connections'),
+    name: $t('metricsServer.connections'),
     data: serverMetrics.value.server_websocket_connections.map(m => ({
       x: new Date(m.timestamp).getTime(),
       y: m.count
@@ -185,7 +184,7 @@ const processCpuChartSeries = computed(() => {
   // Process CPU
   if (serverMetrics.value.server_process_cpu?.length > 0) {
     series.push({
-      name: t('metricsServer.processCpu'),
+      name: $t('metricsServer.processCpu'),
       data: serverMetrics.value.server_process_cpu.map(m => ({
         x: new Date(m.timestamp).getTime(),
         y: m.percent
@@ -196,7 +195,7 @@ const processCpuChartSeries = computed(() => {
   // System CPU for comparison
   if (serverMetrics.value.server_cpu?.length > 0) {
     series.push({
-      name: t('metricsServer.systemCpu'),
+      name: $t('metricsServer.systemCpu'),
       data: serverMetrics.value.server_cpu.map(m => ({
         x: new Date(m.timestamp).getTime(),
         y: m.percent
@@ -219,35 +218,35 @@ const processMemoryChartSeries = computed(() => {
   if (!serverMetrics.value?.server_process_memory) return []
   return [
     {
-      name: t('metricsServer.usedMb'),
+      name: $t('metricsServer.usedMb'),
       data: serverMetrics.value.server_memory.map(m => ({
         x: new Date(m.timestamp).getTime(),
         y: m.used
       }))
     },
     {
-      name: t('metricsServer.totalMb'),
+      name: $t('metricsServer.totalMb'),
       data: serverMetrics.value.server_memory.map(m => ({
         x: new Date(m.timestamp).getTime(),
         y: m.total
       }))
     },
     {
-      name: t('metricsServer.rss'),
+      name: $t('metricsServer.rss'),
       data: serverMetrics.value.server_process_memory.map(m => ({
         x: new Date(m.timestamp).getTime(),
         y: m.rss
       }))
     },
     {
-      name: t('metricsServer.heapUsed'),
+      name: $t('metricsServer.heapUsed'),
       data: serverMetrics.value.server_process_memory.map(m => ({
         x: new Date(m.timestamp).getTime(),
         y: m.heapUsed
       }))
     },
     {
-      name: t('metricsServer.heapTotal'),
+      name: $t('metricsServer.heapTotal'),
       data: serverMetrics.value.server_process_memory.map(m => ({
         x: new Date(m.timestamp).getTime(),
         y: m.heapTotal

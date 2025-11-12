@@ -4,7 +4,7 @@
     <UCard>
       <template #header>
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-          {{ t('metricsComparison.agentComparison') }}
+          {{ $t('metricsComparison.agentComparison') }}
         </h3>
       </template>
 
@@ -13,28 +13,28 @@
           <thead>
             <tr>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                {{ t('metricsComparison.agent') }}
+                {{ $t('metricsComparison.agent') }}
               </th>
               <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" @click="sort('status')">
-                {{ t('metricsComparison.status') }}
+                {{ $t('metricsComparison.status') }}
               </th>
               <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" @click="sort('cpu')">
-                {{ t('metricsComparison.cpuPercent') }}
+                {{ $t('metricsComparison.cpuPercent') }}
               </th>
               <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" @click="sort('memory')">
-                {{ t('metricsComparison.memoryPercent') }}
+                {{ $t('metricsComparison.memoryPercent') }}
               </th>
               <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" @click="sort('disk')">
-                {{ t('metricsComparison.diskPercent') }}
+                {{ $t('metricsComparison.diskPercent') }}
               </th>
               <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" @click="sort('jobs')">
-                {{ t('metricsComparison.jobs') }}
+                {{ $t('metricsComparison.jobs') }}
               </th>
               <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" @click="sort('platform')">
-                {{ t('metricsComparison.platform') }}
+                {{ $t('metricsComparison.platform') }}
               </th>
               <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300" @click="sort('uptime')">
-                {{ t('metricsComparison.uptime') }}
+                {{ $t('metricsComparison.uptime') }}
               </th>
             </tr>
           </thead>
@@ -118,7 +118,7 @@
         <!-- No Data -->
         <div v-else class="text-center py-12">
           <UIcon name="i-lucide-server" class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-600 mb-4" />
-          <p class="text-gray-500 dark:text-gray-400">{{ t('metricsComparison.noAgentsAvailable') }}</p>
+          <p class="text-gray-500 dark:text-gray-400">{{ $t('metricsComparison.noAgentsAvailable') }}</p>
         </div>
       </div>
     </UCard>
@@ -127,7 +127,7 @@
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
       <UCard>
         <div class="text-center">
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('metricsComparison.averageCpu') }}</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('metricsComparison.averageCpu') }}</p>
           <p class="mt-2 text-2xl font-bold" :class="getMetricColor(avgCPU, 70, 90)">
             {{ avgCPU }}%
           </p>
@@ -136,7 +136,7 @@
 
       <UCard>
         <div class="text-center">
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('metricsComparison.averageMemory') }}</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('metricsComparison.averageMemory') }}</p>
           <p class="mt-2 text-2xl font-bold" :class="getMetricColor(avgMemory, 75, 90)">
             {{ avgMemory }}%
           </p>
@@ -145,7 +145,7 @@
 
       <UCard>
         <div class="text-center">
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('metricsComparison.averageDisk') }}</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('metricsComparison.averageDisk') }}</p>
           <p class="mt-2 text-2xl font-bold" :class="getMetricColor(avgDisk, 80, 95)">
             {{ avgDisk }}%
           </p>
@@ -154,7 +154,7 @@
 
       <UCard>
         <div class="text-center">
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('metricsComparison.totalCapacity') }}</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('metricsComparison.totalCapacity') }}</p>
           <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
             {{ totalJobs }} / {{ maxTotalJobs }}
           </p>
@@ -166,7 +166,6 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-const { t } = useI18n()
 const metricsStore = useMetricsStore()
 const sortBy = ref('name')
 const sortDirection = ref('asc')

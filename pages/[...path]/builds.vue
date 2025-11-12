@@ -14,9 +14,9 @@
           <template #leading>
             <UIcon name="i-lucide-refresh-cw" :class="{ 'animate-spin': loading }" />
           </template>
-          {{ loading ? 'Refreshing...' : 'Refresh' }}
+          {{ loading ? $t('builds.refreshing') : $t('builds.refresh') }}
         </UButton>
-        
+
         <UButton
           :to="`/${pathSegments.slice(0, -1).join('/')}/editor`"
           color="secondary"
@@ -25,7 +25,7 @@
           <template #leading>
             <UIcon name="i-lucide-edit" />
           </template>
-          Edit Project
+          {{ $t('builds.editProject') }}
         </UButton>
       </template>
     </AppNavigation>
@@ -35,9 +35,9 @@
       <!-- Header with Stats -->
       <div class="mb-8">
         <div class="mb-6">
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Build History</h1>
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{{ $t('builds.title') }}</h1>
           <p class="text-gray-600 dark:text-gray-300">
-            Build history and logs for {{ projectName }}
+            {{ $t('builds.subtitle', { projectName }) }}
           </p>
         </div>
 
@@ -53,7 +53,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                   <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Builds</dt>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{{ $t('builds.stats.totalBuilds') }}</dt>
                     <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ buildStats.totalBuilds }}</dd>
                   </dl>
                 </div>
@@ -71,7 +71,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                   <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Success Rate</dt>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{{ $t('builds.stats.successRate') }}</dt>
                     <dd class="text-lg font-medium text-gray-900 dark:text-white">
                       {{ Math.round(buildStats.successRate * 100) }}%
                     </dd>
@@ -91,9 +91,9 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                   <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Avg Duration</dt>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{{ $t('builds.stats.avgDuration') }}</dt>
                     <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                      {{ buildStats.averageDuration ? formatDuration(buildStats.averageDuration) : 'N/A' }}
+                      {{ buildStats.averageDuration ? formatDuration(buildStats.averageDuration) : $t('builds.common.notAvailable') }}
                     </dd>
                   </dl>
                 </div>
@@ -111,7 +111,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                   <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Failed Builds</dt>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{{ $t('builds.stats.failedBuilds') }}</dt>
                     <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ buildStats.failedBuilds }}</dd>
                   </dl>
                 </div>
@@ -129,9 +129,9 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                   <dl>
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Last Build</dt>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{{ $t('builds.stats.lastBuild') }}</dt>
                     <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                      {{ buildStats.lastBuildAt ? formatRelativeTime(buildStats.lastBuildAt) : 'Never' }}
+                      {{ buildStats.lastBuildAt ? formatRelativeTime(buildStats.lastBuildAt) : $t('builds.stats.never') }}
                     </dd>
                   </dl>
                 </div>
@@ -144,27 +144,27 @@
       <!-- Filters -->
       <div class="bg-white dark:bg-neutral-800 shadow rounded-lg mb-6">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white">Filters</h3>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ $t('builds.filters.title') }}</h3>
         </div>
         <div class="p-6">
           <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('builds.filters.status') }}</label>
               <select
                 v-model="filters.status"
                 @change="applyFilters"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
-                <option value="">All Status</option>
-                <option value="success">Success</option>
-                <option value="failure">Failure</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="running">Running</option>
+                <option value="">{{ $t('builds.filters.allStatus') }}</option>
+                <option value="success">{{ $t('builds.filters.success') }}</option>
+                <option value="failure">{{ $t('builds.filters.failure') }}</option>
+                <option value="cancelled">{{ $t('builds.filters.cancelled') }}</option>
+                <option value="running">{{ $t('builds.filters.running') }}</option>
               </select>
             </div>
-            
+
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('builds.filters.startDate') }}</label>
               <input
                 v-model="filters.startDate"
                 @change="applyFilters"
@@ -172,9 +172,9 @@
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
             </div>
-            
+
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ $t('builds.filters.endDate') }}</label>
               <input
                 v-model="filters.endDate"
                 @change="applyFilters"
@@ -182,7 +182,7 @@
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
             </div>
-            
+
             <div class="flex items-end">
               <UButton
                 @click="clearFilters"
@@ -191,7 +191,7 @@
                 block
                 size="xl"
               >
-                Clear Filters
+                {{ $t('builds.filters.clearFilters') }}
               </UButton>
             </div>
           </div>
@@ -201,18 +201,18 @@
       <!-- Builds Table -->
       <div class="bg-white dark:bg-neutral-800 shadow overflow-hidden sm:rounded-md">
         <div class="px-4 py-5 sm:p-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Recent Builds</h3>
-          
+          <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">{{ $t('builds.table.title') }}</h3>
+
           <div v-if="loading" class="text-center py-8">
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p class="mt-4 text-gray-500 dark:text-gray-400">Loading builds...</p>
+            <p class="mt-4 text-gray-500 dark:text-gray-400">{{ $t('builds.table.loading') }}</p>
           </div>
 
           <div v-else-if="!builds || builds.length === 0" class="text-center py-8">
             <UIcon name="i-lucide-file-text" class="mx-auto h-12 w-12 text-gray-400" />
-            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No builds found</h3>
+            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">{{ $t('builds.table.noBuild') }}</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {{ filters.status || filters.startDate || filters.endDate ? 'Try adjusting your filters.' : 'No builds have been executed yet.' }}
+              {{ filters.status || filters.startDate || filters.endDate ? $t('builds.table.adjustFilters') : $t('builds.table.noBuildsYet') }}
             </p>
           </div>
 
@@ -220,13 +220,13 @@
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-50 dark:bg-neutral-700">
                 <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Build</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Trigger</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Agent</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Started</th>
-                  <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('builds.table.headers.build') }}</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('builds.table.headers.status') }}</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('builds.table.headers.trigger') }}</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('builds.table.headers.agent') }}</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('builds.table.headers.duration') }}</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('builds.table.headers.started') }}</th>
+                  <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ $t('builds.table.headers.actions') }}</th>
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-neutral-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -237,24 +237,24 @@
                         Build #{{ build.buildNumber }}
                       </div>
                       <div class="text-sm text-gray-500 dark:text-gray-400">
-                        {{ build.message || 'No message' }}
+                        {{ build.message || $t('builds.table.noMessage') }}
                       </div>
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <span :class="getStatusBadgeClass(build.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
                       <span :class="getStatusDotClass(build.status)" class="w-1.5 h-1.5 rounded-full mr-1.5"></span>
-                      {{ build.status }}
+                      {{ $t(`builds.status.${build.status}`, build.status) }}
                     </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    <span class="capitalize">{{ build.trigger }}</span>
+                    <span class="capitalize">{{ $t(`builds.triggers.${build.trigger}`, build.trigger) }}</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {{ build.agentName || 'Local' }}
+                    {{ build.agentName || $t('builds.common.local') }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {{ build.duration ? formatDuration(build.duration) : 'N/A' }}
+                    {{ build.duration ? formatDuration(build.duration) : $t('builds.common.notAvailable') }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {{ formatRelativeTime(build.startedAt) }}
@@ -266,7 +266,7 @@
                       variant="link"
                       size="md"
                     >
-                      View Logs
+                      {{ $t('builds.actions.viewLogs') }}
                     </UButton>
                   </td>
                 </tr>
@@ -277,9 +277,11 @@
           <!-- Pagination -->
           <div v-if="pagination && pagination.totalPages > 1" class="mt-6 flex items-center justify-between">
             <div class="text-sm text-gray-700 dark:text-gray-300">
-              Showing {{ (pagination.page - 1) * pagination.pageSize + 1 }} to 
-              {{ Math.min(pagination.page * pagination.pageSize, pagination.totalCount) }} of 
-              {{ pagination.totalCount }} results
+              {{ $t('builds.pagination.showing', {
+                from: (pagination.page - 1) * pagination.pageSize + 1,
+                to: Math.min(pagination.page * pagination.pageSize, pagination.totalCount),
+                total: pagination.totalCount
+              }) }}
             </div>
             <div class="flex space-x-2">
               <UButton
@@ -288,7 +290,7 @@
                 color="neutral"
                 variant="outline"
               >
-                Previous
+                {{ $t('builds.pagination.previous') }}
               </UButton>
               <UButton
                 @click="goToPage(pagination.page + 1)"
@@ -296,7 +298,7 @@
                 color="neutral"
                 variant="outline"
               >
-                Next
+                {{ $t('builds.pagination.next') }}
               </UButton>
             </div>
           </div>
@@ -308,7 +310,7 @@
     <ModalWrapper v-model="showLogsModal">
       <div class="flex justify-between items-center m-4">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-          Build Logs - {{ selectedBuild?.id?.substring(0, 12) }}...
+          {{ $t('builds.logsModal.title', { buildId: selectedBuild?.id?.substring(0, 12) }) }}
         </h3>
         <UButton
           @click="closeLogsModal"
@@ -318,15 +320,15 @@
           square
         />
       </div>
-      
+
       <div class="bg-gray-950 rounded-md p-4 max-h-96 overflow-y-auto m-4">
         <div v-if="loadingLogs" class="text-center py-4">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p class="mt-2 text-gray-400">Loading logs...</p>
+          <p class="mt-2 text-gray-400">{{ $t('builds.logsModal.loading') }}</p>
         </div>
-        
+
         <div v-else-if="buildLogs.length === 0" class="text-center py-4 text-gray-400">
-          No logs found for this build.
+          {{ $t('builds.logsModal.noLogs') }}
         </div>
         
         <div v-else class="space-y-1">

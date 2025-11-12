@@ -21,7 +21,7 @@
       <UCard>
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ t('metricsAPI.apiRequestVolume') }}
+            {{ $t('metricsAPI.apiRequestVolume') }}
           </h3>
         </template>
         <apexchart
@@ -36,7 +36,7 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('metricsAPI.totalRequests') }}</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('metricsAPI.totalRequests') }}</p>
             <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
               {{ apiMetrics?.summary?.totalRequests || 0 }}
             </p>
@@ -45,7 +45,7 @@
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('metricsAPI.avgLatency') }}</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('metricsAPI.avgLatency') }}</p>
             <p class="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-400">
               {{ apiMetrics?.summary?.avgLatency || 0 }} ms
             </p>
@@ -54,7 +54,7 @@
 
         <UCard>
           <div class="text-center">
-            <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('metricsAPI.p95Latency') }}</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('metricsAPI.p95Latency') }}</p>
             <p class="mt-2 text-3xl font-bold text-orange-600 dark:text-orange-400">
               {{ apiMetrics?.summary?.p95Latency || 0 }} ms
             </p>
@@ -66,7 +66,7 @@
       <UCard v-if="apiMetrics?.endpoints && apiMetrics.endpoints.length > 0" class="mt-6">
         <template #header>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ t('metricsAPI.topEndpoints') }}
+            {{ $t('metricsAPI.topEndpoints') }}
           </h3>
         </template>
 
@@ -75,19 +75,19 @@
             <thead>
               <tr>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {{ t('metricsAPI.endpoint') }}
+                  {{ $t('metricsAPI.endpoint') }}
                 </th>
                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {{ t('metricsAPI.requests') }}
+                  {{ $t('metricsAPI.requests') }}
                 </th>
                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {{ t('metricsAPI.avgLatency') }}
+                  {{ $t('metricsAPI.avgLatency') }}
                 </th>
                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {{ t('metricsAPI.p95Latency') }}
+                  {{ $t('metricsAPI.p95Latency') }}
                 </th>
                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {{ t('metricsAPI.maxLatency') }}
+                  {{ $t('metricsAPI.maxLatency') }}
                 </th>
               </tr>
             </thead>
@@ -119,7 +119,6 @@
 
 <script setup>
 import { computed } from 'vue'
-const { t } = useI18n()
 const metricsStore = useMetricsStore()
 const darkMode = useDarkMode()
 const isDark = computed(() => darkMode.isDark.value === 'dark')
@@ -137,7 +136,7 @@ const requestVolumeChartSeries = computed(() => {
   if (!apiMetrics.value?.timeSeries) return []
 
   return [{
-    name: t('metricsAPI.requests'),
+    name: $t('metricsAPI.requests'),
     data: apiMetrics.value.timeSeries.map(m => ({
       x: new Date(m.timestamp).getTime(),
       y: m.totalRequests

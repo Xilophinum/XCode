@@ -4,15 +4,15 @@
             color="info"
             variant="soft"
             icon="i-lucide-send"
-            :title="t('webhookProperties.webhookTriggerConfiguration')"
+            :title="$t('webhookProperties.webhookTriggerConfiguration')"
             class="mb-4"
         >
             <template #description>
-                {{ t('webhookProperties.configureWebhookDescription') }}
+                {{ $t('webhookProperties.configureWebhookDescription') }}
             </template>
         </UAlert>
         
-        <UFormField :label="t('webhookProperties.customEndpoint')" required class="mb-4">
+        <UFormField :label="$t('webhookProperties.customEndpoint')" required class="mb-4">
             <div class="flex items-center gap-2">
                 <span class="text-sm text-neutral-500 dark:text-neutral-400">/api/webhook/</span>
                 <UInput
@@ -23,15 +23,15 @@
                 />
             </div>
             <template #help>
-                {{ t('webhookProperties.customEndpointHelp') }} <code>deploy-prod</code>, <code>backup_db</code>, <code>notify-slack</code>
+                {{ $t('webhookProperties.customEndpointHelp') }} <code>deploy-prod</code>, <code>backup_db</code>, <code>notify-slack</code>
             </template>
         </UFormField>
         
-        <UFormField :label="t('webhookProperties.secretToken')" required class="mb-4">
+        <UFormField :label="$t('webhookProperties.secretToken')" required class="mb-4">
             <div class="flex items-center gap-2">
                 <UInput
                     v-model="nodeData.data.secretToken"
-                    :placeholder="t('webhookProperties.secretTokenPlaceholder')"
+                    :placeholder="$t('webhookProperties.secretTokenPlaceholder')"
                     class="flex-1 font-mono"
                     :class="{ 'border-red-500 dark:border-red-400': !nodeData.data.secretToken }"
                 />
@@ -40,23 +40,23 @@
                     icon="i-lucide-lock"
                     size="sm"
                 >
-                    {{ t('webhookProperties.generate') }}
+                    {{ $t('webhookProperties.generate') }}
                 </UButton>
             </div>
             <template #help>
                 <div class="space-y-1">
-                    <p>{{ t('webhookProperties.secretTokenHelp') }}</p>
+                    <p>{{ $t('webhookProperties.secretTokenHelp') }}</p>
                     <p v-if="!nodeData.data.secretToken" class="text-red-500 dark:text-red-400">
-                        {{ t('webhookProperties.secretTokenRequired') }}
+                        {{ $t('webhookProperties.secretTokenRequired') }}
                     </p>
                 </div>
             </template>
         </UFormField>
         
-        <UFormField :label="t('webhookProperties.description')" class="mb-4">
+        <UFormField :label="$t('webhookProperties.description')" class="mb-4">
             <UTextarea
                 v-model="nodeData.data.description"
-                :placeholder="t('webhookProperties.descriptionPlaceholder')"
+                :placeholder="$t('webhookProperties.descriptionPlaceholder')"
                 :rows="3"
                 class="w-full"
             />
@@ -65,27 +65,27 @@
         <div class="mb-4">
             <UCheckbox
                 v-model="nodeData.data.active"
-                :label="t('webhookProperties.active')"
+                :label="$t('webhookProperties.active')"
             />
             <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400 ml-6">
-                {{ t('webhookProperties.activeHelp') }}
+                {{ $t('webhookProperties.activeHelp') }}
             </p>
         </div>
         
         <!-- Webhook URL Display -->
         <div v-if="nodeData.data.customEndpoint" class="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded text-xs">
-            <div class="font-medium text-blue-800 dark:text-blue-200 mb-2">🎣 {{ t('webhookProperties.webhookUrl') }}</div>
+            <div class="font-medium text-blue-800 dark:text-blue-200 mb-2">🎣 {{ $t('webhookProperties.webhookUrl') }}</div>
             <div class="text-blue-700 dark:text-blue-300 space-y-2">
             <div class="bg-white dark:bg-blue-900 p-2 rounded border border-blue-200 dark:border-blue-800 font-mono break-all">
                 {{ webhookUrl }}
             </div>
             <div class="space-y-1">
-                <div><strong>{{ t('webhookProperties.method') }}</strong> POST</div>
-                <div><strong>{{ t('webhookProperties.auth') }}</strong> {{ t('webhookProperties.authRequired') }}</div>
-                <div><strong>{{ t('webhookProperties.status') }}</strong> {{ nodeData.data.active ? t('webhookProperties.statusActive') : t('webhookProperties.statusInactive') }}</div>
+                <div><strong>{{ $t('webhookProperties.method') }}</strong> POST</div>
+                <div><strong>{{ $t('webhookProperties.auth') }}</strong> {{ $t('webhookProperties.authRequired') }}</div>
+                <div><strong>{{ $t('webhookProperties.status') }}</strong> {{ nodeData.data.active ? $t('webhookProperties.statusActive') : $t('webhookProperties.statusInactive') }}</div>
             </div>
             <div class="text-xs opacity-75 mt-2">
-                <div><strong>{{ t('webhookProperties.exampleCurl') }}</strong></div>
+                <div><strong>{{ $t('webhookProperties.exampleCurl') }}</strong></div>
                 <div class="bg-neutral-800 text-green-400 p-2 rounded mt-1 font-mono text-xs overflow-x-auto">
                 curl -X POST {{ webhookUrl }} \<br/>&nbsp;&nbsp;-H "X-Webhook-Token: {{ nodeData.data.secretToken || 'YOUR_SECRET_TOKEN' }}" \<br/>&nbsp;&nbsp;-H "Content-Type: application/json" \<br/>&nbsp;&nbsp;-d '{"message": "Hello from webhook"}'
                 </div>
@@ -94,7 +94,7 @@
         </div>
         
         <!-- Documentation Section Selector -->
-        <UFormField :label="'📚 ' + t('webhookProperties.documentation')" class="mt-4">
+        <UFormField :label="'📚 ' + $t('webhookProperties.documentation')" class="mt-4">
             <USelect
                 v-model="selectedDocSection"
                 :items="docSectionOptions"
@@ -105,32 +105,32 @@
 
         <!-- Authentication & Security -->
         <div v-if="selectedDocSection === 'auth'" class="mt-3 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
-            <div class="font-medium text-green-800 dark:text-green-200 mb-2">📖 {{ t('webhookProperties.authenticationSecurity') }}</div>
+            <div class="font-medium text-green-800 dark:text-green-200 mb-2">📖 {{ $t('webhookProperties.authenticationSecurity') }}</div>
             <div class="text-green-700 dark:text-green-300 space-y-2">
                 <div class="space-y-1">
-                    <div class="font-medium">{{ t('webhookProperties.customApisServices') }}</div>
+                    <div class="font-medium">{{ $t('webhookProperties.customApisServices') }}</div>
                     <div class="pl-2 text-xs opacity-90">Header: <span class="font-mono">X-Webhook-Token: your-secret-token</span></div>
                     <div class="pl-2 text-xs opacity-90">Body: <span class="font-mono">&#123;"token": "your-secret-token"&#125;</span></div>
                     <div class="pl-2 text-xs opacity-90">Query: <span class="font-mono">?token=your-secret-token</span></div>
                 </div>
                 <div class="space-y-1">
-                    <div class="font-medium">{{ t('webhookProperties.gitPlatformsAutomatic') }}</div>
+                    <div class="font-medium">{{ $t('webhookProperties.gitPlatformsAutomatic') }}</div>
                     <div class="pl-2 text-xs opacity-90">GitHub: X-Hub-Signature-256 (SHA256 HMAC)</div>
                     <div class="pl-2 text-xs opacity-90">GitLab: X-Gitlab-Token header</div>
                     <div class="pl-2 text-xs opacity-90">Bitbucket: X-Hub-Signature (SHA1 HMAC)</div>
                     <div class="pl-2 text-xs opacity-90">Azure DevOps: Authorization header</div>
                 </div>
                 <div class="pt-1 border-t border-green-200 dark:border-green-800">
-                    <div class="font-medium">{{ t('webhookProperties.securityNote') }}</div>
-                    <div class="text-xs opacity-90">{{ t('webhookProperties.securityNoteText') }}</div>
+                    <div class="font-medium">{{ $t('webhookProperties.securityNote') }}</div>
+                    <div class="text-xs opacity-90">{{ $t('webhookProperties.securityNoteText') }}</div>
                 </div>
                 <div class="pt-1 border-t border-green-200 dark:border-green-800">
-                    <div class="font-medium">💡 {{ t('webhookProperties.commonUseCases') }}</div>
+                    <div class="font-medium">💡 {{ $t('webhookProperties.commonUseCases') }}</div>
                     <div class="space-y-1">
-                        <div>• <strong>CI/CD:</strong> {{ t('webhookProperties.useCaseCicd') }}</div>
-                        <div>• <strong>Notifications:</strong> {{ t('webhookProperties.useCaseNotifications') }}</div>
-                        <div>• <strong>API Integration:</strong> {{ t('webhookProperties.useCaseApiIntegration') }}</div>
-                        <div>• <strong>Automation:</strong> {{ t('webhookProperties.useCaseAutomation') }}</div>
+                        <div>• <strong>CI/CD:</strong> {{ $t('webhookProperties.useCaseCicd') }}</div>
+                        <div>• <strong>Notifications:</strong> {{ $t('webhookProperties.useCaseNotifications') }}</div>
+                        <div>• <strong>API Integration:</strong> {{ $t('webhookProperties.useCaseApiIntegration') }}</div>
+                        <div>• <strong>Automation:</strong> {{ $t('webhookProperties.useCaseAutomation') }}</div>
                     </div>
                 </div>
             </div>
@@ -138,7 +138,7 @@
 
         <!-- Git Platform Setup -->
         <div v-if="selectedDocSection === 'git-setup'" class="mt-3 p-3 bg-green-50 dark:bg-green-950 rounded text-xs">
-            <div class="font-medium text-green-800 dark:text-green-200 mb-2">{{ t('webhookProperties.gitPlatformSetup') }}</div>
+            <div class="font-medium text-green-800 dark:text-green-200 mb-2">{{ $t('webhookProperties.gitPlatformSetup') }}</div>
             <div class="text-green-700 dark:text-green-300 space-y-2">
                 <div class="space-y-1">
                     <div class="font-medium">GitHub:</div>
@@ -265,10 +265,6 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-
-const { t } = useI18n()
-const logger = useLogger()
-
 const props = defineProps({
   nodeData: {
     type: Object,

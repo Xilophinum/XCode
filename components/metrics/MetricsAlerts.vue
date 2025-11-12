@@ -3,7 +3,7 @@
     <template #header>
       <div class="flex items-center justify-between">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-          {{ t('metricsAlerts.activeAlerts') }}
+          {{ $t('metricsAlerts.activeAlerts') }}
         </h3>
         <UBadge v-if="alertCount > 0" :color="criticalAlertCount > 0 ? 'red' : 'yellow'">
           {{ alertCount }}
@@ -15,7 +15,7 @@
       <!-- No Alerts -->
       <div v-if="alerts.length === 0" class="text-center py-8">
         <UIcon name="i-lucide-check-circle" class="w-12 h-12 mx-auto text-green-500 dark:text-green-400 mb-3" />
-        <p class="text-gray-600 dark:text-gray-400">{{ t('metricsAlerts.allSystemsNormal') }}</p>
+        <p class="text-gray-600 dark:text-gray-400">{{ $t('metricsAlerts.allSystemsNormal') }}</p>
       </div>
 
       <!-- Alert List -->
@@ -37,7 +37,7 @@
           </p>
 
           <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-            <span>{{ alert.agentName || t('metricsAlerts.server') }}</span>
+            <span>{{ alert.agentName || $t('metricsAlerts.server') }}</span>
             <span>•</span>
             <span>{{ formatTimestamp(alert.timestamp) }}</span>
           </div>
@@ -49,7 +49,6 @@
 
 <script setup>
 import { computed } from 'vue'
-const { t } = useI18n()
 const metricsStore = useMetricsStore()
 const { toLocalTime, getRelativeTime } = useTimezone()
 
@@ -73,8 +72,8 @@ const alerts = computed(() => {
         id: 'server-cpu-critical',
         type: 'cpu',
         severity: 'critical',
-        title: t('metricsAlerts.serverCpuCritical'),
-        message: t('metricsAlerts.cpuUsageAt').replace('{percent}', server.cpu.percent).replace('{threshold}', THRESHOLDS.cpu.critical),
+        title: $t('metricsAlerts.serverCpuCritical'),
+        message: $t('metricsAlerts.cpuUsageAt').replace('{percent}', server.cpu.percent).replace('{threshold}', THRESHOLDS.cpu.critical),
         timestamp: new Date().toISOString(),
         agentName: null
       })
@@ -83,8 +82,8 @@ const alerts = computed(() => {
         id: 'server-cpu-warning',
         type: 'cpu',
         severity: 'warning',
-        title: t('metricsAlerts.serverCpuHigh'),
-        message: t('metricsAlerts.cpuUsageAt').replace('{percent}', server.cpu.percent).replace('{threshold}', THRESHOLDS.cpu.warning),
+        title: $t('metricsAlerts.serverCpuHigh'),
+        message: $t('metricsAlerts.cpuUsageAt').replace('{percent}', server.cpu.percent).replace('{threshold}', THRESHOLDS.cpu.warning),
         timestamp: new Date().toISOString(),
         agentName: null
       })
@@ -96,8 +95,8 @@ const alerts = computed(() => {
         id: 'server-memory-critical',
         type: 'memory',
         severity: 'critical',
-        title: t('metricsAlerts.serverMemoryCritical'),
-        message: t('metricsAlerts.memoryUsageAt').replace('{percent}', server.memory.percent).replace('{threshold}', THRESHOLDS.memory.critical),
+        title: $t('metricsAlerts.serverMemoryCritical'),
+        message: $t('metricsAlerts.memoryUsageAt').replace('{percent}', server.memory.percent).replace('{threshold}', THRESHOLDS.memory.critical),
         timestamp: new Date().toISOString(),
         agentName: null
       })
@@ -106,8 +105,8 @@ const alerts = computed(() => {
         id: 'server-memory-warning',
         type: 'memory',
         severity: 'warning',
-        title: t('metricsAlerts.serverMemoryHigh'),
-        message: t('metricsAlerts.memoryUsageAt').replace('{percent}', server.memory.percent).replace('{threshold}', THRESHOLDS.memory.warning),
+        title: $t('metricsAlerts.serverMemoryHigh'),
+        message: $t('metricsAlerts.memoryUsageAt').replace('{percent}', server.memory.percent).replace('{threshold}', THRESHOLDS.memory.warning),
         timestamp: new Date().toISOString(),
         agentName: null
       })
@@ -125,8 +124,8 @@ const alerts = computed(() => {
           id: `agent-${agent.id}-cpu-critical`,
           type: 'cpu',
           severity: 'critical',
-          title: t('metricsAlerts.agentCpuCritical'),
-          message: t('metricsAlerts.cpuUsageAt').replace('{percent}', agentMetrics.cpuUsage).replace('{threshold}', THRESHOLDS.cpu.critical),
+          title: $t('metricsAlerts.agentCpuCritical'),
+          message: $t('metricsAlerts.cpuUsageAt').replace('{percent}', agentMetrics.cpuUsage).replace('{threshold}', THRESHOLDS.cpu.critical),
           timestamp: agentMetrics.timestamp || new Date().toISOString(),
           agentName: agent.name
         })
@@ -135,8 +134,8 @@ const alerts = computed(() => {
           id: `agent-${agent.id}-cpu-warning`,
           type: 'cpu',
           severity: 'warning',
-          title: t('metricsAlerts.agentCpuHigh'),
-          message: t('metricsAlerts.cpuUsageAt').replace('{percent}', agentMetrics.cpuUsage).replace('{threshold}', THRESHOLDS.cpu.warning),
+          title: $t('metricsAlerts.agentCpuHigh'),
+          message: $t('metricsAlerts.cpuUsageAt').replace('{percent}', agentMetrics.cpuUsage).replace('{threshold}', THRESHOLDS.cpu.warning),
           timestamp: agentMetrics.timestamp || new Date().toISOString(),
           agentName: agent.name
         })
@@ -148,8 +147,8 @@ const alerts = computed(() => {
           id: `agent-${agent.id}-memory-critical`,
           type: 'memory',
           severity: 'critical',
-          title: t('metricsAlerts.agentMemoryCritical'),
-          message: t('metricsAlerts.memoryUsageAt').replace('{percent}', agentMetrics.memoryUsage).replace('{threshold}', THRESHOLDS.memory.critical),
+          title: $t('metricsAlerts.agentMemoryCritical'),
+          message: $t('metricsAlerts.memoryUsageAt').replace('{percent}', agentMetrics.memoryUsage).replace('{threshold}', THRESHOLDS.memory.critical),
           timestamp: agentMetrics.timestamp || new Date().toISOString(),
           agentName: agent.name
         })
@@ -158,8 +157,8 @@ const alerts = computed(() => {
           id: `agent-${agent.id}-memory-warning`,
           type: 'memory',
           severity: 'warning',
-          title: t('metricsAlerts.agentMemoryHigh'),
-          message: t('metricsAlerts.memoryUsageAt').replace('{percent}', agentMetrics.memoryUsage).replace('{threshold}', THRESHOLDS.memory.warning),
+          title: $t('metricsAlerts.agentMemoryHigh'),
+          message: $t('metricsAlerts.memoryUsageAt').replace('{percent}', agentMetrics.memoryUsage).replace('{threshold}', THRESHOLDS.memory.warning),
           timestamp: agentMetrics.timestamp || new Date().toISOString(),
           agentName: agent.name
         })
@@ -171,8 +170,8 @@ const alerts = computed(() => {
           id: `agent-${agent.id}-disk-critical`,
           type: 'disk',
           severity: 'critical',
-          title: t('metricsAlerts.agentDiskCritical'),
-          message: t('metricsAlerts.diskUsageAt').replace('{percent}', agentMetrics.diskUsage).replace('{threshold}', THRESHOLDS.disk.critical),
+          title: $t('metricsAlerts.agentDiskCritical'),
+          message: $t('metricsAlerts.diskUsageAt').replace('{percent}', agentMetrics.diskUsage).replace('{threshold}', THRESHOLDS.disk.critical),
           timestamp: agentMetrics.timestamp || new Date().toISOString(),
           agentName: agent.name
         })
@@ -181,8 +180,8 @@ const alerts = computed(() => {
           id: `agent-${agent.id}-disk-warning`,
           type: 'disk',
           severity: 'warning',
-          title: t('metricsAlerts.agentDiskHigh'),
-          message: t('metricsAlerts.diskUsageAt').replace('{percent}', agentMetrics.diskUsage).replace('{threshold}', THRESHOLDS.disk.warning),
+          title: $t('metricsAlerts.agentDiskHigh'),
+          message: $t('metricsAlerts.diskUsageAt').replace('{percent}', agentMetrics.diskUsage).replace('{threshold}', THRESHOLDS.disk.warning),
           timestamp: agentMetrics.timestamp || new Date().toISOString(),
           agentName: agent.name
         })
@@ -194,8 +193,8 @@ const alerts = computed(() => {
           id: `agent-${agent.id}-offline`,
           type: 'status',
           severity: 'warning',
-          title: t('metricsAlerts.agentOffline'),
-          message: t('metricsAlerts.agentDisconnected'),
+          title: $t('metricsAlerts.agentOffline'),
+          message: $t('metricsAlerts.agentDisconnected'),
           timestamp: agent.lastHeartbeat || new Date().toISOString(),
           agentName: agent.name
         })

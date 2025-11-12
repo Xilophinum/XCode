@@ -3,7 +3,7 @@
     <!-- Array Format Toggle -->
     <div class="mb-4">
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-        {{ t('arrayParamProperties.arrayFormat') }}
+        {{ $t('arrayParamProperties.arrayFormat') }}
       </label>
       <div class="flex gap-3">
         <label class="flex items-center cursor-pointer">
@@ -13,7 +13,7 @@
             value="json"
             class="w-4 h-4 text-blue-600 border-neutral-300 dark:border-neutral-600 focus:ring-blue-500"
           >
-          <span class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">{{ t('arrayParamProperties.jsonArray') }}</span>
+          <span class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">{{ $t('arrayParamProperties.jsonArray') }}</span>
         </label>
         <label class="flex items-center cursor-pointer">
           <input
@@ -22,7 +22,7 @@
             value="lines"
             class="w-4 h-4 text-blue-600 border-neutral-300 dark:border-neutral-600 focus:ring-blue-500"
           >
-          <span class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">{{ t('arrayParamProperties.lineSeparated') }}</span>
+          <span class="ml-2 text-sm text-neutral-700 dark:text-neutral-300">{{ $t('arrayParamProperties.lineSeparated') }}</span>
         </label>
       </div>
     </div>
@@ -30,8 +30,8 @@
     <!-- Array Input (JSON) -->
     <div v-if="nodeData.data.arrayFormat === 'json'" class="mb-4">
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-        {{ t('arrayParamProperties.defaultArrayValue') }}
-        <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">{{ t('arrayParamProperties.jsonArrayFormat') }}</span>
+        {{ $t('arrayParamProperties.defaultArrayValue') }}
+        <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">{{ $t('arrayParamProperties.jsonArrayFormat') }}</span>
       </label>
       <ScriptEditor
         v-model="nodeData.data.defaultValue"
@@ -40,22 +40,22 @@
         class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
       />
       <div class="mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded text-xs">
-        <div class="font-medium text-blue-800 dark:text-blue-200 mb-1">{{ t('arrayParamProperties.examples') }}</div>
+        <div class="font-medium text-blue-800 dark:text-blue-200 mb-1">{{ $t('arrayParamProperties.examples') }}</div>
         <div class="space-y-2 text-blue-700 dark:text-blue-300">
           <div>
             <code class="block bg-white dark:bg-neutral-800 p-2 rounded">["production", "staging", "development"]</code>
-            <span class="text-neutral-600 dark:text-neutral-400">{{ t('arrayParamProperties.arrayOfStrings') }}</span>
+            <span class="text-neutral-600 dark:text-neutral-400">{{ $t('arrayParamProperties.arrayOfStrings') }}</span>
           </div>
           <div>
             <code class="block bg-white dark:bg-neutral-800 p-2 rounded">[1, 2, 3, 4, 5]</code>
-            <span class="text-neutral-600 dark:text-neutral-400">{{ t('arrayParamProperties.arrayOfNumbers') }}</span>
+            <span class="text-neutral-600 dark:text-neutral-400">{{ $t('arrayParamProperties.arrayOfNumbers') }}</span>
           </div>
           <div>
             <code class="block bg-white dark:bg-neutral-800 p-2 rounded">[
   {"env": "prod", "region": "us-east"},
   {"env": "staging", "region": "eu-west"}
 ]</code>
-            <span class="text-neutral-600 dark:text-neutral-400">{{ t('arrayParamProperties.arrayOfObjects') }}</span>
+            <span class="text-neutral-600 dark:text-neutral-400">{{ $t('arrayParamProperties.arrayOfObjects') }}</span>
           </div>
         </div>
       </div>
@@ -64,8 +64,8 @@
     <!-- Array Input (Lines) -->
     <div v-else class="mb-4">
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-        {{ t('arrayParamProperties.defaultArrayValue') }}
-        <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">{{ t('arrayParamProperties.oneValuePerLine') }}</span>
+        {{ $t('arrayParamProperties.defaultArrayValue') }}
+        <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">{{ $t('arrayParamProperties.oneValuePerLine') }}</span>
       </label>
       <textarea
         v-model="nodeData.data.defaultValue"
@@ -74,21 +74,21 @@
         placeholder="production&#10;staging&#10;development"
       />
       <p class="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        {{ t('arrayParamProperties.eachLineElement') }}
+        {{ $t('arrayParamProperties.eachLineElement') }}
       </p>
     </div>
 
     <!-- Array Preview -->
     <UFormField class="mb-4">
       <template #label>
-        <span>{{ t('arrayParamProperties.arrayPreview') }} <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">({{ parsedArray.length }} {{ t('arrayParamProperties.items') }})</span></span>
+        <span>{{ $t('arrayParamProperties.arrayPreview') }} <span class="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-2">({{ parsedArray.length }} {{ $t('arrayParamProperties.items') }})</span></span>
       </template>
       <UCard class="max-h-40 overflow-y-auto">
         <div v-if="parseError" class="text-red-600 dark:text-red-400 text-sm">
-          {{ t('arrayParamProperties.error') }} {{ parseError }}
+          {{ $t('arrayParamProperties.error') }} {{ parseError }}
         </div>
         <div v-else-if="parsedArray.length === 0" class="text-neutral-500 dark:text-neutral-400 text-sm">
-          {{ t('arrayParamProperties.noItemsInArray') }}
+          {{ $t('arrayParamProperties.noItemsInArray') }}
         </div>
         <div v-else class="space-y-1">
           <div v-for="(item, index) in previewItems" :key="index" class="text-sm font-mono text-neutral-700 dark:text-neutral-300">
@@ -96,7 +96,7 @@
             <span class="ml-2">{{ formatItem(item) }}</span>
           </div>
           <div v-if="parsedArray.length > 10" class="text-neutral-500 dark:text-neutral-400 text-xs italic">
-            {{ t('arrayParamProperties.andMoreItems').replace('{count}', parsedArray.length - 10) }}
+            {{ $t('arrayParamProperties.andMoreItems').replace('{count}', parsedArray.length - 10) }}
           </div>
         </div>
       </UCard>
@@ -107,12 +107,12 @@
       <div class="flex items-start gap-2">
         <span class="text-purple-600 dark:text-purple-400 text-lg">ℹ️</span>
         <div class="text-sm text-purple-800 dark:text-purple-200">
-          <p class="font-semibold mb-1">{{ t('arrayParamProperties.howToUse') }}</p>
+          <p class="font-semibold mb-1">{{ $t('arrayParamProperties.howToUse') }}</p>
           <ol class="list-decimal list-inside space-y-1">
-            <li>{{ t('arrayParamProperties.connectParameter') }}</li>
-            <li>{{ t('arrayParamProperties.provideArrayValues') }}</li>
-            <li>{{ t('arrayParamProperties.matrixNodeExecute') }}</li>
-            <li>{{ t('arrayParamProperties.chooseFormat') }}</li>
+            <li>{{ $t('arrayParamProperties.connectParameter') }}</li>
+            <li>{{ $t('arrayParamProperties.provideArrayValues') }}</li>
+            <li>{{ $t('arrayParamProperties.matrixNodeExecute') }}</li>
+            <li>{{ $t('arrayParamProperties.chooseFormat') }}</li>
           </ol>
         </div>
       </div>
@@ -123,8 +123,6 @@
 <script setup>
 import { computed } from 'vue'
 import ScriptEditor from '@/components/ScriptEditor.vue'
-
-const { t } = useI18n()
 const props = defineProps({
   nodeData: { type: Object, required: true }
 })

@@ -659,7 +659,7 @@
         "examples": "Examples:",
         "additionalParameters": "Additional Parameters",
         "jsonObjectOptional": "(JSON object, optional)",
-        "additionalParamsHelp": "Static parameters passed to all executions. Example: {\"BUILD_TYPE\": \"Release\", \"ENABLE_CACHE\": true}",
+        "additionalParamsHelp": "Static parameters passed to all executions. Example:",
         "maxConcurrentExecutions": "Max Concurrent Executions",
         "unlimitedPlaceholder": "Unlimited",
         "maxConcurrencyHelp": "Leave empty for unlimited parallel execution",
@@ -753,7 +753,7 @@
         "slackBotTokenHelp": "Set SLACK_BOT_TOKEN environment variable to enable Slack notifications.",
         "slackWebhookTip": "For Slack Incoming Webhooks, use the \"Webhook\" notification type instead.",
         "channel": "Channel",
-        "channelHelp": "Specify the Slack channel (e.g., #general), user (e.g., @john), or channel ID",
+        "channelHelp": "Specify the Slack channel (e.g., #general), or channel ID",
         "messageMode": "Message Mode",
         "messageModeHelp": "Block Kit enables rich, interactive messages with formatted layouts",
         "message": "Message",
@@ -820,5 +820,591 @@
         "discordWebhooks": "Discord Webhooks:",
         "otherWebhooks": "Other Webhooks:",
         "webhookConfigurationHelp": "Configure the HTTP method, headers, and body as required by your webhook service. Use context variables like $BuildNumber in the body."
+    },
+    "admin": {
+        "title": "Admin Panel",
+        "subtitle": "Manage system settings, environment variables, and security.",
+        "systemSettings": {
+            "title": "System Settings",
+            "subtitle": "Configure application settings and preferences",
+            "loadingSettings": "Loading settings...",
+            "noSettings": "No system settings available",
+            "updateSuccess": "System setting updated successfully",
+            "categories": {
+                "branding": "Branding & Appearance",
+                "general": "General Settings",
+                "security": "Security Settings",
+                "authentication": "Authentication & LDAP",
+                "notifications": "Notification Settings",
+                "system": "System Information"
+            }
+        },
+        "environmentVariables": {
+            "title": "Environment Variables",
+            "subtitle": "Manage server environment variables and secrets",
+            "addVariable": "Add Variable",
+            "noVariables": "No environment variables defined",
+            "key": "Key",
+            "value": "Value",
+            "description": "Description",
+            "type": "Type",
+            "actions": "Actions",
+            "secret": "Secret",
+            "standard": "Standard",
+            "editVariable": "Edit Variable",
+            "deleteVariable": "Delete Variable",
+            "deleteConfirm": "Are you sure you want to delete this environment variable?",
+            "deleteWarning": "This action cannot be undone.",
+            "deleteSuccess": "Environment variable deleted successfully",
+            "deleteFailed": "Failed to delete environment variable",
+            "isSecret": "Mark as Secret",
+            "isSecretHelp": "Secret values will be hidden in the UI"
+        },
+        "credentialVault": {
+            "title": "Credential Vault",
+            "subtitle": "Manage credentials for CI/CD workflows",
+            "addCredential": "Add Credential",
+            "noCredentials": "No credentials stored",
+            "name": "Name",
+            "type": "Type",
+            "description": "Description",
+            "createdAt": "Created At",
+            "actions": "Actions",
+            "editCredential": "Edit Credential",
+            "deleteCredential": "Delete Credential",
+            "deleteConfirm": "Are you sure you want to delete this credential?",
+            "deleteWarning": "This action cannot be undone. Projects using this credential may fail.",
+            "deleteSuccess": "Credential deleted successfully",
+            "deleteFailed": "Failed to delete credential",
+            "types": {
+                "password": "Password",
+                "userPass": "User + Pass",
+                "token": "Token",
+                "sshKey": "SSH Key",
+                "certificate": "Certificate",
+                "file": "File"
+            },
+            "fields": {
+                "password": "Password",
+                "username": "Username",
+                "token": "Token Value",
+                "privateKey": "Private Key",
+                "publicKey": "Public Key",
+                "certificate": "Certificate",
+                "privateKeyData": "Private Key",
+                "fileName": "File Name",
+                "fileData": "File Data"
+            }
+        },
+        "updateManagement": {
+            "title": "Update Management",
+            "checkForUpdates": "Check for Updates",
+            "checking": "Checking...",
+            "upToDate": "Up to Date",
+            "updateAvailable": "Update Available",
+            "currentVersion": "Current Version",
+            "latestVersion": "Latest Version",
+            "releaseNotes": "Release Notes",
+            "viewOnGitHub": "View on GitHub",
+            "triggerUpdate": "Trigger Update",
+            "waitForJobs": "Wait for running jobs to complete before updating",
+            "updateCheckSuccess": "Update available: {version}",
+            "alreadyLatest": "You are running the latest version",
+            "checkFailed": "Failed to check for updates",
+            "updateInitiated": "Update initiated. Server will restart shortly...",
+            "serverRestarting": "Server restarting in {count} seconds...",
+            "updateFailed": "Failed to trigger update",
+            "confirmUpdate": "Are you sure you want to update to version {version}? The server will restart during this process."
+        },
+        "agentTemplates": {
+            "title": "Agent Templates",
+            "subtitle": "Manage remote agent update configurations",
+            "noAgents": "No agents connected",
+            "agent": "Agent",
+            "version": "Version",
+            "platform": "Platform",
+            "status": "Status",
+            "autoUpdate": "Auto-Update",
+            "actions": "Actions",
+            "online": "Online",
+            "offline": "Offline",
+            "updateAvailable": "Update Available",
+            "triggerUpdate": "Trigger Update",
+            "autoUpdateEnabled": "Auto-update enabled for {name}",
+            "autoUpdateDisabled": "Auto-update disabled for {name}",
+            "updateSettingsFailed": "Failed to update agent settings",
+            "updateTriggered": "Update triggered for {name}. Agent will update and reconnect shortly.",
+            "updateTriggerFailed": "Failed to trigger agent update"
+        },
+        "userManagement": {
+            "title": "User Management",
+            "noUsers": "No users found",
+            "username": "Username",
+            "name": "Name",
+            "email": "Email",
+            "role": "Role",
+            "groups": "Groups",
+            "actions": "Actions",
+            "changeRole": "Change Role",
+            "manageGroups": "Manage Groups",
+            "roles": {
+                "admin": "Admin",
+                "user": "User"
+            },
+            "roleChangeSuccess": "User role changed to {role} successfully",
+            "roleChangeFailed": "Failed to update user role",
+            "manageGroupsTitle": "Manage Groups - {name}",
+            "userGroups": "User Groups",
+            "userGroupsHelp": "Select groups for this user",
+            "groupsUpdateSuccess": "User groups updated successfully",
+            "groupsUpdateFailed": "Failed to update user groups"
+        },
+        "groupManagement": {
+            "title": "Groups Management",
+            "subtitle": "Manage user groups and LDAP mappings",
+            "createGroup": "Create Group",
+            "noGroups": "No groups defined",
+            "name": "Name",
+            "description": "Description",
+            "members": "Members",
+            "ldapMappings": "LDAP Mappings",
+            "actions": "Actions",
+            "editGroup": "Edit Group",
+            "deleteGroup": "Delete Group",
+            "ldapGroups": "{count} LDAP Groups",
+            "deleteConfirm": "Are you sure you want to delete this group?",
+            "deleteWarning": "Users in this group will lose access to resources restricted to this group.",
+            "deleteSuccess": "Group deleted successfully",
+            "deleteFailed": "Failed to delete group",
+            "createSuccess": "Group created successfully",
+            "updateSuccess": "Group updated successfully",
+            "saveFailed": "Failed to save group",
+            "groupName": "Group Name",
+            "groupDescription": "Description (Optional)",
+            "groupMembers": "Members",
+            "addMember": "Add member",
+            "selectUser": "Select a user...",
+            "removeMember": "Remove member",
+            "memberRemoveSuccess": "Member removed successfully",
+            "memberRemoveFailed": "Failed to remove member",
+            "ldapMappingTitle": "LDAP Group Mappings",
+            "ldapMappingHelp": "Map LDAP groups to this application group. Users who are members of any mapped LDAP group will automatically be added to this group.",
+            "addLdapMapping": "Add LDAP Mapping",
+            "ldapGroupName": "LDAP Group Name"
+        },
+        "ldapTest": {
+            "title": "LDAP Connection Test",
+            "testConnection": "Test LDAP Connection",
+            "testing": "Testing...",
+            "username": "Test Username",
+            "password": "Test Password",
+            "runTest": "Run Test",
+            "success": "LDAP Connection Successful!",
+            "failed": "LDAP Connection Failed",
+            "userDn": "User DN:",
+            "groups": "Groups:",
+            "error": "Error:"
+        },
+        "common": {
+            "edit": "Edit",
+            "delete": "Delete",
+            "cancel": "Cancel",
+            "save": "Save",
+            "create": "Create",
+            "close": "Close",
+            "enabled": "Enabled",
+            "disabled": "Disabled",
+            "loading": "Loading..."
+        }
+    },
+    "builds": {
+        "title": "Build History",
+        "subtitle": "Build history and logs for {projectName}",
+        "refresh": "Refresh",
+        "refreshing": "Refreshing...",
+        "editProject": "Edit Project",
+        "stats": {
+            "totalBuilds": "Total Builds",
+            "successRate": "Success Rate",
+            "avgDuration": "Avg Duration",
+            "failedBuilds": "Failed Builds",
+            "lastBuild": "Last Build",
+            "never": "Never"
+        },
+        "filters": {
+            "title": "Filters",
+            "status": "Status",
+            "allStatus": "All Status",
+            "success": "Success",
+            "failure": "Failure",
+            "cancelled": "Cancelled",
+            "running": "Running",
+            "startDate": "Start Date",
+            "endDate": "End Date",
+            "clearFilters": "Clear Filters"
+        },
+        "table": {
+            "title": "Recent Builds",
+            "loading": "Loading builds...",
+            "noBuild": "No builds found",
+            "noBuildsYet": "No builds have been executed yet.",
+            "adjustFilters": "Try adjusting your filters.",
+            "buildNumber": "Build #{number}",
+            "noMessage": "No message",
+            "headers": {
+                "build": "Build",
+                "status": "Status",
+                "trigger": "Trigger",
+                "agent": "Agent",
+                "duration": "Duration",
+                "started": "Started",
+                "actions": "Actions"
+            }
+        },
+        "actions": {
+            "viewLogs": "View Logs",
+            "deleteBuild": "Delete Build",
+            "viewDetails": "View"
+        },
+        "deleteConfirm": {
+            "title": "Delete Build",
+            "message": "Are you sure you want to delete build #{number}? This action cannot be undone.",
+            "cancel": "Cancel",
+            "confirm": "Delete Build"
+        },
+        "triggers": {
+            "manual": "Manual",
+            "webhook": "Webhook",
+            "cron": "Cron",
+            "git": "Git",
+            "unknown": "Unknown"
+        },
+        "pagination": {
+            "showing": "Showing {from} to {to} of {total} results",
+            "previous": "Previous",
+            "next": "Next"
+        },
+        "logsModal": {
+            "title": "Build Logs - {buildId}...",
+            "loading": "Loading logs...",
+            "noLogs": "No logs found for this build.",
+            "close": "Close"
+        },
+        "status": {
+            "success": "Success",
+            "failure": "Failure",
+            "cancelled": "Cancelled",
+            "running": "Running",
+            "pending": "Pending",
+            "queued": "Queued"
+        },
+        "common": {
+            "local": "Local",
+            "notAvailable": "N/A"
+        }
+    },
+    "buildDetail": {
+        "title": "Build #{buildNumber} - {projectName}",
+        "executing": "Executing...",
+        "backToEditor": "Back to Editor",
+        "cancelBuild": "Cancel Build",
+        "output": "Build #{buildNumber} Output",
+        "clear": "Clear",
+        "loading": "Loading...",
+        "error": "Error",
+        "messages": {
+            "projectNotFound": "Project not found",
+            "failedToLoad": "Failed to load build data",
+            "failedToCancel": "Failed to cancel job: {message}",
+            "errorCancelling": "Error cancelling job: {message}",
+            "buildCompleted": "Build completed successfully",
+            "buildFailed": "Build failed",
+            "checkStatusFailed": "Failed to check current build status"
+        }
+    },
+    "editor": {
+        "navigation": {
+            "viewBuild": "View Build",
+            "viewBuildNumber": "View Build #{buildNumber}",
+            "run": "Run",
+            "saving": "Saving",
+            "save": "Save",
+            "viewBuildHistoryTooltip": "View build history",
+            "buildHistory": "Build History",
+            "retentionTooltip": "Configure build retention policies",
+            "settings": "Settings",
+            "toggleStatusTooltip": "Enable or disable this project",
+            "enable": "Enable",
+            "disable": "Disable"
+        },
+        "banner": {
+            "buildExecuting": "Build #{buildNumber} is currently executing",
+            "buildExecutingDescription": "This project is currently running. Click \"View Build\" to monitor progress or cancel execution.",
+            "viewBuild": "View Build #{buildNumber}",
+            "projectDisabled": "This project is disabled",
+            "projectDisabledDescription": "Cron jobs will not run, manual execution is blocked, job triggers will not fire, and webhooks will be ignored. Click \"Enable\" to reactivate."
+        },
+        "nodesPanel": {
+            "title": "Nodes",
+            "categories": {
+                "sourceControl": "Source Control",
+                "triggers": "Triggers",
+                "parameters": "Parameters",
+                "dependencies": "Dependencies",
+                "execution": "Execution",
+                "control": "Control"
+            }
+        },
+        "controls": {
+            "showNodesPanelTooltip": "Show Nodes Panel",
+            "showPropertiesPanelTooltip": "Show Properties Panel"
+        },
+        "loading": {
+            "message": "Loading editor..."
+        },
+        "propertiesPanel": {
+            "title": "Node Properties",
+            "label": "Label",
+            "labelHelp": "This label is displayed on the node in the editor.",
+            "color": "Color",
+            "colorHelp": "Choose a custom color for this node. The color picker shows a preview, or enter a hex color code.",
+            "colorPickerButton": "Color Picker",
+            "inputSockets": "Input Sockets",
+            "inputSocketsHelp": "Define input sockets for this node. Input sockets allow data to be passed into this node from upstream nodes.",
+            "socketLabelPlaceholder": "Socket label",
+            "removeSocketTooltip": "Remove socket",
+            "addInputSocket": "Add Input Socket",
+            "executionAgent": "Execution Agent",
+            "agentRequired": "Agent selection is required for execution nodes",
+            "selectAgentPlaceholder": "-- Select an execution agent --",
+            "agentHelp": "This node will execute on the selected agent. Choose \"Any available agent\" if you don't have a preference.",
+            "script": "Script",
+            "availablePlaceholders": "Available placeholders:",
+            "workingDirectory": "Working Directory",
+            "workingDirectoryHelp": "Directory where the script will execute. Relative to agent's workspace.",
+            "timeout": "Timeout (seconds)",
+            "retryHelp": "Configure retry behavior for this node if it fails during execution.",
+            "enableRetry": "Enable Retry",
+            "maxRetries": "Max Retries",
+            "retryDelay": "Retry Delay (seconds)",
+            "position": "Position",
+            "positionHelp": "The X and Y coordinates of the node in the editor, if you are looking to fine-tune placement.",
+            "positionX": "X",
+            "positionY": "Y",
+            "noNodeSelected": "Select a node to view properties"
+        },
+        "nodes": {
+            "cronTrigger": {
+                "name": "Cron Trigger",
+                "description": "Schedule job execution with cron expressions"
+            },
+            "webhookTrigger": {
+                "name": "Webhook Trigger",
+                "description": "Trigger via HTTP webhook"
+            },
+            "jobTrigger": {
+                "name": "Job Trigger",
+                "description": "Trigger from another project completion"
+            },
+            "stringParam": {
+                "name": "String Parameter",
+                "description": "Single-line text parameter"
+            },
+            "textParam": {
+                "name": "Text Parameter",
+                "description": "Multi-line text parameter"
+            },
+            "choiceParam": {
+                "name": "Choice Parameter",
+                "description": "Dropdown selection parameter"
+            },
+            "booleanParam": {
+                "name": "Boolean Parameter",
+                "description": "True/false parameter"
+            },
+            "arrayParam": {
+                "name": "Array Parameter",
+                "description": "Array of values for matrix execution"
+            },
+            "apiRequest": {
+                "name": "API Request",
+                "description": "Make HTTP API requests with custom headers"
+            },
+            "bash": {
+                "name": "Bash Script",
+                "description": "Execute bash commands"
+            },
+            "sh": {
+                "name": "Shell Script",
+                "description": "Execute POSIX shell commands"
+            },
+            "powershell": {
+                "name": "PowerShell Script",
+                "description": "Execute PowerShell commands"
+            },
+            "cmd": {
+                "name": "Command Prompt",
+                "description": "Execute Windows CMD commands"
+            },
+            "python": {
+                "name": "Python Script",
+                "description": "Execute Python code"
+            },
+            "python3": {
+                "name": "Python3 Script",
+                "description": "Execute Python3 code"
+            },
+            "node": {
+                "name": "Node.js Script",
+                "description": "Execute Node.js/JavaScript code"
+            },
+            "go": {
+                "name": "Go Script",
+                "description": "Execute Go code"
+            },
+            "ruby": {
+                "name": "Ruby Script",
+                "description": "Execute Ruby code"
+            },
+            "php": {
+                "name": "PHP Script",
+                "description": "Execute PHP code"
+            },
+            "java": {
+                "name": "Java Program",
+                "description": "Execute Java code"
+            },
+            "rust": {
+                "name": "Rust Script",
+                "description": "Execute Rust code"
+            },
+            "perl": {
+                "name": "Perl Script",
+                "description": "Execute Perl code"
+            },
+            "parallelExecution": {
+                "name": "Parallel Execution",
+                "description": "Execution node for parallel branches (no output sockets)"
+            },
+            "gitCheckout": {
+                "name": "Git Checkout",
+                "description": "Clone or checkout a Git repository"
+            },
+            "npmInstall": {
+                "name": "NPM Install",
+                "description": "Install Node.js dependencies from package.json"
+            },
+            "pipInstall": {
+                "name": "Pip Install",
+                "description": "Install Python dependencies from requirements.txt"
+            },
+            "goMod": {
+                "name": "Go Modules",
+                "description": "Download Go module dependencies"
+            },
+            "bundleInstall": {
+                "name": "Bundle Install",
+                "description": "Install Ruby gems from Gemfile"
+            },
+            "composerInstall": {
+                "name": "Composer Install",
+                "description": "Install PHP dependencies from composer.json"
+            },
+            "cargoBuild": {
+                "name": "Cargo Build",
+                "description": "Build Rust project and fetch dependencies"
+            },
+            "parallelBranches": {
+                "name": "Parallel Branches",
+                "description": "Execute multiple different branches in parallel"
+            },
+            "parallelMatrix": {
+                "name": "Parallel Matrix",
+                "description": "Execute same job multiple times with different parameters"
+            },
+            "conditional": {
+                "name": "Conditional",
+                "description": "Conditional execution based on parameters"
+            },
+            "notification": {
+                "name": "Notification",
+                "description": "Send notifications (email, slack, etc.)"
+            }
+        },
+        "nodeDefaults": {
+            "stringParam": {
+                "description": "String parameter"
+            },
+            "textParam": {
+                "description": "Multi-line text parameter"
+            },
+            "booleanParam": {
+                "description": "Boolean parameter"
+            },
+            "arrayParam": {
+                "description": "Array parameter for matrix execution"
+            },
+            "parallelBranches": {
+                "description": "Execute multiple branches in parallel"
+            },
+            "parallelExecution": {
+                "description": "Execution node for parallel branches"
+            },
+            "parallelMatrix": {
+                "description": "Execute job for each item from array parameter"
+            },
+            "conditional": {
+                "description": "Conditional execution"
+            },
+            "notification": {
+                "description": "Send notification"
+            }
+        },
+        "agentOptions": {
+            "anyAvailable": "Any available agent"
+        },
+        "sockets": {
+            "success": "Success",
+            "failure": "Failure",
+            "output": "Output",
+            "allSuccess": "All Success",
+            "anyFailure": "Any Failure",
+            "branch": "Branch {number}",
+            "aggregatedOutput": "Aggregated Output",
+            "forEachItem": "For Each Item",
+            "iterationValue": "Iteration Value",
+            "additionalParameters": "Additional Parameters",
+            "true": "True",
+            "false": "False",
+            "webhookData": "Webhook Data",
+            "arrayValues": "Array Values"
+        },
+        "toast": {
+            "retentionUpdated": "Retention settings updated successfully",
+            "retentionFailed": "Failed to save retention settings. Please try again.",
+            "templateUpdated": "Template updated successfully",
+            "templateSaved": "Template saved successfully",
+            "templateFailed": "Failed to save template: {message}",
+            "projectEnabled": "Project enabled successfully",
+            "projectDisabled": "Project disabled successfully",
+            "projectEnableFailed": "Failed to enable project: {error}",
+            "projectDisableFailed": "Failed to disable project: {error}",
+            "projectStatusError": "Error changing project status: {message}"
+        },
+        "validation": {
+            "missingAgent": "🚨 \"{label}\" has no executor selected. Agent selection is required to run.",
+            "missingWebhookEndpoint": "🎣 \"{label}\" has no custom endpoint configured.",
+            "missingWebhookToken": "\"{label}\" has no secret token. Secret tokens are required for webhook security.",
+            "unnamedParameter": "Unnamed Parameter",
+            "unnamedNode": "Unnamed Node",
+            "unnamedWebhook": "Unnamed Webhook",
+            "projectDisabled": "Project is disabled. Manual execution is blocked.",
+            "executionBlocked": "Execution blocked due to validation errors:\n\n",
+            "executionFailed": "Failed to start execution: {message}",
+            "executionDispatchError": "Failed to start execution: {message}"
+        },
+        "menu": {
+            "saveAsTemplate": "Save as Template"
+        }
     }
 }

@@ -1,15 +1,15 @@
 <template>
   <div class="space-y-4">
     <UAlert color="primary" variant="soft" icon="i-lucide-bell">
-      <template #title>{{ t('notificationProperties.notificationConfiguration') }}</template>
+      <template #title>{{ $t('notificationProperties.notificationConfiguration') }}</template>
       <template #description>
-        {{ t('notificationProperties.notificationDescription') }}
+        {{ $t('notificationProperties.notificationDescription') }}
       </template>
     </UAlert>
 
     <!-- Template Selector -->
     <UAlert color="secondary" variant="soft">
-      <template #title>{{ t('notificationProperties.useTemplate') }}</template>
+      <template #title>{{ $t('notificationProperties.useTemplate') }}</template>
       <template #description>
         <UFormField class="mt-2">
           <USelect
@@ -18,17 +18,17 @@
             :items="templateOptions"
             size="md"
             class="w-full"
-            :placeholder="t('notificationProperties.selectTemplate')"
+            :placeholder="$t('notificationProperties.selectTemplate')"
           />
         </UFormField>
         <p class="mt-2 text-xs">
-          {{ isLoadingTemplate ? t('notificationProperties.loadingTemplate') : templateOptions.length === 0 ? t('notificationProperties.noTemplatesAvailable') : t('notificationProperties.chooseTemplate') }}
+          {{ isLoadingTemplate ? $t('notificationProperties.loadingTemplate') : templateOptions.length === 0 ? $t('notificationProperties.noTemplatesAvailable') : $t('notificationProperties.chooseTemplate') }}
         </p>
       </template>
     </UAlert>
 
     <!-- Notification Type Selection -->
-    <UFormField :label="t('notificationProperties.notificationType')" required>
+    <UFormField :label="$t('notificationProperties.notificationType')" required>
       <USelect
         v-model="nodeData.data.notificationType"
         @change="onNotificationTypeChange"
@@ -37,25 +37,25 @@
         class="w-full"
       />
       <template #help>
-        {{ t('notificationProperties.selectNotificationType') }}
+        {{ $t('notificationProperties.selectNotificationType') }}
       </template>
     </UFormField>
 
     <!-- General Options (for all notification types) -->
     <UAlert color="secondary" variant="soft">
-      <template #title>{{ t('notificationProperties.generalOptions') }}</template>
+      <template #title>{{ $t('notificationProperties.generalOptions') }}</template>
       <template #description>
         <UCheckbox
           v-model="nodeData.data.attachBuildLog"
-          :label="t('notificationProperties.attachBuildLog')"
-          :help="t('notificationProperties.attachBuildLogHelp')"
+          :label="$t('notificationProperties.attachBuildLog')"
+          :help="$t('notificationProperties.attachBuildLogHelp')"
         />
       </template>
     </UAlert>
 
     <!-- Email Configuration -->
     <div v-if="nodeData.data.notificationType === 'email'" class="space-y-4">
-      <UFormField :label="t('notificationProperties.fromAddress')" required>
+      <UFormField :label="$t('notificationProperties.fromAddress')" required>
         <UInput
           v-model="nodeData.data.emailFrom"
           type="email"
@@ -64,11 +64,11 @@
           placeholder="noreply@example.com"
         />
         <template #help>
-          {{ t('notificationProperties.fromAddressHelp') }}
+          {{ $t('notificationProperties.fromAddressHelp') }}
         </template>
       </UFormField>
 
-      <UFormField :label="t('notificationProperties.toRecipients')" required>
+      <UFormField :label="$t('notificationProperties.toRecipients')" required>
         <UInput
           v-model="nodeData.data.emailTo"
           type="text"
@@ -77,11 +77,11 @@
           placeholder="user@example.com, admin@example.com"
         />
         <template #help>
-          {{ t('notificationProperties.toRecipientsHelp') }}
+          {{ $t('notificationProperties.toRecipientsHelp') }}
         </template>
       </UFormField>
 
-      <UFormField :label="t('notificationProperties.subject')" required>
+      <UFormField :label="$t('notificationProperties.subject')" required>
         <UInput
           v-model="nodeData.data.emailSubject"
           type="text"
@@ -91,7 +91,7 @@
         />
       </UFormField>
 
-      <UFormField :label="t('notificationProperties.messageBody')" required>
+      <UFormField :label="$t('notificationProperties.messageBody')" required>
         <UTextarea
           v-model="nodeData.data.emailBody"
           size="md"
@@ -99,15 +99,15 @@
           placeholder="Enter email message body..."
         />
         <template #help>
-          {{ t('notificationProperties.messageBodyHelp') }}
+          {{ $t('notificationProperties.messageBodyHelp') }}
         </template>
       </UFormField>
 
       <UFormField>
         <UCheckbox
           v-model="nodeData.data.emailHtml"
-          :label="t('notificationProperties.sendAsHtml')"
-          :help="t('notificationProperties.sendAsHtmlHelp')"
+          :label="$t('notificationProperties.sendAsHtml')"
+          :help="$t('notificationProperties.sendAsHtmlHelp')"
         />
       </UFormField>
     </div>
@@ -116,12 +116,12 @@
     <div v-if="nodeData.data.notificationType === 'slack'" class="space-y-4">
       <UAlert color="primary" variant="soft" icon="i-lucide-info">
         <template #description>
-          <p><strong>{{ t('notificationProperties.slackAppIntegration') }}</strong> {{ t('notificationProperties.slackBotTokenHelp') }}</p>
-          <p class="mt-1">💡 {{ t('notificationProperties.slackWebhookTip') }}</p>
+          <p><strong>{{ $t('notificationProperties.slackAppIntegration') }}</strong> {{ $t('notificationProperties.slackBotTokenHelp') }}</p>
+          <p class="mt-1">💡 {{ $t('notificationProperties.slackWebhookTip') }}</p>
         </template>
       </UAlert>
 
-      <UFormField :label="t('notificationProperties.channel')" required>
+      <UFormField :label="$t('notificationProperties.channel')" required>
         <UInput
           v-model="nodeData.data.slackChannel"
           type="text"
@@ -130,11 +130,11 @@
           placeholder="#general, @username, or C1234567890"
         />
         <template #help>
-          {{ t('notificationProperties.channelHelp') }}
+          {{ $t('notificationProperties.channelHelp') }}
         </template>
       </UFormField>
 
-      <UFormField :label="t('notificationProperties.messageMode')">
+      <UFormField :label="$t('notificationProperties.messageMode')">
         <USelect
           v-model="nodeData.data.slackMode"
           :items="slackModeOptions"
@@ -142,27 +142,27 @@
           class="w-full"
         />
         <template #help>
-          {{ t('notificationProperties.messageModeHelp') }}
+          {{ $t('notificationProperties.messageModeHelp') }}
         </template>
       </UFormField>
 
       <UFormField required>
         <template #label>
-          <span>{{ t('notificationProperties.message') }} <span v-if="nodeData.data.slackMode === 'blocks'" class="text-neutral-400 font-normal">{{ t('notificationProperties.fallbackText') }}</span></span>
+          <span>{{ $t('notificationProperties.message') }} <span v-if="nodeData.data.slackMode === 'blocks'" class="text-neutral-400 font-normal">{{ $t('notificationProperties.fallbackText') }}</span></span>
         </template>
         <UTextarea
           v-model="nodeData.data.slackMessage"
           v-auto-resize
           size="md"
           class="w-full font-mono"
-          :placeholder="`:white_check_mark: Build #$BuildNumber ${t('notificationProperties.completedSuccessfully')}`"
+          :placeholder="`:white_check_mark: Build #$BuildNumber ${$t('notificationProperties.completedSuccessfully')}`"
         />
         <template #help>
-          {{ nodeData.data.slackMode === 'blocks' ? t('notificationProperties.fallbackTextHelp') : t('notificationProperties.markdownMessageHelp') }}
+          {{ nodeData.data.slackMode === 'blocks' ? $t('notificationProperties.fallbackTextHelp') : $t('notificationProperties.markdownMessageHelp') }}
         </template>
       </UFormField>
 
-      <UFormField v-if="nodeData.data.slackMode === 'blocks'" :label="t('notificationProperties.slackBlocks')">
+      <UFormField v-if="nodeData.data.slackMode === 'blocks'" :label="$t('notificationProperties.slackBlocks')">
         <UTextarea
           v-model="nodeData.data.slackBlocks"
           v-auto-resize
@@ -171,14 +171,14 @@
           placeholder='[{"type":"header","text":{"type":"plain_text","text":"Build #$BuildNumber"}}]'
         />
         <template #help>
-          {{ t('notificationProperties.slackBlocksHelp') }} <a href="https://app.slack.com/block-kit-builder" target="_blank" class="text-primary-600 dark:text-primary-400 hover:underline">{{ t('notificationProperties.blockKitBuilder') }}</a>
+          {{ $t('notificationProperties.slackBlocksHelp') }} <a href="https://app.slack.com/block-kit-builder" target="_blank" class="text-primary-600 dark:text-primary-400 hover:underline">{{ $t('notificationProperties.blockKitBuilder') }}</a>
         </template>
       </UFormField>
     </div>
 
     <!-- Webhook Configuration -->
     <div v-if="nodeData.data.notificationType === 'webhook'" class="space-y-4">
-      <UFormField :label="t('notificationProperties.webhookUrl')">
+      <UFormField :label="$t('notificationProperties.webhookUrl')">
         <UInput
           v-model="nodeData.data.webhookUrl"
           type="url"
@@ -187,11 +187,11 @@
           placeholder="https://discord.com/api/webhooks/... (or leave empty to use DISCORD_WEBHOOK_URL)"
         />
         <template #help>
-          {{ t('notificationProperties.webhookUrlHelp') }}
+          {{ $t('notificationProperties.webhookUrlHelp') }}
         </template>
       </UFormField>
 
-      <UFormField :label="t('notificationProperties.httpMethod')">
+      <UFormField :label="$t('notificationProperties.httpMethod')">
         <USelect
           v-model="nodeData.data.webhookMethod"
           :items="webhookMethodOptions"
@@ -200,7 +200,7 @@
         />
       </UFormField>
 
-      <UFormField :label="t('notificationProperties.headers')">
+      <UFormField :label="$t('notificationProperties.headers')">
         <UTextarea
           v-model="nodeData.data.webhookHeaders"
           v-auto-resize
@@ -209,11 +209,11 @@
           placeholder='{"Content-Type": "application/json", "Authorization": "Bearer token123"}'
         />
         <template #help>
-          {{ t('notificationProperties.headersHelp') }}
+          {{ $t('notificationProperties.headersHelp') }}
         </template>
       </UFormField>
 
-      <UFormField :label="t('notificationProperties.body')" required>
+      <UFormField :label="$t('notificationProperties.body')" required>
         <UTextarea
           v-model="nodeData.data.webhookBody"
           v-auto-resize
@@ -222,7 +222,7 @@
           placeholder='{"status": "completed", "message": "Job finished"}'
         />
         <template #help>
-          {{ t('notificationProperties.bodyHelp') }}
+          {{ $t('notificationProperties.bodyHelp') }}
         </template>
       </UFormField>
     </div>
@@ -231,26 +231,26 @@
     <UAccordion :items="accordionItems" :multiple="true">
       <template #available-variables>
         <div class="mt-2 font-mono text-sm bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
-          <div><b>$ProjectName</b> - {{ t('notificationProperties.projectNameDesc') }}</div>
-          <div><b>$ProjectId</b> - {{ t('notificationProperties.projectIdDesc') }}</div>
-          <div><b>$BuildNumber</b> - {{ t('notificationProperties.buildNumberDesc') }}</div>
-          <div><b>$JobId</b> - {{ t('notificationProperties.jobIdDesc') }}</div>
-          <div><b>$Status</b> - {{ t('notificationProperties.statusDesc') }}</div>
-          <div><b>$ExitCode</b> - {{ t('notificationProperties.exitCodeDesc') }}</div>
-          <div><b>$FailedNodeLabel</b> - {{ t('notificationProperties.failedNodeLabelDesc') }}</div>
-          <div><b>$CurrentAttempt</b> - {{ t('notificationProperties.currentAttemptDesc') }}</div>
-          <div><b>$MaxAttempts</b> - {{ t('notificationProperties.maxAttemptsDesc') }}</div>
-          <div><b>$WillRetry</b> - {{ t('notificationProperties.willRetryDesc') }}</div>
-          <div><b>$Timestamp</b> - {{ t('notificationProperties.timestampDesc') }}</div>
-          <div><b>$TimestampHuman</b> - {{ t('notificationProperties.timestampHumanDesc') }}</div>
-          <div><b>$BuildLog</b> - {{ t('notificationProperties.buildLogDesc') }}</div>
-          <div><b>$BuildLogPath</b> - {{ t('notificationProperties.buildLogPathDesc') }}</div>
-          <div><b>$DefaultEmailFrom</b> - {{ t('notificationProperties.defaultEmailFromDesc') }}</div>
-          <div><b>$DefaultEmailTo</b> - {{ t('notificationProperties.defaultEmailToDesc') }}</div>
-          <div><b>$AdminEmail</b> - {{ t('notificationProperties.adminEmailDesc') }}</div>
+          <div><b>$ProjectName</b> - {{ $t('notificationProperties.projectNameDesc') }}</div>
+          <div><b>$ProjectId</b> - {{ $t('notificationProperties.projectIdDesc') }}</div>
+          <div><b>$BuildNumber</b> - {{ $t('notificationProperties.buildNumberDesc') }}</div>
+          <div><b>$JobId</b> - {{ $t('notificationProperties.jobIdDesc') }}</div>
+          <div><b>$Status</b> - {{ $t('notificationProperties.statusDesc') }}</div>
+          <div><b>$ExitCode</b> - {{ $t('notificationProperties.exitCodeDesc') }}</div>
+          <div><b>$FailedNodeLabel</b> - {{ $t('notificationProperties.failedNodeLabelDesc') }}</div>
+          <div><b>$CurrentAttempt</b> - {{ $t('notificationProperties.currentAttemptDesc') }}</div>
+          <div><b>$MaxAttempts</b> - {{ $t('notificationProperties.maxAttemptsDesc') }}</div>
+          <div><b>$WillRetry</b> - {{ $t('notificationProperties.willRetryDesc') }}</div>
+          <div><b>$Timestamp</b> - {{ $t('notificationProperties.timestampDesc') }}</div>
+          <div><b>$TimestampHuman</b> - {{ $t('notificationProperties.timestampHumanDesc') }}</div>
+          <div><b>$BuildLog</b> - {{ $t('notificationProperties.buildLogDesc') }}</div>
+          <div><b>$BuildLogPath</b> - {{ $t('notificationProperties.buildLogPathDesc') }}</div>
+          <div><b>$DefaultEmailFrom</b> - {{ $t('notificationProperties.defaultEmailFromDesc') }}</div>
+          <div><b>$DefaultEmailTo</b> - {{ $t('notificationProperties.defaultEmailToDesc') }}</div>
+          <div><b>$AdminEmail</b> - {{ $t('notificationProperties.adminEmailDesc') }}</div>
         </div>
         <p class="mt-2 text-xs">
-          {{ t('notificationProperties.variableUsageHelp') }}
+          {{ $t('notificationProperties.variableUsageHelp') }}
         </p>
       </template>
 
@@ -261,34 +261,34 @@
           </div>
         </div>
         <p class="mt-2 text-xs">
-          {{ t('notificationProperties.inputSocketsHelp') }}
+          {{ $t('notificationProperties.inputSocketsHelp') }}
         </p>
       </template>
 
       <template #usage-examples>
         <div class="mt-2 font-mono text-xs bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
           <div v-if="nodeData.data.notificationType === 'email'">
-            <div class="font-medium mb-1">{{ t('notificationProperties.emailNotificationSuccess') }}</div>
+            <div class="font-medium mb-1">{{ $t('notificationProperties.emailNotificationSuccess') }}</div>
             <div class="pl-2 space-y-1 font-mono text-xs">
               <div>Subject: "[$ProjectName] Build #$BuildNumber - $Status"</div>
-              <div>Body: "Build $BuildNumber {{ t('notificationProperties.completedAt') }} $TimestampHuman"</div>
+              <div>Body: "Build $BuildNumber {{ $t('notificationProperties.completedAt') }} $TimestampHuman"</div>
             </div>
-            <div class="font-medium mb-1 mt-2">{{ t('notificationProperties.emailNotificationFailure') }}</div>
+            <div class="font-medium mb-1 mt-2">{{ $t('notificationProperties.emailNotificationFailure') }}</div>
             <div class="pl-2 space-y-1 font-mono text-xs">
-              <div>Subject: "[$ProjectName] Build #$BuildNumber - {{ t('notificationProperties.attemptFailed') }}"</div>
-              <div>Body: "{{ t('notificationProperties.nodeFailed') }}"</div>
+              <div>Subject: "[$ProjectName] Build #$BuildNumber - {{ $t('notificationProperties.attemptFailed') }}"</div>
+              <div>Body: "{{ $t('notificationProperties.nodeFailed') }}"</div>
             </div>
           </div>
           <div v-if="nodeData.data.notificationType === 'slack'">
-            <div class="font-medium mb-1">{{ t('notificationProperties.slackNotification') }}</div>
+            <div class="font-medium mb-1">{{ $t('notificationProperties.slackNotification') }}</div>
             <div class="pl-2 space-y-1 font-mono text-xs">
-              <div>":x: *$ProjectName* - Build #$BuildNumber {{ t('notificationProperties.failed') }}"</div>
-              <div>"{{ t('notificationProperties.failedNode') }} $FailedNodeLabel"</div>
-              <div>"{{ t('notificationProperties.time') }} $TimestampHuman | {{ t('notificationProperties.exitCode') }} $ExitCode"</div>
+              <div>":x: *$ProjectName* - Build #$BuildNumber {{ $t('notificationProperties.failed') }}"</div>
+              <div>"{{ $t('notificationProperties.failedNode') }} $FailedNodeLabel"</div>
+              <div>"{{ $t('notificationProperties.time') }} $TimestampHuman | {{ $t('notificationProperties.exitCode') }} $ExitCode"</div>
             </div>
           </div>
           <div v-if="nodeData.data.notificationType === 'webhook'">
-            <div class="font-medium mb-1">{{ t('notificationProperties.webhookPayloadBasic') }}</div>
+            <div class="font-medium mb-1">{{ $t('notificationProperties.webhookPayloadBasic') }}</div>
             <div class="pl-2 font-mono bg-neutral-100 dark:bg-neutral-800 p-2 rounded mt-1 text-xs">
               {<br/>
               &nbsp;&nbsp;"event": "build_failed",<br/>
@@ -300,7 +300,7 @@
               &nbsp;&nbsp;"timestamp": "$Timestamp"<br/>
               }
             </div>
-            <div class="font-medium mb-1 mt-3">{{ t('notificationProperties.webhookWithBuildLog') }}</div>
+            <div class="font-medium mb-1 mt-3">{{ $t('notificationProperties.webhookWithBuildLog') }}</div>
             <div class="pl-2 font-mono bg-neutral-100 dark:bg-neutral-800 p-2 rounded mt-1 text-xs">
               {<br/>
               &nbsp;&nbsp;"project": "$ProjectName",<br/>
@@ -311,7 +311,7 @@
               }
             </div>
             <p class="mt-2 text-xs">
-              {{ t('notificationProperties.discordWebhookNote') }}
+              {{ $t('notificationProperties.discordWebhookNote') }}
             </p>
           </div>
         </div>
@@ -321,11 +321,11 @@
         <div class="text-xs">
           <!-- Email SMTP Setup -->
           <div v-if="nodeData.data.notificationType === 'email'">
-            <div class="font-medium mb-2">{{ t('notificationProperties.smtpConfigurationRequired') }}</div>
+            <div class="font-medium mb-2">{{ $t('notificationProperties.smtpConfigurationRequired') }}</div>
             <div class="space-y-1">
-              <div>{{ t('notificationProperties.smtpConfigurationHelp') }}</div>
+              <div>{{ $t('notificationProperties.smtpConfigurationHelp') }}</div>
               <div class="mt-2 font-mono text-xs bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
-                {{ t('notificationProperties.requiredEnvironmentVariables') }}<br/>
+                {{ $t('notificationProperties.requiredEnvironmentVariables') }}<br/>
                 • SMTP_HOST<br/>
                 • SMTP_PORT<br/>
                 • SMTP_USER<br/>
@@ -336,7 +336,7 @@
 
           <!-- Slack Setup -->
           <div v-if="nodeData.data.notificationType === 'slack'">
-            <div class="font-medium mb-2">{{ t('notificationProperties.slackAppSetup') }}</div>
+            <div class="font-medium mb-2">{{ $t('notificationProperties.slackAppSetup') }}</div>
             <div class="space-y-1">
               <div>1. Go to https://api.slack.com/apps</div>
               <div>2. Create a new app or select existing</div>
@@ -349,18 +349,18 @@
 
           <!-- Webhook Setup -->
           <div v-if="nodeData.data.notificationType === 'webhook'">
-            <div class="font-medium mb-2">{{ t('notificationProperties.webhookConfiguration') }}</div>
+            <div class="font-medium mb-2">{{ $t('notificationProperties.webhookConfiguration') }}</div>
             <div class="space-y-2">
-              <div><strong>{{ t('notificationProperties.discordWebhooks') }}</strong></div>
+              <div><strong>{{ $t('notificationProperties.discordWebhooks') }}</strong></div>
               <div class="pl-2 space-y-1">
                 <div>1. Open Discord → Server Settings → Integrations</div>
                 <div>2. Create new webhook</div>
                 <div>3. Copy webhook URL</div>
                 <div>4. Paste in "Webhook URL" field or set <code class="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">DISCORD_WEBHOOK_URL</code> env variable</div>
               </div>
-              <div class="mt-2"><strong>{{ t('notificationProperties.otherWebhooks') }}</strong></div>
+              <div class="mt-2"><strong>{{ $t('notificationProperties.otherWebhooks') }}</strong></div>
               <div class="pl-2">
-                {{ t('notificationProperties.webhookConfigurationHelp') }}
+                {{ $t('notificationProperties.webhookConfigurationHelp') }}
               </div>
             </div>
           </div>
@@ -371,8 +371,6 @@
 </template>
 
 <script setup>
-const { t } = useI18n()
-
 const props = defineProps({
   nodeData: {
     type: Object,
@@ -388,14 +386,14 @@ const logger = useLogger()
 
 // Options arrays for selects
 const notificationTypeOptions = computed(() => [
-  { value: 'email', label: t('notificationProperties.email') },
-  { value: 'slack', label: t('notificationProperties.slack') },
-  { value: 'webhook', label: t('notificationProperties.webhook') }
+  { value: 'email', label: $t('notificationProperties.email') },
+  { value: 'slack', label: $t('notificationProperties.slack') },
+  { value: 'webhook', label: $t('notificationProperties.webhook') }
 ])
 
 const slackModeOptions = computed(() => [
-  { value: 'simple', label: t('notificationProperties.simpleTextMessage') },
-  { value: 'blocks', label: t('notificationProperties.blockKitRichFormatting') }
+  { value: 'simple', label: $t('notificationProperties.simpleTextMessage') },
+  { value: 'blocks', label: $t('notificationProperties.blockKitRichFormatting') }
 ])
 
 const webhookMethodOptions = [
@@ -447,7 +445,7 @@ const accordionItems = computed(() => {
   const items = [
     {
       slot: 'available-variables',
-      label: t('notificationProperties.availableContextVariables'),
+      label: $t('notificationProperties.availableContextVariables'),
       icon: 'i-lucide-code',
       defaultOpen: false
     }
@@ -456,7 +454,7 @@ const accordionItems = computed(() => {
   if (props.nodeData.data.inputSockets && props.nodeData.data.inputSockets.length > 0) {
     items.push({
       slot: 'input-sockets',
-      label: t('notificationProperties.availableInputSocketVariables'),
+      label: $t('notificationProperties.availableInputSocketVariables'),
       icon: 'i-lucide-plug',
       defaultOpen: false
     })
@@ -465,13 +463,13 @@ const accordionItems = computed(() => {
   items.push(
     {
       slot: 'usage-examples',
-      label: t('notificationProperties.usageExamples'),
+      label: $t('notificationProperties.usageExamples'),
       icon: 'i-lucide-lightbulb',
       defaultOpen: false
     },
     {
       slot: 'setup-guide',
-      label: t('notificationProperties.setupConfigurationGuide'),
+      label: $t('notificationProperties.setupConfigurationGuide'),
       icon: 'i-lucide-settings',
       defaultOpen: false
     }

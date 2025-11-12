@@ -49,7 +49,7 @@
             <template #leading>
               <UIcon name="i-lucide-loader" class="animate-spin" />
             </template>
-            View Build #{{ currentBuildNumber }}
+            {{ $t('editor.navigation.viewBuildNumber', { buildNumber: currentBuildNumber }) }}
           </UButton>
           <UButton
             v-else
@@ -60,17 +60,17 @@
             :loading="isExecuting"
             size="md"
           >
-            Run
+            {{ $t('editor.navigation.run') }}
           </UButton>
         </div>
 
         <!-- Split Save Button -->
         <div class="inline-flex rounded-md shadow-sm relative">
             <UFieldGroup>
-              <UButton color="primary" label="Saving" v-if="isSaving">
+              <UButton color="primary" :label="$t('editor.navigation.saving')" v-if="isSaving">
                 <UIcon name="i-lucide-loader" class="animate-spin ml-1 mr-2 h-4 w-4 text-white" />
               </UButton>
-              <UButton color="primary" label="Save" @click="saveProject" icon="i-lucide-save" v-else />
+              <UButton color="primary" :label="$t('editor.navigation.save')" @click="saveProject" icon="i-lucide-save" v-else />
 
               <UDropdownMenu :items="saveTemplateItems">
                 <UButton
@@ -83,30 +83,30 @@
         </div>
 
         <!-- Build History Link -->
-        <UTooltip text="View build history">
+        <UTooltip :text="$t('editor.navigation.viewBuildHistoryTooltip')">
           <UButton
             :to="`/${pathSegments.slice(0, -1).join('/')}/builds`"
             class="text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600"
             icon="i-lucide-clock"
             size="md"
           >
-            Build History
+            {{ $t('editor.navigation.buildHistory') }}
           </UButton>
         </UTooltip>
 
         <!-- Retention Settings Button -->
-        <UTooltip text="Configure build retention policies">
+        <UTooltip :text="$t('editor.navigation.retentionTooltip')">
           <UButton
             @click="showRetentionModal = true"
             class="text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600"
             icon="i-lucide-settings"
             size="md"
           >
-            Settings
+            {{ $t('editor.navigation.settings') }}
           </UButton>
         </UTooltip>
         <!-- Project Status Toggle -->
-         <UTooltip text="Enable or disable this project">
+         <UTooltip :text="$t('editor.navigation.toggleStatusTooltip')">
           <UButton
             @click="toggleProjectStatus"
             :disabled="isTogglingStatus"
@@ -115,7 +115,7 @@
             :loading="isTogglingStatus"
             size="md"
           >
-            {{ project?.status === 'disabled' ? 'Enable' : 'Disable' }}
+            {{ project?.status === 'disabled' ? $t('editor.navigation.enable') : $t('editor.navigation.disable') }}
           </UButton>
          </UTooltip>
       </template>
@@ -130,10 +130,10 @@
           </div>
           <div class="ml-3">
             <p class="text-sm font-medium text-blue-800 dark:text-blue-200">
-              Build #{{ currentBuildNumber }} is currently executing
+              {{ $t('editor.banner.buildExecuting', { buildNumber: currentBuildNumber }) }}
             </p>
             <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
-              This project is currently running. Click "View Build" to monitor progress or cancel execution.
+              {{ $t('editor.banner.buildExecutingDescription') }}
             </p>
           </div>
           <div class="ml-auto">
@@ -143,7 +143,7 @@
               variant="soft"
               size="xs"
             >
-              View Build #{{ currentBuildNumber }}
+              {{ $t('editor.banner.viewBuild', { buildNumber: currentBuildNumber }) }}
             </UButton>
           </div>
         </div>
@@ -159,10 +159,10 @@
           </div>
           <div class="ml-3">
             <p class="text-sm font-medium text-amber-800 dark:text-amber-200">
-              This project is disabled
+              {{ $t('editor.banner.projectDisabled') }}
             </p>
             <p class="text-xs text-amber-700 dark:text-amber-300 mt-1">
-              Cron jobs will not run, manual execution is blocked, job triggers will not fire, and webhooks will be ignored. Click "Enable" to reactivate.
+              {{ $t('editor.banner.projectDisabledDescription') }}
             </p>
           </div>
         </div>
@@ -179,7 +179,7 @@
         >
           <div class="p-0">
             <div class="flex justify-between items-center mb-4">
-              <h3 class="text-lg font-medium text-neutral-900 dark:text-white">Nodes</h3>
+              <h3 class="text-lg font-medium text-neutral-900 dark:text-white">{{ $t('editor.nodesPanel.title') }}</h3>
               <UButton
                 @click="toggleNodesPanel"
                 color="neutral"
@@ -187,11 +187,11 @@
                 variant="ghost"
               />
             </div>
-            
+
             <!-- Node Categories -->
             <div class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Source Control</h4>
+                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{{ $t('editor.nodesPanel.categories.sourceControl') }}</h4>
                 <div class="space-y-2">
                   <div
                     v-for="nodeType in sourceControlNodes"
@@ -208,7 +208,7 @@
               </div>
 
               <div>
-                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Triggers</h4>
+                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{{ $t('editor.nodesPanel.categories.triggers') }}</h4>
                 <div class="space-y-2">
                   <div
                     v-for="nodeType in triggerNodes"
@@ -223,9 +223,9 @@
                   </div>
                 </div>
               </div>
-              
+
               <div>
-                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Parameters</h4>
+                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{{ $t('editor.nodesPanel.categories.parameters') }}</h4>
                 <div class="space-y-2">
                   <div
                     v-for="nodeType in parameterNodes"
@@ -240,9 +240,9 @@
                   </div>
                 </div>
               </div>
-              
+
               <div>
-                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Dependencies</h4>
+                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{{ $t('editor.nodesPanel.categories.dependencies') }}</h4>
                 <div class="space-y-2">
                   <div
                     v-for="nodeType in dependencyNodes"
@@ -259,7 +259,7 @@
               </div>
 
               <div>
-                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Execution</h4>
+                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{{ $t('editor.nodesPanel.categories.execution') }}</h4>
                 <div class="space-y-2">
                   <div
                     v-for="nodeType in executionNodes"
@@ -276,7 +276,7 @@
               </div>
 
               <div>
-                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Control</h4>
+                <h4 class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{{ $t('editor.nodesPanel.categories.control') }}</h4>
                 <div class="space-y-2">
                   <div
                     v-for="nodeType in controlNodes"
@@ -301,7 +301,7 @@
           <div class="relative h-full">
             <!-- Floating toggle buttons when panels are hidden -->
             <div v-if="!showNodesPanel" class="absolute top-4 left-4 z-40">
-              <UTooltip text="Show Nodes Panel">
+              <UTooltip :text="$t('editor.controls.showNodesPanelTooltip')">
                 <UButton
                   @click="toggleNodesPanel"
                   class="text-stone-200 bg-neutral-400 dark:bg-neutral-600 shadow-lg rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
@@ -309,9 +309,9 @@
                 />
               </UTooltip>
             </div>
-            
+
             <div v-if="!showPropertiesPanel" class="absolute top-4 right-4 z-40">
-              <UTooltip text="Show Properties Panel">
+              <UTooltip :text="$t('editor.controls.showPropertiesPanelTooltip')">
                 <UButton
                   @click="togglePropertiesPanel"
                   class="text-stone-200 bg-neutral-400 dark:bg-neutral-700 shadow-lg rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
@@ -349,7 +349,7 @@
                 <div v-if="!isEditorReady" class="absolute inset-0 flex items-center justify-center bg-white dark:bg-neutral-800 bg-opacity-75 dark:bg-opacity-75 z-50">
                   <div class="text-center">
                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p class="text-neutral-600 dark:text-neutral-300">Loading editor...</p>
+                    <p class="text-neutral-600 dark:text-neutral-300">{{ $t('editor.loading.message') }}</p>
                   </div>
                 </div>
               </VueFlow>
@@ -375,7 +375,7 @@
 
           <div class="p-0 overflow-y-auto flex-1">
             <div class="flex justify-between items-center mb-4">
-              <h3 class="text-lg font-medium text-neutral-900 dark:text-white">Node Properties</h3>
+              <h3 class="text-lg font-medium text-neutral-900 dark:text-white">{{ $t('editor.propertiesPanel.title') }}</h3>
               <UButton
                 @click="togglePropertiesPanel"
                 class="p-1 rounded-md text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
@@ -384,19 +384,19 @@
                 variant="ghost"
               />
             </div>
-            
+
             <div v-if="selectedNode" class="space-y-4">
               <div>
-                <UFormField label="Label" help="This label is displayed on the node in the editor.">
+                <UFormField :label="$t('editor.propertiesPanel.label')" :help="$t('editor.propertiesPanel.labelHelp')">
                   <UInput v-model="selectedNode.data.label" size="md" class="w-full"/>
                 </UFormField>
               </div>
-              
+
               <div>
-                <UFormField label="Color" help="Choose a custom color for this node. The color picker shows a preview, or enter a hex color code.">
+                <UFormField :label="$t('editor.propertiesPanel.color')" :help="$t('editor.propertiesPanel.colorHelp')">
                   <div class="flex gap-2 items-center">
                     <UPopover>
-                      <UButton label="Color Picker" color="neutral" variant="subtle" icon="i-lucide-palette"/>
+                      <UButton :label="$t('editor.propertiesPanel.colorPickerButton')" color="neutral" variant="subtle" icon="i-lucide-palette"/>
                       <template #content>
                         <UColorPicker v-model="selectedNode.data.color" default-value="#6b7280"/>
                       </template>
@@ -438,16 +438,16 @@
 
               <!-- Input Sockets Management -->
               <div v-if="selectedNode.data && selectedNode.data.hasExecutionInput !== false">
-                <UFormField label="Input Sockets" help="Define input sockets for this node. Input sockets allow data to be passed into this node from upstream nodes.">
+                <UFormField :label="$t('editor.propertiesPanel.inputSockets')" :help="$t('editor.propertiesPanel.inputSocketsHelp')">
                   <div v-if="selectedNode.data.inputSockets && selectedNode.data.inputSockets.length > 0" class="mb-3">
                     <div class="flex items-center mb-2" v-for="(socket, index) in selectedNode.data.inputSockets" :key="socket.id">
                       <UInput
                         v-model="socket.label"
-                        placeholder="Socket label"
+                        :placeholder="$t('editor.propertiesPanel.socketLabelPlaceholder')"
                         size="sm"
                         class="w-full mr-2"
                       />
-                      <UTooltip text="Remove socket">
+                      <UTooltip :text="$t('editor.propertiesPanel.removeSocketTooltip')">
                         <UButton
                           @click="removeInputSocket(socket.id)"
                           icon="i-lucide-trash"
@@ -458,7 +458,7 @@
                       </UTooltip>
                     </div>
                   </div>
-                  
+
                   <UButton
                     @click="addInputSocketToSelectedNode"
                     icon="i-lucide-plus"
@@ -466,28 +466,28 @@
                     block
                     class="border-dashed"
                   >
-                    Add Input Socket
+                    {{ $t('editor.propertiesPanel.addInputSocket') }}
                   </UButton>
                 </UFormField>
               </div>
-              
+
               <!-- Agent Selection for execution nodes -->
-              <UFormField 
+              <UFormField
                 v-if="isExecutionNode(selectedNode.data?.nodeType)"
-                label="Execution Agent"
+                :label="$t('editor.propertiesPanel.executionAgent')"
                 required
-                :error="!selectedNode.data.agentId ? 'Agent selection is required for execution nodes' : undefined"
+                :error="!selectedNode.data.agentId ? $t('editor.propertiesPanel.agentRequired') : undefined"
               >
                 <USelect
                   v-model="selectedNode.data.agentId"
                   :items="agentOptions"
-                  placeholder="-- Select an execution agent --"
+                  :placeholder="$t('editor.propertiesPanel.selectAgentPlaceholder')"
                   size="md"
                   class="w-full"
                 />
                 <template #help>
                   <span v-if="selectedNode.data.agentId">
-                    This node will execute on the selected agent. Choose "Any available agent" if you don't have a preference.
+                    {{ $t('editor.propertiesPanel.agentHelp') }}
                   </span>
                 </template>
               </UFormField>
@@ -570,7 +570,7 @@
               />
 
               <!-- Script Editor for execution nodes -->
-              <UFormField label="Script" class="mt-3" v-if="selectedNode.data?.script !== undefined && !['api-request', 'parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
+              <UFormField :label="$t('editor.propertiesPanel.script')" class="mt-3" v-if="selectedNode.data?.script !== undefined && !['api-request', 'parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)">
                 <ScriptEditor
                   v-model="selectedNode.data.script"
                   :language="getScriptLanguage(selectedNode.data?.nodeType)"
@@ -579,7 +579,7 @@
 
                 <!-- Parameter substitution help -->
                 <div v-if="selectedNode.data.inputSockets && selectedNode.data.inputSockets.length > 0" class="mt-2 p-2 bg-blue-50 dark:bg-blue-950 rounded text-xs">
-                  <div class="font-medium text-blue-800 dark:text-blue-200 mb-1">Available placeholders:</div>
+                  <div class="font-medium text-blue-800 dark:text-blue-200 mb-1">{{ $t('editor.propertiesPanel.availablePlaceholders') }}</div>
                   <div class="space-y-1">
                     <div v-for="(socket, index) in selectedNode.data.inputSockets" :key="socket.id" class="text-blue-700 dark:text-blue-300">
                       <code>${{ socket.label }}</code>
@@ -589,9 +589,9 @@
               </UFormField>
 
               <!-- Working Directory for execution nodes -->
-              <UFormField 
+              <UFormField
                 v-if="selectedNode.data?.workingDirectory !== undefined && !['api-request', 'parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)"
-                label="Working Directory"
+                :label="$t('editor.propertiesPanel.workingDirectory')"
               >
                 <UInput
                   v-model="selectedNode.data.workingDirectory"
@@ -600,14 +600,14 @@
                   class="w-full"
                 />
                 <template #help>
-                  Directory where the script will execute. Relative to agent's workspace.
+                  {{ $t('editor.propertiesPanel.workingDirectoryHelp') }}
                 </template>
               </UFormField>
 
               <!-- Timeout for execution nodes -->
-              <UFormField 
+              <UFormField
                 v-if="selectedNode.data?.timeout !== undefined && !['parallel_execution', 'parallel_branches', 'parallel_matrix', 'npm-install', 'pip-install', 'go-mod', 'bundle-install', 'composer-install', 'cargo-build', 'git-checkout'].includes(selectedNode.data?.nodeType)"
-                label="Timeout (seconds)"
+                :label="$t('editor.propertiesPanel.timeout')"
               >
                 <UInput
                   v-model.number="selectedNode.data.timeout"
@@ -618,15 +618,15 @@
                 />
               </UFormField>
 
-              <CredentialBinding 
+              <CredentialBinding
                 v-if="selectedNode.data?.executionNode"
-                v-model="selectedNode.data.credentials" 
+                v-model="selectedNode.data.credentials"
               />
               <!-- Retry Policy -->
-              <UFormField v-if="selectedNode.data?.executionNode" class="mt-4" help="Configure retry behavior for this node if it fails during execution.">
+              <UFormField v-if="selectedNode.data?.executionNode" class="mt-4" :help="$t('editor.propertiesPanel.retryHelp')">
                 <template #label class="flex items-center justify-around space-x-2">
                   <div class="flex items-center justify-around space-x-2">
-                    <span>Enable Retry</span>
+                    <span>{{ $t('editor.propertiesPanel.enableRetry') }}</span>
                     <UCheckbox
                       v-model="selectedNode.data.retryEnabled"
                       class="ml-2"
@@ -635,7 +635,7 @@
                 </template>
 
                 <UFormField v-if="selectedNode.data.retryEnabled" class="space-y-3">
-                  <UFormField label="Max Retries">
+                  <UFormField :label="$t('editor.propertiesPanel.maxRetries')">
                     <UInput
                       v-model.number="selectedNode.data.maxRetries"
                       type="number"
@@ -645,7 +645,7 @@
                       class="w-full"
                     />
                   </UFormField>
-                  <UFormField label="Retry Delay (seconds)">
+                  <UFormField :label="$t('editor.propertiesPanel.retryDelay')">
                     <UInput
                       v-model.number="selectedNode.data.retryDelay"
                       type="number"
@@ -656,10 +656,10 @@
                   </UFormField>
                 </UFormField>
               </UFormField>
-              
-              <UFormField label="Position" help="The X and Y coordinates of the node in the editor, if you are looking to fine-tune placement.">
+
+              <UFormField :label="$t('editor.propertiesPanel.position')" :help="$t('editor.propertiesPanel.positionHelp')">
                 <div class="grid grid-cols-2 gap-2">
-                  <UFormField label="X">
+                  <UFormField :label="$t('editor.propertiesPanel.positionX')">
                     <UInput
                       v-model.number="selectedNode.position.x"
                       type="number"
@@ -667,7 +667,7 @@
                       class="w-full"
                     />
                   </UFormField>
-                  <UFormField label="Y">
+                  <UFormField :label="$t('editor.propertiesPanel.positionY')">
                     <UInput
                       v-model.number="selectedNode.position.y"
                       type="number"
@@ -678,9 +678,9 @@
                 </div>
               </UFormField>
             </div>
-            
+
             <div v-else class="text-center py-8">
-              <p class="text-neutral-500 dark:text-neutral-400">Select a node to view properties</p>
+              <p class="text-neutral-500 dark:text-neutral-400">{{ $t('editor.propertiesPanel.noNodeSelected') }}</p>
             </div>
           </div>
         </UCard>
@@ -761,6 +761,7 @@ definePageMeta({
   middleware: 'auth'
 })
 
+const { t: $t } = useI18n()
 const route = useRoute()
 const authStore = useAuthStore()
 const projectsStore = useProjectsStore()
@@ -927,57 +928,57 @@ const hierarchicalProject = computed(() => {
   return projectsStore.getItemByFullPath([...projectPath.value, projectName.value])
 })
 
-const triggerNodes = [
-  { type: 'cron', name: 'Cron Trigger', description: 'Schedule job execution with cron expressions' },
-  { type: 'webhook', name: 'Webhook Trigger', description: 'Trigger via HTTP webhook' },
-  { type: 'job-trigger', name: 'Job Trigger', description: 'Trigger from another project completion' }
-]
+const triggerNodes = computed(() => [
+  { type: 'cron', name: $t('editor.nodes.cronTrigger.name'), description: $t('editor.nodes.cronTrigger.description') },
+  { type: 'webhook', name: $t('editor.nodes.webhookTrigger.name'), description: $t('editor.nodes.webhookTrigger.description') },
+  { type: 'job-trigger', name: $t('editor.nodes.jobTrigger.name'), description: $t('editor.nodes.jobTrigger.description') }
+])
 
-const parameterNodes = [
-  { type: 'string-param', name: 'String Parameter', description: 'Single-line text parameter' },
-  { type: 'text-param', name: 'Text Parameter', description: 'Multi-line text parameter' },
-  { type: 'choice-param', name: 'Choice Parameter', description: 'Dropdown selection parameter' },
-  { type: 'boolean-param', name: 'Boolean Parameter', description: 'True/false parameter' },
-  { type: 'array-param', name: 'Array Parameter', description: 'Array of values for matrix execution' }
-]
+const parameterNodes = computed(() => [
+  { type: 'string-param', name: $t('editor.nodes.stringParam.name'), description: $t('editor.nodes.stringParam.description') },
+  { type: 'text-param', name: $t('editor.nodes.textParam.name'), description: $t('editor.nodes.textParam.description') },
+  { type: 'choice-param', name: $t('editor.nodes.choiceParam.name'), description: $t('editor.nodes.choiceParam.description') },
+  { type: 'boolean-param', name: $t('editor.nodes.booleanParam.name'), description: $t('editor.nodes.booleanParam.description') },
+  { type: 'array-param', name: $t('editor.nodes.arrayParam.name'), description: $t('editor.nodes.arrayParam.description') }
+])
 
-const executionNodes = [
-  { type: 'api-request', name: 'API Request', description: 'Make HTTP API requests with custom headers' },
-  { type: 'bash', name: 'Bash Script', description: 'Execute bash commands', placeholder: '#!/bin/bash\necho "Hello from bash"'},
-  { type: 'sh', name: 'Shell Script', description: 'Execute POSIX shell commands', placeholder: '#!/bin/sh\necho "Hello from shell"'},
-  { type: 'powershell', name: 'PowerShell Script', description: 'Execute PowerShell commands', placeholder: 'Write-Host "Hello from PowerShell"'},
-  { type: 'cmd', name: 'Command Prompt', description: 'Execute Windows CMD commands', placeholder: 'echo Hello from Command Prompt'},
-  { type: 'python', name: 'Python Script', description: 'Execute Python code', placeholder: 'print("Hello from Python")'},
-  { type: 'python3', name: 'Python3 Script', description: 'Execute Python3 code', placeholder: 'print("Hello from Python3")'},
-  { type: 'node', name: 'Node.js Script', description: 'Execute Node.js/JavaScript code', placeholder: 'logger.info("Hello from Node.js")'},
-  { type: 'go', name: 'Go Script', description: 'Execute Go code', placeholder: 'package main\nimport "fmt"\nfunc main() {\n    fmt.Println("Hello from Go")\n}'},
-  { type: 'ruby', name: 'Ruby Script', description: 'Execute Ruby code', placeholder: 'puts "Hello from Ruby"'},
-  { type: 'php', name: 'PHP Script', description: 'Execute PHP code', placeholder: '<?php echo "Hello from PHP"; ?>'},
-  { type: 'java', name: 'Java Program', description: 'Execute Java code', placeholder: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from Java");\n    }\n}'},
-  { type: 'rust', name: 'Rust Script', description: 'Execute Rust code', placeholder: 'fn main() {\n    println!("Hello from Rust");\n}'},
-  { type: 'perl', name: 'Perl Script', description: 'Execute Perl code', placeholder: 'print "Hello from Perl\\n";'},
-  { type: 'parallel_execution', name: 'Parallel Execution', description: 'Execution node for parallel branches (no output sockets)'}
-]
+const executionNodes = computed(() => [
+  { type: 'api-request', name: $t('editor.nodes.apiRequest.name'), description: $t('editor.nodes.apiRequest.description') },
+  { type: 'bash', name: $t('editor.nodes.bash.name'), description: $t('editor.nodes.bash.description'), placeholder: '#!/bin/bash\necho "Hello from bash"'},
+  { type: 'sh', name: $t('editor.nodes.sh.name'), description: $t('editor.nodes.sh.description'), placeholder: '#!/bin/sh\necho "Hello from shell"'},
+  { type: 'powershell', name: $t('editor.nodes.powershell.name'), description: $t('editor.nodes.powershell.description'), placeholder: 'Write-Host "Hello from PowerShell"'},
+  { type: 'cmd', name: $t('editor.nodes.cmd.name'), description: $t('editor.nodes.cmd.description'), placeholder: 'echo Hello from Command Prompt'},
+  { type: 'python', name: $t('editor.nodes.python.name'), description: $t('editor.nodes.python.description'), placeholder: 'print("Hello from Python")'},
+  { type: 'python3', name: $t('editor.nodes.python3.name'), description: $t('editor.nodes.python3.description'), placeholder: 'print("Hello from Python3")'},
+  { type: 'node', name: $t('editor.nodes.node.name'), description: $t('editor.nodes.node.description'), placeholder: 'logger.info("Hello from Node.js")'},
+  { type: 'go', name: $t('editor.nodes.go.name'), description: $t('editor.nodes.go.description'), placeholder: 'package main\nimport "fmt"\nfunc main() {\n    fmt.Println("Hello from Go")\n}'},
+  { type: 'ruby', name: $t('editor.nodes.ruby.name'), description: $t('editor.nodes.ruby.description'), placeholder: 'puts "Hello from Ruby"'},
+  { type: 'php', name: $t('editor.nodes.php.name'), description: $t('editor.nodes.php.description'), placeholder: '<?php echo "Hello from PHP"; ?>'},
+  { type: 'java', name: $t('editor.nodes.java.name'), description: $t('editor.nodes.java.description'), placeholder: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from Java");\n    }\n}'},
+  { type: 'rust', name: $t('editor.nodes.rust.name'), description: $t('editor.nodes.rust.description'), placeholder: 'fn main() {\n    println!("Hello from Rust");\n}'},
+  { type: 'perl', name: $t('editor.nodes.perl.name'), description: $t('editor.nodes.perl.description'), placeholder: 'print "Hello from Perl\\n";'},
+  { type: 'parallel_execution', name: $t('editor.nodes.parallelExecution.name'), description: $t('editor.nodes.parallelExecution.description')}
+])
 
-const sourceControlNodes = [
-  { type: 'git-checkout', name: 'Git Checkout', description: 'Clone or checkout a Git repository' }
-]
+const sourceControlNodes = computed(() => [
+  { type: 'git-checkout', name: $t('editor.nodes.gitCheckout.name'), description: $t('editor.nodes.gitCheckout.description') }
+])
 
-const dependencyNodes = [
-  { type: 'npm-install', name: 'NPM Install', description: 'Install Node.js dependencies from package.json' },
-  { type: 'pip-install', name: 'Pip Install', description: 'Install Python dependencies from requirements.txt' },
-  { type: 'go-mod', name: 'Go Modules', description: 'Download Go module dependencies' },
-  { type: 'bundle-install', name: 'Bundle Install', description: 'Install Ruby gems from Gemfile' },
-  { type: 'composer-install', name: 'Composer Install', description: 'Install PHP dependencies from composer.json' },
-  { type: 'cargo-build', name: 'Cargo Build', description: 'Build Rust project and fetch dependencies' }
-]
+const dependencyNodes = computed(() => [
+  { type: 'npm-install', name: $t('editor.nodes.npmInstall.name'), description: $t('editor.nodes.npmInstall.description') },
+  { type: 'pip-install', name: $t('editor.nodes.pipInstall.name'), description: $t('editor.nodes.pipInstall.description') },
+  { type: 'go-mod', name: $t('editor.nodes.goMod.name'), description: $t('editor.nodes.goMod.description') },
+  { type: 'bundle-install', name: $t('editor.nodes.bundleInstall.name'), description: $t('editor.nodes.bundleInstall.description') },
+  { type: 'composer-install', name: $t('editor.nodes.composerInstall.name'), description: $t('editor.nodes.composerInstall.description') },
+  { type: 'cargo-build', name: $t('editor.nodes.cargoBuild.name'), description: $t('editor.nodes.cargoBuild.description') }
+])
 
-const controlNodes = [
-  { type: 'parallel_branches', name: 'Parallel Branches', description: 'Execute multiple different branches in parallel' },
-  { type: 'parallel_matrix', name: 'Parallel Matrix', description: 'Execute same job multiple times with different parameters' },
-  { type: 'conditional', name: 'Conditional', description: 'Conditional execution based on parameters' },
-  { type: 'notification', name: 'Notification', description: 'Send notifications (email, slack, etc.)' }
-]
+const controlNodes = computed(() => [
+  { type: 'parallel_branches', name: $t('editor.nodes.parallelBranches.name'), description: $t('editor.nodes.parallelBranches.description') },
+  { type: 'parallel_matrix', name: $t('editor.nodes.parallelMatrix.name'), description: $t('editor.nodes.parallelMatrix.description') },
+  { type: 'conditional', name: $t('editor.nodes.conditional.name'), description: $t('editor.nodes.conditional.description') },
+  { type: 'notification', name: $t('editor.nodes.notification.name'), description: $t('editor.nodes.notification.description') }
+])
 
 // Agent computed properties and helpers
 const availableAgents = computed(() => {
@@ -988,9 +989,9 @@ const availableAgents = computed(() => {
 
 const agentOptions = computed(() => {
   const options = [
-    { value: 'any', label: 'Any available agent' }
+    { value: 'any', label: $t('editor.agentOptions.anyAvailable') }
   ]
-  
+
   availableAgents.value.forEach(agent => {
     const statusSuffix = agent.status !== 'online' ? ` - ${agent.status}` : ''
     options.push({
@@ -999,7 +1000,7 @@ const agentOptions = computed(() => {
       disabled: agent.status !== 'online'
     })
   })
-  
+
   return options
 })
 
@@ -1154,13 +1155,13 @@ const handleSaveRetentionSettings = async () => {
     })
 
     if (response.success) {
-      toast.add({ title: 'Retention settings updated successfully', icon: 'i-lucide-check-circle' })
+      toast.add({ title: $t('editor.toast.retentionUpdated'), icon: 'i-lucide-check-circle' })
       showRetentionModal.value = false
       logger.info('Retention settings updated successfully')
     }
   } catch (error) {
     logger.error('Failed to save retention settings:', error)
-    toast.add({ title: 'Failed to save retention settings. Please try again.', icon: 'i-lucide-x-circle' })
+    toast.add({ title: $t('editor.toast.retentionFailed'), icon: 'i-lucide-x-circle' })
   } finally {
     isSavingRetention.value = false
   }
@@ -1214,21 +1215,21 @@ const handleSaveTemplate = async (templateData) => {
 
     if (response.success) {
       toast.add({
-        title: templateData.id ? 'Template updated successfully' : 'Template saved successfully',
+        title: templateData.id ? $t('editor.toast.templateUpdated') : $t('editor.toast.templateSaved'),
         icon: 'i-lucide-check-circle'
       })
       showTemplateModal.value = false
       await loadTemplates()
     } else {
       toast.add({
-        title: 'Failed to save template: ' + (response.message || 'Unknown error'),
+        title: $t('editor.toast.templateFailed', { message: response.message || 'Unknown error' }),
         icon: 'i-lucide-x-circle'
       })
     }
   } catch (err) {
     logger.error('Error saving template:', err)
     toast.add({
-      title: 'Failed to save template: ' + err.message,
+      title: $t('editor.toast.templateFailed', { message: err.message }),
       icon: 'i-lucide-x-circle'
     })
   }
@@ -1238,9 +1239,9 @@ const handleCancelTemplate = () => {
   showTemplateModal.value = false
 }
 
-const saveTemplateItems = [
-  { label: 'Save as Template', icon: 'i-lucide-save', onSelect: openSaveAsTemplate }
-]
+const saveTemplateItems = computed(() => [
+  { label: $t('editor.menu.saveAsTemplate'), icon: 'i-lucide-save', onSelect: openSaveAsTemplate }
+])
 
 const addInputSocketToSelectedNode = () => {
   if (!selectedNode.value) return
@@ -2003,17 +2004,17 @@ const validateExecutionNodes = () => {
   for (const node of nodes.value) {
     if (isExecutionNode(node.data?.nodeType)) {
       if (!node.data.agentId || node.data.agentId === '') {
-        errors.push(`🚨 "${node.data.label || 'Unnamed Node'}" has no executor selected. Agent selection is required to run.`)
+        errors.push($t('editor.validation.missingAgent', { label: node.data.label || $t('editor.validation.unnamedNode') }))
       }
     }
 
     // Check webhook nodes for required secret token
     if (node.data?.nodeType === 'webhook') {
       if (!node.data.customEndpoint || node.data.customEndpoint.trim() === '') {
-        errors.push(`🎣 "${node.data.label || 'Unnamed Webhook'}" has no custom endpoint configured.`)
+        errors.push($t('editor.validation.missingWebhookEndpoint', { label: node.data.label || $t('editor.validation.unnamedWebhook') }))
       }
       if (!node.data.secretToken || node.data.secretToken.trim() === '') {
-        errors.push(`"${node.data.label || 'Unnamed Webhook'}" has no secret token. Secret tokens are required for webhook security.`)
+        errors.push($t('editor.validation.missingWebhookToken', { label: node.data.label || $t('editor.validation.unnamedWebhook') }))
       }
     }
   }
@@ -2031,10 +2032,10 @@ const gatherParameterNodes = () => {
      node.data.nodeType === 'array-param'
     )
   )
-  
+
   return parameterNodes.map(node => ({
     id: node.id,
-    label: node.data.label || 'Unnamed Parameter',
+    label: node.data.label || $t('editor.validation.unnamedParameter'),
     type: node.data.nodeType,
     description: node.data.description || '',
     defaultValue: node.data.defaultValue,
@@ -2049,14 +2050,14 @@ const gatherParameterNodes = () => {
 const executeGraph = async () => {
   // Check if project is disabled
   if (project.value?.status === 'disabled') {
-    error('Project is disabled. Manual execution is blocked.')
+    error($t('editor.validation.projectDisabled'))
     return
   }
 
   // Validate that all execution nodes have agent selection
   const validationErrors = validateExecutionNodes()
   if (validationErrors.length > 0) {
-    error('Execution blocked due to validation errors:\n\n' + validationErrors.join('\n'))
+    error($t('editor.validation.executionBlocked') + validationErrors.join('\n'))
     return
   }
 
@@ -2112,12 +2113,12 @@ const startBuildExecution = async (parameterValues = null) => {
       const projectPath = pathSegments.value.slice(0, -1).join('/') // Remove 'editor' from path
       await navigateTo(`/${projectPath}/build/${response.buildNumber}`)
     } else {
-      error(`Failed to start execution: ${response.message || 'Unknown error'}`)
+      error($t('editor.validation.executionFailed', { message: response.message || 'Unknown error' }))
     }
 
   } catch (error) {
     logger.error('Execution dispatch error:', error)
-    error(`Failed to start execution: ${error.message}`)
+    error($t('editor.validation.executionDispatchError', { message: error.message }))
   }
 }
 
@@ -2332,15 +2333,15 @@ const toggleProjectStatus = async () => {
     if (result.success) {
       logger.info(`Project ${result.status}: ${project.value.name}`)
       console.log(`Project ${result.status}: ${project.value.name}`)
-      toast.add({ title: `Project ${result.status === 'active' ? 'enabled' : 'disabled'} successfully`, icon: 'i-lucide-check-circle' })
+      toast.add({ title: result.status === 'active' ? $t('editor.toast.projectEnabled') : $t('editor.toast.projectDisabled'), icon: 'i-lucide-check-circle' })
       saveProject()
     } else {
       logger.error('Failed to toggle project status:', result.error)
-      toast.add({ title: `Failed to ${project.value.status === 'disabled' ? 'enable' : 'disable'} project: ${result.error}`, icon: 'i-lucide-x-circle' })
+      toast.add({ title: project.value.status === 'disabled' ? $t('editor.toast.projectEnableFailed', { error: result.error }) : $t('editor.toast.projectDisableFailed', { error: result.error }), icon: 'i-lucide-x-circle' })
     }
   } catch (error) {
     logger.error('Error toggling project status:', error)
-    toast.add({ title: `Error changing project status: ${error.message}`, icon: 'i-lucide-x-circle' })
+    toast.add({ title: $t('editor.toast.projectStatusError', { message: error.message }), icon: 'i-lucide-x-circle' })
   } finally {
     isTogglingStatus.value = false
   }

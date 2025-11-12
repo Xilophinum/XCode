@@ -5,18 +5,18 @@
       <template #actions>
         <div v-if="isExecuting" class="flex items-center text-blue-600 dark:text-blue-400 mr-4">
           <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-          Executing...
+          {{ $t('buildDetail.executing') }}
         </div>
-        
+
         <UButton
           :to="`/${pathSegments.join('/')}/editor`"
           color="neutral"
           variant="outline"
           icon="i-lucide-arrow-left"
         >
-          Back to Editor
+          {{ $t('buildDetail.backToEditor') }}
         </UButton>
-        
+
         <UButton
           v-if="isExecuting"
           @click="cancelExecution"
@@ -24,7 +24,7 @@
           icon="i-lucide-x"
 
         >
-          Cancel Build
+          {{ $t('buildDetail.cancelBuild') }}
         </UButton>
       </template>
     </AppNavigation>
@@ -71,7 +71,7 @@
         ></div>
         
         <div class="bg-gray-800 px-4 py-2 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
-          <span class="text-white font-semibold">Build #{{ buildNumber }} Output</span>
+          <span class="text-white font-semibold">{{ $t('buildDetail.output', { buildNumber }) }}</span>
           <div class="flex items-center space-x-2">
             <UButton
               @click="clearTerminal"
@@ -79,7 +79,7 @@
               variant="soft"
               size="xs"
             >
-              Clear
+              {{ $t('buildDetail.clear') }}
             </UButton>
           </div>
         </div>
@@ -126,8 +126,9 @@ const breadcrumbSegments = computed(() => {
 })
 
 // Set page title and breadcrumbs (reactive)
+const { $t } = useNuxtApp()
 useHead(() => ({
-  title: computed(() => `Build #${buildNumber.value} - ${project.value?.name || 'Loading...'}`).value
+  title: computed(() => $t('buildDetail.title', { buildNumber: buildNumber.value, projectName: project.value?.name || $t('buildDetail.loading') })).value
 }))
 
 definePageMeta({
@@ -135,7 +136,7 @@ definePageMeta({
 })
 
 // Build state
-const buildStatus = ref('Loading...')
+const buildStatus = ref($t('buildDetail.loading'))
 const isExecuting = computed(() => {
   return webSocketStore.isProjectJobRunning(project.value?.id)
 })
@@ -275,10 +276,10 @@ const cancelExecution = async () => {
     if (response.success) {
       addTerminalMessage('warning', 'Job cancellation sent to agent. Waiting for confirmation...', 'System')
     } else {
-      addTerminalMessage('error', `Failed to cancel job: ${response.message || 'Unknown error'}`, 'System')
+      addTerminalMessage('error', $t('buildDetail.messages.failedToCancel', { message: response.message || 'Unknown error' }), 'System')
     }
   } catch (error) {
-    addTerminalMessage('error', `Error cancelling job: ${error.message}`, 'System')
+    addTerminalMessage('error', $t('buildDetail.messages.errorCancelling', { message: error.message }), 'System')
   }
 }
 
@@ -286,7 +287,7 @@ const cancelExecution = async () => {
 const loadBuildData = async () => {
   try {
     if (!project.value) {
-      throw new Error('Project not found')
+      throw new Error($t('buildDetail.messages.projectNotFound'))
     }
 
     // Load build data from API
@@ -316,7 +317,7 @@ const loadBuildData = async () => {
     }
   } catch (error) {
     logger.error('Failed to load build data:', error)
-    buildStatus.value = 'Error'
+    buildStatus.value = $t('buildDetail.error')
   }
 }
 
@@ -469,18 +470,18 @@ watch(() => isJobRunningOnAgent.value, async (isRunning, wasRunning) => {
     const lastMessages = messages.slice(-5) // Look at last 5 messages
     
     let buildStatus = 'success'
-    let buildMessage = 'Build completed successfully'
-    
+    let buildMessage = $t('buildDetail.messages.buildCompleted')
+
     // Check for error indicators in recent messages
-    const hasError = lastMessages.some(msg => 
-      msg.type === 'error' || 
+    const hasError = lastMessages.some(msg =>
+      msg.type === 'error' ||
       (msg.message && msg.message.toLowerCase().includes('error')) ||
       (msg.message && msg.message.toLowerCase().includes('failed'))
     )
-    
+
     if (hasError) {
       buildStatus = 'failure'
-      buildMessage = 'Build completed with errors'
+      buildMessage = $t('buildDetail.messages.buildFailed')
     }
     
     await finishBuild(buildStatus, buildMessage)

@@ -4,7 +4,7 @@
     <AppNavigation :breadcrumbs="['admin']">
       <template #actions>
         <span class="text-sm text-gray-600 dark:text-gray-300 bg-yellow-100 dark:bg-yellow-900/50 px-3 py-1 rounded-full">
-          Admin Panel
+          {{ $t('admin.title') }}
         </span>
       </template>
     </AppNavigation>
@@ -13,8 +13,8 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Header -->
       <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-950 dark:text-white">Admin Panel</h1>
-        <p class="mt-2 text-gray-600 dark:text-gray-300">Manage system settings, environment variables, and security.</p>
+        <h1 class="text-3xl font-bold text-gray-950 dark:text-white">{{ $t('admin.title') }}</h1>
+        <p class="mt-2 text-gray-600 dark:text-gray-300">{{ $t('admin.subtitle') }}</p>
       </div>
 
       <!-- Admin Sections -->
@@ -24,18 +24,18 @@
         <UCard class="shadow-md">
           <div class="flex items-center justify-between mb-6">
             <div>
-              <h2 class="text-lg font-semibold text-gray-950 dark:text-white">System Settings</h2>
-              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Configure application settings and preferences</p>
+              <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ $t('admin.systemSettings.title') }}</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">{{ $t('admin.systemSettings.subtitle') }}</p>
             </div>
           </div>
-          
+
           <div v-if="loading" class="text-center py-8">
             <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-            <p class="text-gray-600 dark:text-gray-300 mt-2">Loading settings...</p>
+            <p class="text-gray-600 dark:text-gray-300 mt-2">{{ $t('admin.systemSettings.loadingSettings') }}</p>
           </div>
-          
+
           <div v-else-if="Object.keys(groupedSystemSettings).length === 0" class="text-center py-8">
-            <p class="text-gray-500 dark:text-gray-400">No system settings available</p>
+            <p class="text-gray-500 dark:text-gray-400">{{ $t('admin.systemSettings.noSettings') }}</p>
           </div>
 
           <UAccordion v-else :items="settingsAccordionItems" :multiple="true">
@@ -150,16 +150,16 @@
 
                 <!-- LDAP Test Section -->
                 <div v-if="category === 'authentication' && hasLdapSettings" class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <UAlert 
+                  <UAlert
                     :color="ldapTestResult?.success ? 'success' : ldapTestResult && !ldapTestResult.success ? 'error' : 'primary'"
                     variant="soft"
                     :icon="ldapTestResult?.success ? 'i-lucide-check-circle' : ldapTestResult && !ldapTestResult.success ? 'i-lucide-x-circle' : 'i-lucide-shield'"
                   >
-                    <template #title>LDAP Connection Test</template>
+                    <template #title>{{ $t('admin.ldapTest.title') }}</template>
                     <template #description>
                       <div class="space-y-4 mt-3">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <UFormField label="Test Username">
+                          <UFormField :label="$t('admin.ldapTest.username')">
                             <UInput
                               v-model="ldapTestForm.username"
                               type="text"
@@ -168,7 +168,7 @@
                               placeholder="user@domain.com or username"
                             />
                           </UFormField>
-                          <UFormField label="Test Password">
+                          <UFormField :label="$t('admin.ldapTest.password')">
                             <UInput
                               v-model="ldapTestForm.password"
                               type="password"
@@ -185,7 +185,7 @@
                             :disabled="!ldapTestForm.username || !ldapTestForm.password || ldapTesting"
                             :loading="ldapTesting"
                             icon="i-lucide-plug"
-                            :label="ldapTesting ? 'Testing...' : 'Test LDAP Connection'"
+                            :label="ldapTesting ? $t('admin.ldapTest.testing') : $t('admin.ldapTest.testConnection')"
                           />
                           
                           <span v-if="ldapTestResult" class="text-sm">
@@ -195,18 +195,18 @@
 
                         <UCard v-if="ldapTestResult?.success && ldapTestResult.user" class="bg-success-50 dark:bg-success-950">
                           <div class="text-sm space-y-1">
-                            <div class="font-medium mb-2">User Information Retrieved:</div>
-                            <div><strong>DN:</strong> {{ ldapTestResult.user.dn }}</div>
+                            <div class="font-medium mb-2">{{ $t('admin.ldapTest.success') }}</div>
+                            <div><strong>{{ $t('admin.ldapTest.userDn') }}</strong> {{ ldapTestResult.user.dn }}</div>
                             <div><strong>Name:</strong> {{ ldapTestResult.user.name }}</div>
                             <div><strong>Email:</strong> {{ ldapTestResult.user.email }}</div>
                             <div v-if="Array.isArray(ldapTestResult.user.groups) && ldapTestResult.user.groups.length > 0">
-                              <strong>Groups:</strong> {{ ldapTestResult.user.groups.join(', ') }}
+                              <strong>{{ $t('admin.ldapTest.groups') }}</strong> {{ ldapTestResult.user.groups.join(', ') }}
                             </div>
                           </div>
                         </UCard>
 
                         <UAlert v-if="ldapTestResult && !ldapTestResult.success" color="error" variant="soft">
-                          <template #title>Error Details</template>
+                          <template #title>{{ $t('admin.ldapTest.error') }}</template>
                           <template #description>{{ ldapTestResult.error }}</template>
                         </UAlert>
                       </div>
@@ -233,7 +233,7 @@
               :disabled="updateChecking"
               :loading="updateChecking"
               icon="i-lucide-refresh-cw"
-              label="Check for Updates"
+              :label="$t('admin.updateManagement.checkForUpdates')"
               color="secondary"
               variant="outline"
             />
@@ -242,7 +242,7 @@
           <!-- Loading State -->
           <div v-if="updateChecking" class="text-center py-8">
             <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-            <p class="text-gray-600 dark:text-gray-300 mt-2">Checking for updates...</p>
+            <p class="text-gray-600 dark:text-gray-300 mt-2">{{ $t('admin.updateManagement.checking') }}</p>
           </div>
 
           <!-- Initial State -->
@@ -260,17 +260,17 @@
               :icon="updateInfo.updateAvailable ? 'i-lucide-alert-circle' : 'i-lucide-check-circle'"
             >
               <template #title>
-                {{ updateInfo.updateAvailable ? 'Update Available' : 'Up to Date' }}
+                {{ updateInfo.updateAvailable ? $t('admin.updateManagement.updateAvailable') : $t('admin.updateManagement.upToDate') }}
               </template>
               <template #description>
                 <div class="space-y-2 mt-2">
                   <div class="flex items-center justify-between">
                     <div>
-                      <p class="text-sm font-medium">Current Version</p>
+                      <p class="text-sm font-medium">{{ $t('admin.updateManagement.currentVersion') }}</p>
                       <p class="text-lg font-semibold">{{ updateInfo.currentVersion }}</p>
                     </div>
                     <div v-if="updateInfo.updateAvailable" class="text-right">
-                      <p class="text-sm font-medium">Latest Version</p>
+                      <p class="text-sm font-medium">{{ $t('admin.updateManagement.latestVersion') }}</p>
                       <p class="text-lg font-semibold text-green-600 dark:text-green-400">{{ updateInfo.latestVersion }}</p>
                     </div>
                   </div>
@@ -564,19 +564,19 @@
         <!-- Environment Variables Section -->
         <UCard class="shadow-md">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-gray-950 dark:text-white">Environment Variables</h2>
+            <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ $t('admin.environmentVariables.title') }}</h2>
             <button
               @click="showEnvModal = true"
               class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
             >
               <UIcon name="i-lucide-plus" class="w-4 h-4 mr-2" />
-              Add Variable
+              {{ $t('admin.environmentVariables.addVariable') }}
             </button>
           </div>
-          
+
           <div class="space-y-3">
             <div v-if="envVariables.length === 0" class="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
-              No environment variables configured
+              {{ $t('admin.environmentVariables.noVariables') }}
             </div>
             <div
               v-for="variable in envVariables"
@@ -610,8 +610,8 @@
         <UCard class="shadow-md">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h2 class="text-lg font-semibold text-gray-950 dark:text-white">Credential Vault</h2>
-              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Securely store and manage credentials</p>
+              <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ $t('admin.credentialVault.title') }}</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">{{ $t('admin.credentialVault.subtitle') }}</p>
             </div>
             <div class="flex flex-col sm:flex-row gap-2">
               <USelectMenu
@@ -624,17 +624,17 @@
               <UButton
                 @click="showCredentialModal = true"
                 icon="i-lucide-plus"
-                label="Add Credential"
+                :label="$t('admin.credentialVault.addCredential')"
                 color="success"
               />
             </div>
           </div>
-          
+
           <!-- Empty State -->
           <div v-if="filteredCredentials.length === 0" class="text-center py-8">
             <UIcon name="i-lucide-shield" class="mx-auto h-12 w-12 text-gray-400" />
             <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">
-              {{ credentialFilter && credentialFilter !== 'All Types' ? 'No credentials of this type' : 'No credentials stored' }}
+              {{ credentialFilter && credentialFilter !== 'All Types' ? 'No credentials of this type' : $t('admin.credentialVault.noCredentials') }}
             </p>
           </div>
 
@@ -748,19 +748,19 @@
         <!-- Groups Management Section -->
         <UCard class="shadow-md">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-gray-950 dark:text-white">Groups Management</h2>
+            <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ $t('admin.groupManagement.title') }}</h2>
             <button
               @click="showGroupModal = true"
               class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
             >
               <UIcon name="i-lucide-plus" class="w-4 h-4 mr-2" />
-              Create Group
+              {{ $t('admin.groupManagement.createGroup') }}
             </button>
           </div>
-          
+
           <div class="space-y-3">
             <div v-if="groups.length === 0" class="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
-              No groups created
+              {{ $t('admin.groupManagement.noGroups') }}
             </div>
             <div
               v-for="group in groups"
@@ -781,13 +781,13 @@
                   @click="editGroup(group)"
                   class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm"
                 >
-                  Edit
+                  {{ $t('admin.common.edit') }}
                 </button>
                 <button
                   @click="confirmDeleteGroup(group)"
                   class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm"
                 >
-                  Delete
+                  {{ $t('admin.common.delete') }}
                 </button>
               </div>
             </div>
@@ -796,17 +796,17 @@
 
         <!-- User Management Section -->
         <UCard class="shadow-md">
-          <h2 class="text-lg font-semibold text-gray-950 dark:text-white mb-4">User Management</h2>
-          
+          <h2 class="text-lg font-semibold text-gray-950 dark:text-white mb-4">{{ $t('admin.userManagement.title') }}</h2>
+
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead class="bg-gray-50 dark:bg-gray-800/50">
                 <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.userManagement.username') }}</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.userManagement.email') }}</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.userManagement.role') }}</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.userManagement.actions') }}</th>
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
@@ -1815,8 +1815,6 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import ModalWrapper from '~/components/ModalWrapper.vue'
-import fs  from 'fs'
-import path  from 'path'
 const logger = useLogger()
 const toast = useToast()
 definePageMeta({
@@ -2081,13 +2079,13 @@ const deleteEnvVariable = async () => {
     await $fetch(`/api/admin/env-variables/${envToDelete.value.id}`, {
       method: 'DELETE'
     })
-    toast.add({ title: 'Environment variable deleted successfully', icon: 'i-lucide-check-circle' })
+    toast.add({ title: $t('admin.environmentVariables.deleteSuccess'), icon: 'i-lucide-check-circle' })
     showDeleteEnvModal.value = false
     envToDelete.value = null
     await loadEnvVariables()
   } catch (error) {
     logger.error('Failed to delete environment variable:', error)
-    toast.add({ title: 'Failed to delete environment variable', icon: 'i-lucide-x-circle' })
+    toast.add({ title: $t('admin.environmentVariables.deleteFailed'), icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -2136,23 +2134,23 @@ const checkForUpdates = async () => {
     if (response.success) {
       updateInfo.value = response
       if (response.updateAvailable) {
-        toast.add({ title: `Update available: ${response.latestVersion}`, icon: 'i-lucide-alert-circle' })
+        toast.add({ title: $t('admin.updateManagement.updateCheckSuccess', { version: response.latestVersion }), icon: 'i-lucide-alert-circle' })
       } else {
-        toast.add({ title: 'You are running the latest version', icon: 'i-lucide-check-circle' })
+        toast.add({ title: $t('admin.updateManagement.alreadyLatest'), icon: 'i-lucide-check-circle' })
       }
     } else {
-      toast.add({ title: response.error || 'Failed to check for updates', icon: 'i-lucide-x-circle' })
+      toast.add({ title: response.error || $t('admin.updateManagement.checkFailed'), icon: 'i-lucide-x-circle' })
     }
   } catch (error) {
     logger.error('Failed to check for updates:', error)
-    toast.add({ title: 'Failed to check for updates', icon: 'i-lucide-x-circle' })
+    toast.add({ title: $t('admin.updateManagement.checkFailed'), icon: 'i-lucide-x-circle' })
   } finally {
     updateChecking.value = false
   }
 }
 
 const triggerUpdate = async () => {
-  if (!confirm(`Are you sure you want to update to version ${updateInfo.value.latestVersion}? The server will restart during this process.`)) {
+  if (!confirm($t('admin.updateManagement.confirmUpdate', { version: updateInfo.value.latestVersion }))) {
     return
   }
 
@@ -2166,11 +2164,11 @@ const triggerUpdate = async () => {
     })
 
     if (response.success) {
-      toast.add({ title: 'Update initiated. Server will restart shortly...', icon: 'i-lucide-check-circle' })
+      toast.add({ title: $t('admin.updateManagement.updateInitiated'), icon: 'i-lucide-check-circle' })
 
       // Show a countdown notification
       let countdown = 10
-      toast.add({ title: `Server restarting in ${countdown} seconds...`, icon: 'i-lucide-alert-circle' })
+      toast.add({ title: $t('admin.updateManagement.serverRestarting', { count: countdown }), icon: 'i-lucide-alert-circle' })
       const countdownInterval = setInterval(() => {
         if (countdown > 0) {
           countdown--
@@ -2179,12 +2177,12 @@ const triggerUpdate = async () => {
         }
       }, 1000)
     } else {
-      toast.add({ title: response.error || 'Failed to trigger update', icon: 'i-lucide-x-circle' })
+      toast.add({ title: response.error || $t('admin.updateManagement.updateFailed'), icon: 'i-lucide-x-circle' })
       updateTriggering.value = false
     }
   } catch (error) {
     logger.error('Failed to trigger update:', error)
-    toast.add({ title: 'Failed to trigger update', icon: 'i-lucide-x-circle' })
+    toast.add({ title: $t('admin.updateManagement.updateFailed'), icon: 'i-lucide-x-circle' })
     updateTriggering.value = false
   }
 }
@@ -2217,7 +2215,7 @@ const updateSetting = async (key, value) => {
     if (key === 'log_level') {
       logger.setLevel(value)
     }
-    toast.add({ title: 'System setting updated successfully', icon: 'i-lucide-check-circle'})
+    toast.add({ title: $t('admin.systemSettings.updateSuccess'), icon: 'i-lucide-check-circle'})
   } catch (error) {
     logger.error('Failed to update system setting:', error)
   }
@@ -2245,15 +2243,15 @@ const handleFileUpload = async (key, event) => {
 }
 
 const getCategoryTitle = (category) => {
-  const titles = {
-    'branding': 'Branding & Appearance',
-    'general': 'General Settings',
-    'security': 'Security Settings',
-    'authentication': 'Authentication & LDAP',
-    'notifications': 'Notification Settings',
-    'system': 'System Information'
+  const titleKeys = {
+    'branding': 'admin.systemSettings.categories.branding',
+    'general': 'admin.systemSettings.categories.general',
+    'security': 'admin.systemSettings.categories.security',
+    'authentication': 'admin.systemSettings.categories.authentication',
+    'notifications': 'admin.systemSettings.categories.notifications',
+    'system': 'admin.systemSettings.categories.system'
   }
-  return titles[category] || category.charAt(0).toUpperCase() + category.slice(1)
+  return titleKeys[category] ? $t(titleKeys[category]) : category.charAt(0).toUpperCase() + category.slice(1)
 }
 
 const getCategoryIcon = (category) => {
@@ -2290,16 +2288,15 @@ const getSelectOptions = (optionsJson) => {
 
 // Credential utility methods
 const getCredentialTypeLabel = (type) => {
-  const labels = {
-    'password': 'Password',
-    'user_pass': 'User + Pass',
-    'token': 'Token',
-    'ssh_key': 'SSH Key',
-    'certificate': 'Certificate',
-    'file': 'File',
-    'custom': 'Custom'
+  const labelKeys = {
+    'password': 'admin.credentialVault.types.password',
+    'user_pass': 'admin.credentialVault.types.userPass',
+    'token': 'admin.credentialVault.types.token',
+    'ssh_key': 'admin.credentialVault.types.sshKey',
+    'certificate': 'admin.credentialVault.types.certificate',
+    'file': 'admin.credentialVault.types.file'
   }
-  return labels[type] || type
+  return labelKeys[type] ? $t(labelKeys[type]) : type
 }
 
 const getCredentialTypeColor = (type) => {
@@ -2432,13 +2429,13 @@ const deleteCredential = async () => {
     await $fetch(`/api/admin/credentials/${credentialToDelete.value.id}`, {
       method: 'DELETE'
     })
-    toast.add({ title: 'Credential deleted successfully', icon: 'i-lucide-check-circle' })
+    toast.add({ title: $t('admin.credentialVault.deleteSuccess'), icon: 'i-lucide-check-circle' })
     showDeleteCredentialModal.value = false
     credentialToDelete.value = null
     await loadCredentials()
   } catch (error) {
     logger.error('Failed to delete credential:', error)
-    toast.add({ title: 'Failed to delete credential', icon: 'i-lucide-x-circle' })
+    toast.add({ title: $t('admin.credentialVault.deleteFailed'), icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -2476,13 +2473,13 @@ const toggleUserRole = async () => {
       method: 'POST',
       body: { userId: userForRoleChange.value.id, role: newRole }
     })
-    toast.add({ title: `User role changed to ${newRole} successfully`, icon: 'i-lucide-check-circle'})
+    toast.add({ title: $t('admin.userManagement.roleChangeSuccess', { role: newRole }), icon: 'i-lucide-check-circle'})
     showRoleChangeModal.value = false
     userForRoleChange.value = null
     await loadUsers()
   } catch (error) {
     logger.error('Failed to update user role:', error)
-    toast.add({ title: 'Failed to update user role', icon: 'i-lucide-x-circle' })
+    toast.add({ title: $t('admin.userManagement.roleChangeFailed'), icon: 'i-lucide-x-circle' })
   }
 }
 
@@ -2555,7 +2552,7 @@ const saveGroup = async () => {
           ldapMappings: groupForm.value.ldapMappings || []
         }
       })
-      toast.add({ title: 'Group updated successfully', icon: 'i-lucide-check-circle' })
+      toast.add({ title: $t('admin.groupManagement.updateSuccess'), icon: 'i-lucide-check-circle' })
     } else {
       await $fetch('/api/admin/groups', {
         method: 'POST',
@@ -2565,14 +2562,14 @@ const saveGroup = async () => {
           ldapMappings: groupForm.value.ldapMappings || []
         }
       })
-      toast.add({ title: 'Group created successfully', icon: 'i-lucide-check-circle' })
+      toast.add({ title: $t('admin.groupManagement.createSuccess'), icon: 'i-lucide-check-circle' })
     }
 
     closeGroupModal()
     await loadGroups()
   } catch (error) {
     logger.error('Failed to save group:', error)
-    toast.add({ title: 'Failed to save group', icon: 'i-lucide-x-circle', color: 'red' })
+    toast.add({ title: $t('admin.groupManagement.saveFailed'), icon: 'i-lucide-x-circle', color: 'red' })
   }
 }
 
@@ -2612,13 +2609,13 @@ const deleteGroup = async () => {
     await $fetch(`/api/admin/groups/${groupToDelete.value.id}`, {
       method: 'DELETE'
     })
-    toast.add({ title: 'Group deleted successfully', icon: 'i-lucide-check-circle' })
+    toast.add({ title: $t('admin.groupManagement.deleteSuccess'), icon: 'i-lucide-check-circle' })
     showDeleteGroupModal.value = false
     groupToDelete.value = null
     await loadGroups()
   } catch (error) {
     logger.error('Failed to delete group:', error)
-    toast.add({ title: 'Failed to delete group', icon: 'i-lucide-x-circle', color: 'red' })
+    toast.add({ title: $t('admin.groupManagement.deleteFailed'), icon: 'i-lucide-x-circle', color: 'red' })
   }
 }
 
@@ -2645,14 +2642,14 @@ const removeGroupMember = async (member) => {
     await $fetch(`/api/admin/groups/${editingGroup.value.id}/members/${member.userId}`, {
       method: 'DELETE'
     })
-    toast.add({ title: 'Member removed successfully', icon: 'i-lucide-check-circle' })
+    toast.add({ title: $t('admin.groupManagement.memberRemoveSuccess'), icon: 'i-lucide-check-circle' })
 
     // Reload members
     groupMembers.value = await $fetch(`/api/admin/groups/${editingGroup.value.id}/members`)
     await loadGroups()
   } catch (error) {
     logger.error('Failed to remove member:', error)
-    toast.add({ title: 'Failed to remove member', icon: 'i-lucide-x-circle', color: 'red' })
+    toast.add({ title: $t('admin.groupManagement.memberRemoveFailed'), icon: 'i-lucide-x-circle', color: 'red' })
   }
 }
 
@@ -2725,12 +2722,12 @@ const saveUserGroups = async () => {
       })
     }
 
-    toast.add({ title: 'User groups updated successfully', icon: 'i-lucide-check-circle' })
+    toast.add({ title: $t('admin.userManagement.groupsUpdateSuccess'), icon: 'i-lucide-check-circle' })
     closeUserGroupsModal()
     await loadGroups()
   } catch (error) {
     logger.error('Failed to update user groups:', error)
-    toast.add({ title: 'Failed to update user groups', icon: 'i-lucide-x-circle', color: 'red' })
+    toast.add({ title: $t('admin.userManagement.groupsUpdateFailed'), icon: 'i-lucide-x-circle', color: 'red' })
   }
 }
 
@@ -2991,10 +2988,10 @@ async function toggleAgentAutoUpdate(agent) {
 
     // Update local state
     agent.autoUpdate = newValue
-    toast.add({ title: `Auto-update ${newValue === 'true' ? 'enabled' : 'disabled'} for ${agent.name}` })
+    toast.add({ title: newValue === 'true' ? $t('admin.agentTemplates.autoUpdateEnabled', { name: agent.name }) : $t('admin.agentTemplates.autoUpdateDisabled', { name: agent.name }) })
   } catch (error) {
     console.error('Failed to update agent settings:', error)
-    toast.add({ title: 'Failed to update agent settings', icon: 'i-lucide-circle-x' })
+    toast.add({ title: $t('admin.agentTemplates.updateSettingsFailed'), icon: 'i-lucide-circle-x' })
   } finally {
     updatingAgentSettings.value = false
   }
@@ -3007,14 +3004,14 @@ async function triggerAgentUpdate(agent) {
     await $fetch(`/api/admin/agents/${agent.id}/trigger-update`, {
       method: 'POST'
     })
-    toast.add({ title: `Update triggered for ${agent.name}. Agent will update and reconnect shortly.` })
+    toast.add({ title: $t('admin.agentTemplates.updateTriggered', { name: agent.name }) })
     // Reload agents after a short delay
     setTimeout(async () => {
       await loadAgents()
     }, 3000)
   } catch (error) {
     console.error('Failed to trigger agent update:', error)
-    toast.add({ title: 'Failed to trigger agent update', icon: 'i-lucide-circle-x' })
+    toast.add({ title: $t('admin.agentTemplates.updateTriggerFailed'), icon: 'i-lucide-circle-x' })
   } finally {
     updatingAgent.value = null
   }

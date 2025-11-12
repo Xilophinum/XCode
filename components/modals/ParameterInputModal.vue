@@ -7,14 +7,14 @@
           <UIcon name="i-lucide-settings" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
         </div>
         <div class="ml-4">
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ t('parameterInputModal.buildParameters') }}</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('parameterInputModal.configureParameters') }}</p>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ $t('parameterInputModal.buildParameters') }}</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('parameterInputModal.configureParameters') }}</p>
         </div>
       </div>
 
       <!-- No Parameters Message -->
       <div v-if="parameters.length === 0" class="text-center py-8">
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('parameterInputModal.noParametersFound') }}</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ $t('parameterInputModal.noParametersFound') }}</p>
       </div>
 
       <!-- Parameter Inputs -->
@@ -33,7 +33,7 @@
             v-if="param.type === 'string-param'"
             :id="param.id"
             v-model="parameterValues[param.id]"
-            :placeholder="param.defaultValue || t('parameterInputModal.enterValue')"
+            :placeholder="param.defaultValue || $t('parameterInputModal.enterValue')"
             class="w-full"
           />
 
@@ -66,7 +66,7 @@
               class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
             />
             <label :for="param.id" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-              {{ parameterValues[param.id] ? t('parameterInputModal.true') : t('parameterInputModal.false') }}
+              {{ parameterValues[param.id] ? $t('parameterInputModal.true') : $t('parameterInputModal.false') }}
             </label>
           </div>
 
@@ -74,20 +74,20 @@
           <div v-else-if="param.type === 'array-param'">
             <div class="mb-2 flex items-center justify-between">
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                {{ t('parameterInputModal.selectValues') }} ({{ getSelectedArrayCount(param.id) }} / {{ getParsedArrayItems(param).length }})
+                {{ $t('parameterInputModal.selectValues') }} ({{ getSelectedArrayCount(param.id) }} / {{ getParsedArrayItems(param).length }})
               </p>
               <div class="flex gap-2">
                 <button
                   @click="selectAllArrayItems(param)"
                   class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                 >
-                  {{ t('parameterInputModal.selectAll') }}
+                  {{ $t('parameterInputModal.selectAll') }}
                 </button>
                 <button
                   @click="deselectAllArrayItems(param)"
                   class="text-xs text-gray-600 dark:text-gray-400 hover:underline"
                 >
-                  {{ t('parameterInputModal.deselectAll') }}
+                  {{ $t('parameterInputModal.deselectAll') }}
                 </button>
               </div>
             </div>
@@ -115,7 +115,7 @@
             </div>
 
             <div v-if="getParsedArrayItems(param).length === 0" class="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
-              {{ t('parameterInputModal.noValuesInArray') }}
+              {{ $t('parameterInputModal.noValuesInArray') }}
             </div>
           </div>
         </div>
@@ -127,13 +127,13 @@
           @click="handleCancel"
           color="error"
         >
-          {{ t('parameterInputModal.cancel') }}
+          {{ $t('parameterInputModal.cancel') }}
         </UButton>
         <UButton
           @click="handleConfirm"
           color="primary"
         >
-          {{ t('parameterInputModal.startBuild') }}
+          {{ $t('parameterInputModal.startBuild') }}
         </UButton>
       </div>
     </div>
@@ -143,8 +143,6 @@
 <script setup>
 import { ref, watch } from 'vue'
 import ScriptEditor from '@/components/ScriptEditor.vue'
-
-const { t } = useI18n()
 const props = defineProps({
   modelValue: {
     type: Boolean,
