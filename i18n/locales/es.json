@@ -37,7 +37,9 @@
         "welcome": "Bienvenido",
         "menu": "Menú",
         "lightMode": "Modo Claro",
-        "darkMode": "Modo Oscuro"
+        "darkMode": "Modo Oscuro",
+        "searchHeader": "Buscar proyectos y carpetas...",
+        "logout": "Cerrar Sesión"
     },
     "dashboard": {
         "title": "Panel de Control",
@@ -822,14 +824,15 @@
         "webhookConfigurationHelp": "Configura el método HTTP, encabezados y cuerpo según lo requiera tu servicio de webhook. Usa variables de contexto como $BuildNumber en el cuerpo."
     },
     "admin": {
-        "title": "Panel de Administración",
-        "subtitle": "Gestionar configuración del sistema, variables de entorno y seguridad.",
+        "title": "Administración",
+        "subtitle": "Gestionar configuración del sistema, usuarios y configuración",
         "systemSettings": {
             "title": "Configuración del Sistema",
             "subtitle": "Configurar ajustes y preferencias de la aplicación",
             "loadingSettings": "Cargando configuración...",
             "noSettings": "No hay configuraciones del sistema disponibles",
             "updateSuccess": "Configuración del sistema actualizada correctamente",
+            "currentFileUploaded": "Archivo actual subido",
             "categories": {
                 "branding": "Marca y Apariencia",
                 "general": "Configuración General",
@@ -837,6 +840,64 @@
                 "authentication": "Autenticación y LDAP",
                 "notifications": "Configuración de Notificaciones",
                 "system": "Información del Sistema"
+            },
+            "labels": {
+                "brandName": "Nombre de Marca",
+                "appLogo": "Logo de la Aplicación",
+                "adminEmail": "Correo del Administrador",
+                "cronTimezone": "Zona Horaria de Trabajos Cron",
+                "sessionTimeout": "Tiempo de Sesión (horas)",
+                "logLevel": "Nivel de Registro",
+                "enableRegistration": "Habilitar Registro de Usuarios",
+                "smtpServer": "Servidor SMTP",
+                "smtpPort": "Puerto SMTP",
+                "smtpUsername": "Usuario SMTP",
+                "smtpPassword": "Contraseña SMTP",
+                "smtpSecure": "Usar SSL/TLS",
+                "defaultEmailFrom": "Dirección De Predeterminada",
+                "defaultEmailTo": "Dirección Para Predeterminada",
+                "systemVersion": "Versión del Sistema",
+                "ldapEnabled": "Habilitar Autenticación LDAP",
+                "ldapUrl": "URL del Servidor LDAP",
+                "ldapBindDn": "DN de Enlace",
+                "ldapBindPassword": "Contraseña de Enlace",
+                "ldapUserSearchBase": "Base de Búsqueda de Usuarios",
+                "ldapUserSearchFilter": "Filtro de Búsqueda de Usuarios",
+                "ldapTimeout": "Tiempo de Conexión (ms)",
+                "ldapAutoCreateUsers": "Auto-crear Usuarios LDAP",
+                "ldapDefaultRole": "Rol Predeterminado para Usuarios LDAP",
+                "ldapUseTls": "Usar TLS/StartTLS",
+                "ldapTlsCertificate": "Certificado TLS (.pem)",
+                "userGroups": "Grupos de Usuarios"
+            },
+            "descriptions": {
+                "brandName": "El nombre de la aplicación mostrado en el encabezado de navegación",
+                "appLogo": "Logo mostrado junto al nombre de marca (recomendado: 32x32px PNG)",
+                "adminEmail": "Dirección de correo del administrador del sistema",
+                "cronTimezone": "Zona horaria predeterminada para todos los trabajos cron programados",
+                "sessionTimeout": "Cuánto tiempo permanecen activas las sesiones de usuario",
+                "logLevel": "Nivel de verbosidad del registro de consola (error = menos verboso, debug = más verboso)",
+                "enableRegistration": "Permitir que nuevos usuarios registren cuentas",
+                "smtpServer": "Nombre del servidor SMTP para enviar correos",
+                "smtpPort": "Puerto del servidor SMTP (común: 25, 587, 465, 1025 para MailHog)",
+                "smtpUsername": "Usuario de autenticación SMTP (dejar vacío para servidores no autenticados como MailHog)",
+                "smtpPassword": "Contraseña de autenticación SMTP (dejar vacío para servidores no autenticados como MailHog)",
+                "smtpSecure": "Habilitar cifrado SSL/TLS (usar true para puerto 465, false para puertos 25, 587, 1025)",
+                "defaultEmailFrom": "Dirección de correo predeterminada desde la cual enviar notificaciones",
+                "defaultEmailTo": "Dirección de correo predeterminada a la cual enviar notificaciones (separadas por comas para múltiples)",
+                "systemVersion": "Versión actual de la aplicación",
+                "ldapEnabled": "Habilitar autenticación LDAP/Active Directory para usuarios",
+                "ldapUrl": "URL del servidor LDAP (ej., ldap://dominio.com:389 o ldaps://dominio.com:636)",
+                "ldapBindDn": "DN de cuenta de servicio para enlace LDAP (opcional)",
+                "ldapBindPassword": "Contraseña de cuenta de servicio para enlace LDAP (opcional)",
+                "ldapUserSearchBase": "DN base para búsquedas de usuarios (ej., ou=users,dc=dominio,dc=com)",
+                "ldapUserSearchFilter": "Filtro LDAP para encontrar usuarios. Usar marcador {username} (ej., (mail={username}) o (sAMAccountName={username}))",
+                "ldapTimeout": "Tiempo de espera de conexión LDAP en milisegundos",
+                "ldapAutoCreateUsers": "Crear automáticamente cuentas de usuario para autenticaciones LDAP exitosas",
+                "ldapDefaultRole": "Rol predeterminado asignado a nuevos usuarios LDAP",
+                "ldapUseTls": "Habilitar cifrado TLS para conexiones LDAP",
+                "ldapTlsCertificate": "Subir certificado CA para verificación TLS (opcional)",
+                "userGroups": "Array JSON de grupos de usuarios disponibles para control de acceso"
             }
         },
         "environmentVariables": {
@@ -896,6 +957,18 @@
                 "fileData": "Datos del Archivo"
             }
         },
+        "systemUpdates": {
+            "title": "Actualizaciones del Sistema",
+            "subtitle": "Gestionar actualizaciones de la aplicación desde GitHub",
+            "clickToCheck": "Haga clic en \"Buscar Actualizaciones\" para ver si hay una nueva versión disponible",
+            "lastChecked": "Última verificación",
+            "updateDetailsOptions": "Detalles y Opciones de Actualización",
+            "releaseNotes": "Notas de Versión",
+            "waitForBuilds": "Esperar a que se completen las compilaciones en ejecución antes de actualizar",
+            "waitForBuildsHelp": "Si no está marcado, las compilaciones en ejecución se pausarán y podrán reanudarse después de la actualización",
+            "initiatingUpdate": "Iniciando Actualización...",
+            "updateNow": "Actualizar Ahora"
+        },
         "updateManagement": {
             "title": "Gestión de Actualizaciones",
             "checkForUpdates": "Buscar Actualizaciones",
@@ -916,6 +989,26 @@
             "updateFailed": "Error al activar la actualización",
             "confirmUpdate": "¿Está seguro de que desea actualizar a la versión {version}? El servidor se reiniciará durante este proceso."
         },
+        "agentUpdates": {
+            "title": "Actualizaciones de Agentes",
+            "subtitle": "Gestionar versiones y actualizaciones de agentes de compilación",
+            "loadingAgents": "Cargando agentes...",
+            "noAgents": "No hay agentes registrados",
+            "agent": "Agente",
+            "currentVersion": "Versión Actual",
+            "status": "Estado",
+            "autoUpdate": "Auto Actualización",
+            "lastCheck": "Última Verificación",
+            "actions": "Acciones",
+            "updateAvailable": "Actualización Disponible",
+            "upToDate": "Actualizado",
+            "enableAutoUpdate": "Habilitar auto-actualización",
+            "never": "Nunca",
+            "updateNow": "Actualizar Ahora",
+            "agentOffline": "Agente desconectado",
+            "latestVersion": "Última Versión de Agente",
+            "autoUpdateInfo": "Los agentes con auto-actualización habilitada descargarán e instalarán actualizaciones automáticamente cuando estén disponibles."
+        },
         "agentTemplates": {
             "title": "Plantillas de Agentes",
             "subtitle": "Gestionar configuraciones de actualización de agentes remotos",
@@ -935,6 +1028,27 @@
             "updateSettingsFailed": "Error al actualizar la configuración del agente",
             "updateTriggered": "Actualización activada para {name}. El agente se actualizará y reconectará en breve.",
             "updateTriggerFailed": "Error al activar la actualización del agente"
+        },
+        "notificationTemplates": {
+            "title": "Plantillas de Notificación",
+            "subtitle": "Gestionar plantillas de notificación por email, Slack y webhook",
+            "createTemplate": "Crear Plantilla",
+            "loadingTemplates": "Cargando plantillas...",
+            "noTemplates": "No se encontraron plantillas de notificación",
+            "createFirstTemplate": "Crea tu primera plantilla para comenzar",
+            "builtIn": "Integrada",
+            "created": "Creado",
+            "viewTemplate": "Ver Plantilla",
+            "editTemplate": "Editar Plantilla",
+            "deleteTemplate": "Eliminar Plantilla"
+        },
+        "projectTemplates": {
+            "title": "Plantillas de Proyecto",
+            "subtitle": "Gestionar plantillas de proyecto guardadas",
+            "loadingTemplates": "Cargando plantillas...",
+            "noTemplates": "Aún no hay plantillas guardadas",
+            "noDescription": "Sin descripción",
+            "created": "Creado"
         },
         "userManagement": {
             "title": "Gestión de Usuarios",
@@ -957,7 +1071,11 @@
             "userGroups": "Grupos de Usuario",
             "userGroupsHelp": "Seleccionar grupos para este usuario",
             "groupsUpdateSuccess": "Grupos de usuario actualizados correctamente",
-            "groupsUpdateFailed": "Error al actualizar los grupos del usuario"
+            "groupsUpdateFailed": "Error al actualizar los grupos del usuario",
+            "created": "Creado",
+            "inactive": "Inactivo",
+            "makeUser": "Hacer Usuario",
+            "makeAdmin": "Hacer Admin"
         },
         "groupManagement": {
             "title": "Gestión de Grupos",
@@ -990,20 +1108,23 @@
             "ldapMappingTitle": "Mapeos de Grupos LDAP",
             "ldapMappingHelp": "Mapear grupos LDAP a este grupo de aplicación. Los usuarios que sean miembros de cualquier grupo LDAP mapeado se agregarán automáticamente a este grupo.",
             "addLdapMapping": "Agregar Mapeo LDAP",
-            "ldapGroupName": "Nombre del Grupo LDAP"
+            "ldapGroupName": "Nombre del Grupo LDAP",
+            "noDescription": "Sin descripción"
         },
         "ldapTest": {
             "title": "Prueba de Conexión LDAP",
             "testConnection": "Probar Conexión LDAP",
-            "testing": "Probando...",
-            "username": "Usuario de Prueba",
-            "password": "Contraseña de Prueba",
             "runTest": "Ejecutar Prueba",
             "success": "¡Conexión LDAP Exitosa!",
             "failed": "Conexión LDAP Fallida",
             "userDn": "DN de Usuario:",
             "groups": "Grupos:",
-            "error": "Error:"
+            "error": "Error:",
+            "username": "Usuario",
+            "password": "Contraseña",
+            "usernamePlaceholder": " o usuario",
+            "passwordPlaceholder": "Contraseña",
+            "testing": "Probando..."
         },
         "common": {
             "edit": "Editar",

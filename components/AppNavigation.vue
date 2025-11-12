@@ -55,7 +55,7 @@
               @focus="showSearchResults = true"
               @blur="hideSearchResults"
               type="text"
-              placeholder="Search projects and folders..."
+              :placeholder="$t('common.searchHeader')"
               class="w-64 px-3 py-2 pl-10 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-950 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
             <UIcon name="i-lucide-search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
@@ -98,7 +98,7 @@
             variant="outline"
             icon="i-lucide-log-out"
           >
-            Logout
+            {{ $t('common.logout') }}
           </UButton>
 
           <!-- Dark Mode Toggle -->
@@ -154,7 +154,7 @@
             v-model="searchQuery"
             @input="handleSearch"
             type="text"
-            placeholder="Search projects and folders..."
+            :placeholder="$t('common.searchHeader')"
             class="w-full px-3 py-2 pl-10 text-sm border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-950 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
           <UIcon name="i-lucide-search" class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />

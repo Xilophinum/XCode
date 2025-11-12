@@ -43,7 +43,7 @@
               <div class="space-y-4 py-2 bg-gray-100 dark:bg-neutral-800 p-4 rounded-lg">
                 <div v-for="setting in groupedSystemSettings[category]" :key="setting.key">
                   <!-- Text Input -->
-                  <UFormField v-if="setting.type === 'text'" :label="setting.label" :required="setting.required === 'true'">
+                  <UFormField v-if="setting.type === 'text'" :label="$t(setting.label)" :required="setting.required === 'true'">
                     <UInput
                       v-model="setting.value"
                       :disabled="setting.readonly === 'true'"
@@ -52,11 +52,11 @@
                       class="w-full"
                       @change="updateSetting(setting.key, setting.value)"
                     />
-                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                    <template v-if="setting.description" #help>{{ $t(setting.description) }}</template>
                   </UFormField>
 
                   <!-- Password Input -->
-                  <UFormField v-else-if="setting.type === 'password'" :label="setting.label" :required="setting.required === 'true'">
+                  <UFormField v-else-if="setting.type === 'password'" :label="$t(setting.label)" :required="setting.required === 'true'">
                     <UInput
                       v-model="setting.value"
                       :disabled="setting.readonly === 'true'"
@@ -65,11 +65,11 @@
                       class="w-full"
                       @change="updateSetting(setting.key, setting.value)"
                     />
-                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                    <template v-if="setting.description" #help>{{ $t(setting.description) }}</template>
                   </UFormField>
 
                   <!-- Textarea -->
-                  <UFormField v-else-if="setting.type === 'textarea'" :label="setting.label" :required="setting.required === 'true'">
+                  <UFormField v-else-if="setting.type === 'textarea'" :label="$t(setting.label)" :required="setting.required === 'true'">
                     <UTextarea
                       v-model="setting.value"
                       :disabled="setting.readonly === 'true'"
@@ -78,21 +78,21 @@
                       class="w-full"
                       @change="updateSetting(setting.key, setting.value)"
                     />
-                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                    <template v-if="setting.description" #help>{{ $t(setting.description) }}</template>
                   </UFormField>
 
                   <!-- Select Dropdown -->
-                  <UFormField v-else-if="setting.type === 'select'" :label="setting.label" :required="setting.required === 'true'">
+                  <UFormField v-else-if="setting.type === 'select'" :label="$t(setting.label)" :required="setting.required === 'true'">
                     <USelect
                       v-model="setting.value"
                       :disabled="setting.readonly === 'true'"
                       :items="getSelectOptions(setting.options)"
                       size="md"
                       class="w-full"
-                      placeholder="Select..."
+                      :placeholder="$t('admin.common.select')"
                       @change="updateSetting(setting.key, setting.value)"
                     />
-                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                    <template v-if="setting.description" #help>{{ $t(setting.description) }}</template>
                   </UFormField>
 
                   <!-- Boolean Checkbox -->
@@ -102,14 +102,14 @@
                       :disabled="setting.readonly === 'true'"
                       :true-value="'true'"
                       :false-value="'false'"
-                      :label="setting.label"
+                      :label="$t(setting.label)"
                       @change="updateSetting(setting.key, setting.value)"
                     />
-                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                    <template v-if="setting.description" #help>{{ $t(setting.description) }}</template>
                   </UFormField>
 
                   <!-- File Upload -->
-                  <UFormField v-else-if="setting.type === 'file'" :label="setting.label" :required="setting.required === 'true'">
+                  <UFormField v-else-if="setting.type === 'file'" :label="$t(setting.label)" :required="setting.required === 'true'">
                     <div class="space-y-2">
                       <UInput
                         :id="setting.key"
@@ -121,21 +121,21 @@
                       />
                       <div v-if="setting.value" class="flex items-center gap-2">
                         <img :src="setting.value" alt="Preview" class="h-8 w-8 object-contain rounded">
-                        <span class="text-sm">Current file uploaded</span>
+                        <span class="text-sm">{{ $t('admin.systemSettings.currentFileUploaded') }}</span>
                         <UButton
                           @click="updateSetting(setting.key, null)"
                           color="error"
                           variant="ghost"
                           size="xs"
-                          label="Remove"
+                          :label="$t('admin.common.remove')"
                         />
                       </div>
                     </div>
-                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                    <template v-if="setting.description" #help>{{ $t(setting.description) }}</template>
                   </UFormField>
 
                   <!-- Number Input -->
-                  <UFormField v-else-if="setting.type === 'number'" :label="setting.label" :required="setting.required === 'true'">
+                  <UFormField v-else-if="setting.type === 'number'" :label="$t(setting.label)" :required="setting.required === 'true'">
                     <UInput
                       v-model="setting.value"
                       :disabled="setting.readonly === 'true'"
@@ -144,7 +144,7 @@
                       class="w-full"
                       @change="updateSetting(setting.key, setting.value)"
                     />
-                    <template v-if="setting.description" #help>{{ setting.description }}</template>
+                    <template v-if="setting.description" #help>{{ $t(setting.description) }}</template>
                   </UFormField>
                 </div>
 
@@ -165,7 +165,7 @@
                               type="text"
                               size="md"
                               class="w-full"
-                              placeholder="user@domain.com or username"
+                              :placeholder="$t('admin.ldapTest.usernamePlaceholder')"
                             />
                           </UFormField>
                           <UFormField :label="$t('admin.ldapTest.password')">
@@ -174,7 +174,7 @@
                               type="password"
                               size="md"
                               class="w-full"
-                              placeholder="Password"
+                              :placeholder="$t('admin.ldapTest.passwordPlaceholder')"
                             />
                           </UFormField>
                         </div>
@@ -224,9 +224,9 @@
             <div>
               <h2 class="text-lg font-semibold text-gray-950 dark:text-white flex items-center">
                 <UIcon name="i-lucide-refresh-cw" class="w-5 h-5 mr-2 text-blue-600" />
-                System Updates
+                {{ $t('admin.systemUpdates.title') }}
               </h2>
-              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Manage application updates from GitHub releases</p>
+              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">{{ $t('admin.systemUpdates.subtitle') }}</p>
             </div>
             <UButton
               @click="checkForUpdates"
@@ -248,7 +248,7 @@
           <!-- Initial State -->
           <div v-else-if="!updateInfo" class="text-center py-8">
             <UIcon name="i-lucide-refresh-cw" class="mx-auto h-12 w-12 text-gray-400" />
-            <p class="text-gray-600 dark:text-gray-300 mt-2">Click "Check for Updates" to see if a new version is available</p>
+            <p class="text-gray-600 dark:text-gray-300 mt-2">{{ $t('admin.systemUpdates.clickToCheck') }}</p>
           </div>
 
           <!-- Update Status -->
@@ -275,7 +275,7 @@
                     </div>
                   </div>
                   <p v-if="updateInfo.lastCheck" class="text-xs opacity-75">
-                    Last checked: {{ new Date(updateInfo.lastCheck).toLocaleString() }}
+                    {{ $t('admin.systemUpdates.lastChecked') }}: {{ new Date(updateInfo.lastCheck).toLocaleString() }}
                   </p>
                 </div>
               </template>
@@ -286,7 +286,7 @@
               <template #default="{ open }">
                 <div class="flex items-center gap-2 p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
                   <UIcon name="i-lucide-package" class="w-5 h-5" />
-                  <span class="font-medium">Update Details & Options</span>
+                  <span class="font-medium">{{ $t('admin.systemUpdates.updateDetailsOptions') }}</span>
                   <UIcon
                     :name="open ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
                     class="w-5 h-5 ml-auto text-gray-400 transition-transform"
@@ -299,7 +299,7 @@
                   <div class="space-y-4">
                     <!-- Release Notes -->
                     <div v-if="updateInfo.releaseNotes">
-                      <p class="text-sm font-medium mb-2">Release Notes:</p>
+                      <p class="text-sm font-medium mb-2">{{ $t('admin.systemUpdates.releaseNotes') }}:</p>
                       <UCard class="bg-gray-50 dark:bg-gray-900">
                         <pre class="whitespace-pre-wrap text-xs max-h-32 overflow-y-auto">{{ updateInfo.releaseNotes }}</pre>
                       </UCard>
@@ -310,8 +310,8 @@
                       <UFormField>
                         <UCheckbox
                           v-model="waitForJobs"
-                          label="Wait for running builds to complete before updating"
-                          help="If unchecked, running builds will be paused and can resume after update"
+                          :label="$t('admin.systemUpdates.waitForBuilds')"
+                          :help="$t('admin.systemUpdates.waitForBuildsHelp')"
                         />
                       </UFormField>
 
@@ -320,7 +320,7 @@
                         :disabled="updateTriggering"
                         :loading="updateTriggering"
                         icon="i-lucide-download"
-                        :label="updateTriggering ? 'Initiating Update...' : 'Update Now'"
+                        :label="updateTriggering ? $t('admin.systemUpdates.initiatingUpdate') : $t('admin.systemUpdates.updateNow')"
                         color="success"
                         block
                       />
@@ -338,33 +338,33 @@
               <div>
                 <h2 class="text-lg font-semibold text-gray-950 dark:text-white flex items-center">
                   <UIcon name="i-lucide-cpu" class="w-5 h-5 mr-2 text-green-600" />
-                  Agent Updates
+                  {{ $t('admin.agentUpdates.title') }}
                 </h2>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Manage build agent versions and updates</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">{{ $t('admin.agentUpdates.subtitle') }}</p>
               </div>
             </div>
 
             <!-- Agents List -->
             <div v-if="loadingAgents" class="text-center py-8">
               <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
-              <p class="text-gray-600 dark:text-gray-300 mt-2">Loading agents...</p>
+              <p class="text-gray-600 dark:text-gray-300 mt-2">{{ $t('admin.agentUpdates.loadingAgents') }}</p>
             </div>
 
             <div v-else-if="agents.length === 0" class="text-center py-8">
               <UIcon name="i-lucide-cpu" class="mx-auto h-12 w-12 text-gray-400" />
-              <p class="text-gray-600 dark:text-gray-300 mt-2">No agents registered</p>
+              <p class="text-gray-600 dark:text-gray-300 mt-2">{{ $t('admin.agentUpdates.noAgents') }}</p>
             </div>
 
             <div v-else class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
                 <thead class="bg-gray-50 dark:bg-gray-800/50">
                   <tr>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Agent</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Version</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Auto Update</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Check</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.agentUpdates.agent') }}</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.agentUpdates.currentVersion') }}</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.agentUpdates.status') }}</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.agentUpdates.autoUpdate') }}</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.agentUpdates.lastCheck') }}</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.agentUpdates.actions') }}</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
@@ -386,11 +386,11 @@
                     <td class="px-4 py-4 whitespace-nowrap">
                       <span v-if="agent.updateAvailable === 'true'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200">
                         <UIcon name="i-lucide-alert-circle" class="w-3 h-3 mr-1" />
-                        Update Available
+                        {{ $t('admin.agentUpdates.updateAvailable') }}
                       </span>
                       <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
                         <UIcon name="i-lucide-check-circle" class="w-3 h-3 mr-1" />
-                        Up to Date
+                        {{ $t('admin.agentUpdates.upToDate') }}
                       </span>
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap">
@@ -400,7 +400,7 @@
                         class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         :class="agent.autoUpdate === 'true' ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-800'"
                       >
-                        <span class="sr-only">Enable auto-update</span>
+                        <span class="sr-only">{{ $t('admin.agentUpdates.enableAutoUpdate') }}</span>
                         <span
                           class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
                           :class="agent.autoUpdate === 'true' ? 'translate-x-5' : 'translate-x-0'"
@@ -409,7 +409,7 @@
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       <span v-if="agent.lastVersionCheck">{{ formatDateTime(agent.lastVersionCheck) }}</span>
-                      <span v-else class="text-gray-400 dark:text-gray-500">Never</span>
+                      <span v-else class="text-gray-400 dark:text-gray-500">{{ $t('admin.agentUpdates.never') }}</span>
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                       <button
@@ -419,9 +419,9 @@
                         class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <UIcon v-if="updatingAgent === agent.id" name="i-lucide-refresh-cw" class="animate-spin w-3 h-3 mr-1" />
-                        <span v-else>Update Now</span>
+                        <span v-else>{{ $t('admin.agentUpdates.updateNow') }}</span>
                       </button>
-                      <span v-else-if="agent.status !== 'online'" class="text-gray-400 dark:text-gray-500 text-xs">Agent offline</span>
+                      <span v-else-if="agent.status !== 'online'" class="text-gray-400 dark:text-gray-500 text-xs">{{ $t('admin.agentUpdates.agentOffline') }}</span>
                     </td>
                   </tr>
                 </tbody>
@@ -433,8 +433,8 @@
               <div class="flex items-start">
                 <UIcon name="i-lucide-info" class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
                 <div class="flex-1">
-                  <p class="text-sm font-medium text-blue-900 dark:text-blue-200">Latest Agent Version: {{ latestAgentVersion }}</p>
-                  <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">Agents with auto-update enabled will automatically download and install updates when available.</p>
+                  <p class="text-sm font-medium text-blue-900 dark:text-blue-200">{{ $t('admin.agentUpdates.latestVersion') }}: {{ latestAgentVersion }}</p>
+                  <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">{{ $t('admin.agentUpdates.autoUpdateInfo') }}</p>
                 </div>
               </div>
             </div>
@@ -444,27 +444,27 @@
         <UCard class="shadow-md">
           <div class="flex items-center justify-between mb-6">
             <div>
-              <h2 class="text-lg font-semibold text-gray-950 dark:text-white">Notification Templates</h2>
-              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Manage email, Slack, and webhook notification templates</p>
+              <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ $t('admin.notificationTemplates.title') }}</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">{{ $t('admin.notificationTemplates.subtitle') }}</p>
             </div>
             <button
               @click="showTemplateModal = true; editingTemplate = null"
               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600"
             >
               <UIcon name="i-lucide-plus" class="w-5 h-5 mr-2" />
-              Create Template
+              {{ $t('admin.notificationTemplates.createTemplate') }}
             </button>
           </div>
 
           <div v-if="loadingTemplates" class="text-center py-8">
             <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-            <p class="text-gray-600 dark:text-gray-300 mt-2">Loading templates...</p>
+            <p class="text-gray-600 dark:text-gray-300 mt-2">{{ $t('admin.notificationTemplates.loadingTemplates') }}</p>
           </div>
 
           <div v-else-if="notificationTemplates.length === 0" class="text-center py-8">
             <UIcon name="i-lucide-bell" class="mx-auto h-12 w-12 text-gray-400" />
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No notification templates found</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Create your first template to get started</p>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ $t('admin.notificationTemplates.noTemplates') }}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ $t('admin.notificationTemplates.createFirstTemplate') }}</p>
           </div>
 
           <div v-else class="space-y-3">
@@ -474,7 +474,7 @@
                   <div class="flex items-center gap-2 mb-2">
                     <h3 class="text-md font-medium text-gray-950 dark:text-white">{{ template.name }}</h3>
                     <span v-if="template.is_built_in" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                      Built-in
+                      {{ $t('admin.notificationTemplates.builtIn') }}
                     </span>
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" :class="{
                       'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200': template.type === 'email',
@@ -486,17 +486,17 @@
                   </div>
                   <p v-if="template.description" class="text-sm text-gray-600 dark:text-gray-400">{{ template.description }}</p>
                   <div class="mt-2 text-xs text-gray-500 dark:text-gray-500">
-                    Created {{ formatDate(template.created_at) }}
+                    {{ $t('admin.notificationTemplates.created') }} {{ formatDate(template.created_at) }}
                   </div>
                 </div>
                 <div class="flex items-center gap-2 ml-4">
-                  <UTooltip text="View Template">
+                  <UTooltip :text="$t('admin.notificationTemplates.viewTemplate')">
                     <UButton
                       @click="viewNotificationTemplate(template)"
                       icon="i-lucide-eye"
                     />
                   </UTooltip>
-                  <UTooltip text="Edit Template">
+                  <UTooltip :text="$t('admin.notificationTemplates.editTemplate')">
                     <UButton
                       v-if="!template.is_built_in"
                       @click="editNotificationTemplate(template)"
@@ -504,7 +504,7 @@
                       icon="i-lucide-edit"
                     />
                   </UTooltip>
-                  <UTooltip text="Delete Template">
+                  <UTooltip :text="$t('admin.notificationTemplates.deleteTemplate')">
                     <UButton
                       v-if="!template.is_built_in"
                       @click="confirmDeleteTemplate(template)"
@@ -522,19 +522,19 @@
         <UCard class="shadow-md">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h2 class="text-lg font-semibold text-gray-950 dark:text-white">Project Templates</h2>
-              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Manage saved project templates</p>
+              <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ $t('admin.projectTemplates.title') }}</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">{{ $t('admin.projectTemplates.subtitle') }}</p>
             </div>
           </div>
 
           <div v-if="loadingTemplates" class="text-center py-8">
             <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <p class="text-gray-600 dark:text-gray-300 mt-2">Loading templates...</p>
+            <p class="text-gray-600 dark:text-gray-300 mt-2">{{ $t('admin.projectTemplates.loadingTemplates') }}</p>
           </div>
 
           <div v-else class="space-y-3">
             <div v-if="templates.length === 0" class="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
-              No templates saved yet
+              {{ $t('admin.projectTemplates.noTemplates') }}
             </div>
             <div
               v-for="template in templates"
@@ -543,9 +543,9 @@
             >
               <div class="flex-1">
                 <div class="font-medium text-sm text-gray-950 dark:text-white">{{ template.name }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ template.description || 'No description' }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ template.description || $t('admin.projectTemplates.noDescription') }}</div>
                 <div class="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                  Created {{ formatDate(new Date(template.createdAt)) }}
+                  {{ $t('admin.projectTemplates.created') }} {{ formatDate(new Date(template.createdAt)) }}
                 </div>
               </div>
               <div class="flex items-center space-x-2">
@@ -554,7 +554,7 @@
                   class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
                 >
                   <UIcon name="i-lucide-trash-2" class="w-3 h-3 mr-1" />
-                  Delete
+                  {{ $t('admin.common.delete') }}
                 </button>
               </div>
             </div>
@@ -585,9 +585,9 @@
             >
               <div class="flex-1">
                 <div class="font-medium text-sm text-gray-950 dark:text-white">{{ variable.key }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">{{ variable.description || 'No description' }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">{{ variable.description || $t('admin.environmentVariables.noDescription') }}</div>
                 <div class="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                  {{ variable.isSecret === 'true' ? '🔒 Secret' : 'Public' }}
+                  {{ variable.isSecret === 'true' ? '🔒 ' + $t('admin.environmentVariables.secret') : $t('admin.environmentVariables.public') }}
                 </div>
               </div>
               <div class="flex space-x-2">
@@ -634,7 +634,7 @@
           <div v-if="filteredCredentials.length === 0" class="text-center py-8">
             <UIcon name="i-lucide-shield" class="mx-auto h-12 w-12 text-gray-400" />
             <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">
-              {{ credentialFilter && credentialFilter !== 'All Types' ? 'No credentials of this type' : $t('admin.credentialVault.noCredentials') }}
+              {{ credentialFilter && credentialFilter !== 'All Types' ? $t('admin.credentialVault.noCredentialsOfType') : $t('admin.credentialVault.noCredentials') }}
             </p>
           </div>
 
@@ -655,7 +655,7 @@
                           <span class="font-medium truncate">{{ credential.name }}</span>
                           <UBadge :label="getCredentialTypeLabel(credential.type)" size="xs" variant="soft" />
                           <UBadge v-if="credential.environment" :label="credential.environment" color="primary" size="xs" variant="subtle" />
-                          <UBadge v-if="!credential.isActive" label="Inactive" color="error" size="xs" variant="soft" />
+                          <UBadge v-if="!credential.isActive" :label="$t('admin.credentialVault.inactive')" color="error" size="xs" variant="soft" />
                         </div>
                         <p v-if="credential.description" class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
                           {{ credential.description }}
@@ -674,26 +674,26 @@
                     <!-- Credential Details -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p class="text-gray-500 dark:text-gray-400 mb-1">Type</p>
+                        <p class="text-gray-500 dark:text-gray-400 mb-1">{{ $t('admin.credentialVault.type') }}</p>
                         <p class="font-medium">{{ getCredentialTypeLabel(credential.type) }}</p>
                       </div>
                       <div v-if="credential.environment">
-                        <p class="text-gray-500 dark:text-gray-400 mb-1">Environment</p>
+                        <p class="text-gray-500 dark:text-gray-400 mb-1">{{ $t('admin.credentialVault.environment') }}</p>
                         <p class="font-medium">{{ credential.environment }}</p>
                       </div>
                       <div v-if="credential.url">
-                        <p class="text-gray-500 dark:text-gray-400 mb-1">URL</p>
+                        <p class="text-gray-500 dark:text-gray-400 mb-1">{{ $t('admin.credentialVault.url') }}</p>
                         <p class="font-medium text-xs break-all">{{ credential.url }}</p>
                       </div>
                       <div>
-                        <p class="text-gray-500 dark:text-gray-400 mb-1">Status</p>
-                        <UBadge :label="credential.isActive ? 'Active' : 'Inactive'" :color="credential.isActive ? 'success' : 'error'" variant="soft" size="xs" />
+                        <p class="text-gray-500 dark:text-gray-400 mb-1">{{ $t('admin.credentialVault.status') }}</p>
+                        <UBadge :label="credential.isActive ? $t('admin.credentialVault.active') : $t('admin.credentialVault.inactive')" :color="credential.isActive ? 'success' : 'error'" variant="soft" size="xs" />
                       </div>
                     </div>
 
                     <!-- Tags -->
                     <div v-if="credential.tags && credential.tags.length > 0">
-                      <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Tags</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">{{ $t('admin.credentialVault.tags') }}</p>
                       <div class="flex flex-wrap gap-1">
                         <UBadge
                           v-for="tag in credential.tags"
@@ -707,7 +707,7 @@
 
                     <!-- Description -->
                     <div v-if="credential.description">
-                      <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Description</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">{{ $t('admin.credentialVault.description') }}</p>
                       <p class="text-sm">{{ credential.description }}</p>
                     </div>
 
@@ -716,7 +716,7 @@
                       <UButton
                         @click="viewCredential(credential)"
                         icon="i-lucide-eye"
-                        label="View"
+                        :label="$t('admin.credentialVault.view')"
                         color="secondary"
                         variant="soft"
                         block
@@ -724,7 +724,7 @@
                       <UButton
                         @click="editCredential(credential)"
                         icon="i-lucide-edit"
-                        label="Edit"
+                        :label="$t('admin.credentialVault.edit')"
                         color="primary"
                         variant="soft"
                         block
@@ -732,7 +732,7 @@
                       <UButton
                         @click="confirmDeleteCredential(credential)"
                         icon="i-lucide-trash-2"
-                        label="Delete"
+                        :label="$t('admin.credentialVault.delete')"
                         color="error"
                         variant="soft"
                         block
@@ -769,11 +769,11 @@
             >
               <div class="flex-1">
                 <div class="font-medium text-sm text-gray-950 dark:text-white">{{ group.name }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">{{ group.description || 'No description' }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">{{ group.description || $t('admin.groupManagement.noDescription') }}</div>
                 <div class="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                  {{ group.memberCount || 0 }} members
+                  {{ group.memberCount || 0 }} {{ $t('admin.groupManagement.members') }}
                   <br />
-                  {{ group.ldapMappings.length }} LDAP Groups
+                  {{ group.ldapMappings.length }} {{ $t('admin.groupManagement.ldapGroups') }}
                 </div>
               </div>
               <div class="flex space-x-2">
@@ -805,7 +805,7 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.userManagement.username') }}</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.userManagement.email') }}</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.userManagement.role') }}</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.userManagement.created') }}</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ $t('admin.userManagement.actions') }}</th>
                 </tr>
               </thead>
@@ -829,7 +829,7 @@
                         {{ user.role }}
                       </span>
                       <span v-if="user.isActive === 'false'" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">
-                        Inactive
+                        {{ $t('admin.userManagement.inactive') }}
                       </span>
                     </div>
                   </td>
@@ -842,13 +842,13 @@
                         @click="confirmToggleUserRole(user)"
                         class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
                       >
-                        {{ user.role === 'admin' ? 'Make User' : 'Make Admin' }}
+                        {{ user.role === 'admin' ? $t('admin.userManagement.makeUser') : $t('admin.userManagement.makeAdmin') }}
                       </button>
                       <button
                         @click="manageUserGroups(user)"
                         class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300"
                       >
-                        Groups
+                        {{ $t('admin.userManagement.groups') }}
                       </button>
                     </div>
                   </td>
@@ -864,29 +864,29 @@
     <ModalWrapper v-model="showEnvModal" class="max-w-md">
       <UCard class="shadow-md">
         <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">
-          {{ editingEnvVariable ? 'Edit Environment Variable' : 'Add Environment Variable' }}
+          {{ editingEnvVariable ? $t('admin.environmentVariables.editVariable') : $t('admin.environmentVariables.addVariable') }}
         </h3>
         
         <form @submit.prevent="saveEnvVariable">
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Key</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.environmentVariables.key') }}</label>
             <input
               v-model="envForm.key"
               type="text"
               required
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-              placeholder="VARIABLE_NAME"
+              :placeholder="$t('admin.environmentVariables.keyPlaceholder')"
             >
           </div>
           
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Value</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.environmentVariables.value') }}</label>
             <input
               v-model="envForm.value"
               type="text"
               required
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-              placeholder="Variable value"
+              :placeholder="$t('admin.environmentVariables.valuePlaceholder')"
             >
           </div>
           
@@ -907,7 +907,7 @@
                 type="checkbox"
                 class="rounded border-gray-300 dark:border-gray-600 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 dark:bg-gray-700"
               >
-              <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Mark as secret (value will be hidden)</span>
+              <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ $t('admin.environmentVariables.markAsSecret') }}</span>
             </label>
           </div>
           
@@ -934,37 +934,37 @@
     <ModalWrapper v-model="showCredentialModal" class="max-w-2xl">
       <UCard class="shadow-md">
         <h3 class="text-lg font-bold text-gray-950 dark:text-white mb-4">
-          {{ editingCredential ? 'Edit Credential' : 'Add Credential' }}
+          {{ editingCredential ? $t('admin.credentialVault.editCredential') : $t('admin.credentialVault.addCredential') }}
         </h3>
         
         <form @submit.prevent="saveCredential" class="space-y-4">
           <!-- Basic Information -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Name *</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.name') }} *</label>
               <input
                 v-model="credentialForm.name"
                 type="text"
                 required
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                placeholder="Credential name"
+                :placeholder="$t('admin.credentialVault.namePlaceholder')"
               >
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Type *</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.type') }} *</label>
               <select
                 v-model="credentialForm.type"
                 required
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
               >
-                <option value="password">Password Only</option>
-                <option value="user_pass">Username + Password</option>
-                <option value="token">Token/API Key</option>
-                <option value="ssh_key">SSH Private Key</option>
-                <option value="certificate">Certificate</option>
-                <option value="file">File Upload</option>
-                <option value="custom">Custom</option>
+                <option value="password">{{ $t('admin.credentialVault.types.password') }}</option>
+                <option value="user_pass">{{ $t('admin.credentialVault.types.userPass') }}</option>
+                <option value="token">{{ $t('admin.credentialVault.types.token') }}</option>
+                <option value="ssh_key">{{ $t('admin.credentialVault.types.sshKey') }}</option>
+                <option value="certificate">{{ $t('admin.credentialVault.types.certificate') }}</option>
+                <option value="file">{{ $t('admin.credentialVault.types.file') }}</option>
+                <option value="custom">{{ $t('admin.credentialVault.types.custom') }}</option>
               </select>
             </div>
           </div>
@@ -981,109 +981,109 @@
 
           <!-- Credential Fields (shown based on type) -->
           <div class="border-t pt-4">
-            <h4 class="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">Credential Data</h4>
+            <h4 class="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">{{ $t('admin.credentialVault.credentialData') }}</h4>
             
             <!-- Username (for user_pass, ssh_key) -->
             <div v-if="['user_pass', 'ssh_key'].includes(credentialForm.type)" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Username</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.username') }}</label>
               <input
                 v-model="credentialForm.username"
                 type="text"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                placeholder="Username"
+                :placeholder="'user@example.com' + $t('admin.credentialVault.usernamePlaceholder')"
               >
             </div>
 
             <!-- Password (for password, user_pass) -->
             <div v-if="['password', 'user_pass'].includes(credentialForm.type)" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.password') }}</label>
               <input
                 v-model="credentialForm.password"
                 type="password"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                placeholder="Password"
+                :placeholder="$t('admin.credentialVault.passwordPlaceholder')"
               >
             </div>
 
             <!-- Token (for token) -->
             <div v-if="credentialForm.type === 'token'" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Token/API Key</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.tokenApiKey') }}</label>
               <textarea
                 v-model="credentialForm.token"
                 v-auto-resize
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                placeholder="API token or key"
+                :placeholder="$t('admin.credentialVault.tokenPlaceholder')"
               ></textarea>
             </div>
 
             <!-- SSH Private Key (for ssh_key) -->
             <div v-if="credentialForm.type === 'ssh_key'" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">SSH Private Key</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.sshPrivateKey') }}</label>
               <textarea
                 v-model="credentialForm.privateKey"
                 v-auto-resize
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                placeholder="-----BEGIN PRIVATE KEY-----"
+                :placeholder="$t('admin.credentialVault.sshKeyPlaceholder')"
               ></textarea>
             </div>
 
             <!-- Certificate (for certificate) -->
             <div v-if="credentialForm.type === 'certificate'" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Certificate</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.certificate') }}</label>
               <textarea
                 v-model="credentialForm.certificate"
                 v-auto-resize
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none overflow-hidden bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                placeholder="-----BEGIN CERTIFICATE-----"
+                :placeholder="$t('admin.credentialVault.certificatePlaceholder')"
               ></textarea>
             </div>
 
             <!-- File Upload (for file) -->
             <div v-if="credentialForm.type === 'file'" class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">File Upload</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.fileUpload') }}</label>
               <input
                 type="file"
                 @change="handleCredentialFileUpload"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
               >
               <div v-if="credentialForm.fileName" class="mt-2 text-sm text-gray-600">
-                Selected: {{ credentialForm.fileName }} ({{ credentialForm.fileMimeType }})
+                {{ $t('admin.credentialVault.selected') }}: {{ credentialForm.fileName }} ({{ credentialForm.fileMimeType }})
               </div>
             </div>
           </div>
 
           <!-- Additional Fields -->
           <div class="border-t pt-4">
-            <h4 class="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">Additional Information</h4>
+            <h4 class="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">{{ $t('admin.credentialVault.additionalInfo') }}</h4>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">URL</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.url') }}</label>
                 <input
                   v-model="credentialForm.url"
                   type="url"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
-                  placeholder="https://example.com"
+                  :placeholder="$t('admin.credentialVault.urlPlaceholder')"
                 >
               </div>
               
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Environment</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.environment') }}</label>
                 <select
                   v-model="credentialForm.environment"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-gray-700 text-gray-950 dark:text-white"
                 >
-                  <option value="">Select Environment</option>
-                  <option value="development">Development</option>
-                  <option value="staging">Staging</option>
-                  <option value="production">Production</option>
-                  <option value="testing">Testing</option>
+                  <option value="">{{ $t('admin.credentialVault.selectEnvironment') }}</option>
+                  <option value="development">{{ $t('admin.credentialVault.environments.development') }}</option>
+                  <option value="staging">{{ $t('admin.credentialVault.environments.staging') }}</option>
+                  <option value="production">{{ $t('admin.credentialVault.environments.production') }}</option>
+                  <option value="testing">{{ $t('admin.credentialVault.environments.testing') }}</option>
                 </select>
               </div>
             </div>
 
             <div class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Expires At</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.expiresAt') }}</label>
               <input
                 v-model="credentialForm.expiresAt"
                 type="datetime-local"
@@ -1093,7 +1093,7 @@
 
             <!-- Tags -->
             <div class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.tags') }}</label>
               <div class="flex flex-wrap gap-2 mb-2">
                 <span
                   v-for="(tag, index) in credentialForm.tags"
@@ -1115,7 +1115,7 @@
                   v-model="newTag"
                   type="text"
                   class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Add tag"
+                  :placeholder="$t('admin.credentialVault.addTag')"
                   @keyup.enter="addTag"
                 >
                 <button
@@ -1130,7 +1130,7 @@
 
             <!-- Custom Fields -->
             <div class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Custom Fields</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $t('admin.credentialVault.customFields') }}</label>
               <div class="space-y-2 mb-2">
                 <div
                   v-for="(value, key) in credentialForm.customFields"
@@ -1153,13 +1153,13 @@
                   v-model="newCustomFieldKey"
                   type="text"
                   class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Field name"
+                  :placeholder="$t('admin.credentialVault.fieldName')"
                 >
                 <input
                   v-model="newCustomFieldValue"
                   type="text"
                   class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Field value"
+                  :placeholder="$t('admin.credentialVault.fieldValue')"
                 >
                 <button
                   type="button"
@@ -1179,7 +1179,7 @@
                   type="checkbox"
                   class="mr-2"
                 >
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Active</span>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('admin.credentialVault.active') }}</span>
               </label>
             </div>
           </div>
@@ -1207,7 +1207,7 @@
     <ModalWrapper v-model="showCredentialViewModal" class="max-w-2xl">
       <UCard class="shadow-md">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-bold text-gray-950 dark:text-white">View Credential</h3>
+          <h3 class="text-lg font-bold text-gray-950 dark:text-white">{{ $t('admin.credentialVault.viewCredential') }}</h3>
           <button
             @click="closeCredentialViewModal"
             class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
@@ -1219,11 +1219,11 @@
         <div class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700">Name</label>
+              <label class="block text-sm font-medium text-gray-700">{{ $t('admin.credentialVault.name') }}</label>
               <p class="mt-1 text-sm text-gray-950">{{ viewingCredential.name }}</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700">Type</label>
+              <label class="block text-sm font-medium text-gray-700">{{ $t('admin.credentialVault.type') }}</label>
               <span 
                 :class="getCredentialTypeColor(viewingCredential.type)"
                 class="inline-block mt-1 px-2 py-1 text-xs font-medium rounded-full"
@@ -1234,38 +1234,38 @@
           </div>
 
           <div v-if="viewingCredential.description">
-            <label class="block text-sm font-medium text-gray-700">Description</label>
+            <label class="block text-sm font-medium text-gray-700">{{ $t('admin.credentialVault.description') }}</label>
             <p class="mt-1 text-sm text-gray-950">{{ viewingCredential.description }}</p>
           </div>
 
           <!-- Credential Data (masked for security) -->
           <div class="border-t pt-4">
-            <h4 class="text-md font-medium text-gray-950 mb-3">Credential Data</h4>
+            <h4 class="text-md font-medium text-gray-950 mb-3">{{ $t('admin.credentialVault.credentialData') }}</h4>
             
             <div v-if="viewingCredential.username" class="mb-2">
-              <label class="block text-sm font-medium text-gray-700">Username</label>
+              <label class="block text-sm font-medium text-gray-700">{{ $t('admin.credentialVault.username') }}</label>
               <p class="mt-1 text-sm font-mono bg-gray-50 p-2 rounded">{{ viewingCredential.username }}</p>
             </div>
 
             <div v-if="viewingCredential.password" class="mb-2">
-              <label class="block text-sm font-medium text-gray-700">Password</label>
+              <label class="block text-sm font-medium text-gray-700">{{ $t('admin.credentialVault.password') }}</label>
               <p class="mt-1 text-sm font-mono bg-gray-50 p-2 rounded">••••••••••••</p>
             </div>
 
             <div v-if="viewingCredential.token" class="mb-2">
-              <label class="block text-sm font-medium text-gray-700">Token</label>
+              <label class="block text-sm font-medium text-gray-700">{{ $t('admin.credentialVault.token') }}</label>
               <p class="mt-1 text-sm font-mono bg-gray-50 p-2 rounded">{{ viewingCredential.token.substring(0, 20) }}...</p>
             </div>
 
             <div v-if="viewingCredential.fileName" class="mb-2">
-              <label class="block text-sm font-medium text-gray-700">File</label>
+              <label class="block text-sm font-medium text-gray-700">{{ $t('admin.credentialVault.file') }}</label>
               <p class="mt-1 text-sm bg-gray-50 p-2 rounded">{{ viewingCredential.fileName }} ({{ viewingCredential.fileMimeType }})</p>
             </div>
           </div>
 
           <!-- Additional Information -->
           <div class="border-t pt-4">
-            <h4 class="text-md font-medium text-gray-950 mb-3">Additional Information</h4>
+            <h4 class="text-md font-medium text-gray-950 mb-3">{{ $t('admin.credentialVault.additionalInfo') }}</h4>
             
             <div class="grid grid-cols-2 gap-4">
               <div v-if="viewingCredential.url">
@@ -1832,6 +1832,7 @@ const groupedSystemSettings = ref({})
 const users = ref([])
 const groups = ref([])
 const loading = ref(false)
+const migrating = ref(false)
 
 // Update-related state
 const updateInfo = ref(null)
@@ -2736,6 +2737,33 @@ const closeUserGroupsModal = () => {
   selectedUser.value = null
   userGroupForm.value = {
     groups: []
+  }
+}
+
+// Migration function
+const migrateI18n = async () => {
+  migrating.value = true
+  try {
+    const response = await $fetch('/api/admin/migrate-i18n', {
+      method: 'POST'
+    })
+    
+    if (response.success) {
+      toast.add({ 
+        title: `Migration successful! Updated ${response.migratedCount} settings.`, 
+        icon: 'i-lucide-check-circle' 
+      })
+      // Reload settings to see the changes
+      await loadSystemSettings()
+    }
+  } catch (error) {
+    logger.error('Migration failed:', error)
+    toast.add({ 
+      title: 'Migration failed: ' + (error.data?.statusMessage || error.message), 
+      icon: 'i-lucide-x-circle' 
+    })
+  } finally {
+    migrating.value = false
   }
 }
 

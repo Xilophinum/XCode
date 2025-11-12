@@ -37,7 +37,9 @@
         "welcome": "Welcome",
         "menu": "Menu",
         "lightMode": "Light Mode",
-        "darkMode": "Dark Mode"
+        "darkMode": "Dark Mode",
+        "searchHeader": "Search projects and folders...",
+        "logout": "Logout"
     },
     "dashboard": {
         "title": "Dashboard",
@@ -822,14 +824,24 @@
         "webhookConfigurationHelp": "Configure the HTTP method, headers, and body as required by your webhook service. Use context variables like $BuildNumber in the body."
     },
     "admin": {
-        "title": "Admin Panel",
-        "subtitle": "Manage system settings, environment variables, and security.",
+        "title": "Administration",
+        "subtitle": "Manage system settings, users, and configuration",
+        "common": {
+            "select": "Select...",
+            "remove": "Remove",
+            "cancel": "Cancel",
+            "create": "Create",
+            "update": "Update",
+            "delete": "Delete",
+            "edit": "Edit"
+        },
         "systemSettings": {
             "title": "System Settings",
             "subtitle": "Configure application settings and preferences",
             "loadingSettings": "Loading settings...",
             "noSettings": "No system settings available",
             "updateSuccess": "System setting updated successfully",
+            "currentFileUploaded": "Current file uploaded",
             "categories": {
                 "branding": "Branding & Appearance",
                 "general": "General Settings",
@@ -837,6 +849,64 @@
                 "authentication": "Authentication & LDAP",
                 "notifications": "Notification Settings",
                 "system": "System Information"
+            },
+            "labels": {
+                "brandName": "Brand Name",
+                "appLogo": "Application Logo",
+                "adminEmail": "Administrator Email",
+                "cronTimezone": "Cron Job Timezone",
+                "sessionTimeout": "Session Timeout (hours)",
+                "logLevel": "Log Level",
+                "enableRegistration": "Enable User Registration",
+                "smtpServer": "SMTP Server",
+                "smtpPort": "SMTP Port",
+                "smtpUsername": "SMTP Username",
+                "smtpPassword": "SMTP Password",
+                "smtpSecure": "Use SSL/TLS",
+                "defaultEmailFrom": "Default From Address",
+                "defaultEmailTo": "Default To Address",
+                "systemVersion": "System Version",
+                "ldapEnabled": "Enable LDAP Authentication",
+                "ldapUrl": "LDAP Server URL",
+                "ldapBindDn": "Bind DN",
+                "ldapBindPassword": "Bind Password",
+                "ldapUserSearchBase": "User Search Base",
+                "ldapUserSearchFilter": "User Search Filter",
+                "ldapTimeout": "Connection Timeout (ms)",
+                "ldapAutoCreateUsers": "Auto-create LDAP Users",
+                "ldapDefaultRole": "Default Role for LDAP Users",
+                "ldapUseTls": "Use TLS/StartTLS",
+                "ldapTlsCertificate": "TLS Certificate (.pem)",
+                "userGroups": "User Groups"
+            },
+            "descriptions": {
+                "brandName": "The application name shown in the navigation header",
+                "appLogo": "Logo displayed next to the brand name (recommended: 32x32px PNG)",
+                "adminEmail": "Email address of the system administrator",
+                "cronTimezone": "Default timezone for all scheduled cron jobs",
+                "sessionTimeout": "How long user sessions remain active",
+                "logLevel": "Console logging verbosity level (error = least verbose, debug = most verbose)",
+                "enableRegistration": "Allow new users to register accounts",
+                "smtpServer": "SMTP server hostname for sending emails",
+                "smtpPort": "SMTP server port (common: 25, 587, 465, 1025 for MailHog)",
+                "smtpUsername": "SMTP authentication username (leave empty for unauthenticated servers like MailHog)",
+                "smtpPassword": "SMTP authentication password (leave empty for unauthenticated servers like MailHog)",
+                "smtpSecure": "Enable SSL/TLS encryption (use true for port 465, false for ports 25, 587, 1025)",
+                "defaultEmailFrom": "Default email address to send notifications from",
+                "defaultEmailTo": "Default email address to send notifications to (comma-separated for multiple)",
+                "systemVersion": "Current version of the application",
+                "ldapEnabled": "Enable LDAP/Active Directory authentication for users",
+                "ldapUrl": "LDAP server URL (e.g., ldap://domain.com:389 or ldaps://domain.com:636)",
+                "ldapBindDn": "Service account DN for LDAP binding (optional)",
+                "ldapBindPassword": "Service account password for LDAP binding (optional)",
+                "ldapUserSearchBase": "Base DN for user searches (e.g., ou=users,dc=domain,dc=com)",
+                "ldapUserSearchFilter": "LDAP filter for finding users. Use {username} placeholder (e.g., (mail={username}) or (sAMAccountName={username}))",
+                "ldapTimeout": "LDAP connection timeout in milliseconds",
+                "ldapAutoCreateUsers": "Automatically create user accounts for successful LDAP authentications",
+                "ldapDefaultRole": "Default role assigned to new LDAP users",
+                "ldapUseTls": "Enable TLS encryption for LDAP connections",
+                "ldapTlsCertificate": "Upload CA certificate for TLS verification (optional)",
+                "userGroups": "JSON array of available user groups for access control"
             }
         },
         "environmentVariables": {
@@ -896,6 +966,18 @@
                 "fileData": "File Data"
             }
         },
+        "systemUpdates": {
+            "title": "System Updates",
+            "subtitle": "Manage application updates from GitHub releases",
+            "clickToCheck": "Click \"Check for Updates\" to see if a new version is available",
+            "lastChecked": "Last checked",
+            "updateDetailsOptions": "Update Details & Options",
+            "releaseNotes": "Release Notes",
+            "waitForBuilds": "Wait for running builds to complete before updating",
+            "waitForBuildsHelp": "If unchecked, running builds will be paused and can resume after update",
+            "initiatingUpdate": "Initiating Update...",
+            "updateNow": "Update Now"
+        },
         "updateManagement": {
             "title": "Update Management",
             "checkForUpdates": "Check for Updates",
@@ -916,6 +998,26 @@
             "updateFailed": "Failed to trigger update",
             "confirmUpdate": "Are you sure you want to update to version {version}? The server will restart during this process."
         },
+        "agentUpdates": {
+            "title": "Agent Updates",
+            "subtitle": "Manage build agent versions and updates",
+            "loadingAgents": "Loading agents...",
+            "noAgents": "No agents registered",
+            "agent": "Agent",
+            "currentVersion": "Current Version",
+            "status": "Status",
+            "autoUpdate": "Auto Update",
+            "lastCheck": "Last Check",
+            "actions": "Actions",
+            "updateAvailable": "Update Available",
+            "upToDate": "Up to Date",
+            "enableAutoUpdate": "Enable auto-update",
+            "never": "Never",
+            "updateNow": "Update Now",
+            "agentOffline": "Agent offline",
+            "latestVersion": "Latest Agent Version",
+            "autoUpdateInfo": "Agents with auto-update enabled will automatically download and install updates when available."
+        },
         "agentTemplates": {
             "title": "Agent Templates",
             "subtitle": "Manage remote agent update configurations",
@@ -935,6 +1037,27 @@
             "updateSettingsFailed": "Failed to update agent settings",
             "updateTriggered": "Update triggered for {name}. Agent will update and reconnect shortly.",
             "updateTriggerFailed": "Failed to trigger agent update"
+        },
+        "notificationTemplates": {
+            "title": "Notification Templates",
+            "subtitle": "Manage email, Slack, and webhook notification templates",
+            "createTemplate": "Create Template",
+            "loadingTemplates": "Loading templates...",
+            "noTemplates": "No notification templates found",
+            "createFirstTemplate": "Create your first template to get started",
+            "builtIn": "Built-in",
+            "created": "Created",
+            "viewTemplate": "View Template",
+            "editTemplate": "Edit Template",
+            "deleteTemplate": "Delete Template"
+        },
+        "projectTemplates": {
+            "title": "Project Templates",
+            "subtitle": "Manage saved project templates",
+            "loadingTemplates": "Loading templates...",
+            "noTemplates": "No templates saved yet",
+            "noDescription": "No description",
+            "created": "Created"
         },
         "userManagement": {
             "title": "User Management",
@@ -957,7 +1080,11 @@
             "userGroups": "User Groups",
             "userGroupsHelp": "Select groups for this user",
             "groupsUpdateSuccess": "User groups updated successfully",
-            "groupsUpdateFailed": "Failed to update user groups"
+            "groupsUpdateFailed": "Failed to update user groups",
+            "created": "Created",
+            "inactive": "Inactive",
+            "makeUser": "Make User",
+            "makeAdmin": "Make Admin"
         },
         "groupManagement": {
             "title": "Groups Management",
@@ -990,31 +1117,23 @@
             "ldapMappingTitle": "LDAP Group Mappings",
             "ldapMappingHelp": "Map LDAP groups to this application group. Users who are members of any mapped LDAP group will automatically be added to this group.",
             "addLdapMapping": "Add LDAP Mapping",
-            "ldapGroupName": "LDAP Group Name"
+            "ldapGroupName": "LDAP Group Name",
+            "noDescription": "No description"
         },
         "ldapTest": {
             "title": "LDAP Connection Test",
             "testConnection": "Test LDAP Connection",
             "testing": "Testing...",
-            "username": "Test Username",
-            "password": "Test Password",
             "runTest": "Run Test",
             "success": "LDAP Connection Successful!",
             "failed": "LDAP Connection Failed",
             "userDn": "User DN:",
             "groups": "Groups:",
-            "error": "Error:"
-        },
-        "common": {
-            "edit": "Edit",
-            "delete": "Delete",
-            "cancel": "Cancel",
-            "save": "Save",
-            "create": "Create",
-            "close": "Close",
-            "enabled": "Enabled",
-            "disabled": "Disabled",
-            "loading": "Loading..."
+            "error": "Error:",
+            "username": "Username",
+            "password": "Password",
+            "usernamePlaceholder": " or username",
+            "passwordPlaceholder": "Password"
         }
     },
     "builds": {
