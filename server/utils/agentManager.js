@@ -631,6 +631,10 @@ class AgentManager {
       const success = await this.dispatchJobToAgent(agentId, jobData)
 
       if (success) {
+        // Immediately increment currentJobs count (don't wait for heartbeat)
+        agentInfo.currentJobs = (agentInfo.currentJobs || 0) + 1
+        logger.info(`Agent ${agentId} currentJobs incremented to ${agentInfo.currentJobs}/${maxJobs}`)
+
         // Broadcast queue status update (queue is empty since we dispatched)
         this.broadcastQueueStatus(agentId)
       }
@@ -671,14 +675,19 @@ class AgentManager {
       return
     }
 
-    const currentJobs = agentInfo.currentJobs || 0
     const maxJobs = agentInfo.maxConcurrentJobs || 1
-    const queueLength = this.jobQueueManager.getQueueLength(agentId)
 
-    logger.debug(`Processing queue for agent ${agentId}: ${currentJobs}/${maxJobs} jobs, ${queueLength} queued`)
+    // Decrement currentJobs since this is called after a job completes
+    // This ensures we have accurate capacity tracking without waiting for heartbeat
+    if (agentInfo.currentJobs > 0) {
+      agentInfo.currentJobs = agentInfo.currentJobs - 1
+      logger.debug(`Agent ${agentId} job completed - currentJobs decremented to ${agentInfo.currentJobs}/${maxJobs}`)
+    }
+
+    logger.debug(`Processing queue for agent ${agentId}: ${agentInfo.currentJobs || 0}/${maxJobs} jobs, queue length: ${this.jobQueueManager.getQueueLength(agentId)}`)
 
     // Keep dispatching jobs while agent has capacity and queue is not empty
-    while (currentJobs < maxJobs && queueLength > 0) {
+    while ((agentInfo.currentJobs || 0) < maxJobs && this.jobQueueManager.getQueueLength(agentId) > 0) {
       const nextJob = this.jobQueueManager.dequeueNextJob(agentId)
 
       if (!nextJob) {

@@ -64,8 +64,11 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
     }
   }
 
-  // Create execution promises for each branch
-  const branchPromises = branchTargets.map(async (target) => {
+  // Dispatch all branches sequentially to avoid race conditions with currentJobs tracking
+  // Then wait for all completions in parallel
+  const dispatchedBranches = []
+
+  for (const target of branchTargets) {
     const branchStartTime = new Date().toISOString()
 
     try {
@@ -150,8 +153,9 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
 
       logger.info(`Branch "${target.branchName}": Dispatching to agent ${selectedAgent.agentId}`)
 
-      // Dispatch job to agent
-      const dispatchSuccess = await agentManager.dispatchJobToAgent(selectedAgent.agentId, {
+      // Dispatch job to agent with queue support (respects maxConcurrentJobs)
+      // IMPORTANT: Sequential dispatch to avoid race conditions
+      const dispatchResult = await agentManager.dispatchJobWithQueue(selectedAgent.agentId, {
         jobId: subJobId,
         projectId: parentJob.projectId,
         commands: command.script,
@@ -168,28 +172,68 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
         parentJobId: parentJob.jobId
       })
 
-      if (!dispatchSuccess) {
-        throw new Error(`Failed to dispatch branch "${target.branchName}" to agent ${selectedAgent.agentId}`)
+      if (!dispatchResult.dispatched && !dispatchResult.queued) {
+        throw new Error(`Failed to dispatch or queue branch "${target.branchName}" to agent ${selectedAgent.agentId}`)
       }
 
-      // Update sub-job status
+      if (dispatchResult.queued) {
+        logger.info(`Branch "${target.branchName}" queued at position ${dispatchResult.queuePosition} (agent at capacity)`)
+      }
+
+      // Update sub-job status based on dispatch result
       await jobManager.updateJob(subJobId, {
-        status: 'dispatched',
+        status: dispatchResult.dispatched ? 'dispatched' : 'queued',
         agentId: selectedAgent.agentId,
         agentName: selectedAgent.name || selectedAgent.hostname
       })
 
-      logger.info(`Branch "${target.branchName}": Dispatched successfully, waiting for completion...`)
+      // Store branch info for parallel waiting phase
+      dispatchedBranches.push({
+        subJobId,
+        branchId: target.branchId,
+        branchName: target.branchName
+      })
 
-      // Wait for job completion (event-driven, not polling)
-      const result = await agentManager.waitForJobCompletion(subJobId)
+    } catch (error) {
+      logger.error(`Branch "${target.branchName}": Dispatch error:`, error.message)
 
-      logger.info(`Branch "${target.branchName}": ${result.success ? 'Completed successfully' : 'Failed'}`)
-
-      return {
+      dispatchedBranches.push({
+        subJobId: null,
         branchId: target.branchId,
         branchName: target.branchName,
-        subJobId: subJobId,
+        dispatchError: error.message
+      })
+    }
+  }
+
+  logger.info(`✅ All ${dispatchedBranches.length} branches dispatched/queued - now waiting for completions in parallel`)
+
+  // Now wait for all branches to complete in parallel
+  const branchPromises = dispatchedBranches.map(async (branchInfo) => {
+    if (branchInfo.dispatchError) {
+      return {
+        branchId: branchInfo.branchId,
+        branchName: branchInfo.branchName,
+        subJobId: null,
+        success: false,
+        exitCode: 1,
+        error: branchInfo.dispatchError,
+        output: null
+      }
+    }
+
+    try {
+      logger.info(`Branch "${branchInfo.branchName}": Waiting for completion...`)
+
+      // Wait for job completion (event-driven, not polling)
+      const result = await agentManager.waitForJobCompletion(branchInfo.subJobId)
+
+      logger.info(`Branch "${branchInfo.branchName}": ${result.success ? 'Completed successfully' : 'Failed'}`)
+
+      return {
+        branchId: branchInfo.branchId,
+        branchName: branchInfo.branchName,
+        subJobId: branchInfo.subJobId,
         success: result.success,
         exitCode: result.exitCode,
         error: result.error,
@@ -197,12 +241,12 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
       }
 
     } catch (error) {
-      logger.error(`Branch "${target.branchName}": Execution error:`, error.message)
+      logger.error(`Branch "${branchInfo.branchName}": Execution error:`, error.message)
 
       return {
-        branchId: target.branchId,
-        branchName: target.branchName,
-        subJobId: null,
+        branchId: branchInfo.branchId,
+        branchName: branchInfo.branchName,
+        subJobId: branchInfo.subJobId,
         success: false,
         exitCode: 1,
         error: error.message,

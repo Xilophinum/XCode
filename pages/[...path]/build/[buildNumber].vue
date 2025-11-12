@@ -126,7 +126,6 @@ const breadcrumbSegments = computed(() => {
 })
 
 // Set page title and breadcrumbs (reactive)
-const { $t } = useNuxtApp()
 useHead(() => ({
   title: computed(() => $t('buildDetail.title', { buildNumber: buildNumber.value, projectName: project.value?.name || $t('buildDetail.loading') })).value
 }))

@@ -225,8 +225,12 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
     }
   }
 
-  // Create execution promises for each matrix item
-  const matrixPromises = items.map(async (item, index) => {
+  // Dispatch all jobs sequentially to avoid race conditions with currentJobs tracking
+  // Then wait for all completions in parallel
+  const dispatchedJobs = []
+
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index]
     const itemStartTime = new Date().toISOString()
 
     try {
@@ -342,8 +346,9 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
           : `No agents available`
         throw new Error(errorMsg)
       }
-      // Dispatch job to agent
-      const dispatchSuccess = await agentManager.dispatchJobToAgent(selectedAgent.agentId, {
+      // Dispatch job to agent with queue support (respects maxConcurrentJobs)
+      // IMPORTANT: Sequential dispatch to avoid race conditions
+      const dispatchResult = await agentManager.dispatchJobWithQueue(selectedAgent.agentId, {
         jobId: subJobId,
         projectId: parentJob.projectId,
         buildNumber: parentJob.buildNumber,
@@ -362,56 +367,34 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
         parentJobId: parentJob.jobId
       })
 
-      if (!dispatchSuccess) {
-        throw new Error(`Failed to dispatch to agent ${selectedAgent.agentId}`)
+      if (!dispatchResult.dispatched && !dispatchResult.queued) {
+        throw new Error(`Failed to dispatch or queue job to agent ${selectedAgent.agentId}`)
       }
 
-      // Update sub-job status
+      if (dispatchResult.queued) {
+        logger.info(`Matrix iteration [${executionName}] queued at position ${dispatchResult.queuePosition} (agent at capacity)`)
+      }
+
+      // Update sub-job status based on dispatch result
       await jobManager.updateJob(subJobId, {
-        status: 'dispatched',
+        status: dispatchResult.dispatched ? 'dispatched' : 'queued',
         agentId: selectedAgent.agentId,
         agentName: selectedAgent.name || selectedAgent.hostname
       })
 
-      // Wait for job completion (event-driven, not polling)
-      const result = await agentManager.waitForJobCompletion(subJobId)
-
-      const statusIcon = result.success ? '✅' : '❌'
-      const statusText = result.success ? 'Completed successfully' : `Failed (exit ${result.exitCode})`
-
-      // Mark this specific duplicated node as completed or failed (if using duplicated nodes)
-      if (useDuplicatedNodes && parentJob.buildNumber && parentJob.projectId) {
-        if (result.success) {
-          executionStateManager.markNodeCompleted(
-            parentJob.projectId,
-            parentJob.buildNumber,
-            currentIterationNodeId
-          )
-          logger.info(`Marked duplicated node "${currentIterationNodeLabel}" (${currentIterationNodeId}) as completed`)
-        } else {
-          executionStateManager.markNodeFailed(
-            parentJob.projectId,
-            parentJob.buildNumber,
-            currentIterationNodeId
-          )
-          logger.info(`Marked duplicated node "${currentIterationNodeLabel}" (${currentIterationNodeId}) as failed`)
-        }
-      }
-
-      return {
-        matrixIndex: index,
-        matrixItem: item,
-        executionName: executionName,
-        nodeId: currentIterationNodeId, // Include node ID in result
-        success: result.success,
-        exitCode: result.exitCode,
-        error: result.error,
-        output: result.output
-      }
+      // Store job info for parallel waiting phase
+      dispatchedJobs.push({
+        subJobId,
+        executionName,
+        currentIterationNodeId,
+        currentIterationNodeLabel,
+        index,
+        item
+      })
 
     } catch (error) {
       const executionName = generateExecutionName(nameTemplate, index, item)
-      logger.error(`❌ [${executionName}] Execution error: ${error.message}`)
+      logger.error(`❌ [${executionName}] Dispatch error: ${error.message}`)
 
       // Mark this specific duplicated node as failed (if using duplicated nodes)
       const currentIterationNodeId = useDuplicatedNodes ? duplicatedNodeIds[index] : iterationTarget.id
@@ -425,14 +408,93 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
           parentJob.buildNumber,
           currentIterationNodeId
         )
-        logger.info(`Marked duplicated node "${currentIterationNodeLabel}" (${currentIterationNodeId}) as failed due to error`)
+        logger.info(`Marked duplicated node "${currentIterationNodeLabel}" (${currentIterationNodeId}) as failed due to dispatch error`)
+      }
+
+      dispatchedJobs.push({
+        subJobId: null,
+        executionName,
+        currentIterationNodeId,
+        currentIterationNodeLabel,
+        index,
+        item,
+        dispatchError: error.message
+      })
+    }
+  }
+
+  logger.info(`✅ All ${dispatchedJobs.length} matrix jobs dispatched/queued - now waiting for completions in parallel`)
+
+  // Now wait for all jobs to complete in parallel
+  const matrixPromises = dispatchedJobs.map(async (jobInfo) => {
+    if (jobInfo.dispatchError) {
+      return {
+        matrixIndex: jobInfo.index,
+        matrixItem: jobInfo.item,
+        executionName: jobInfo.executionName,
+        nodeId: jobInfo.currentIterationNodeId,
+        success: false,
+        exitCode: 1,
+        error: jobInfo.dispatchError,
+        output: null
+      }
+    }
+
+    try {
+      // Wait for job completion (event-driven, not polling)
+      const result = await agentManager.waitForJobCompletion(jobInfo.subJobId)
+
+      const statusIcon = result.success ? '✅' : '❌'
+      const statusText = result.success ? 'Completed successfully' : `Failed (exit ${result.exitCode})`
+
+      // Mark this specific duplicated node as completed or failed (if using duplicated nodes)
+      if (useDuplicatedNodes && parentJob.buildNumber && parentJob.projectId) {
+        if (result.success) {
+          executionStateManager.markNodeCompleted(
+            parentJob.projectId,
+            parentJob.buildNumber,
+            jobInfo.currentIterationNodeId
+          )
+          logger.info(`Marked duplicated node "${jobInfo.currentIterationNodeLabel}" (${jobInfo.currentIterationNodeId}) as completed`)
+        } else {
+          executionStateManager.markNodeFailed(
+            parentJob.projectId,
+            parentJob.buildNumber,
+            jobInfo.currentIterationNodeId
+          )
+          logger.info(`Marked duplicated node "${jobInfo.currentIterationNodeLabel}" (${jobInfo.currentIterationNodeId}) as failed`)
+        }
       }
 
       return {
-        matrixIndex: index,
-        matrixItem: item,
-        executionName: executionName,
-        nodeId: currentIterationNodeId, // Include node ID in result
+        matrixIndex: jobInfo.index,
+        matrixItem: jobInfo.item,
+        executionName: jobInfo.executionName,
+        nodeId: jobInfo.currentIterationNodeId, // Include node ID in result
+        success: result.success,
+        exitCode: result.exitCode,
+        error: result.error,
+        output: result.output
+      }
+
+    } catch (error) {
+      logger.error(`❌ [${jobInfo.executionName}] Execution error: ${error.message}`)
+
+      // Mark this specific duplicated node as failed (if using duplicated nodes)
+      if (useDuplicatedNodes && parentJob.buildNumber && parentJob.projectId) {
+        executionStateManager.markNodeFailed(
+          parentJob.projectId,
+          parentJob.buildNumber,
+          jobInfo.currentIterationNodeId
+        )
+        logger.info(`Marked duplicated node "${jobInfo.currentIterationNodeLabel}" (${jobInfo.currentIterationNodeId}) as failed due to error`)
+      }
+
+      return {
+        matrixIndex: jobInfo.index,
+        matrixItem: jobInfo.item,
+        executionName: jobInfo.executionName,
+        nodeId: jobInfo.currentIterationNodeId, // Include node ID in result
         success: false,
         exitCode: 1,
         error: error.message,

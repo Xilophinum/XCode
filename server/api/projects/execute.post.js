@@ -225,11 +225,6 @@ export default defineEventHandler(async (event) => {
     // Convert graph to execution commands FIRST to validate
     let executionCommands
     try {
-      // Debug: Log execution outputs being passed
-      if (body.executionOutputs) {
-        logger.info(`[DEBUG] Execution outputs received:`, JSON.stringify(body.executionOutputs, null, 2))
-      }
-
       executionCommands = convertGraphToCommands(nodes, edges, null, body.executionOutputs, body.startNodeId)
       logger.info(`Generated ${executionCommands.length} commands`)
     } catch (error) {

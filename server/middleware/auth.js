@@ -33,6 +33,7 @@ export default defineEventHandler(async (event) => {
     '/api/system/status',
     '/api/agent/register',
     '/api/agent/heartbeat',
+    '/api/projects/execute'
   ]
 
   // Check if path starts with any public route
