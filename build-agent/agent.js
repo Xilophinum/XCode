@@ -690,7 +690,7 @@ class FlowForgeBuildAgent {
   }
 
   async handleJobExecution(jobData) {
-    const { jobId, retryEnabled, maxRetries } = jobData;
+    const { jobId, retryEnabled, maxRetries, executionName } = jobData;
     
     logger.info(`Starting job: ${jobId}`);
     
@@ -702,7 +702,8 @@ class FlowForgeBuildAgent {
       startTime: Date.now(), 
       status: 'running',
       process: null,
-      outputBuffer: []
+      outputBuffer: [],
+      executionName: executionName
     });
 
     this.sendMessage('agent:job_status', {
@@ -1022,7 +1023,7 @@ class FlowForgeBuildAgent {
               message: line.trim(),
               timestamp: new Date().toISOString(),
               nanotime: (Date.now() * 1000000 + outputCounter++).toString(),
-              source: 'Agent'
+              source: job.executionName || 'Agent'
             };
             
             job.outputBuffer.push(outputLine);
@@ -1053,7 +1054,7 @@ class FlowForgeBuildAgent {
               message: line.trim(),
               timestamp: new Date().toISOString(),
               nanotime: (Date.now() * 1000000 + outputCounter++).toString(),
-              source: 'Agent'
+              source: job.executionName || 'Agent'
             };
             
             job.outputBuffer.push(outputLine);

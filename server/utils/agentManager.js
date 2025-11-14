@@ -582,7 +582,7 @@ class AgentManager {
     }
 
     try {
-      logger.info(`Dispatching job to agent ${agentId}:\nJob ID: ${jobData.jobId}\nProject ID: ${jobData.projectId}\nCommand(s): ${jobData.commands}`)
+      logger.debug(`Dispatching job to agent ${agentId}:\nJob ID: ${jobData.jobId}\nProject ID: ${jobData.projectId}\nCommand(s): ${jobData.commands}`)
 
       // Send job to agent using Socket.IO
       socket.emit('message', {
@@ -590,7 +590,7 @@ class AgentManager {
         ...jobData
       })
 
-      logger.info(`Job ${jobData.jobId} dispatched to agent ${agentId}`)
+      logger.debug(`Job ${jobData.jobId} dispatched to agent ${agentId}`)
       return true
     } catch (error) {
       logger.error(`Failed to dispatch job to agent ${agentId}:`, error)
@@ -622,18 +622,18 @@ class AgentManager {
     const currentJobs = agentInfo.currentJobs || 0
     const maxJobs = agentInfo.maxConcurrentJobs || 1
 
-    logger.info(`Agent ${agentId} capacity: ${currentJobs}/${maxJobs}`)
+    logger.debug(`Agent ${agentId} capacity: ${currentJobs}/${maxJobs}`)
 
     // Check if agent has capacity
     if (currentJobs < maxJobs) {
       // Agent has capacity - dispatch immediately
-      logger.info(`✅ Agent ${agentId} has capacity - dispatching immediately`)
+      logger.debug(`✅ Agent ${agentId} has capacity - dispatching immediately`)
       const success = await this.dispatchJobToAgent(agentId, jobData)
 
       if (success) {
         // Immediately increment currentJobs count (don't wait for heartbeat)
         agentInfo.currentJobs = (agentInfo.currentJobs || 0) + 1
-        logger.info(`Agent ${agentId} currentJobs incremented to ${agentInfo.currentJobs}/${maxJobs}`)
+        logger.debug(`Agent ${agentId} currentJobs incremented to ${agentInfo.currentJobs}/${maxJobs}`)
 
         // Broadcast queue status update (queue is empty since we dispatched)
         this.broadcastQueueStatus(agentId)
@@ -695,7 +695,7 @@ class AgentManager {
         break
       }
 
-      logger.info(`🚀 Dispatching queued job ${nextJob.jobId} to agent ${agentId}`)
+      logger.debug(`🚀 Dispatching queued job ${nextJob.jobId} to agent ${agentId}`)
 
       const success = await this.dispatchJobToAgent(agentId, nextJob)
 
@@ -796,7 +796,7 @@ class AgentManager {
       if (socket && socket.connected && agentInfo) {
         // Accept agents that are online, idle, ready, or busy (busy agents can queue work)
         if (['online', 'idle', 'ready', 'busy'].includes(agentInfo.status)) {
-          logger.info(`Found requested agent: ${requirements.agentId} (status: ${agentInfo.status})`)
+          logger.debug(`Found requested agent: ${requirements.agentId} (status: ${agentInfo.status})`)
           return agentInfo
         }
       }
@@ -814,7 +814,7 @@ class AgentManager {
         // Get agent data and return it
         const agentInfo = this.agentData.get(agentId)
         if (agentInfo && ['online', 'idle', 'ready', 'busy'].includes(agentInfo.status)) {
-          logger.info(`Found available agent: ${agentId} (status: ${agentInfo.status})`)
+          logger.debug(`Found available agent: ${agentId} (status: ${agentInfo.status})`)
           return agentInfo
         } else {
           logger.debug(`Agent ${agentId} not available - status: ${agentInfo?.status || 'no data'}`)
@@ -1256,7 +1256,7 @@ class AgentManager {
   notifyJobCompletion(jobId, result) {
     const callback = this.jobCompletionCallbacks.get(jobId)
     if (callback) {
-      logger.info(`Notifying job completion for ${jobId}:`, result.success ? 'SUCCESS' : 'FAILED')
+      logger.debug(`Notifying job completion for ${jobId}:`, result.success ? 'SUCCESS' : 'FAILED')
       callback(result)
       this.jobCompletionCallbacks.delete(jobId)
     }

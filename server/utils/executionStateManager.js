@@ -84,7 +84,7 @@ class ExecutionStateManager {
   /**
    * Mark a node as executing
    */
-  markNodeExecuting(projectId, buildNumber, nodeId, nodeLabel) {
+  markNodeExecuting(projectId, buildNumber, nodeId, nodeLabel, parameterValues = null) {
     const stateKey = this._getStateKey(projectId, buildNumber)
     const currentState = this.activeStates.get(stateKey)?.[nodeId]
 
@@ -95,11 +95,18 @@ class ExecutionStateManager {
     }
 
     logger.info(`[ExecutionState] Build #${buildNumber}: Node ${nodeId} -> executing`)
-    const state = this.updateNodeState(projectId, buildNumber, nodeId, {
+    const updates = {
       status: 'executing',
       startTime: new Date().toISOString(),
       label: nodeLabel || nodeId
-    })
+    }
+    
+    // Store parameter values if provided (for matrix iterations)
+    if (parameterValues) {
+      updates.parameterValues = parameterValues
+    }
+    
+    const state = this.updateNodeState(projectId, buildNumber, nodeId, updates)
 
     // Broadcast state change to connected clients
     this.broadcastStateChange(projectId, buildNumber, nodeId, 'executing', state)
@@ -242,13 +249,20 @@ class ExecutionStateManager {
   /**
    * Reset execution state from a specific node onwards for retry functionality
    */
-  resetFromNode(projectId, buildNumber, startNodeId, nodes, edges) {
+  async resetFromNode(projectId, buildNumber, startNodeId, nodes, edges) {
     const stateKey = this._getStateKey(projectId, buildNumber)
-    const buildState = this.activeStates.get(stateKey)
+    let buildState = this.activeStates.get(stateKey)
 
     if (!buildState) {
-      logger.warn(`No active state found for build ${buildNumber} to reset`)
-      return
+      logger.info(`No active state found for build ${buildNumber}, loading from database`)
+      buildState = await this.loadBuildState(projectId, buildNumber)
+      if (buildState) {
+        this.activeStates.set(stateKey, buildState)
+        logger.info(`Loaded execution state from database for build ${buildNumber}`)
+      } else {
+        logger.warn(`No execution state found in database for build ${buildNumber}`)
+        return null
+      }
     }
 
     // Find all nodes that should be reset (startNode and all downstream nodes)
@@ -256,6 +270,10 @@ class ExecutionStateManager {
     nodesToReset.add(startNodeId) // Include the start node itself
 
     logger.info(`Resetting ${nodesToReset.size} nodes from retry point: ${startNodeId}`)
+
+    // Get parameter values from the retry node before resetting
+    const retryNodeState = buildState[startNodeId]
+    const preservedParameterValues = retryNodeState?.parameterValues || null
 
     // Reset state for all affected nodes
     for (const nodeId of nodesToReset) {
@@ -265,6 +283,7 @@ class ExecutionStateManager {
           status: 'pending',
           startTime: null,
           endTime: null
+          // Keep parameterValues for the retry node
         }
         
         // Broadcast state change
@@ -273,6 +292,7 @@ class ExecutionStateManager {
     }
 
     logger.info(`Reset execution state for ${nodesToReset.size} nodes from retry point`)
+    return preservedParameterValues
   }
 
   /**

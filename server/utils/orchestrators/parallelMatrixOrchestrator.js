@@ -46,10 +46,13 @@ function generateExecutionName(template, index, item) {
   // Replace ${INDEX}
   name = name.replace(/\$\{INDEX\}/g, String(index))
 
-  // Replace ${ITEM} and ${ITEM_KEY}
+  // Replace ${ITEM}, ${ITEM_VALUE}, $ITEM, $ITEM_VALUE and ${ITEM_KEY}
   if (typeof item === 'object' && item !== null) {
-    // For objects, ${ITEM} becomes JSON string
+    // For objects, ${ITEM} and $ITEM become JSON string
     name = name.replace(/\$\{ITEM\}/g, JSON.stringify(item))
+    name = name.replace(/\$\{ITEM_VALUE\}/g, JSON.stringify(item))
+    name = name.replace(/\$ITEM\b/g, JSON.stringify(item))
+    name = name.replace(/\$ITEM_VALUE\b/g, JSON.stringify(item))
 
     // Replace ${ITEM_KEY} for each object property
     for (const [key, value] of Object.entries(item)) {
@@ -59,8 +62,11 @@ function generateExecutionName(template, index, item) {
       name = name.replace(regex, stringValue)
     }
   } else {
-    // For primitives, ${ITEM} becomes string value
+    // For primitives, ${ITEM}, $ITEM, ${ITEM_VALUE}, $ITEM_VALUE become string value
     name = name.replace(/\$\{ITEM\}/g, String(item))
+    name = name.replace(/\$\{ITEM_VALUE\}/g, String(item))
+    name = name.replace(/\$ITEM\b/g, String(item))
+    name = name.replace(/\$ITEM_VALUE\b/g, String(item))
   }
 
   return name
@@ -99,18 +105,17 @@ function resolveScriptPlaceholders(script, socketMappings, item, additionalParam
   let resolvedScript = script
   // Get the target node's input sockets
   const inputSockets = iterationTarget.data.inputSockets || []
+  
   // Build a map of socketId -> value
   const socketValues = {}
   // If item value socket is mapped, set its value
   if (socketMappings.itemValueSocket) {
     socketValues[socketMappings.itemValueSocket] = item
-    const itemStr = typeof item === 'object' ? JSON.stringify(item) : String(item)
   }
 
   // If additional params socket is mapped, set its value
   if (socketMappings.additionalParamsSocket && additionalParams) {
     socketValues[socketMappings.additionalParamsSocket] = additionalParams
-    const paramsStr = typeof additionalParams === 'string' ? additionalParams : JSON.stringify(additionalParams)
   }
   // Replace placeholders in the script
   // Handles both object and simple values with property access support
@@ -236,6 +241,7 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
     try {
       // Generate descriptive execution name (Jenkins-style)
       const executionName = generateExecutionName(nameTemplate, index, item)
+      logger.debug(`Generated execution name: "${executionName}" from template: "${nameTemplate}" with item: ${JSON.stringify(item)}`)
       // Convert item to string for logging
       const itemString = typeof item === 'object' ? JSON.stringify(item) : String(item)
       // Generate sub-job ID for this matrix iteration
@@ -249,13 +255,37 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
 
       // Mark this specific duplicated node as executing (if using duplicated nodes)
       if (useDuplicatedNodes && parentJob.buildNumber && parentJob.projectId) {
+        // Build parameter values for this matrix iteration
+        const parameterValues = {}
+        
+        // Store item value parameter if socket is mapped
+        if (socketMappings.itemValueSocket) {
+          const paramKey = `${currentIterationNodeId}_${socketMappings.itemValueSocket}`
+          parameterValues[paramKey] = {
+            label: socketMappings.itemValueSocket,
+            value: item,
+            nodeType: 'matrix-item'
+          }
+        }
+        
+        // Store additional params if socket is mapped
+        if (socketMappings.additionalParamsSocket && additionalParams) {
+          const paramKey = `${currentIterationNodeId}_${socketMappings.additionalParamsSocket}`
+          parameterValues[paramKey] = {
+            label: socketMappings.additionalParamsSocket,
+            value: additionalParams,
+            nodeType: 'matrix-params'
+          }
+        }
+        
         executionStateManager.markNodeExecuting(
           parentJob.projectId,
           parentJob.buildNumber,
           currentIterationNodeId,
-          currentIterationNodeLabel
+          currentIterationNodeLabel,
+          Object.keys(parameterValues).length > 0 ? parameterValues : null
         )
-        logger.info(`Marked duplicated node "${currentIterationNodeLabel}" (${currentIterationNodeId}) as executing`)
+        logger.debug(`Marked duplicated node "${currentIterationNodeLabel}" (${currentIterationNodeId}) as executing with ${Object.keys(parameterValues).length} parameters`)
       }
 
       // Create sub-job record with execution name
@@ -276,9 +306,10 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
         startTime: itemStartTime,
         createdAt: itemStartTime,
         output: [],
-        // Set currentNodeId/currentNodeLabel ONLY if using duplicated nodes
+        // Use executionName if template provided, otherwise use original node label with index
         currentNodeId: useDuplicatedNodes ? currentIterationNodeId : undefined,
-        currentNodeLabel: useDuplicatedNodes ? currentIterationNodeLabel : undefined
+        currentNodeLabel: nameTemplate ? executionName : `${iterationTarget.data.label} [${index}]`
+
       })
 
       // Convert target node to command
@@ -320,12 +351,35 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
         throw new Error(`Matrix iteration target has no script to execute`)
       }
 
-      // Resolve script placeholders using socket mappings
+      // For retry scenarios, check if we have preserved parameter values for this node
+      let actualItem = item
+      let actualAdditionalParams = additionalParams
+      
+      if (useDuplicatedNodes && parentJob.buildNumber && parentJob.projectId) {
+        // Check if this is a retry by looking for preserved parameter values
+        const executionState = executionStateManager.getBuildState(parentJob.projectId, parentJob.buildNumber)
+        const nodeState = executionState?.[currentIterationNodeId]
+        
+        if (nodeState?.parameterValues) {
+          // Extract original item and additional params from preserved values
+          for (const [paramKey, paramData] of Object.entries(nodeState.parameterValues)) {
+            if (paramData.nodeType === 'matrix-item') {
+              actualItem = paramData.value
+              logger.debug(`Restored matrix item for retry: ${JSON.stringify(actualItem)}`)
+            } else if (paramData.nodeType === 'matrix-params') {
+              actualAdditionalParams = paramData.value
+              logger.debug(`Restored additional params for retry: ${JSON.stringify(actualAdditionalParams)}`)
+            }
+          }
+        }
+      }
+
+      // Resolve script placeholders using socket mappings with actual values
       const resolvedScript = resolveScriptPlaceholders(
         command.script,
         socketMappings,
-        item,
-        additionalParams,
+        actualItem,
+        actualAdditionalParams,
         iterationTarget
       )
       command.script = resolvedScript
@@ -362,7 +416,7 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
         retryDelay: command.retryDelay,
         isMatrixIteration: true,
         matrixIndex: index,
-        matrixItem: item,
+        matrixItem: actualItem, // Use actual item (may be restored from retry)
         executionName: executionName, // NEW: Pass execution name
         parentJobId: parentJob.jobId
       })
@@ -372,7 +426,7 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
       }
 
       if (dispatchResult.queued) {
-        logger.info(`Matrix iteration [${executionName}] queued at position ${dispatchResult.queuePosition} (agent at capacity)`)
+        logger.debug(`Matrix iteration [${executionName}] queued at position ${dispatchResult.queuePosition} (agent at capacity)`)
       }
 
       // Update sub-job status based on dispatch result
@@ -455,14 +509,14 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
             parentJob.buildNumber,
             jobInfo.currentIterationNodeId
           )
-          logger.info(`Marked duplicated node "${jobInfo.currentIterationNodeLabel}" (${jobInfo.currentIterationNodeId}) as completed`)
+          logger.debug(`Marked duplicated node "${jobInfo.currentIterationNodeLabel}" (${jobInfo.currentIterationNodeId}) as completed`)
         } else {
           executionStateManager.markNodeFailed(
             parentJob.projectId,
             parentJob.buildNumber,
             jobInfo.currentIterationNodeId
           )
-          logger.info(`Marked duplicated node "${jobInfo.currentIterationNodeLabel}" (${jobInfo.currentIterationNodeId}) as failed`)
+          logger.debug(`Marked duplicated node "${jobInfo.currentIterationNodeLabel}" (${jobInfo.currentIterationNodeId}) as failed`)
         }
       }
 
@@ -487,7 +541,7 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
           parentJob.buildNumber,
           jobInfo.currentIterationNodeId
         )
-        logger.info(`Marked duplicated node "${jobInfo.currentIterationNodeLabel}" (${jobInfo.currentIterationNodeId}) as failed due to error`)
+        logger.debug(`Marked duplicated node "${jobInfo.currentIterationNodeLabel}" (${jobInfo.currentIterationNodeId}) as failed due to error`)
       }
 
       return {
@@ -604,17 +658,17 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
         parentJob.buildNumber,
         iterationTarget.id
       )
-      logger.info(`Marked iteration target node "${iterationTarget.data.label}" as completed`)
+      logger.debug(`Marked iteration target node "${iterationTarget.data.label}" as completed`)
     } else {
       executionStateManager.markNodeFailed(
         parentJob.projectId,
         parentJob.buildNumber,
         iterationTarget.id
       )
-      logger.info(`Marked iteration target node "${iterationTarget.data.label}" as failed`)
+      logger.debug(`Marked iteration target node "${iterationTarget.data.label}" as failed`)
     }
   } else if (useDuplicatedNodes) {
-    logger.info(`Skipping legacy iteration target marking - using individual duplicated node states`)
+    logger.debug(`Skipping legacy iteration target marking - using individual duplicated node states`)
   }
 
   return {

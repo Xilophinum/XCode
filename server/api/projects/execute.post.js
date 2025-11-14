@@ -206,7 +206,7 @@ export default defineEventHandler(async (event) => {
     // Get agent manager instance
     const agentManager = await getAgentManager()
 
-    logger.info(`Execute API: Looking for available agent...`)
+    logger.debug(`Execute API: Looking for available agent...`)
 
     // Find an available agent for this job
     const availableAgent = await agentManager.findAvailableAgent()
@@ -222,11 +222,30 @@ export default defineEventHandler(async (event) => {
     // Generate unique job ID
     const jobId = `job_${uuidv4()}`
 
-    // Convert graph to execution commands FIRST to validate
+    // For retry scenarios, we need to restore parameter values first before converting to commands
     let executionCommands
+    
+    // Check if this is a retry from specific node
+    if (body.buildNumber && body.startNodeId) {
+      logger.debug(`Retrying build #${body.buildNumber} from node: ${body.startNodeId}`)
+      
+      // Reset execution state from the retry node onwards and get preserved parameter values
+      const preservedParameterValues = await executionStateManager.resetFromNode(projectId, body.buildNumber, body.startNodeId, nodes, edges)
+      
+      // If we have preserved parameter values, add them to execution outputs
+      if (preservedParameterValues) {
+        // Merge with existing execution outputs if any
+        body.executionOutputs = {
+          ...(body.executionOutputs || {}),
+          ...preservedParameterValues
+        }
+      }
+    }
+    
+    // Convert graph to execution commands AFTER restoring parameter values
     try {
       executionCommands = convertGraphToCommands(nodes, edges, null, body.executionOutputs, body.startNodeId)
-      logger.info(`Generated ${executionCommands.length} commands`)
+      logger.debug(`Generated ${executionCommands.length} commands`)
     } catch (error) {
       logger.error('Error converting graph to commands:', error.message)
       throw createError({
@@ -243,7 +262,7 @@ export default defineEventHandler(async (event) => {
       body.edges = graphModification.edges
       nodes = graphModification.nodes
       edges = graphModification.edges
-      logger.info(`Graph modified: Added ${graphModification.duplicatedNodeCount} duplicated matrix iteration nodes`)
+      logger.debug(`Graph modified: Added ${graphModification.duplicatedNodeCount} duplicated matrix iteration nodes`)
     }
 
     // Filter to get only executable commands (including orchestrator commands, notifications, git, and dependencies)
@@ -282,13 +301,8 @@ export default defineEventHandler(async (event) => {
     if (body.buildNumber) {
       currentBuildNumber = body.buildNumber
       
-      // If startNodeId is provided with buildNumber, this is a retry from specific node
+      // If startNodeId is provided with buildNumber, this is a retry from specific node (already handled above)
       if (body.startNodeId) {
-        logger.info(`Retrying build #${currentBuildNumber} from node: ${body.startNodeId}`)
-        
-        // Reset execution state from the retry node onwards
-        executionStateManager.resetFromNode(projectId, currentBuildNumber, body.startNodeId, nodes, edges)
-        
         // Update build status to running
         const buildStatsManager = await getBuildStatsManager()
         await buildStatsManager.updateBuildStatus(projectId, currentBuildNumber, {
@@ -296,7 +310,7 @@ export default defineEventHandler(async (event) => {
           message: `Retrying from node: ${nodes.find(n => n.id === body.startNodeId)?.data?.label || body.startNodeId}`
         })
       } else {
-        logger.info(`Continuing existing build #${currentBuildNumber} for "${currentProjectName}" (triggered by node completion)`)
+        logger.debug(`Continuing existing build #${currentBuildNumber} for "${currentProjectName}" (triggered by node completion)`)
       }
     } else {
       // Create new build for initial execution
@@ -349,11 +363,7 @@ export default defineEventHandler(async (event) => {
     const credentialResolver = await getCredentialResolver()
     const resolvedEnv = await credentialResolver.resolveCredentials(nodes, systemEnvVars)
 
-    logger.info(`Resolved ${Object.keys(resolvedEnv).length - Object.keys(systemEnvVars).length} credential environment variables`)
-
-    // Log environment keys only (not values) to avoid exposing secrets
-    logger.debug('Environment variable keys for job:', Object.keys(resolvedEnv))
-
+    logger.debug(`Resolved ${Object.keys(resolvedEnv).length - Object.keys(systemEnvVars).length} credential environment variables`)
     // Store credential resolver in job for log masking
     // We need to update the job in the jobManager because it stores a separate reference
     const jobFromManager = jobManager.jobs.get(jobId)
@@ -370,7 +380,7 @@ export default defineEventHandler(async (event) => {
 
     // Start with the first command
     const firstCommand = executableCommands[0]
-    logger.info(`Starting sequential execution with command 1/${executableCommands.length}: ${firstCommand.nodeLabel}`)
+    logger.debug(`Starting sequential execution with command 1/${executableCommands.length}: ${firstCommand.nodeLabel}`)
 
     // Check if first command is an orchestrator
     if (firstCommand.type === 'parallel_branches_orchestrator') {
@@ -457,7 +467,7 @@ export default defineEventHandler(async (event) => {
 
     // Check if first command is a notification
     if (firstCommand.type === 'notification') {
-      logger.info(`First command is notification - executing directly on backend`)
+      logger.debug(`First command is notification - executing directly on backend`)
 
       // Update job with notification execution
       await jobManager.updateJob(jobId, {
@@ -478,7 +488,7 @@ export default defineEventHandler(async (event) => {
       const result = await notificationService.sendNotification(firstCommand, context)
 
       if (result.success) {
-        logger.info(`Notification sent successfully`)
+        logger.debug(`Notification sent successfully`)
 
         // Mark job as completed
         await jobManager.updateJob(jobId, {
@@ -546,7 +556,7 @@ export default defineEventHandler(async (event) => {
 
     // Check if first command is an API request
     if (firstCommand.type === 'api-request') {
-      logger.info(`First command is API request - executing directly on backend`)
+      logger.debug(`First command is API request - executing directly on backend`)
 
       // Update job with API request execution
       await jobManager.updateJob(jobId, {
@@ -582,7 +592,7 @@ export default defineEventHandler(async (event) => {
       const result = await executeApiRequest(firstCommand, jobId)
 
       if (result.success) {
-        logger.info(`API request completed successfully`)
+        logger.debug(`API request completed successfully`)
 
         // Mark node as completed in execution state manager
         if (currentBuildNumber) {
@@ -698,9 +708,9 @@ export default defineEventHandler(async (event) => {
     }
 
     if (requiresSpecificAgent) {
-      logger.info(`ENFORCING agent selection: ${selectedAgent.agentId} for command: ${firstCommand.nodeLabel}`)
+      logger.debug(`ENFORCING agent selection: ${selectedAgent.agentId} for command: ${firstCommand.nodeLabel}`)
     } else {
-      logger.info(`Selected agent ${selectedAgent.agentId} for first command: ${firstCommand.nodeLabel} (user chose "any available")`)
+      logger.debug(`Selected agent ${selectedAgent.agentId} for first command: ${firstCommand.nodeLabel} (user chose "any available")`)
     }
 
     // Build recording already done above
@@ -767,7 +777,7 @@ export default defineEventHandler(async (event) => {
         agentId: selectedAgent.agentId,
         agentName: selectedAgent.name || selectedAgent.hostname
       })
-      logger.info(`✅ Job ${jobId} dispatched immediately to agent ${selectedAgent.agentId}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`)
+      logger.debug(`✅ Job ${jobId} dispatched immediately to agent ${selectedAgent.agentId}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`)
     } else if (dispatchResult.queued) {
       // Job was queued
       await jobManager.updateJob(jobId, {
@@ -775,8 +785,8 @@ export default defineEventHandler(async (event) => {
         agentId: selectedAgent.agentId,
         agentName: selectedAgent.name || selectedAgent.hostname
       })
-      logger.info(`📥 Job ${jobId} queued for agent ${selectedAgent.agentId} at position ${dispatchResult.queuePosition}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`)
-      logger.info(`   Queue length: ${dispatchResult.queueLength}`)
+      logger.debug(`📥 Job ${jobId} queued for agent ${selectedAgent.agentId} at position ${dispatchResult.queuePosition}${currentBuildNumber ? ` (build #${currentBuildNumber})` : ''}`)
+      logger.debug(`   Queue length: ${dispatchResult.queueLength}`)
     }
 
     // Broadcast job started event to WebSocket clients
@@ -834,8 +844,8 @@ export default defineEventHandler(async (event) => {
  * resolving parameter values and skipping non-executable nodes.
  */
 export function convertGraphToCommands(nodes, edges, triggerContext = null, executionOutputs = null, startNodeId = null) {
-  logger.info(`Converting graph to commands...`)
-  logger.info(`Graph has ${nodes.length} nodes and ${edges.length} edges`)
+  logger.debug(`Converting graph to commands...`)
+  logger.debug(`Graph has ${nodes.length} nodes and ${edges.length} edges`)
 
   // Step 1: Build parameter value map from parameter nodes + trigger context + execution outputs
   const parameterValues = buildParameterValueMap(nodes, edges, triggerContext, executionOutputs)
@@ -849,11 +859,11 @@ export function convertGraphToCommands(nodes, edges, triggerContext = null, exec
       throw new Error(`Start node with ID ${startNodeId} not found in graph`)
     }
     startingNodes = [specificNode]
-    logger.info(`Using specific starting node: ${specificNode.data.label}`)
+    logger.debug(`Using specific starting node: ${specificNode.data.label}`)
   } else {
     // Find executable starting points (trigger nodes or nodes without execution inputs)
     startingNodes = findExecutionStartingNodes(nodes, edges)
-    logger.info(`Found ${startingNodes.length} starting nodes:`, startingNodes.map(n => n.data.label))
+    logger.debug(`Found ${startingNodes.length} starting nodes:`, startingNodes.map(n => n.data.label))
   }
 
   if (startingNodes.length === 0) {
@@ -869,7 +879,7 @@ export function convertGraphToCommands(nodes, edges, triggerContext = null, exec
     commands.push(...nodeCommands)
   }
 
-  logger.info(`Generated ${commands.length} executable commands`)
+  logger.debug(`Generated ${commands.length} executable commands`)
   return commands
 }
 
@@ -885,13 +895,11 @@ function buildParameterValueMap(nodes, edges, triggerContext = null, executionOu
       // Handle Map (legacy)
       for (const [key, value] of executionOutputs) {
         parameterValues.set(key, value)
-        logger.debug(`Added execution output: ${key} = ${value.value}`)
       }
     } else if (typeof executionOutputs === 'object') {
-      // Handle plain object (serialized from Map)
+      // Handle plain object (serialized from Map or preserved parameter values)
       for (const [key, value] of Object.entries(executionOutputs)) {
         parameterValues.set(key, value)
-        logger.debug(`Added execution output: ${key} = ${value.value}`)
       }
     }
   }
@@ -1052,7 +1060,7 @@ function buildExecutionFlow(startNode, allNodes, allEdges, parameterValues, visi
   // If this node has success/failure sockets, STOP building the sequential flow here
   // Let runtime routing (triggerNextNodes) handle the branching
   if (hasSuccessSocket || hasFailureSocket) {
-    logger.info(`Node "${startNode.data.label}" has success/failure routing - stopping sequential compilation here`)
+    logger.debug(`Node "${startNode.data.label}" has success/failure routing - stopping sequential compilation here`)
     return commands
   }
 
@@ -1313,7 +1321,7 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
       // Get array items from connected parameter node
       let items = []
       try {
-        logger.info(`Getting array from parameter input`)
+        logger.debug(`Getting array from parameter input`)
 
         // Find the edge connected to array-input socket
         const arrayInputEdge = allEdges.find(edge =>
@@ -1351,7 +1359,7 @@ function convertNodeToExecutableCommands(node, allNodes, allEdges, parameterValu
           throw new Error('Parameter value must be an array')
         }
 
-        logger.info(`Matrix received ${items.length} items from parameter node`)
+      logger.debug(`Matrix received ${items.length} items from parameter node`)
       } catch (error) {
         logger.error(`Failed to get parallel_matrix array:`, error)
         throw error
@@ -1519,11 +1527,6 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues, customText =
   let resolvedScript = customText !== null ? customText : (node.data.script || '')
   // Find all input connections to this node
   const inputConnections = allEdges.filter(edge => edge.target === node.id)
-
-  // Debug: Log parameter values available
-  logger.debug(`[DEBUG] Resolving placeholders for node ${node.id} (${node.data?.label || 'unknown'})`)
-  logger.debug(`[DEBUG] Available parameter values:`, Array.from(parameterValues.entries()).map(([k, v]) => `${k}: ${JSON.stringify(v)}`))
-
   // Process each input socket placeholder
   if (node.data.inputSockets && node.data.inputSockets.length > 0) {
     node.data.inputSockets.forEach((socket, index) => {
@@ -1533,23 +1536,17 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues, customText =
       let parameterData = null
 
       if (connection) {
-        logger.debug(`[DEBUG] Socket ${socket.label} (${socket.id}) has connection from ${connection.source} (sourceHandle: ${connection.sourceHandle})`)
-
         // Check if the source is a parameter node
         parameterData = parameterValues.get(connection.source)
-
         // If not found, check if it's a webhook output socket connection
         if (!parameterData && connection.sourceHandle) {
           const webhookSocketKey = `${connection.source}_${connection.sourceHandle}`
           parameterData = parameterValues.get(webhookSocketKey)
-          logger.debug(`[DEBUG] Tried webhook key: ${webhookSocketKey}, found: ${!!parameterData}`)
         }
-
         // If still not found, check if it's an execution output connection
         if (!parameterData && connection.sourceHandle === 'output') {
           const executionOutputKey = `${connection.target}_${connection.targetHandle}`
           parameterData = parameterValues.get(executionOutputKey)
-          logger.debug(`[DEBUG] Tried execution output key: ${executionOutputKey}, found: ${!!parameterData}`)
         }
       }
 
@@ -1558,9 +1555,6 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues, customText =
       if (!parameterData) {
         const executionOutputKey = `${node.id}_${socket.id}`
         parameterData = parameterValues.get(executionOutputKey)
-        if (parameterData) {
-          logger.debug(`Found execution output by direct socket lookup: ${executionOutputKey}`)
-        }
       }
 
       if (parameterData) {
@@ -1569,11 +1563,6 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues, customText =
 
           // Escape special regex characters in the socket label
           const escapedLabel = cleanLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-          logger.debug(`[DEBUG] Processing socket: ${socket.label}, cleanLabel: ${cleanLabel}, escapedLabel: ${escapedLabel}`)
-          logger.debug(`[DEBUG] Script before replacement: "${resolvedScript}"`)
-          logger.debug(`[DEBUG] Parameter value type: ${typeof parameterData.value}, isObject: ${typeof parameterData.value === 'object' && parameterData.value !== null}`)
-
           // Check if the parameter value is an object (webhook data)
           const isObjectValue = typeof parameterData.value === 'object' && parameterData.value !== null
 
@@ -1584,7 +1573,6 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues, customText =
             const propertyAccessRegex = new RegExp(`\\$${escapedLabel}([.\\[][^\\s"']*?)(?=\\s|"|'|$)`, 'g')
             resolvedScript = resolvedScript.replace(propertyAccessRegex, (match, propertyPath) => {
               try {
-                logger.debug(`[DEBUG] Property access match: "${match}", propertyPath: "${propertyPath}"`)
                 // Clean the path:
                 // - Remove leading dot if followed by bracket: .[0] -> [0]
                 // - Remove leading dot for regular properties: .property -> property
@@ -1594,9 +1582,7 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues, customText =
                 } else if (cleanPath.startsWith('.')) {
                   cleanPath = cleanPath.substring(1) // Remove leading dot
                 }
-                logger.debug(`[DEBUG] Clean path: "${cleanPath}"`)
                 const value = getNestedProperty(parameterData.value, cleanPath)
-                logger.debug(`[DEBUG] Property access result: ${value !== undefined ? String(value).substring(0, 100) : 'undefined'}`)
                 return value !== undefined ? String(value) : match
               } catch (error) {
                 logger.warn(`Failed to access property ${propertyPath} on ${cleanLabel}:`, error)
@@ -1606,27 +1592,30 @@ function resolveScriptPlaceholders(node, allEdges, parameterValues, customText =
             
             // Then handle simple references like $INPUT_1 with the whole object as JSON
             const simpleRegex = new RegExp(`\\$${escapedLabel}\\b`, 'g')
-            logger.debug(`[DEBUG] Simple placeholder regex: \\$${escapedLabel}\\b`)
-            logger.debug(`[DEBUG] Matches found: ${resolvedScript.match(simpleRegex)}`)
             resolvedScript = resolvedScript.replace(simpleRegex, JSON.stringify(parameterData.value))
-            logger.debug(`[DEBUG] Script after simple replacement: "${resolvedScript}"`)
 
           } else {
             // For simple values, use $socketLabel format
             const simpleRegex = new RegExp(`\\$${escapedLabel}\\b`, 'g')
-            logger.debug(`[DEBUG] Simple placeholder regex: \\$${escapedLabel}\\b`)
-            logger.debug(`[DEBUG] Matches found: ${resolvedScript.match(simpleRegex)}`)
             resolvedScript = resolvedScript.replace(simpleRegex, String(parameterData.value))
-            logger.debug(`[DEBUG] Script after simple replacement: "${resolvedScript}"`)
           }
 
       } else {
-        logger.debug(`No connection found for socket "${socket.label}"`)
+        // For matrix iteration retries, check if this socket has a preserved parameter value
+        // The key format is: nodeId_socketId
+        const matrixParamKey = `${node.id}_${socket.id}`
+        const matrixParamData = parameterValues.get(matrixParamKey)
+        
+        if (matrixParamData && matrixParamData.nodeType === 'matrix-item') {
+          const cleanLabel = socket.label.startsWith('$') ? socket.label.substring(1) : socket.label
+          const escapedLabel = cleanLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          const simpleRegex = new RegExp(`\\$${escapedLabel}\\b`, 'g')
+          resolvedScript = resolvedScript.replace(simpleRegex, String(matrixParamData.value))
+        }
+
       }
     })
   }
-
-  logger.debug(`Final script: "${resolvedScript}"`)
   return resolvedScript
 }
 
@@ -1669,7 +1658,7 @@ function getExecutionResultConnectedNodes(executionNode, allNodes, allEdges, exe
   // Determine which socket to use based on execution result
   const targetSocketId = (executionResult && executionResult.success) ? 'success' : 'failure'
 
-  logger.info(`Routing execution node "${executionNode.data.label}" - Result: ${executionResult?.success ? 'SUCCESS' : 'FAILURE'}, Using socket: ${targetSocketId}`)
+  logger.debug(`Routing execution node "${executionNode.data.label}" - Result: ${executionResult?.success ? 'SUCCESS' : 'FAILURE'}, Using socket: ${targetSocketId}`)
 
   const outputEdge = allEdges.find(edge =>
     edge.source === executionNode.id && edge.sourceHandle === targetSocketId
@@ -1678,7 +1667,7 @@ function getExecutionResultConnectedNodes(executionNode, allNodes, allEdges, exe
   if (outputEdge) {
     const targetNode = allNodes.find(node => node.id === outputEdge.target)
     if (targetNode) {
-      logger.info(`  → Found ${targetSocketId} socket connection to: ${targetNode.data.label} (${targetNode.data.nodeType})`)
+      logger.debug(`  → Found ${targetSocketId} socket connection to: ${targetNode.data.label} (${targetNode.data.nodeType})`)
       connectedNodes.push(targetNode)
     }
   }
@@ -1688,9 +1677,9 @@ function getExecutionResultConnectedNodes(executionNode, allNodes, allEdges, exe
   // Only success/failure sockets control execution flow
 
   if (connectedNodes.length === 0) {
-    logger.info(`  → No ${targetSocketId} socket connections found - execution stops here`)
+    logger.debug(`  → No ${targetSocketId} socket connections found - execution stops here`)
   } else {
-    logger.info(`  → Total nodes to trigger: ${connectedNodes.length}`)
+    logger.debug(`  → Total nodes to trigger: ${connectedNodes.length}`)
   }
 
   return connectedNodes
@@ -1756,8 +1745,6 @@ function getConditionalConnectedNodes(conditionalNode, allNodes, allEdges, param
     const targetNode = allNodes.find(node => node.id === outputEdge.target)
     return targetNode ? [targetNode] : []
   }
-
-  logger.debug(`No output edge found for conditional "${conditionalNode.data.label}" ${targetSocketId} path`)
   return []
 }
 
@@ -1775,13 +1762,10 @@ function getBranchTargetNodes(parallelNode, allNodes, allEdges) {
   const targets = []
 
   if (!parallelNode.data.branches || parallelNode.data.branches.length === 0) {
-    logger.debug(`No branches defined for parallel node "${parallelNode.data.label}"`)
     return targets
   }
 
   for (const branch of parallelNode.data.branches) {
-    logger.debug(`Processing branch: ${branch.name} (${branch.id})`)
-
     // Find edge connected to this branch socket
     const branchEdge = allEdges.find(edge =>
       edge.source === parallelNode.id && edge.sourceHandle === branch.id
@@ -1789,8 +1773,6 @@ function getBranchTargetNodes(parallelNode, allNodes, allEdges) {
 
     if (branchEdge) {
       const targetNode = allNodes.find(n => n.id === branchEdge.target)
-      logger.debug(`Target node found:`, targetNode?.data.label)
-
       if (targetNode) {
         targets.push({
           branchId: branch.id,
@@ -1798,12 +1780,8 @@ function getBranchTargetNodes(parallelNode, allNodes, allEdges) {
           targetNode: targetNode
         })
       }
-    } else {
-      logger.debug(`No connection found for branch "${branch.name}" (${branch.id})`)
     }
   }
-
-  logger.debug(`Found ${targets.length} branch targets for parallel node "${parallelNode.data.label}"`)
   return targets
 }
 
@@ -1820,11 +1798,8 @@ function getIterationTargetNode(matrixNode, allNodes, allEdges) {
   if (iterationEdge) {
     const targetNode = allNodes.find(n => n.id === iterationEdge.target)
     if (targetNode) {
-      logger.debug(`Found iteration target for matrix node "${matrixNode.data.label}": ${targetNode.data.label}`)
-
       // Find socket mappings: which matrix output sockets connect to which target input sockets
       const socketMappings = {}
-
       // Check for Iteration Value connection
       const itemValueEdge = allEdges.find(edge =>
         edge.source === matrixNode.id &&
@@ -1834,7 +1809,6 @@ function getIterationTargetNode(matrixNode, allNodes, allEdges) {
       if (itemValueEdge) {
         socketMappings.itemValueSocket = itemValueEdge.targetHandle
       }
-
       // Check for Additional Parameters connection
       const additionalParamsEdge = allEdges.find(edge =>
         edge.source === matrixNode.id &&
@@ -1844,15 +1818,12 @@ function getIterationTargetNode(matrixNode, allNodes, allEdges) {
       if (additionalParamsEdge) {
         socketMappings.additionalParamsSocket = additionalParamsEdge.targetHandle
       }
-
       return {
         node: targetNode,
         socketMappings
       }
     }
   }
-
-  logger.debug(`No iteration target found for matrix node "${matrixNode.data.label}"`)
   return null
 }
 
@@ -1872,7 +1843,6 @@ function duplicateMatrixNodes(nodes, edges, executionCommands) {
 
   for (const matrixCmd of matrixCommands) {
     if (!matrixCmd.iterationTarget || !matrixCmd.items || matrixCmd.items.length === 0) {
-      logger.debug(`Skipping matrix node ${matrixCmd.nodeLabel} - no iteration target or items`)
       continue
     }
 
@@ -1880,7 +1850,7 @@ function duplicateMatrixNodes(nodes, edges, executionCommands) {
     const iterationTarget = matrixCmd.iterationTarget
     const itemCount = matrixCmd.items.length
 
-    logger.info(`Duplicating iteration target "${iterationTarget.data.label}" ${itemCount} times for matrix "${matrixCmd.nodeLabel}"`)
+    logger.debug(`Duplicating iteration target "${iterationTarget.data.label}" ${itemCount} times for matrix "${matrixCmd.nodeLabel}"`)
 
     // Find the original iteration target node in the graph
     const originalNodeIndex = newNodes.findIndex(n => n.id === iterationTarget.id)
