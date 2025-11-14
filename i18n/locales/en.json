@@ -647,7 +647,7 @@
         "workingDirectoryPlaceholder": ".",
         "timeout": "Timeout (seconds)",
         "parallelExecutionNode": "Parallel Execution Node",
-        "parallelExecutionDescription": "This node is designed to be connected to a Parallel Branches node. It has no output sockets - all results are sent back to the parent parallel node."
+        "parallelExecutionDescription": "This node is designed to be connected to a Parallel node. It has no output sockets - all results are sent back to the parent parallel node."
     },
     "parallelMatrixProperties": {
         "arrayParameterInputRequired": "Array Parameter Input Required:",

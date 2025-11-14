@@ -647,7 +647,7 @@
         "workingDirectoryPlaceholder": ".",
         "timeout": "Tiempo de Espera (segundos)",
         "parallelExecutionNode": "Nodo de Ejecución Paralela",
-        "parallelExecutionDescription": "Este nodo está diseñado para conectarse a un nodo de Ramas Paralelas. No tiene sockets de salida - todos los resultados se envían de vuelta al nodo paralelo padre."
+        "parallelExecutionDescription": "Este nodo está diseñado para conectarse a un nodo paralelo. No tiene sockets de salida - todos los resultados se envían de vuelta al nodo paralelo padre."
     },
     "parallelMatrixProperties": {
         "arrayParameterInputRequired": "Entrada de Parámetro de Matriz Requerida:",

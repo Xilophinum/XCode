@@ -20,7 +20,7 @@
       <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{{ $t('parallelExecutionProperties.script') }}</label>
       <ScriptEditor
         v-model="nodeData.data.script"
-        :language="'javascript'"
+        :language="nodeData.data.language"
         class="w-full border border-neutral-300 dark:border-neutral-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white font-mono text-sm"
       />
     </div>
