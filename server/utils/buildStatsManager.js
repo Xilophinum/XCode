@@ -108,6 +108,16 @@ export class BuildStatsManager {
   }
 
   /**
+   * Update build status (alias for updateBuild for convenience)
+   * @param {string} projectId - Project ID
+   * @param {number} buildNumber - Build number
+   * @param {Object} statusUpdate - Status update object
+   */
+  async updateBuildStatus(projectId, buildNumber, statusUpdate) {
+    return this.updateBuild(projectId, buildNumber, statusUpdate)
+  }
+
+  /**
    * Add a log entry to a build (for manual/external log additions only)
    * NOTE: During build execution, logs are stored in memory and bulk-saved on completion.
    * This method should only be used for manual log additions to completed builds.

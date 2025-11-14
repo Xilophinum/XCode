@@ -278,10 +278,26 @@ export default defineEventHandler(async (event) => {
 
     const buildStatsManager = await getBuildStatsManager()
 
-    // Check if this is a continuation of an existing build (from triggerNextNodes)
+    // Check if this is a continuation of an existing build (from triggerNextNodes or retry)
     if (body.buildNumber) {
       currentBuildNumber = body.buildNumber
-      logger.info(`Continuing existing build #${currentBuildNumber} for "${currentProjectName}" (triggered by node completion)`)
+      
+      // If startNodeId is provided with buildNumber, this is a retry from specific node
+      if (body.startNodeId) {
+        logger.info(`Retrying build #${currentBuildNumber} from node: ${body.startNodeId}`)
+        
+        // Reset execution state from the retry node onwards
+        executionStateManager.resetFromNode(projectId, currentBuildNumber, body.startNodeId, nodes, edges)
+        
+        // Update build status to running
+        const buildStatsManager = await getBuildStatsManager()
+        await buildStatsManager.updateBuildStatus(projectId, currentBuildNumber, {
+          status: 'running',
+          message: `Retrying from node: ${nodes.find(n => n.id === body.startNodeId)?.data?.label || body.startNodeId}`
+        })
+      } else {
+        logger.info(`Continuing existing build #${currentBuildNumber} for "${currentProjectName}" (triggered by node completion)`)
+      }
     } else {
       // Create new build for initial execution
       const buildResult = await buildStatsManager.startBuild({

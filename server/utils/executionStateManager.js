@@ -240,6 +240,70 @@ class ExecutionStateManager {
   }
 
   /**
+   * Reset execution state from a specific node onwards for retry functionality
+   */
+  resetFromNode(projectId, buildNumber, startNodeId, nodes, edges) {
+    const stateKey = this._getStateKey(projectId, buildNumber)
+    const buildState = this.activeStates.get(stateKey)
+
+    if (!buildState) {
+      logger.warn(`No active state found for build ${buildNumber} to reset`)
+      return
+    }
+
+    // Find all nodes that should be reset (startNode and all downstream nodes)
+    const nodesToReset = this._findDownstreamNodes(startNodeId, nodes, edges)
+    nodesToReset.add(startNodeId) // Include the start node itself
+
+    logger.info(`Resetting ${nodesToReset.size} nodes from retry point: ${startNodeId}`)
+
+    // Reset state for all affected nodes
+    for (const nodeId of nodesToReset) {
+      if (buildState[nodeId]) {
+        buildState[nodeId] = {
+          ...buildState[nodeId],
+          status: 'pending',
+          startTime: null,
+          endTime: null
+        }
+        
+        // Broadcast state change
+        this.broadcastStateChange(projectId, buildNumber, nodeId, 'pending', buildState[nodeId])
+      }
+    }
+
+    logger.info(`Reset execution state for ${nodesToReset.size} nodes from retry point`)
+  }
+
+  /**
+   * Find all downstream nodes from a given starting node
+   */
+  _findDownstreamNodes(startNodeId, nodes, edges, visited = new Set()) {
+    if (visited.has(startNodeId)) {
+      return new Set()
+    }
+    visited.add(startNodeId)
+
+    const downstreamNodes = new Set()
+    
+    // Find all edges that start from this node
+    const outgoingEdges = edges.filter(edge => edge.source === startNodeId)
+    
+    for (const edge of outgoingEdges) {
+      const targetNodeId = edge.target
+      downstreamNodes.add(targetNodeId)
+      
+      // Recursively find downstream nodes
+      const nestedDownstream = this._findDownstreamNodes(targetNodeId, nodes, edges, visited)
+      for (const nodeId of nestedDownstream) {
+        downstreamNodes.add(nodeId)
+      }
+    }
+    
+    return downstreamNodes
+  }
+
+  /**
    * Clean up state for a completed build (remove from memory)
    */
   async cleanupBuildState(projectId, buildNumber) {
