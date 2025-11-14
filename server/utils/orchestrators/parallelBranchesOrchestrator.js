@@ -206,7 +206,7 @@ export async function executeParallelBranches(orchestratorCommand, parentJob) {
     }
   }
 
-  logger.info(`✅ All ${dispatchedBranches.length} branches dispatched/queued - now waiting for completions in parallel`)
+  logger.debug(`✅ All ${dispatchedBranches.length} branches dispatched/queued - now waiting for completions in parallel`)
 
   // Now wait for all branches to complete in parallel
   const branchPromises = dispatchedBranches.map(async (branchInfo) => {

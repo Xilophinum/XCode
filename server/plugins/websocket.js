@@ -730,7 +730,7 @@ async function handleAgentJobStatus(socket, msg, agentManager) {
   try {
     const { jobId, status, error, output, outputLines, exitCode, currentJobs, message } = msg
 
-    logger.info(`Agent job status update: ${jobId} -> ${status}`)
+    logger.debug(`Agent job status update: ${jobId} -> ${status}`)
 
     // Update agent status based on current jobs
     if (currentJobs !== undefined) {

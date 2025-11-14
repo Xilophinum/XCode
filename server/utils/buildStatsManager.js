@@ -69,9 +69,9 @@ export class BuildStatsManager {
 
     // Create a build-specific logger for capturing all build-related logs
     const buildLogger = createBuildLogger(buildData.projectId, buildNumber)
-    buildLogger.info(`Build #${buildNumber} started for project "${projectName}"`)
-    buildLogger.info(`Agent: ${buildData.agentName || buildData.agentId || 'Local'}`)
-    buildLogger.info(`Trigger: ${buildData.trigger || 'manual'}`)
+    buildLogger.debug(`Build #${buildNumber} started for project "${projectName}"`)
+    buildLogger.debug(`Agent: ${buildData.agentName || buildData.agentId || 'Local'}`)
+    buildLogger.debug(`Trigger: ${buildData.trigger || 'manual'}`)
 
     return {
       projectId: buildData.projectId,
@@ -218,15 +218,14 @@ export class BuildStatsManager {
 
     // Persist execution state to database before build completion
     const finalState = executionStateManager.getBuildState(projectId, buildNumber)
-    logger.info(`Final execution state for build #${buildNumber}:`, finalState)
+    logger.debug(`Final execution state for build #${buildNumber}:`, finalState)
     await executionStateManager.persistBuildState(projectId, buildNumber)
-    logger.info(`Persisted execution state for build #${buildNumber}`)
 
     // Get all logs from in-memory job storage and save to database
     const memoryLogs = await jobManager.getBuildLogsFromMemory(projectId, buildNumber)
 
-    logger.info(`Saving ${memoryLogs.length} logs from memory to database for build #${buildNumber}`)
-    logger.info(`Sample of last 5 logs:`, memoryLogs.slice(-5).map(log => `[${log.source}] ${log.message.substring(0, 50)}`))
+    logger.debug(`Saving ${memoryLogs.length} logs from memory to database for build #${buildNumber}`)
+    logger.debug(`Sample of last 5 logs:`, memoryLogs.slice(-5).map(log => `[${log.source}] ${log.message.substring(0, 50)}`))
 
     // Sort logs by nanotime to ensure correct order
     const sortedLogs = [...memoryLogs].sort((a, b) => {
@@ -510,7 +509,7 @@ export class BuildStatsManager {
         ))
       }
 
-      logger.info(`Cleaned up ${buildNumbers.length} old builds for project "${projectName}"`)
+      logger.debug(`Cleaned up ${buildNumbers.length} old builds for project "${projectName}"`)
     }
   }
 
@@ -531,7 +530,7 @@ export class BuildStatsManager {
         timestamp: new Date().toISOString()
       })
 
-      logger.info(`Broadcasted build completion for project ${projectId} with status: ${status}`)
+      logger.debug(`Broadcasted build completion for project ${projectId} with status: ${status}`)
     } catch (error) {
       logger.error('Failed to broadcast build completion:', error)
     }
@@ -561,7 +560,7 @@ export class BuildStatsManager {
         .set(updateData)
         .where(eq(items.id, projectId))
 
-      logger.info(`Updated retention settings for project ${projectId}:`, updateData)
+      logger.debug(`Updated retention settings for project ${projectId}:`, updateData)
 
       // Trigger cleanup with new settings
       await this.cleanupOldBuilds(projectId)

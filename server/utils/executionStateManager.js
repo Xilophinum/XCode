@@ -51,8 +51,7 @@ class ExecutionStateManager {
     })
 
     this.activeStates.set(stateKey, nodeStates)
-    logger.info(`Initialized execution state for build ${buildNumber} with ${nodes.length} nodes`)
-
+    logger.debug(`Initialized execution state for build ${buildNumber} with ${nodes.length} nodes`)
     return nodeStates
   }
 

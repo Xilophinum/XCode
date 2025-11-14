@@ -477,7 +477,7 @@ export async function executeParallelMatrix(orchestratorCommand, parentJob) {
     }
   }
 
-  logger.info(`✅ All ${dispatchedJobs.length} matrix jobs dispatched/queued - now waiting for completions in parallel`)
+  logger.debug(`✅ All ${dispatchedJobs.length} matrix jobs dispatched/queued - now waiting for completions in parallel`)
 
   // Now wait for all jobs to complete in parallel
   const matrixPromises = dispatchedJobs.map(async (jobInfo) => {

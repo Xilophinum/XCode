@@ -79,13 +79,10 @@ class JobQueueManager {
     }
 
     this.metrics.totalEnqueued++
-
     const position = queue.indexOf(queueEntry)
-
-    logger.info(`📥 Job ${jobData.jobId} enqueued for agent ${agentId} at position ${position} (priority: ${priority})`)
-    logger.info(`   Project: "${jobData.projectName}" Build #${jobData.buildNumber}`)
-    logger.info(`   Queue length: ${queue.length}`)
-
+    logger.debug(`📥 Job ${jobData.jobId} enqueued for agent ${agentId} at position ${position} (priority: ${priority})`)
+    logger.debug(`   Project: "${jobData.projectName}" Build #${jobData.buildNumber}`)
+    logger.debug(`   Queue length: ${queue.length}`)
     return position
   }
 

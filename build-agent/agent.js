@@ -907,7 +907,7 @@ class FlowForgeBuildAgent {
         return;
       }
 
-      logger.info(`Using executor: ${executorConfig.name} (${executorConfig.command})`);
+      logger.debug(`Using executor: ${executorConfig.name} (${executorConfig.command})`);
       
       // Prepare script/commands based on executor type
       let script;
@@ -975,10 +975,10 @@ class FlowForgeBuildAgent {
       const useShell = executorConfig.type === 'git' || executorConfig.type === 'dependency';
       
       if (useShell) {
-        logger.info(`Executing via shell: ${script}`);
+        logger.debug(`Executing via shell: ${script}`);
         logger.debug(`Working directory: ${resolvedWorkingDir}`);
       } else {
-        logger.info(`Executing: ${executorConfig.command} ${finalArgs.join(' ')}`);
+        logger.debug(`Executing: ${executorConfig.command} ${finalArgs.join(' ')}`);
         logger.debug(`Working directory: ${resolvedWorkingDir}`);
       }
       

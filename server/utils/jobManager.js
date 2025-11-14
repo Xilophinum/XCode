@@ -24,13 +24,6 @@ class JobManager {
 
   async initialize() {
     this.db = await getDB()
-    // Load active jobs from database on startup
-    await this.loadActiveJobsFromDatabase()
-  }
-
-  async loadActiveJobsFromDatabase() {
-    // Jobs table was migrated to builds table - no active jobs to load on startup
-    logger.info('Jobs are now stored in builds table - starting with empty job cache')
   }
 
   /**
@@ -87,9 +80,9 @@ class JobManager {
       const existingState = executionStateManager.getBuildState(projectId, jobData.buildNumber)
       if (!existingState) {
         executionStateManager.initializeBuildState(projectId, jobData.buildNumber, jobData.nodes)
-        logger.info(`Initialized execution state for build #${jobData.buildNumber}`)
+        logger.debug(`Initialized execution state for build #${jobData.buildNumber}`)
       } else {
-        logger.info(`Execution state already exists for build #${jobData.buildNumber}, keeping existing state`)
+        logger.debug(`Execution state already exists for build #${jobData.buildNumber}, keeping existing state`)
       }
     }
 
@@ -207,7 +200,7 @@ class JobManager {
 
     // Jobs are now stored in builds table - skip database update for jobs
 
-    logger.info(`Updated job ${jobId}:`, Object.keys(updates), '(persisted to database)')
+    logger.debug(`Updated job ${jobId}:`, Object.keys(updates), '(persisted to database)')
 
     // Broadcast job status updates to subscribed clients
     if (globalThis.broadcastToProject && job.projectId) {

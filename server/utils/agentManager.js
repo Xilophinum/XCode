@@ -407,7 +407,7 @@ class AgentManager {
       }
       
       // No more commands or not a sequential job - mark as completed
-      logger.info(`All commands completed for job ${jobId}`)
+      logger.debug(`All commands completed for job ${jobId}`)
       await jobManager.updateJob(jobId, {
         status: 'completed',
         exitCode: exitCode || 0,
@@ -443,10 +443,10 @@ class AgentManager {
       let hasNextNodes = false
 
       if (job.parentJobId) {
-        logger.info(`Sub-job completed - not triggering next nodes (managed by parent orchestrator)`)
+        logger.debug(`Sub-job completed - not triggering next nodes (managed by parent orchestrator)`)
         hasNextNodes = false
       } else if (job.executionCommands && job.executionCommands.length > 1) {
-        logger.info(`Multi-command sequential job completed - not triggering next nodes (handled internally)`)
+        logger.debug(`Multi-command sequential job completed - not triggering next nodes (handled internally)`)
         hasNextNodes = false
       } else {
         // Single command job - trigger next nodes
@@ -469,7 +469,7 @@ class AgentManager {
           logger.warn('Failed to update build record on job completion:', buildError)
         }
       } else if (hasNextNodes) {
-        logger.info(`Build #${job.buildNumber} continues - next nodes triggered, not finishing build yet`)
+        logger.debug(`Build #${job.buildNumber} continues - next nodes triggered, not finishing build yet`)
       } else if (job.triggeredByFailure) {
         logger.info(`Failure handler node completed successfully - build remains in failed state`)
       }
@@ -525,7 +525,7 @@ class AgentManager {
             }
           }
 
-          logger.info(`Triggering failure handlers for final failure`)
+          logger.debug(`Triggering failure handlers for final failure`)
           await this.triggerNextNodes(job, {
             success: false,
             exitCode: exitCode || 1,
@@ -537,7 +537,7 @@ class AgentManager {
             isRetrying: false
           })
         } else if (job && job.parentJobId) {
-          logger.info(`Sub-job failed - not triggering failure handlers (managed by parent orchestrator)`)
+          logger.debug(`Sub-job failed - not triggering failure handlers (managed by parent orchestrator)`)
         }
 
         // Mark build as failed IMMEDIATELY when a node fails
@@ -561,13 +561,13 @@ class AgentManager {
               message: errorMessage,
               nodesExecuted: job.executionCommands ? (job.currentCommandIndex || 0) + 1 : 0
             })
-            logger.info(`BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed`)
+            logger.debug(`BUILD STATS: Build #${job.buildNumber} for project "${job.projectName}" marked as failed`)
           } catch (buildError) {
             logger.warn('Failed to update build record on job error:', buildError)
           }
         }
       } else {
-        logger.info(`Job ${jobId} failed but will retry - failure handlers already triggered by handleJobFailure`)
+        logger.debug(`Job ${jobId} failed but will retry - failure handlers already triggered by handleJobFailure`)
       }
     }
   }
@@ -805,7 +805,7 @@ class AgentManager {
     }
 
     // Only when NO specific agent is requested, find any available agent
-    logger.info(`No specific agent required - finding any available agent`)
+    logger.debug(`No specific agent required - finding any available agent`)
     for (const [agentId, socket] of this.connectedAgents) {
       logger.debug(`Checking agent ${agentId}: connected=${socket?.connected}`)
       
@@ -908,7 +908,7 @@ class AgentManager {
 
           // Add execution output if available
           if (executionResult && executionResult.output) {
-            logger.info(`[DEBUG] Execution result output available:`, typeof executionResult.output === 'object' ? JSON.stringify(executionResult.output).substring(0, 200) : executionResult.output.substring(0, 200))
+            logger.debug(`[DEBUG] Execution result output available:`, typeof executionResult.output === 'object' ? JSON.stringify(executionResult.output).substring(0, 200) : executionResult.output.substring(0, 200))
 
             // Find edges connecting current node's output to next node's input
             const outputConnection = edges.find(edge =>
@@ -924,8 +924,6 @@ class AgentManager {
               const socketLabel = targetSocket?.label || outputConnection.targetHandle
 
               const executionOutputKey = `${nextNode.id}_${outputConnection.targetHandle}`
-              logger.info(`[DEBUG] Storing execution output with key: ${executionOutputKey}, label: ${socketLabel}`)
-
               parameterValues.set(executionOutputKey, {
                 label: socketLabel, // Use the actual socket label, not the socket ID
                 value: executionResult.output,
@@ -1354,7 +1352,7 @@ class AgentManager {
       }
     } else {
       // No more commands - mark parent job as complete and trigger next nodes
-      logger.info(`All commands (including parallel orchestration) completed for job ${parentJobId}`)
+      logger.debug(`All commands (including parallel orchestration) completed for job ${parentJobId}`)
       await jobManager.updateJob(parentJobId, {
         status: 'completed',
         completedAt: new Date().toISOString()
